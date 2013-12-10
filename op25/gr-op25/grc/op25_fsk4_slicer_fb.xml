@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<block>
+  <name>fsk4_slicer_fb</name>
+  <key>op25_fsk4_slicer_fb</key>
+  <category>op25</category>
+  <import>import op25</import>
+  <make>op25.fsk4_slicer_fb([-2.0,0.0,2.0,4.0])</make>
+
+  <sink>
+    <name>in</name>
+    <type>float</type>
+  </sink>
+
+  <source>
+    <name>out</name>
+    <type>byte</type>
+  </source>
+</block>

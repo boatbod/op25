@@ -1,0 +1,11 @@
+This is the op25_repeater-write-a-block package meant as a guide to building
+out-of-tree packages. To use the op25_repeater blocks, the Python namespaces
+is in 'op25_repeater', which is imported as:
+
+    import op25_repeater
+
+See the Doxygen documentation for details about the blocks available
+in this package. A quick listing of the details can be found in Python
+after importing by using: 
+
+    help(op25_repeater)

@@ -1,0 +1,7 @@
+/*!
+ * \defgroup block GNU Radio OP25_REPEATER C++ Signal Processing Blocks
+ * \brief All C++ blocks that can be used from the OP25_REPEATER GNU Radio
+ *        module are listed here or in the subcategories below.
+ *
+ */
+

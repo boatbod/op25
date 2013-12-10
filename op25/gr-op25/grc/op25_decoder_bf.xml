@@ -1,0 +1,39 @@
+<?xml version="1.0"?>
+<block>
+  <name>decoder_bf</name>
+  <key>op25_decoder_bf</key>
+  <category>op25</category>
+  <import>import op25</import>
+  <make>op25.decoder_bf()</make>
+  <!-- Make one 'param' node for every Parameter you want settable from the GUI.
+       Sub-nodes:
+       * name
+       * key (makes the value accessible as $keyname, e.g. in the make node)
+       * type ->
+  <param>
+    <name>msgq</name>
+    <key>msgq</key>
+    <type>gr.msg_queue</type>
+  </param>
+  -->
+
+  <!-- Make one 'sink' node per input. Sub-nodes:
+       * name (an identifier for the GUI)
+       * type
+       * vlen
+       * optional (set to 1 for optional inputs) -->
+  <sink>
+    <name>bits</name>
+    <type>byte</type>
+  </sink>
+
+  <!-- Make one 'source' node per output. Sub-nodes:
+       * name (an identifier for the GUI)
+       * type
+       * vlen
+       * optional (set to 1 for optional inputs) -->
+  <source>
+    <name>audio</name>
+    <type>float</type>
+  </source>
+</block>

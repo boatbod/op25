@@ -1,0 +1,68 @@
+<?xml version="1.0"?>
+<block>
+  <name>gardner_costas_cc</name>
+  <key>op25_repeater_gardner_costas_cc</key>
+  <category>op25_repeater</category>
+  <import>import op25_repeater</import>
+  <make>op25_repeater.gardner_costas_cc($samples_per_symbol, $gain_mu, $gain_omega, $alpha, $beta, $max_freq, $min_freq)</make>
+  <!-- Make one 'param' node for every Parameter you want settable from the GUI.
+       Sub-nodes:
+       * name
+       * key (makes the value accessible as $keyname, e.g. in the make node)
+       * type -->
+  <param>
+    <name>Samples Per Symbol</name>
+    <key>samples_per_symbol</key>
+    <type>float</type>
+  </param>
+  <param>
+    <name>Gain Mu</name>
+    <key>gain_mu</key>
+    <type>float</type>
+  </param>
+  <param>
+    <name>Gain Omega</name>
+    <key>gain_omega</key>
+    <type>float</type>
+  </param>
+  <param>
+    <name>Alpha</name>
+    <key>alpha</key>
+    <type>float</type>
+  </param>
+  <param>
+    <name>Beta</name>
+    <key>beta</key>
+    <type>float</type>
+  </param>
+  <param>
+    <name>Maximum Frequency</name>
+    <key>max_freq</key>
+    <type>float</type>
+  </param>
+  <param>
+    <name>Mininum Frequency</name>
+    <key>min_freq</key>
+    <type>float</type>
+  </param>
+
+  <!-- Make one 'sink' node per input. Sub-nodes:
+       * name (an identifier for the GUI)
+       * type
+       * vlen
+       * optional (set to 1 for optional inputs) -->
+  <sink>
+    <name>in</name>
+    <type>complex</type>
+  </sink>
+
+  <!-- Make one 'source' node per output. Sub-nodes:
+       * name (an identifier for the GUI)
+       * type
+       * vlen
+       * optional (set to 1 for optional inputs) -->
+  <source>
+    <name>out</name>
+    <type>complex</type>
+  </source>
+</block>
