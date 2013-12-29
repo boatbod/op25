@@ -17,9 +17,9 @@
 # Boston, MA 02110-1301, USA.
 #
 
-category: common
-depends: gnuradio boost libpcap gr-osmosdr libitpp
-source: git://git://op25.osmocom.org/op25.git
-#gitbranch: master
-gitbranch: max-pybombs
-inherit: cmake
+category: baseline
+satisfy_deb: libitpp-dev
+# proper rpm name unknown - this is a guess
+satisfy_rpm: libitpp-devel 
+source: wget://http://downloads.sourceforge.net/project/itpp/itpp/4.3.1/itpp-4.3.1.tar.bz2
+inherit: autoconf
