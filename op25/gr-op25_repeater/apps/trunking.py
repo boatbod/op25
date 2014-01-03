@@ -342,7 +342,10 @@ class rx_ctl (object):
         self.configs = {}
 
         if conf_file:
-            self.build_config(conf_file)
+            if conf_file.endswith('.tsv'):
+                self.build_config_tsv(conf_file)
+            else:
+                self.build_config(conf_file)
             self.nacs = self.configs.keys()
             self.current_nac = self.nacs[0]
             self.current_state = self.states.CC
@@ -362,6 +365,31 @@ class rx_ctl (object):
             cfg = self.configs[nac]
         self.trunked_systems[nac] = trunked_system(debug = self.debug, config=cfg)
 
+    def build_config_tsv(self, tsv_filename):
+        import csv
+        hdrmap = []
+        configs = {}
+        with open(tsv_filename, 'rb') as csvfile:
+            sreader = csv.reader(csvfile, delimiter='\t', quotechar='"', quoting=csv.QUOTE_ALL)
+            for row in sreader:
+                if not hdrmap:
+                    # process first line of tsv file - header line
+                    for hdr in row:
+                        hdr = hdr.replace(' ', '_')
+                        hdr = hdr.lower()
+                        hdrmap.append(hdr)
+                    continue
+                fields = {}
+                for i in xrange(len(row)):
+                    if row[i]:
+                        fields[hdrmap[i]] = row[i]
+                        if hdrmap[i] != 'sysname':
+                            fields[hdrmap[i]] = fields[hdrmap[i]].lower()
+                nac = int(fields['nac'], 0)
+                configs[nac] = fields
+            
+        self.setup_config(configs)
+
     def build_config(self, config_filename):
         import ConfigParser
         config = ConfigParser.ConfigParser()
@@ -375,7 +403,9 @@ class rx_ctl (object):
             for option in config.options(section):
                 configs[nac][option] = config.get(section, option).lower()
             configs[nac]['sysname'] = section
+        self.setup_config(configs)
 
+    def setup_config(self, configs):
         for nac in configs:
             self.configs[nac] = {'cclist':[], 'offset':0, 'whitelist':None, 'blacklist':{}, 'tgid_map':{}, 'sysname': configs[nac]['sysname']}
             for f in configs[nac]['control_channel_list'].split(','):

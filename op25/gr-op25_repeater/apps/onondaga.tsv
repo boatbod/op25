@@ -1,0 +1,242 @@
+1 	OCFC F1 Cntl 
+2 	OCFC F-2 TAC 
+3 	OCFC F-3 TAC 
+4 	OCFC F-4 TAC 
+5 	OCFC F-5 Cmd 
+6 	OCFC F-6 TAC 
+7 	OCFC F-7 EMS 
+8 	OCFC F-8 TAC 
+9 	OCFC F-9 TAC 
+10 	OCFC F10 TAC 
+11 	OCFC F11 TAC 
+12 	OCFC F12 TAC 
+13 	OCFC F13 TAC 
+14 	OCFC FTAC1 
+15 	OCFC FTAC 2 
+16 	OTAC All 
+17 	OTAC 1 
+18 	OTAC 2 
+19 	MMRS A 
+20 	MMRS B 
+21 	SFD Control 
+22 	SFD Ops 2 
+23 	SFD Ops 3 
+24 	SFD Ops 4 
+25 	SFD Command 
+26 	SFD TAC 9 
+27 	SFD TAC 7 
+28 	SFD TAC 8 
+29 	SFD ARFF 6 
+30 	CTAC 
+31 	SPD TA 
+32 	SPD DATA 
+33 	SPD N/E DISP 
+34 	SPD S/W DISP 
+35 	SPD HIA DISP 
+37 	SPD TAC1 
+39 	SPD EVNT 1 
+40 	SPD EVNT 2 
+44 	PTAC 1 
+45 	OCSO MRD 1 
+46 	OCSO MRD 2 
+47 	OCSO MRD 3 
+48 	OCSO MRD 4 
+49 	OCSO MRD 5 
+50 	OCSO MRD CIS 
+51 	OCSO MRD CAR 
+52 	OCSO TAC 8 
+60 	SyrHsingSecr 
+61 	SWAT 
+63 	CAYTAC1 
+64 	CAYTAC2 
+65 	MADTAC3 
+66 	MADTAC4 
+67 	ONOTAC5 
+68 	ONOTAC6 
+69 	OSWTAC8 
+70 	ALLTAC9 
+71 	OSWTAC7 
+72 	DPW 
+74 	MWB 1 
+76 	PARKS 1 
+81 	SyrHsingMnt 
+82 	E Syr DPW 
+83 	OndgaTwn Hwy 
+91 	OC Correctns 
+92 	OC Civic Ctr 
+95 	Lafaytte Hwy 
+97 	LafayetteBus 
+98 	Fab-PompBus 
+100 	Syracuse Wtr 
+101 	Syr Dog Cntr 
+102 	SyrSanitatn 
+103 	SyracuseU PS 
+104 	SyracuseU PS 
+110 	OCFC FirePol 
+111 	Fire-wide 
+114 	SUNY-ESF PS 
+115 	Law IntrCnty 
+117 	NYS Park PD 
+118 	NYS Park PD 
+119 	Syr Sch Sec 
+122 	OC PrisTrans 
+301 	Law Intercom 
+302 	Fire/EMSIntr 
+5001 	AFD Emrgency 
+5002 	AFD Dispatch 
+5003 	AFD Command 
+5004 	AFD / APD 
+5005 	AFD TAC 5 
+5006 	AFD TAC 6 
+5007 	AFD TAC 7 
+5008 	AFD TAC 8 
+5009 	AFD LZ 
+5010 	Auburn Inter 
+5011 	CC Interops 
+5101 	APD Emrgency 
+5102 	APD Prime 
+5103 	APD Traffic 
+5104 	APD TAC 4 
+5105 	APD TAC 5 
+5106 	APD TAC 6 
+5109 	APD ERT 
+5202 	Auburn DPW 
+5203 	Auburn Waste 
+5206 	Auburn Zone 
+5307 	CC Highway 
+5312 	CC FD/EMS 
+5313 	CC Command 
+5314 	CC TAC-4 
+5315 	CC TAC-5 
+5316 	CC TAC-6 
+5317 	CC TAC-7 
+5318 	CC TAC-8 
+5319 	CC Amb - ACH 
+5320 	Emerson Park 
+5401 	CC Law Disp 
+5402 	CC Law Tac 3 
+5403 	CC Law Tac 4 
+5409 	Weedsport PD 
+5413 	CC Correctns 
+5600 	CC EMO 
+7101 	MC Law Disp 
+7102 	MC Law Data 
+7103 	MC Spec Evnt 
+7104 	MC Law CtoC 
+7301 	Hamilton EMS 
+7421 	Special Ops 
+7424 	Truck-Truck 
+7450 	Fire Command 
+7477 	MC Fire Disp 
+7478 	Rescue-EMS 
+7904 	MC Interops 
+8001 	Countywide15 
+8002 	Countywide16 
+8003 	County DOT 
+8004 	Highway Ops 
+8005 	DOT Admin 
+8006 	Airport Ops 
+8007 	Hwy Parish 
+8008 	DOT Scriba 
+8009 	Hwy Trk-Trk 
+8010 	SolidWasteDp 
+8011 	SolidWasteOp 
+8012 	OC Law Disp 
+8013 	OswegoCityPD 
+8014 	FultonCityPD 
+8015 	Law Data 
+8016 	Law Tact 13 
+8017 	Law Tact 14 
+8018 	Criminal Inv 
+8019 	Sheriff CID 
+8021 	ESU 1 
+8022 	ESU 2 
+8023 	SUNYOswegoPD 
+8024 	SUNY Unv 
+8025 	Traffic/ACO 
+8026 	Cayuga Coll 
+8027 	Cayuga Unv 
+8030 	Special Ops 
+8032 	Probation 
+8035 	Survey Teams 
+8036 	Security 
+8037 	EMO Admin 
+8038 	EMO RAD 
+8039 	EMS Dispatch 
+8040 	EMS Major 
+8041 	EMS Ops 3 
+8042 	EMS Ops 4 
+8043 	EMS Ops 5 
+8045 	OSW Hospital 
+8046 	Fire Disptch 
+8047 	Fireground 7 
+8048 	Fireground 8 
+8050 	Fireground10 
+8051 	Fireground11 
+8052 	Fireground12 
+8053 	Fireground14 
+8054 	HazMat 13 
+8055 	HazMat 14 
+8057 	Redfield 
+8058 	RACES Ops 
+8059 	Health Inter 
+8060 	Oswego PDTac 
+8061 	NYS DEC Admn 
+8063 	Osw Tourism 
+8065 	SUNY Oswego 
+8094 	SysTechs 
+8300 	NovHindlcoFD 
+8301 	Altmar FD 
+8302 	Border/Coast 
+8303 	BrewertonOps 
+8304 	Caughdenoy 
+8305 	CentralSqOps 
+8306 	CentralSqPD 
+8307 	ClevelandOps 
+8308 	Cody Ops 
+8309 	ConstantiaFD 
+8310 	EMO Ops 
+8311 	Fire Admin 
+8312 	FPD Admin 
+8313 	FultonCityFD 
+8314 	GranbyCntrOp 
+8315 	Hannibal FD 
+8316 	Hastings FD 
+8318 	Lacona FD 
+8319 	McFee EMS 
+8320 	Mexico FD 
+8321 	Minetto FD 
+8322 	New Haven FD 
+8324 	NOCA Ops 
+8325 	N Shore EMS 
+8326 	Orwell FD 
+8327 	Search/Rescu 
+8328 	Oswego PD 
+8329 	Oswego EMS 
+8330 	Oswego Shrf 
+8331 	C Oswego FD 
+8332 	T Oswego FD 
+8333 	Palermo FD 
+8334 	Parish FD 
+8335 	PennellvleFD 
+8336 	Phoenix FD 
+8337 	Phoenix PD 
+8338 	Pulaski PD 
+8339 	Redfield FD 
+8340 	Richland FD 
+8341 	Pulaski FD 
+8342 	Sandy Crk FD 
+8343 	SAVAC Ops 
+8344 	Scriba FD 
+8345 	SOVAC Ops 
+8346 	Volney FD 
+8347 	W Amboy FD 
+8348 	W Monroe FD 
+8349 	Wllmstown FD 
+8350 	NYS Parole 
+8351 	Port Oswego 
+9991 	LEDispTrng 
+9992 	OPD Training 
+9993 	OPD Training 
+9995 	FireDispTrng 
+9996 	EMSDispTrng 
