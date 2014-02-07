@@ -119,6 +119,7 @@ class p25_rx_block (stdgui2.std_top_block):
         parser.add_option("-G", "--gain-mu", type="eng_float", default=0.025, help="gardner gain")
         parser.add_option("-N", "--gains", type="string", default=None, help="gain settings")
         parser.add_option("-O", "--audio-output", type="string", default="plughw:0,0", help="audio output device name")
+        parser.add_option("-q", "--freq-corr", type="eng_float", default=0.0, help="frequency correction")
         (options, args) = parser.parse_args()
         if len(args) != 0:
             parser.print_help()
@@ -150,6 +151,9 @@ class p25_rx_block (stdgui2.std_top_block):
 
         rates = self.src.get_sample_rates()
         print 'supported sample rates %d-%d step %d' % (rates.start(), rates.stop(), rates.step())
+
+        if options.freq_corr:
+            self.src.set_freq_corr(options.freq_corr)
 
         if options.audio:
             self.channel_rate = 48000
@@ -306,7 +310,7 @@ class p25_rx_block (stdgui2.std_top_block):
                 self.lo_freq += self.options.calibration
             self.lo = analog.sig_source_c (channel_rate, analog.GR_SIN_WAVE, self.lo_freq, 1.0, 0)
             self.mixer = blocks.multiply_cc()
-            lpf_coeffs = filter.firdes.low_pass(1.0, self.channel_rate, 12000, 1200, filter.firdes.WIN_HANN)
+            lpf_coeffs = filter.firdes.low_pass(1.0, self.channel_rate, 15000, 1500, filter.firdes.WIN_HANN)
             self.lpf = filter.fir_filter_ccf(1, lpf_coeffs)
 
             self.to_real = blocks.complex_to_real()
@@ -699,9 +703,21 @@ class p25_rx_block (stdgui2.std_top_block):
     def change_freq(self, params):
         freq = params['freq']
         offset = params['offset']
+        center_freq = params['center_frequency']
 
         if self.options.hamlib_model:
             self.hamlib.set_freq(freq)
+        elif params['center_frequency']:
+            relative_freq = center_freq - freq
+            if relative_freq + self.options.offset > self.channel_rate / 2:
+                print '***unable to tune Local Oscillator to offset %d Hz' % (relative_freq + self.options.offset)
+                print '***limit is one half of sample-rate %d = %d' % (self.channel_rate, self.channel_rate / 2)
+                print '***request for frequency %d rejected' % freq
+                
+            self.lo_freq = self.options.offset + relative_freq 
+            self.lo.set_frequency(self.lo_freq + self.myform['freq_tune'].get_value())
+            self.set_freq(center_freq + offset)
+            #self.spectrum.set_baseband_freq(center_freq)
         else:
             self.set_freq(freq + offset)
 
@@ -764,7 +780,8 @@ class p25_rx_block (stdgui2.std_top_block):
         the result of that operation and our target_frequency to
         determine the value for the digital down converter.
         """
-        r = self.src.set_center_freq(target_freq + self.options.calibration + self.options.offset)
+        tune_freq = target_freq + self.options.calibration + self.options.offset
+        r = self.src.set_center_freq(tune_freq)
         
         if r:
             #self.myform['freq'].set_value(target_freq)     # update displayed va

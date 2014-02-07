@@ -36,6 +36,12 @@ def crc16(dat,len):	# slow version
         crc = crc ^ 0xffff
         return crc
 
+def get_frequency(f):	# return frequency in Hz
+    if f.find('.') == -1:	# assume in Hz
+        return int(f)
+    else:     # assume in MHz due to '.'
+        return int(float(f) * 1000000)
+
 class trunked_system (object):
     def __init__(self, debug=0, config=None):
 	self.debug = debug
@@ -68,6 +74,7 @@ class trunked_system (object):
             self.offset    = config['offset']
             self.sysname   = config['sysname']
             self.trunk_cc  = config['cclist'][0]	# TODO: scan thru list
+            self.center_frequency = config['center_frequency']
 
     def to_string(self):
         s = []
@@ -407,12 +414,9 @@ class rx_ctl (object):
 
     def setup_config(self, configs):
         for nac in configs:
-            self.configs[nac] = {'cclist':[], 'offset':0, 'whitelist':None, 'blacklist':{}, 'tgid_map':{}, 'sysname': configs[nac]['sysname']}
+            self.configs[nac] = {'cclist':[], 'offset':0, 'whitelist':None, 'blacklist':{}, 'tgid_map':{}, 'sysname': configs[nac]['sysname'], 'center_frequency': None}
             for f in configs[nac]['control_channel_list'].split(','):
-                if f.find('.') == -1:	# assume in Hz
-                    self.configs[nac]['cclist'].append(int(f))
-                else:     # assume in MHz due to '.'
-                    self.configs[nac]['cclist'].append(int(float(f) * 1000000))
+                self.configs[nac]['cclist'].append(get_frequency(f))
             if 'offset' in configs[nac]:
                 self.configs[nac]['offset'] = int(configs[nac]['offset'])
             if 'modulation' in configs[nac]:
@@ -431,6 +435,8 @@ class rx_ctl (object):
                         tgid = int(row[0])
                         txt = row[1]
                         self.configs[nac]['tgid_map'][tgid] = txt
+            if 'center_frequency' in configs[nac]:
+                self.configs[nac]['center_frequency'] = get_frequency(configs[nac]['center_frequency'])
 
             self.add_trunked_system(nac)
 
@@ -572,7 +578,7 @@ class rx_ctl (object):
             self.current_tgid = None
 
         if new_frequency:
-            self.set_frequency({'freq': new_frequency, 'tgid': self.current_tgid, 'offset': tsys.offset, 'tag': tsys.get_tag(self.current_tgid), 'nac': nac, 'system': tsys.sysname})
+            self.set_frequency({'freq': new_frequency, 'tgid': self.current_tgid, 'offset': tsys.offset, 'tag': tsys.get_tag(self.current_tgid), 'nac': nac, 'system': tsys.sysname, 'center_frequency': tsys.center_frequency})
 
         if new_state:
             self.current_state = new_state
