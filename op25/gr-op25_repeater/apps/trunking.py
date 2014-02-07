@@ -570,6 +570,7 @@ class rx_ctl (object):
         if self.wait_until <= curr_time and self.tgid_hold_until <= curr_time:
             self.wait_until = curr_time + self.TSYS_HOLD_TIME
             new_nac = self.find_next_tsys()
+            new_state = self.states.CC
 
         if new_nac:
             nac = self.current_nac = new_nac
