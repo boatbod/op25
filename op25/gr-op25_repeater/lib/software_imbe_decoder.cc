@@ -927,6 +927,49 @@ software_imbe_decoder::decode_audio(uint8_t *A)
 }
 
 void
+software_imbe_decoder::decode_tap(int _L, int _K, float _w0, const int * _v, const float * _mu)
+{
+	int ell;
+	uint32_t ET;
+	float SE = 0, ER = 0;
+	int en, tmp_f;
+
+      L = _L;
+      int K = _K;
+      w0 = _w0;
+   for(ell = 1; ell <= L; ell++) {
+	vee[ell][ New] = _v[ell - 1];
+	Mu[ell][ New] = _mu[ell - 1];
+   }
+      // decode_spectral_amplitudes(Start3, Start8);
+      enhance_spectral_amplitudes(SE);
+      adaptive_smoothing(SE, ER, ET);
+
+      // (8000 samp/sec) * (1 sec / 50 compressed voice frames) = 160 samples/frame
+
+      //synth:
+      synth_unvoiced();// ToDo: make suv return value?
+      synth_voiced(); // ToDo: make sv return value?
+
+      //output:
+      audio_samples *samples = audio();
+      for(en = 0; en <= 159; en++) {
+         // The unvoiced samples are loud and the voiced are low...I don't know why.
+         // Most of the difference is compensated by removing the 146.6433 factor
+         // in the synth_unvoiced procedure.  The final tweak is done by raising the
+         // voiced samples:
+         float sample = suv[en] + sv[en] * 4; //balance v/uv loudness
+         if(abs((int)sample) > 32767) {
+            sample = 32767 * (sample < 0) ? -1 : 1; // * sgn(sample)
+         }
+         samples->push_back((short)sample);
+      }
+   OldL = L;
+   Oldw0 = w0;
+   tmp_f = Old; Old = New; New = tmp_f;
+}
+
+void
 software_imbe_decoder::decode_spectral_amplitudes(int Start3, int Start8)
 {
    float G[7];           //Can we use C(1 to 6,1) for this?

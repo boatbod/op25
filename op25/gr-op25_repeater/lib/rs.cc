@@ -458,6 +458,11 @@ CW = (CW ^ correction) >> 11;
 return CW;
 
 }
+uint32_t gly23127Dec (uint32_t CW) {
+	uint32_t correction = gly23127DecTbl[gly23127GetSyn(CW)];
+	CW = (CW ^ correction) >> 11;
+	return CW;
+}
 
 void ProcHDU(const_bit_vector A) {
 int i, j, k, ec;

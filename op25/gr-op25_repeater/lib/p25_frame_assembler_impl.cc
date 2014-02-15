@@ -1,6 +1,6 @@
 /* -*- c++ -*- */
 /* 
- * Copyright 2010, 2011, 2012, 2013 KA1RBI 
+ * Copyright 2010, 2011, 2012, 2013, 2014 Max H. Parke KA1RBI 
  * 
  * This is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
