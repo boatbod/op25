@@ -150,7 +150,10 @@ class p25_rx_block (stdgui2.std_top_block):
                 self.src.set_gain(gain, name)
 
         rates = self.src.get_sample_rates()
-        print 'supported sample rates %d-%d step %d' % (rates.start(), rates.stop(), rates.step())
+        try:
+            print 'supported sample rates %d-%d step %d' % (rates.start(), rates.stop(), rates.step())
+        except:
+            pass	# ignore
 
         if options.freq_corr:
             self.src.set_freq_corr(options.freq_corr)
@@ -1067,8 +1070,8 @@ class p25_rx_block (stdgui2.std_top_block):
             rc = ifile.seek(file_seek*1024, gr.SEEK_SET)
             assert rc == True
             #print "seek: %d, rc = %d" % (file_seek, rc)
-        throttle = gr.throttle(gr.sizeof_gr_complex, speed)
-        self.source = gr.multiply_const_cc(gain)
+        throttle = blocks.throttle(gr.sizeof_gr_complex, speed)
+        self.source = blocks.multiply_const_cc(gain)
         self.connect(ifile, throttle, self.source)
         self.__set_rx_from_audio(speed)
         self._set_titlebar("Playing")
