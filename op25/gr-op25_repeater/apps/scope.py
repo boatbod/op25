@@ -59,7 +59,7 @@ import gnuradio.wxgui.plot as plot
 import trunking
 
 #speeds = [300, 600, 900, 1200, 1440, 1800, 1920, 2400, 2880, 3200, 3600, 3840, 4000, 4800, 6000, 6400, 7200, 8000, 9600, 14400, 19200]
-speeds = [4800]
+speeds = [4800, 6000]
 
 os.environ['IMBE'] = 'soft'
 
