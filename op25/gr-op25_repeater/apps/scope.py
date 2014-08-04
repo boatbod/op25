@@ -314,7 +314,8 @@ class p25_rx_block (stdgui2.std_top_block):
             self.lo = analog.sig_source_c (channel_rate, analog.GR_SIN_WAVE, self.lo_freq, 1.0, 0)
             self.mixer = blocks.multiply_cc()
             lpf_coeffs = filter.firdes.low_pass(1.0, self.channel_rate, 15000, 1500, filter.firdes.WIN_HANN)
-            self.lpf = filter.fir_filter_ccf(1, lpf_coeffs)
+            decimation = int(capture_rate / 96000)
+            self.lpf = filter.fir_filter_ccf(decimation, lpf_coeffs)
 
             self.to_real = blocks.complex_to_real()
 
@@ -322,8 +323,10 @@ class p25_rx_block (stdgui2.std_top_block):
             frac_bw = 0.25
             rs_taps = filter.firdes.low_pass(nphases, nphases, frac_bw, 0.5-frac_bw)
 
+            resampled_rate = float(capture_rate) / float(decimation) # rate at output of self.lpf
+
             self.arb_resampler = filter.pfb.arb_resampler_ccf(
-               float(self.basic_rate)/float(capture_rate))
+               float(self.basic_rate) / resampled_rate)
 
             fm_demod_gain = self.basic_rate / (2.0 * pi * self.symbol_deviation)
             self.fm_demod = analog.quadrature_demod_cf(fm_demod_gain)
