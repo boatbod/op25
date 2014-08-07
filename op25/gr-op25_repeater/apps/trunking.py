@@ -97,20 +97,30 @@ class trunked_system (object):
             s.append('adjacent %f: %s' % (float(f) / 1000000.0, self.adjacent[f]))
         return '\n'.join(s)
 
+    def get_tdma_slot(self, id):
+	table = (id >> 12) & 0xf
+	channel = id & 0xfff
+	if table not in self.freq_table:
+		return None
+	if 'tdma' not in self.freq_table[table]:
+		return None
+	return channel & 1
+
 # return frequency in Hz
     def channel_id_to_frequency(self, id):
 	table = (id >> 12) & 0xf
 	channel = id & 0xfff
 	if table not in self.freq_table:
 		return None
-	return self.freq_table[table]['frequency'] + self.freq_table[table]['step'] * channel
+	if 'tdma' not in self.freq_table[table]:
+		return self.freq_table[table]['frequency'] + self.freq_table[table]['step'] * channel
+	return self.freq_table[table]['frequency'] + self.freq_table[table]['step'] * int(channel / self.freq_table[table]['tdma'])
 
     def channel_id_to_string(self, id):
-	table = (id >> 12) & 0xf
-	channel = id & 0xfff
-	if table not in self.freq_table:
-		return "%x-%d" % (table, channel)
-        return "%f" % ((self.freq_table[table]['frequency'] + self.freq_table[table]['step'] * channel) / 1000000.0)
+        f = self.channel_id_to_frequency(id)
+        if f is None:
+		return "ID-0x%x" % (id)
+        return "%f" % (f / 1000000.0)
 
     def get_tag(self, tgid):
         if not tgid:
@@ -119,7 +129,7 @@ class trunked_system (object):
             return "Talkgroup ID %d [0x%x]" % (tgid, tgid)
         return self.tgid_map[tgid]
 
-    def update_voice_frequency(self, frequency, tgid=None):
+    def update_voice_frequency(self, frequency, tgid=None, tdma_slot=None):
         if frequency is None:
             return
         if frequency not in self.voice_frequencies:
@@ -127,6 +137,7 @@ class trunked_system (object):
         self.voice_frequencies[frequency]['tgid'] = tgid
         self.voice_frequencies[frequency]['counter'] += 1
         self.voice_frequencies[frequency]['time'] = time.time()
+        self.voice_frequencies[frequency]['slot'] = tdma_slot
 
     def find_voice_frequency(self, start_time, tgid=None):
         for frequency in self.voice_frequencies:
@@ -209,7 +220,21 @@ class trunked_system (object):
 	opcode = (tsbk >> 88) & 0x3f
 	if self.debug > 10:
 		print "TSBK: 0x%02x 0x%024x" % (opcode, tsbk)
-	if opcode == 0x02:   # group voice chan grant update
+	if opcode == 0x00:   # group voice chan grant
+		mfrid  = (tsbk >> 80) & 0xff
+		opts  = (tsbk >> 72) & 0xff
+		ch   = (tsbk >> 56) & 0xffff
+		ga   = (tsbk >> 40) & 0xffff
+		sa   = (tsbk >> 16) & 0xffffff
+		if mfrid == 0x90:
+			pass
+		else:
+			if self.debug > 10:
+				f1 = self.channel_id_to_frequency(ch)
+				if f1 == None: f1 = 0
+				print "tsbk00 ch%x freq %f ga %x sa %x" % (ch, f1 / 1000000.0, ga, sa)
+				
+	elif opcode == 0x02:   # group voice chan grant update
 		mfrid  = (tsbk >> 80) & 0xff
 		ch1  = (tsbk >> 64) & 0xffff
 		ga1  = (tsbk >> 48) & 0xffff
@@ -224,9 +249,9 @@ class trunked_system (object):
 		else:
 			f1 = self.channel_id_to_frequency(ch1)
 			f2 = self.channel_id_to_frequency(ch2)
-			self.update_voice_frequency(f1, tgid=ga1)
+			self.update_voice_frequency(f1, tgid=ga1, tdma_slot=self.get_tdma_slot(ch1))
 			if f1 != f2:
-				self.update_voice_frequency(f2, tgid=ga2)
+				self.update_voice_frequency(f2, tgid=ga2, tdma_slot=self.get_tdma_slot(ch2))
 			if f1:
 				updated += 1
 			if f2:
@@ -255,6 +280,27 @@ class trunked_system (object):
 		self.freq_table[iden]['frequency'] = freq * 5
 		if self.debug > 10:
 			print "tsbk34 iden vhf/uhf id %d toff %f spac %f freq %f [%s]" % (iden, toff * spac * 0.125 * 1e-3, spac * 0.125, freq * 0.000005, txt[toff_sign])
+	elif opcode == 0x33:   # iden_up_tdma
+		mfrid  = (tsbk >> 80) & 0xff
+		if mfrid == 0:
+			iden = (tsbk >> 76) & 0xf
+			channel_type = (tsbk >> 72) & 0xf
+			toff0 = (tsbk >> 58) & 0x3fff
+			spac = (tsbk >> 48) & 0x3ff
+			toff_sign = (toff0 >> 13) & 1
+			toff = toff0 & 0x1fff
+			if toff_sign == 0:
+				toff = 0 - toff
+			f1   = (tsbk >> 16) & 0xffffffff
+			slots_per_carrier = [1,1,1,2,4,2]
+			self.freq_table[iden] = {}
+			self.freq_table[iden]['offset'] = toff * spac * 125
+			self.freq_table[iden]['step'] = spac * 125
+			self.freq_table[iden]['frequency'] = f1 * 5
+			self.freq_table[iden]['tdma'] = slots_per_carrier[channel_type]
+			if self.debug > 10:
+				print "tsbk33 iden up tdma id %d f %d offset %d spacing %d slots/carrier %d" % (iden, self.freq_table[iden]['frequency'], self.freq_table[iden]['offset'], self.freq_table[iden]['step'], self.freq_table[iden]['tdma'])
+
 	elif opcode == 0x3d:   # iden_up
 		iden = (tsbk >> 76) & 0xf
 		bw   = (tsbk >> 67) & 0x1ff
