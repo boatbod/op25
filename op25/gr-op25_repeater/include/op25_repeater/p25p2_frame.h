@@ -46,7 +46,7 @@ namespace gr {
        * class. op25_repeater::p25p2_frame::make is the public interface for
        * creating new instances.
        */
-      static sptr make(int debug, int slotid);
+      static sptr make(int debug, int slotid, bool do_msgq, gr::msg_queue::sptr msgq);
       virtual void set_xormask(const char*p) {}
       virtual void set_slotid(int slotid) {}
     };

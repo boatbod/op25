@@ -37,7 +37,7 @@ from optparse import OptionParser
 from bit_utils import *
 from isch import mk_isch_lookup, decode_isch
 from duid import mk_duid_lookup, decode_duid
-from lfsr import mk_xor
+import lfsr
 from vf import process_v
 
 SUPERFRAME_LEN = 2160
@@ -58,7 +58,7 @@ def main():
 	mk_isch_lookup()
 	mk_duid_lookup()
 	#print 'nac: %d' % options.nac
-	xorsyms = mk_xor(options.nac, options.sysid, options.wacn)
+	sreg = lfsr.p25p2_lfsr(options.nac, options.sysid, options.wacn)
 
 	d = open(file).read()
 
@@ -80,7 +80,7 @@ def main():
 	errors = 0
 	for i in xrange(superframe,len(symbols)-SUPERFRAME_LEN,SUPERFRAME_LEN):
 		syms1 = symbols[i + 10: i + SUPERFRAME_LEN + 10]
-		syms2 = np.array(syms1) ^ xorsyms
+		syms2 = np.array(syms1) ^ sreg.xorsyms
 		for j in xrange(12):
 			if options.verbose:
 				print '%s superframe %d timeslot %d %s' % ('=' * 20, i, j, '=' * 20)

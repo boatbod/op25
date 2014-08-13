@@ -33,9 +33,8 @@ class p25p2_tdma;
 class p25p2_tdma
 {
 public:
-	p25p2_tdma(int slotid, std::deque<int16_t> * qptr);	// constructor
-	void handle_packet(const uint8_t dibits[]) ;
-	void handle_voice_frame(const uint8_t dibits[]) ;
+	p25p2_tdma(int slotid, int debug, std::deque<int16_t> *qptr) ;	// constructor
+	int handle_packet(const uint8_t dibits[]) ;
 	void set_slotid(int slotid);
 	uint8_t* tdma_xormask;
 	~p25p2_tdma();	// destructor
@@ -51,5 +50,12 @@ private:
 	mbe_parms enh_mp;
 	software_imbe_decoder software_decoder;
 	std::deque<int16_t> *output_queue_decode;
+
+	int d_debug;
+	unsigned long int crc_errors;
+
+	int handle_acch_frame(const uint8_t dibits[], bool fast) ;
+	void handle_voice_frame(const uint8_t dibits[]) ;
+	int process_mac_pdu(const uint8_t byte_buf[], unsigned int len) ;
 };
 #endif /* INCLUDED_P25P2_TDMA_H */

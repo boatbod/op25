@@ -57,16 +57,17 @@ class trunked_system (object):
 	self.rfss_stid = 0
 	self.rfss_chan = 0
 	self.rfss_txchan = 0
-	self.ns_syid = 0
-	self.ns_wacn = 0
+	self.ns_syid = -1
+	self.ns_wacn = -1
 	self.ns_chan = 0
 	self.voice_frequencies = {}
 	self.blacklist = {}
 	self.whitelist = None
-	self.tgid_map = None
+	self.tgid_map = {}
 	self.offset = 0
 	self.sysname = 0
 	self.trunk_cc = 0
+	self.center_frequency = 0
         if config:
             self.blacklist = config['blacklist']
             self.whitelist = config['whitelist']
@@ -148,9 +149,11 @@ class trunked_system (object):
                 continue
             if self.whitelist and active_tgid not in self.whitelist:
                 continue
+            if self.voice_frequencies[frequency]['slot'] is not None and (self.ns_syid < 0 or self.ns_wacn < 0):
+                continue
             if tgid is None or tgid == active_tgid:
-                return frequency, active_tgid
-        return None, None
+                return frequency, active_tgid, self.voice_frequencies[frequency]['slot']
+        return None, None, None
 
     def add_blacklist(self, tgid):
         if not tgid:
@@ -503,19 +506,26 @@ class rx_ctl (object):
         type = msg.type()
         updated = 0
         curr_time = time.time()
-        if type == -2:
+        if type == -2:	# request from gui
             cmd = msg.to_string()
             if self.debug > 10:
                 print "process_qmsg: command: %s" % cmd
             self.update_state(cmd, curr_time)
             return
-        elif type == -1:
+        elif type == -1:	# timeout
             print "process_data_unit timeout"
             self.update_state('timeout', curr_time)
+            return
+        elif type < 0:
+            print 'unknown message type %d' % (type)
             return
         s = msg.to_string()
         # nac is always 1st two bytes
         nac = (ord(s[0]) << 8) + ord(s[1])
+        if nac == 0xffff:
+            # TDMA
+            self.update_state('duid%d' % type, curr_time)
+            return
         s = s[2:]
         if self.debug > 10:
             print "nac %x type %d at %f state %d len %d" %(nac, type, time.time(), self.state, len(s))
@@ -562,6 +572,7 @@ class rx_ctl (object):
         new_tgid = None
         new_state = None
         new_nac = None
+        new_slot = None
 
         if command == 'timeout' or command == 'duid15':
             if self.current_state != self.states.CC:
@@ -572,10 +583,11 @@ class rx_ctl (object):
                 desired_tgid = None
                 if self.tgid_hold_until > curr_time:
                     desired_tgid = self.tgid_hold
-                new_frequency, new_tgid = tsys.find_voice_frequency(curr_time, tgid=desired_tgid)
+                new_frequency, new_tgid, tdma_slot = tsys.find_voice_frequency(curr_time, tgid=desired_tgid)
                 if new_frequency:
                     new_state = self.states.TO_VC
                     self.current_tgid = new_tgid
+                    new_slot = tdma_slot
         elif command == 'duid3':
             if self.current_state != self.states.CC:
                 new_state = self.states.CC
@@ -613,7 +625,7 @@ class rx_ctl (object):
             print 'update_state: unknown command: %s\n' % command
             assert 0 == 1
 
-        if self.wait_until <= curr_time and self.tgid_hold_until <= curr_time:
+        if self.wait_until <= curr_time and self.tgid_hold_until <= curr_time and new_state is None:
             self.wait_until = curr_time + self.TSYS_HOLD_TIME
             new_nac = self.find_next_tsys()
             new_state = self.states.CC
@@ -625,7 +637,17 @@ class rx_ctl (object):
             self.current_tgid = None
 
         if new_frequency:
-            self.set_frequency({'freq': new_frequency, 'tgid': self.current_tgid, 'offset': tsys.offset, 'tag': tsys.get_tag(self.current_tgid), 'nac': nac, 'system': tsys.sysname, 'center_frequency': tsys.center_frequency})
+            self.set_frequency({
+		'freq':   new_frequency,
+		'tgid':   self.current_tgid,
+		'offset': tsys.offset,
+		'tag':    tsys.get_tag(self.current_tgid),
+		'nac':    nac,
+		'system': tsys.sysname,
+		'center_frequency': tsys.center_frequency,
+		'tdma':   new_slot, 
+		'wacn':   tsys.ns_wacn, 
+		'sysid':  tsys.ns_syid})
 
         if new_state:
             self.current_state = new_state

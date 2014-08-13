@@ -32,20 +32,22 @@ namespace gr {
   namespace op25_repeater {
 
     p25p2_frame::sptr
-    p25p2_frame::make(int debug, int slotid)
+    p25p2_frame::make(int debug, int slotid, bool do_msgq, gr::msg_queue::sptr msgq)
     {
       return gnuradio::get_initial_sptr
-        (new p25p2_frame_impl(debug, slotid));
+        (new p25p2_frame_impl(debug, slotid, do_msgq, msgq));
     }
 
     /*
      * The private constructor
      */
-    p25p2_frame_impl::p25p2_frame_impl(int debug, int slotid)
+    p25p2_frame_impl::p25p2_frame_impl(int debug, int slotid, bool do_msgq, gr::msg_queue::sptr msgq)
       : gr::block("p25p2_frame",
               gr::io_signature::make(1, 1, sizeof(uint8_t)),
               gr::io_signature::make(1, 1, sizeof(short))),
-	p2tdma(slotid, &output_queue_decode)
+	p2tdma(slotid, debug, &output_queue_decode),
+	d_do_msgq(do_msgq),
+	d_msg_queue(msgq)
     {}
 
     /*
@@ -55,11 +57,25 @@ namespace gr {
     {
     }
 
+    void 
+    p25p2_frame_impl::queue_msg(int duid)
+    {
+	static const char wbuf[2] = {0xff, 0xff}; // dummy NAC
+	if (!d_do_msgq)
+		return;
+	if (d_msg_queue->full_p())
+		return;
+	gr::message::sptr msg = gr::message::make_from_string(std::string(wbuf, 2), duid, 0, 0);
+	d_msg_queue->insert_tail(msg);
+    }
     void p25p2_frame_impl::handle_p2_frame(const bit_vector& bits) {
 	uint8_t wbuf[180];
+	int rc;
         for (int i=0; i<sizeof(wbuf); i++)
 		wbuf[i] = bits[i*2+1] + (bits[i*2] << 1);
-        p2tdma.handle_packet(wbuf);
+        rc = p2tdma.handle_packet(wbuf);
+	if (rc > -1)
+		queue_msg(rc);
     }
 
     void p25p2_frame_impl::set_xormask(const char*p) {

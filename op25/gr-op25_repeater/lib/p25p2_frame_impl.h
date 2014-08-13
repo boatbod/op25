@@ -23,6 +23,7 @@
 
 #include <stdint.h>
 #include <deque>
+#include <gnuradio/msg_queue.h>
 #include <op25_repeater/p25p2_frame.h>
 #include "p25p2_framer.h"
 #include "p25p2_tdma.h"
@@ -37,10 +38,13 @@ namespace gr {
       p25p2_framer p2framer;
       p25p2_tdma p2tdma;
       std::deque<int16_t> output_queue_decode;
+	bool d_do_msgq;
+	gr::msg_queue::sptr d_msg_queue;
+      void queue_msg(int duid);
 
      public:
 	typedef std::vector<bool> bit_vector;
-      p25p2_frame_impl(int debug, int slotid);
+      p25p2_frame_impl(int debug, int slotid, bool do_msgq, gr::msg_queue::sptr msgq);
       ~p25p2_frame_impl();
       void handle_p2_frame(const bit_vector& bits);
       void set_xormask(const char*p);
