@@ -35,8 +35,8 @@ import numpy as np
 from optparse import OptionParser
 
 from bit_utils import *
-from isch import mk_isch_lookup, decode_isch
-from duid import mk_duid_lookup, decode_duid
+import isch
+import duid
 import lfsr
 from vf import process_v
 
@@ -55,10 +55,10 @@ def main():
             sys.exit(1)
 	file = options.input_file
 
-	mk_isch_lookup()
-	mk_duid_lookup()
+	my_isch = isch.p25p2_isch()
+	my_duid = duid.p25p2_duid()
+	my_lfsr = lfsr.p25p2_lfsr(options.nac, options.sysid, options.wacn)
 	#print 'nac: %d' % options.nac
-	sreg = lfsr.p25p2_lfsr(options.nac, options.sysid, options.wacn)
 
 	d = open(file).read()
 
@@ -71,7 +71,7 @@ def main():
 	assert sync_start > 0	# unable to locate any sync sequence
 	superframe = -1
 	for i in xrange(sync_start, sync_start + (180*32), 180):
-		chn, loc, fr, cnt = decode_isch ( symbols [ i : i + 20 ])
+		chn, loc, fr, cnt = my_isch.decode_isch ( symbols [ i : i + 20 ])
 		if chn == 0 and loc == 0:
 			superframe = i
 			break
@@ -80,11 +80,11 @@ def main():
 	errors = 0
 	for i in xrange(superframe,len(symbols)-SUPERFRAME_LEN,SUPERFRAME_LEN):
 		syms1 = symbols[i + 10: i + SUPERFRAME_LEN + 10]
-		syms2 = np.array(syms1) ^ sreg.xorsyms
+		syms2 = np.array(syms1) ^ my_lfsr.xorsyms
 		for j in xrange(12):
 			if options.verbose:
 				print '%s superframe %d timeslot %d %s' % ('=' * 20, i, j, '=' * 20)
-			chn, loc, fr, cnt = decode_isch ( symbols [ i + (j*180) : i + (j*180) + 20 ])
+			chn, loc, fr, cnt = my_isch.decode_isch ( symbols [ i + (j*180) : i + (j*180) + 20 ])
 			if chn == -1:
 				if options.verbose:
 					print 'unknown isch codeword at %d' % (i + (j*180))
@@ -100,11 +100,16 @@ def main():
 
 			burst = syms1 [ (j*180) : (j*180) + 180 ]
 			burst_d= syms2 [ (j*180) : (j*180) + 180 ]
-			b = decode_duid(burst)
+			btype = my_duid.decode_duid(burst)
 			if options.verbose:
-				print 'burst at %d type %s' % (i + (j*180), b)
-			if b == '2v' or b == '4v':
-				process_v(burst_d, b)
+				print 'burst at %d type %s' % (i + (j*180), btype)
+			if btype == '2v' or btype == '4v':
+				process_v(burst_d, btype)
+			elif not btype.startswith('unknown'):
+				maybe_sync = burst[79:79+21]
+				if btype.endswith(' w'):	# scrambled
+					burst = burst_d
+				# process_oemi(burst, btype)
 		if errors > 6:
 			if options.verbose:
 				print "too many successive errors, exiting at i=%d" % (i)

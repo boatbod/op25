@@ -396,6 +396,8 @@ class rx_ctl (object):
         self.TSYS_HOLD_TIME = 3.0	# TODO: make more configurable
         self.wait_until = time.time()
         self.configs = {}
+        self.last_tdma_vf = 0
+        self.P2_GRACE_TIME = 1.0	# TODO: make more configurable
 
         if conf_file:
             if conf_file.endswith('.tsv'):
@@ -524,7 +526,7 @@ class rx_ctl (object):
         nac = (ord(s[0]) << 8) + ord(s[1])
         if nac == 0xffff:
             # TDMA
-            self.update_state('duid%d' % type, curr_time)
+            self.update_state('tdma_duid%d' % type, curr_time)
             return
         s = s[2:]
         if self.debug > 10:
@@ -575,7 +577,7 @@ class rx_ctl (object):
         new_slot = None
 
         if command == 'timeout' or command == 'duid15':
-            if self.current_state != self.states.CC:
+            if self.current_state != self.states.CC and curr_time - self.last_tdma_vf > self.P2_GRACE_TIME:
                 new_state = self.states.CC
                 new_frequency = tsys.trunk_cc
         elif command == 'update':
@@ -588,16 +590,18 @@ class rx_ctl (object):
                     new_state = self.states.TO_VC
                     self.current_tgid = new_tgid
                     new_slot = tdma_slot
-        elif command == 'duid3':
+        elif command == 'duid3' or command == 'tdma_duid3':
             if self.current_state != self.states.CC:
                 new_state = self.states.CC
                 new_frequency = tsys.trunk_cc
-        elif command == 'duid0' or command == 'duid5' or command == 'duid10':
+        elif command == 'duid0' or command == 'duid5' or command == 'duid10' or command == 'tdma_duid5':
             if self.state == self.states.TO_VC:
                 new_state = self.states.VC
             self.tgid_hold = self.current_tgid
             self.tgid_hold_until = max(curr_time + self.TGID_HOLD_TIME, self.tgid_hold_until)
             self.wait_until = curr_time + self.TSYS_HOLD_TIME
+            if command == 'tdma_duid5':
+                self.last_tdma_vf = curr_time
         elif command == 'duid7' or command == 'duid12':
             pass
         elif command == 'set_hold':

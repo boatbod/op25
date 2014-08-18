@@ -41,6 +41,7 @@ namespace gr {
 	bool d_do_msgq;
 	gr::msg_queue::sptr d_msg_queue;
       void queue_msg(int duid);
+      int d_debug;
 
      public:
 	typedef std::vector<bool> bit_vector;

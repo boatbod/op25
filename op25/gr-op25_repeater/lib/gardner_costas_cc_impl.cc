@@ -40,6 +40,7 @@ static const float M_TWOPI = 2 * M_PI;
 #define VERBOSE_GARDNER 0    // Used for debugging symbol timing loop
 #define VERBOSE_COSTAS 0     // Used for debugging phase and frequency tracking
 static const gr_complex PT_45 = gr_expj( M_PI / 4.0 );
+static const int NUM_COMPLEX=100;
 
 namespace gr {
   namespace op25_repeater {
@@ -60,11 +61,12 @@ namespace gr {
               gr::io_signature::make(1, 1, sizeof(gr_complex))),
     d_mu(0),
     d_gain_omega(gain_omega),
+    d_omega_rel(0.005),
     d_gain_mu(gain_mu),
     d_last_sample(0), d_interp(new gr::filter::mmse_fir_interpolator_cc()),
     //d_verbose(gr::prefs::singleton()->get_bool("gardner_costas_cc", "verbose", false)),
     d_verbose(false),
-    d_dl(0),
+    d_dl(new gr_complex[NUM_COMPLEX]),
     d_dl_index(0),
     d_alpha(alpha), d_beta(beta), 
     d_interp_counter(0),
@@ -80,18 +82,11 @@ namespace gr {
      */
     gardner_costas_cc_impl::~gardner_costas_cc_impl()
     {
+  delete [] d_dl;
   delete d_interp;
-    if (d_dl) {
-	delete d_dl;
-	d_dl = 0;
-    }
     }
 
 void gardner_costas_cc_impl::set_omega (float omega) {
-    if (d_dl) {
-	delete d_dl;
-	d_dl = 0;
-    }
     assert (omega >= 2.0);
     d_omega = omega;
     d_min_omega = omega*(1.0 - d_omega_rel);
@@ -99,8 +94,9 @@ void gardner_costas_cc_impl::set_omega (float omega) {
     d_omega_mid = 0.5*(d_min_omega+d_max_omega);
     d_twice_sps = 2 * (int) ceilf(d_omega);
     int num_complex = std::max(d_twice_sps*2, 16);
-    d_dl = new gr_complex[num_complex];
-    memset(d_dl, 0, num_complex * sizeof(gr_complex));
+    if (num_complex > NUM_COMPLEX)
+        fprintf(stderr, "gardner_costas_cc: warning omega %f size %d exceeds NUM_COMPLEX %d\n", omega, num_complex, NUM_COMPLEX);
+    memset(d_dl, 0, NUM_COMPLEX * sizeof(gr_complex));
 }
 
 

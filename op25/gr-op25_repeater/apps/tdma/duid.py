@@ -21,21 +21,6 @@
 import numpy as np
 from bit_utils import *
 
-duid_str = {}
-duid_str[0] = "4v"
-duid_str[3] = "sacch w"
-duid_str[6] = "2v"
-duid_str[9] = "facch w"
-duid_str[12] = "sacch w/o"
-duid_str[15] = "facch w/o"
-
-duid_map = {}
-def mk_duid_lookup():
-	g = np.array(np.mat('1 0 0 0 1 1 0 1; 0 1 0 0 1 0 1 1; 0 0 1 0 1 1 1 0; 0 0 0 1 0 1 1 1'))
-	for i in xrange(16):
-		codeword = mk_str(np.dot(mk_array(i, 4), g))
-		duid_map[codeword] = i
-
 def extract_duid(b):
 	duid0 = b[10]	# duid 3,2
 	duid1 = b[47]	# duid 1,0
@@ -45,9 +30,29 @@ def extract_duid(b):
 	va = mk_array(v, 8)
 	return mk_str(va)
 
-def decode_duid(burst):
-	try:
-		b = duid_str[duid_map[extract_duid(burst)]]
-	except:	# FIXME: find closest matching codeword
-		b = 'unknown' + extract_duid(burst)
-	return b
+def mk_duid_lookup():
+	duid_map = {}
+	g = np.array(np.mat('1 0 0 0 1 1 0 1; 0 1 0 0 1 0 1 1; 0 0 1 0 1 1 1 0; 0 0 0 1 0 1 1 1'))
+	for i in xrange(16):
+		codeword = mk_str(np.dot(mk_array(i, 4), g))
+		duid_map[codeword] = i
+	return duid_map
+
+class p25p2_duid(object):
+	def __init__(self):
+		self.duid_str = {}
+		self.duid_str[0] = "4v"
+		self.duid_str[3] = "sacch w"
+		self.duid_str[6] = "2v"
+		self.duid_str[9] = "facch w"
+		self.duid_str[12] = "sacch w/o"
+		self.duid_str[15] = "facch w/o"
+
+		self.duid_map = mk_duid_lookup()
+
+	def decode_duid(self, burst):
+		try:
+			b = self.duid_str[self.duid_map[extract_duid(burst)]]
+		except:	# FIXME: find closest matching codeword
+			b = 'unknown' + extract_duid(burst)
+		return b

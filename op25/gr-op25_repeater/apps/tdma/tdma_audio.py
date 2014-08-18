@@ -20,7 +20,9 @@ class app_top_block(gr.top_block):
         IN = blocks.file_source(gr.sizeof_char, options.input_file)
 
         slotid = options.tdma_slotid
-        FRAMER = op25_repeater.p25p2_frame(0, slotid)
+        msgq = gr.msg_queue(2)
+        do_msgq  = False
+        FRAMER = op25_repeater.p25p2_frame(0, slotid, do_msgq, msgq)
         FRAMER.set_xormask(xor_mask)
 
         S2F = blocks.short_to_float()

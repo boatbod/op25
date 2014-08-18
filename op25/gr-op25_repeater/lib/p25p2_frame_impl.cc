@@ -47,7 +47,8 @@ namespace gr {
               gr::io_signature::make(1, 1, sizeof(short))),
 	p2tdma(slotid, debug, &output_queue_decode),
 	d_do_msgq(do_msgq),
-	d_msg_queue(msgq)
+	d_msg_queue(msgq),
+	d_debug(debug)
     {}
 
     /*

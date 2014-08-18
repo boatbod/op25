@@ -58,6 +58,9 @@ import gnuradio.wxgui.plot as plot
 
 import trunking
 
+sys.path.append('tdma')
+import lfsr
+
 #speeds = [300, 600, 900, 1200, 1440, 1800, 1920, 2400, 2880, 3200, 3600, 3840, 4000, 4800, 6000, 6400, 7200, 8000, 9600, 14400, 19200]
 speeds = [4800, 6000]
 
@@ -120,6 +123,7 @@ class p25_rx_block (stdgui2.std_top_block):
         parser.add_option("-N", "--gains", type="string", default=None, help="gain settings")
         parser.add_option("-O", "--audio-output", type="string", default="plughw:0,0", help="audio output device name")
         parser.add_option("-q", "--freq-corr", type="eng_float", default=0.0, help="frequency correction")
+        parser.add_option("-2", "--phase2-tdma", action="store_true", default=False, help="enable phase2 tdma decode")
         (options, args) = parser.parse_args()
         if len(args) != 0:
             parser.print_help()
@@ -261,18 +265,33 @@ class p25_rx_block (stdgui2.std_top_block):
             udp_port = WIRESHARK_PORT
         if self.options.raw_symbols:
             self.sink_sf = blocks.file_sink(gr.sizeof_char, self.options.raw_symbols)
+            self.connect(self.slicer, self.sink_sf)
         do_imbe = 1
         do_output = 1
         do_msgq = 1
         self.sink_s = op25_repeater.p25_frame_assembler(self.options.wireshark_host, udp_port, self.options.verbosity, do_imbe, do_output, do_msgq, self.rx_q)
-        if self.options.vocoder:
-            self.sink_imbe = op25_repeater.vocoder(0, 0, 0, '', 0, 0)
+        if self.options.vocoder and self.options.phase2_tdma:
+            print 'simultaneous phase I and II not supported in this version'
+            sys.exit(1)
+        if self.options.vocoder or self.options.phase2_tdma:
             self.audio_s2f = blocks.short_to_float()
             self.audio_scaler = blocks.multiply_const_ff(1 / 32768.0)
             self.audio_output = audio.sink(8000, self.options.audio_output, True)
-            self.connect(self.sink_imbe, self.audio_s2f, self.audio_scaler, self.audio_output)
+            self.connect(self.audio_s2f, self.audio_scaler, self.audio_output)
+        if self.options.vocoder:
+            self.sink_imbe = op25_repeater.vocoder(0, 0, 0, '', 0, 0)
+            self.connect(self.sink_imbe, self.audio_s2f)
         else:
             self.sink_imbe = blocks.null_sink(gr.sizeof_char)
+        if self.options.phase2_tdma:
+            slotid = 0
+            do_msgq = True
+            debug = self.options.verbosity
+            self.p2decoder = op25_repeater.p25p2_frame(debug, slotid, do_msgq, self.rx_q)
+            self.connect(self.slicer, self.p2decoder, self.audio_s2f)
+        self.tdma_state = False
+        self.xor_cache = {}
+        self.connect(self.buffer, self.slicer, self.sink_s, self.sink_imbe)
         if self.baseband_input:
             gain = self.options.gain
         else:
@@ -309,7 +328,7 @@ class p25_rx_block (stdgui2.std_top_block):
             self.set_channel_offset(0.0, 0, "")
             # local osc
             self.lo_freq = self.options.offset
-            if self.options.audio_if or self.options.ifile:
+            if self.options.audio_if or self.options.ifile or self.options.input:
                 self.lo_freq += self.options.calibration
             self.lo = analog.sig_source_c (channel_rate, analog.GR_SIN_WAVE, self.lo_freq, 1.0, 0)
             self.mixer = blocks.multiply_cc()
@@ -378,6 +397,7 @@ class p25_rx_block (stdgui2.std_top_block):
             # connect it all up
             self.__connect([[source, (self.mixer, 0)],
                             [self.lo, (self.mixer, 1)]])
+            self.connect(self.mixer, self.lpf, self.arb_resampler)
             self.set_connection(fft=1)
             self.connect_demods()
 
@@ -706,6 +726,30 @@ class p25_rx_block (stdgui2.std_top_block):
 
         vbox.Add(hbox, 0, 0)
 
+    def configure_tdma(self, params):
+        if params['tdma'] is not None and not self.options.phase2_tdma:
+            print '***TDMA request for frequency %d failed- phase2_tdma option not enabled' % params['freq']
+            return
+        set_tdma = False
+        if params['tdma'] is not None:
+            set_tdma = True
+        if set_tdma == self.tdma_state:
+            return	# already in desired state
+        self.tdma_state = set_tdma
+        if set_tdma:
+            self.p2decoder.set_slotid(params['tdma'])
+            hash = '%x%x%x' % (params['nac'], params['sysid'], params['wacn'])
+            if hash not in self.xor_cache:
+                sreg = lfsr.p25p2_lfsr(params['nac'], params['sysid'], params['wacn'])
+                self.xor_cache[hash] = ''
+                for c in sreg.xorsyms:
+                    self.xor_cache[hash] += chr(c)
+            self.p2decoder.set_xormask(self.xor_cache[hash])
+            sps = self.basic_rate / 6000
+        else:
+            sps = self.basic_rate / 4800
+        self.clock.set_omega(float(sps))
+
     def change_freq(self, params):
         freq = params['freq']
         offset = params['offset']
@@ -726,6 +770,8 @@ class p25_rx_block (stdgui2.std_top_block):
             #self.spectrum.set_baseband_freq(center_freq)
         else:
             self.set_freq(freq + offset)
+
+        self.configure_tdma(params)
 
         # send msg as event to avoid thread safety problems updating form
         evt = msg_DataEvent(params)
@@ -800,13 +846,16 @@ class p25_rx_block (stdgui2.std_top_block):
 
     def demod_type_chg(self, val):
         if val == 'FSK4':
-            self.fsk4_demod_mode = True
+            new_demod_mode = True
         else:
-            self.fsk4_demod_mode = False
+            new_demod_mode = False
+        if self.fsk4_demod_mode == new_demod_mode:
+            return
+        self.fsk4_demod_mode = new_demod_mode
         self.lock()
         self.disconnect_demods()
         notebook_sel = self.notebook.GetSelection()
-        if notebook_sel == 4:	# demod symbols
+        if notebook_sel == 0 or notebook_sel == 4:	# spectrum or demod symbols
              self.connect_demods()
         elif notebook_sel == 1 or notebook_sel == 2 or notebook_sel == 5:
              self.connect_fsk4_demod()
@@ -830,8 +879,9 @@ class p25_rx_block (stdgui2.std_top_block):
     #
     def __set_rx_from_file(self, filename, capture_rate):
         file = blocks.file_source(gr.sizeof_gr_complex, filename, True)
-        throttle = gr.throttle(gr.sizeof_gr_complex, capture_rate)
-        self.__connect([[file, throttle]])
+        gain = blocks.multiply_const_cc(self.options.gain)
+        throttle = blocks.throttle(gr.sizeof_gr_complex, capture_rate)
+        self.__connect([[file, gain, throttle]])
         self.__build_graph(throttle, capture_rate)
 
     # setup to rx from Audio
@@ -1058,8 +1108,7 @@ class p25_rx_block (stdgui2.std_top_block):
     #
     def open_file(self, capture_file):
         try:
-            self.__read_file_properties(capture_file + ".info")
-            capture_rate = self.info["capture-rate"]
+            capture_rate = self.options.sample_rate
             self.__set_rx_from_file(capture_file, capture_rate)
             self._set_titlebar(capture_file)
             self._set_state("RUNNING")
@@ -1139,28 +1188,21 @@ class p25_rx_block (stdgui2.std_top_block):
 # assumes lock held or init
         idx = self.current_speed
         if self.fsk4_demod_connected:
-#           self.disconnect(self.mixer, self.lpf, self.arb_resampler, self.resamplers[idx], self.fm_demod, self.baseband_amp, self.symbol_filter, self.fsk4_demod, self.buffer, self.slicer, self.sink_s)
             if self.baseband_input:
                 self.disconnect(self.source, self.baseband_amp, self.float_resamplers[self.current_speed], self.symbol_filter)
             else:
-                self.disconnect(self.mixer, self.lpf, self.arb_resampler, self.resamplers[idx], self.fm_demod, self.baseband_amp, self.symbol_filter)
-            self.disconnect(self.symbol_filter, self.fsk4_demod, self.buffer, self.slicer, self.sink_s, self.sink_imbe)
-            if self.options.raw_symbols:
-                self.disconnect(self.slicer, self.sink_sf)
+                self.disconnect(self.arb_resampler, self.resamplers[idx], self.fm_demod, self.baseband_amp, self.symbol_filter)
+            self.disconnect(self.symbol_filter, self.fsk4_demod, self.buffer)
             self.fsk4_demod_connected = False
         if self.psk_demod_connected:
-            self.disconnect(self.mixer, self.lpf, self.arb_resampler, self.resamplers[idx], self.agc, self.symbol_filter_c, self.clock, self.diffdec, self.to_float, self.rescale, self.buffer, self.slicer, self.sink_s, self.sink_imbe)
-            if self.options.raw_symbols:
-                self.disconnect(self.slicer, self.sink_sf)
+            self.disconnect(self.arb_resampler, self.resamplers[idx], self.agc, self.symbol_filter_c, self.clock, self.diffdec, self.to_float, self.rescale, self.buffer)
             self.psk_demod_connected = False
 
     def connect_psk_demod(self):
 # assumes lock held or init
         self.disconnect_demods()
         idx = self.current_speed
-        self.connect(self.mixer, self.lpf, self.arb_resampler, self.resamplers[idx], self.agc, self.symbol_filter_c, self.clock, self.diffdec, self.to_float, self.rescale, self.buffer, self.slicer, self.sink_s, self.sink_imbe)
-        if self.options.raw_symbols:
-            self.connect(self.slicer, self.sink_sf)
+        self.connect(self.arb_resampler, self.resamplers[idx], self.agc, self.symbol_filter_c, self.clock, self.diffdec, self.to_float, self.rescale, self.buffer)
         self.psk_demod_connected = True
 
     def connect_fsk4_demod(self):
@@ -1170,10 +1212,8 @@ class p25_rx_block (stdgui2.std_top_block):
         if self.baseband_input:
             self.connect(self.source, self.baseband_amp, self.float_resamplers[self.current_speed], self.symbol_filter)
         else:
-            self.connect(self.mixer, self.lpf, self.arb_resampler, self.resamplers[idx], self.fm_demod, self.baseband_amp, self.symbol_filter)
-        self.connect(self.symbol_filter, self.fsk4_demod, self.buffer, self.slicer, self.sink_s, self.sink_imbe)
-        if self.options.raw_symbols:
-            self.connect(self.slicer, self.sink_sf)
+            self.connect(self.arb_resampler, self.resamplers[idx], self.fm_demod, self.baseband_amp, self.symbol_filter)
+        self.connect(self.symbol_filter, self.fsk4_demod, self.buffer)
         self.fsk4_demod_connected = True
 
     def connect_demods(self):
