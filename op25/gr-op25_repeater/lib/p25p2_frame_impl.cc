@@ -90,11 +90,11 @@ namespace gr {
     void
     p25p2_frame_impl::forecast (int noutput_items, gr_vector_int &ninput_items_required)
     // input rate = 6 K s/s (input is dibits)
-    // output rate = 4.8 K s/s (output is short)
-    // i/o ratio is 1.25
+    // output rate = 8 K s/s (output is short)
+    // i/o ratio is 0.75
     {
    const size_t nof_inputs = ninput_items_required.size();
-   int nof_samples_reqd = 1.25 * noutput_items;
+   int nof_samples_reqd = 0.75 * noutput_items;
    std::fill(&ninput_items_required[0], &ninput_items_required[nof_inputs], nof_samples_reqd);
 
     }
@@ -107,7 +107,7 @@ namespace gr {
     {
         const uint8_t *in = (const uint8_t *) input_items[0];
 
-	for (int i = 0; i < noutput_items; i++) {
+	for (int i = 0; i < ninput_items[0]; i++) {
 		if(p2framer.rx_sym(in[i])) {
 			handle_p2_frame(p2framer.d_frame_body);
 		}
@@ -120,7 +120,7 @@ namespace gr {
   }
         // Tell runtime system how many input items we consumed on
         // each input stream.
-        consume_each (noutput_items);
+        consume_each (ninput_items[0]);
 
         // Tell runtime system how many output items we produced.
         return n;
