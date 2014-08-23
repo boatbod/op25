@@ -18,10 +18,8 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef INCLUDED_OP25_REPEATER_P25_FRAME_ASSEMBLER_IMPL_H
-#define INCLUDED_OP25_REPEATER_P25_FRAME_ASSEMBLER_IMPL_H
-
-#include <op25_repeater/p25_frame_assembler.h>
+#ifndef INCLUDED_OP25_REPEATER_P25P1_FDMA_H
+#define INCLUDED_OP25_REPEATER_P25P1_FDMA_H
 
 #include <gnuradio/msg_queue.h>
 #include <sys/socket.h>
@@ -30,41 +28,45 @@
 #include <arpa/inet.h>
 #include <deque>
 
-#include "p25p1_fdma.h"
-#include "p25p2_tdma.h"
-
-typedef std::deque<uint8_t> dibit_queue;
+#include "p25_framer.h"
+#include "p25p1_voice_encode.h"
+#include "p25p1_voice_decode.h"
 
 namespace gr {
   namespace op25_repeater {
-
-    class p25_frame_assembler_impl : public p25_frame_assembler
+    class p25p1_fdma
     {
      private:
-	bool d_do_imbe;
-	bool d_do_output;
-	p25p1_fdma p1fdma;
-	bool d_do_audio_output;
-	bool d_do_phase2_tdma;
-	p25p2_tdma p2tdma;
-	bool d_do_msgq;
-	gr::msg_queue::sptr d_msg_queue;
+
+  void init_sock(const char* udp_host, int udp_port);
 
   // internal functions
-
-    void p25p2_queue_msg(int duid);
-    void set_xormask(const char*p) ;
-    void set_slotid(int slotid) ;
 	typedef std::vector<bool> bit_vector;
-	std::deque<int16_t> output_queue;
-
- public:
-   virtual void forecast(int nof_output_items, gr_vector_int &nof_input_items_reqd);
-      // Nothing to declare in this block.
+	bool header_codeword(uint64_t acc, uint32_t& nac, uint32_t& duid);
+	void proc_voice_unit(bit_vector& frame_body) ;
+	void process_duid(uint32_t const duid, uint32_t const nac, uint8_t const buf[], int const len);
+  // internal instance variables and state
+	int write_bufp;
+	int write_sock;
+	struct sockaddr_in write_sock_addr;
+	char write_buf[512];
+	const char* d_udp_host;
+	int d_port;
+	int d_debug;
+	bool d_do_imbe;
+	bool d_do_output;
+	bool d_do_msgq;
+	gr::msg_queue::sptr d_msg_queue;
+	std::deque<int16_t> &output_queue;
+	p25_framer* framer;
+	struct timeval last_qtime;
+	bool d_do_audio_output;
+        p25p1_voice_decode p1voice_decode;
 
      public:
-      p25_frame_assembler_impl(const char* udp_host, int port, int debug, bool do_imbe, bool do_output, bool do_msgq, gr::msg_queue::sptr queue, bool do_audio_output, bool do_phase2_tdma);
-      ~p25_frame_assembler_impl();
+	void rx_sym (const uint8_t *syms, int nsyms);
+      p25p1_fdma(const char* udp_host, int port, int debug, bool do_imbe, bool do_output, bool do_msgq, gr::msg_queue::sptr queue, std::deque<int16_t> &output_queue, bool do_audio_output);
+      ~p25p1_fdma();
 
       // Where all the action really happens
 
@@ -73,8 +75,6 @@ namespace gr {
 		       gr_vector_const_void_star &input_items,
 		       gr_vector_void_star &output_items);
     };
-
-  } // namespace op25_repeater
-} // namespace gr
-
-#endif /* INCLUDED_OP25_REPEATER_P25_FRAME_ASSEMBLER_IMPL_H */
+  } // namespace
+} // namespace
+#endif /* INCLUDED_OP25_REPEATER_P25P1_FDMA_H  */

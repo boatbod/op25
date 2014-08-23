@@ -28,31 +28,37 @@
 #include "p25p2_duid.h"
 #include "p25p2_sync.h"
 #include "p25p2_vf.h"
+#include "p25p2_framer.h"
 
 class p25p2_tdma;
 class p25p2_tdma
 {
 public:
-	p25p2_tdma(int slotid, int debug, std::deque<int16_t> *qptr) ;	// constructor
+	p25p2_tdma(int slotid, int debug, std::deque<int16_t> &qptr) ;	// constructor
 	int handle_packet(const uint8_t dibits[]) ;
 	void set_slotid(int slotid);
 	uint8_t* tdma_xormask;
+	uint32_t symbols_received;
+	uint32_t packets;
 	~p25p2_tdma();	// destructor
 	void set_xormask(const char*p);
+	bool rx_sym(uint8_t sym);
+	int handle_frame(void) ;
 private:
 	p25p2_sync sync;
 	p25p2_duid duid;
 	p25p2_vf vf;
-	uint32_t packets;
 	int d_slotid;
 	mbe_parms cur_mp;
 	mbe_parms prev_mp;
 	mbe_parms enh_mp;
 	software_imbe_decoder software_decoder;
-	std::deque<int16_t> *output_queue_decode;
+	std::deque<int16_t> &output_queue_decode;
 
 	int d_debug;
 	unsigned long int crc_errors;
+
+	p25p2_framer p2framer;
 
 	int handle_acch_frame(const uint8_t dibits[], bool fast) ;
 	void handle_voice_frame(const uint8_t dibits[]) ;

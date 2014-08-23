@@ -25,6 +25,5 @@ install(FILES
     vocoder.h
     gardner_costas_cc.h
     p25_frame_assembler.h
-    fsk4_slicer_fb.h
-    p25p2_frame.h DESTINATION include/op25_repeater
+    fsk4_slicer_fb.h DESTINATION include/op25_repeater
 )

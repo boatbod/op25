@@ -130,7 +130,7 @@ class my_top_block(gr.top_block):
         do_output = True # enable block's output stream
         do_msgq = False  # msgq output not yet implemented
         msgq = gr.msg_queue(2)
-        DECODER = op25_repeater.p25_frame_assembler(hostname, port, debug, do_imbe, do_output, do_msgq, msgq)
+        DECODER = op25_repeater.p25_frame_assembler(hostname, port, debug, do_imbe, do_output, do_msgq, msgq, False, False)
 
         OUT = blocks.file_sink(gr.sizeof_char, options.output_file)
 

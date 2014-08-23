@@ -65,16 +65,24 @@ static bool crc12_ok(const uint8_t bits[], unsigned int len) {
 	return (crc == crc12(bits,len));
 }
 
-p25p2_tdma::p25p2_tdma(int slotid, int debug, std::deque<int16_t> *qptr) :	// constructor
+p25p2_tdma::p25p2_tdma(int slotid, int debug, std::deque<int16_t> &qptr) :	// constructor
 	tdma_xormask(new uint8_t[SUPERFRAME_SIZE]),
+	symbols_received(0),
 	packets(0),
 	d_slotid(slotid),
 	output_queue_decode(qptr),
 	d_debug(debug),
-	crc_errors(0)
+	crc_errors(0),
+	p2framer()
 {
 	assert (slotid == 0 || slotid == 1);
 	mbe_initMbeParms (&cur_mp, &prev_mp, &enh_mp);
+}
+
+bool p25p2_tdma::rx_sym(uint8_t sym)
+{
+	symbols_received++;
+	return p2framer.rx_sym(sym);
 }
 
 void p25p2_tdma::set_slotid(int slotid)
@@ -183,10 +191,20 @@ void p25p2_tdma::handle_voice_frame(const uint8_t dibits[])
 		} else {
 			snd = 0;
 		}
-		output_queue_decode->push_back(snd);
+		output_queue_decode.push_back(snd);
 	}
 	mbe_moveMbeParms (&cur_mp, &prev_mp);
 	mbe_moveMbeParms (&cur_mp, &enh_mp);
+}
+
+int p25p2_tdma::handle_frame(void)
+{
+	uint8_t dibits[180];
+	int rc;
+	for (int i=0; i<sizeof(dibits); i++)
+		dibits[i] = p2framer.d_frame_body[i*2+1] + (p2framer.d_frame_body[i*2] << 1);
+	rc = handle_packet(dibits);
+	return rc;
 }
 
 /* returns true if in sync and slot matches current active slot d_slotid */
@@ -205,6 +223,9 @@ int p25p2_tdma::handle_packet(const uint8_t dibits[])
 		return -1;
 	for (int i=0; i<BURST_SIZE - 10; i++) {
 		xored_burst[i] = burstp[i] ^ tdma_xormask[sync.tdma_slotid() * BURST_SIZE + i];
+	}
+	if (d_debug) {
+		fprintf(stderr, "p25p2_tdma: burst type %d symbols %u packets %u\n", burst_type, symbols_received, packets);
 	}
 	if (burst_type == 0 || burst_type == 6)	{ // 4v or 2v (voice) ?
 		handle_voice_frame(&xored_burst[11]);

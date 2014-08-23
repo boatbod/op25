@@ -28,13 +28,15 @@ list(APPEND op25_repeater_sources
     vocoder_impl.cc
     gardner_costas_cc_impl.cc
     p25_frame_assembler_impl.cc
-    fsk4_slicer_fb_impl.cc
-    p25p2_frame_impl.cc )
+    fsk4_slicer_fb_impl.cc )
 
 list(APPEND op25_repeater_sources
     bch.cc
     rs.cc
     p25_framer.cc
+    p25p1_fdma.cc
+    p25p1_voice_encode.cc
+    p25p1_voice_decode.cc
     p25p2_framer.cc
     p25p2_isch.cc
     p25p2_duid.cc

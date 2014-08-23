@@ -22,7 +22,18 @@ class app_top_block(gr.top_block):
         slotid = options.tdma_slotid
         msgq = gr.msg_queue(2)
         do_msgq  = False
-        FRAMER = op25_repeater.p25p2_frame(0, slotid, do_msgq, msgq)
+
+        wireshark_host = ''
+        udp_port = 0
+        verbosity = 100
+        do_imbe = 1
+        do_output = 1
+        do_msgq = 0
+        rx_q = gr.msg_queue(1)
+        do_audio_output = 1
+        phase2_tdma = 1
+        
+        FRAMER = op25_repeater.p25_frame_assembler(wireshark_host, udp_port, verbosity, do_imbe, do_output, do_msgq, rx_q, do_audio_output, phase2_tdma)
         FRAMER.set_xormask(xor_mask)
 
         S2F = blocks.short_to_float()

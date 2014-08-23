@@ -2,7 +2,7 @@
 
 # Copyright 2008-2011 Steve Glass
 # 
-# Copyright 2011, 2012, 2013 KA1RBI
+# Copyright 2011, 2012, 2013, 2014 Max H. Parke KA1RBI
 # 
 # Copyright 2003,2004,2005,2006 Free Software Foundation, Inc.
 #         (from radiorausch)
@@ -269,29 +269,19 @@ class p25_rx_block (stdgui2.std_top_block):
         do_imbe = 1
         do_output = 1
         do_msgq = 1
-        self.sink_s = op25_repeater.p25_frame_assembler(self.options.wireshark_host, udp_port, self.options.verbosity, do_imbe, do_output, do_msgq, self.rx_q)
-        if self.options.vocoder and self.options.phase2_tdma:
-            print 'simultaneous phase I and II not supported in this version'
-            sys.exit(1)
+        do_audio_output = True
+        self.p25decoder = op25_repeater.p25_frame_assembler(self.options.wireshark_host, udp_port, self.options.verbosity, do_imbe, do_output, do_msgq, self.rx_q, do_audio_output, self.options.phase2_tdma)
         if self.options.vocoder or self.options.phase2_tdma:
             self.audio_s2f = blocks.short_to_float()
             self.audio_scaler = blocks.multiply_const_ff(1 / 32768.0)
             self.audio_output = audio.sink(8000, self.options.audio_output, True)
-            self.connect(self.audio_s2f, self.audio_scaler, self.audio_output)
-        if self.options.vocoder:
-            self.sink_imbe = op25_repeater.vocoder(0, 0, 0, '', 0, 0)
-            self.connect(self.sink_imbe, self.audio_s2f)
+            self.connect(self.p25decoder, self.audio_s2f, self.audio_scaler, self.audio_output)
         else:
-            self.sink_imbe = blocks.null_sink(gr.sizeof_char)
-        if self.options.phase2_tdma:
-            slotid = 0
-            do_msgq = True
-            debug = self.options.verbosity
-            self.p2decoder = op25_repeater.p25p2_frame(debug, slotid, do_msgq, self.rx_q)
-            self.connect(self.slicer, self.p2decoder, self.audio_s2f)
+            self.sink_imbe = blocks.null_sink(gr.sizeof_short)
+            self.connect(self.p25decoder, self.sink_imbe)
         self.tdma_state = False
         self.xor_cache = {}
-        self.connect(self.buffer, self.slicer, self.sink_s, self.sink_imbe)
+        self.connect(self.buffer, self.slicer, self.p25decoder)
         if self.baseband_input:
             gain = self.options.gain
         else:
@@ -737,14 +727,14 @@ class p25_rx_block (stdgui2.std_top_block):
             return	# already in desired state
         self.tdma_state = set_tdma
         if set_tdma:
-            self.p2decoder.set_slotid(params['tdma'])
+            self.p25decoder.set_slotid(params['tdma'])
             hash = '%x%x%x' % (params['nac'], params['sysid'], params['wacn'])
             if hash not in self.xor_cache:
                 sreg = lfsr.p25p2_lfsr(params['nac'], params['sysid'], params['wacn'])
                 self.xor_cache[hash] = ''
                 for c in sreg.xorsyms:
                     self.xor_cache[hash] += chr(c)
-            self.p2decoder.set_xormask(self.xor_cache[hash])
+            self.p25decoder.set_xormask(self.xor_cache[hash])
             sps = self.basic_rate / 6000
         else:
             sps = self.basic_rate / 4800
@@ -857,7 +847,7 @@ class p25_rx_block (stdgui2.std_top_block):
         notebook_sel = self.notebook.GetSelection()
         if notebook_sel == 0 or notebook_sel == 4:	# spectrum or demod symbols
              self.connect_demods()
-        elif notebook_sel == 1 or notebook_sel == 2 or notebook_sel == 5:
+        elif notebook_sel == 1 or notebook_sel == 2 or notebook_sel == 6:
              self.connect_fsk4_demod()
         elif notebook_sel == 3:	# constellation
              self.connect_psk_demod()

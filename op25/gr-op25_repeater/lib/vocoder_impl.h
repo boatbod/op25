@@ -29,15 +29,12 @@
 #include <vector>
 #include <deque>
 
-#include "imbe_vocoder/imbe_vocoder.h"
-
-#include "imbe_decoder.h"
-#include "software_imbe_decoder.h"
+#include "p25p1_voice_encode.h"
+#include "p25p1_voice_decode.h"
 
 namespace gr {
   namespace op25_repeater {
 
-    typedef std::vector<bool> bit_vector;
     class vocoder_impl : public vocoder
     {
      private:
@@ -64,48 +61,14 @@ namespace gr {
 		    gr_vector_void_star &output_items);
 
   private:
-	static const int RXBUF_MAX = 80;
-
-	/* data items */
-	int frame_cnt ;
-	int write_sock;
-	struct sockaddr_in write_sock_addr;
-	int write_bufp;
-	char write_buf[512];
-	struct timeval tv;
-	struct timezone tz;
-	struct timeval oldtv;
-	int peak_amplitude;
-	int peak;
-	int samp_ct;
-	char rxbuf[RXBUF_MAX];
-	int rxbufp ;
-	unsigned int codeword_ct ;
-	int16_t sampbuf[FRAME];
-	size_t sampbuf_ct ;
-	int stretch_count ;
-	uint8_t save_l;
-	bit_vector f_body;
-	imbe_vocoder vocoder;
-	software_imbe_decoder software_decoder;
-	bool d_software_imbe_decoder;
 
 	std::deque<uint8_t> output_queue;
-	std::deque<uint16_t> output_queue_decode;
-
-	bool opt_encode_flag;
-	bool opt_dump_raw_vectors;
-	bool opt_verbose;
-	int opt_stretch_amt;
-	int opt_stretch_sign;
+	std::deque<int16_t> output_queue_decode;
 	int opt_udp_port;
-	/* local methods */
-	void append_imbe_codeword(bit_vector& frame_body, int16_t frame_vector[], unsigned int& codeword_ct);
-	void rxchar(char c);
-	void compress_frame(int16_t snd[]);
-	void add_sample(int16_t samp);
-	void compress_samp(int16_t samp);
-	void init_sock(char* udp_host, int udp_port);
+	bool opt_encode_flag;
+        p25p1_voice_encode p1voice_encode;
+        p25p1_voice_decode p1voice_decode;
+
     };
 
   } // namespace op25_repeater
