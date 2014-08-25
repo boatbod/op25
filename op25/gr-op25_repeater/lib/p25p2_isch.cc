@@ -178,7 +178,7 @@ p25p2_isch::isch_lookup(const uint8_t dibits[])
 	uint64_t cw = 0;
 	for (int i=0; i<20; i++)
 		cw = (cw << 2) + dibits[i];
-	sprintf(s, "%lx", cw);
+	sprintf(s, "%llx", (unsigned long long)cw);
 	return isch_lookup(std::string(s));
 }
 int16_t
