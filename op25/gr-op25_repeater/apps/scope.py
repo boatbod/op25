@@ -58,6 +58,9 @@ import gnuradio.wxgui.plot as plot
 
 import trunking
 
+import p25_demodulator
+import p25_decoder
+
 sys.path.append('tdma')
 import lfsr
 
@@ -107,6 +110,7 @@ class p25_rx_block (stdgui2.std_top_block):
         parser.add_option("-F", "--ifile", type="string", default=None, help="read input from complex capture file")
         parser.add_option("-H", "--hamlib-model", type="int", default=None, help="specify model for hamlib")
         parser.add_option("-s", "--seek", type="int", default=0, help="ifile seek in K")
+        parser.add_option("-L", "--logfile-workers", type="int", default=None, help="number of demodulators to instantiate")
         parser.add_option("-S", "--sample-rate", type="int", default=320e3, help="source samp rate")
         parser.add_option("-t", "--tone-detect", action="store_true", default=False, help="use experimental tone detect algorithm")
         parser.add_option("-T", "--trunk-conf-file", type="string", default=None, help="trunking config file name")
@@ -258,8 +262,6 @@ class p25_rx_block (stdgui2.std_top_block):
 
         self.rx_q = gr.msg_queue(100)
         msg_EVT_DATA_EVENT(self.frame, self.msg_data)
-        self.trunk_rx = trunking.rx_ctl(frequency_set = self.change_freq, debug = self.options.verbosity, conf_file = self.options.trunk_conf_file)
-        self.du_watcher = du_queue_watcher(self.rx_q, self.trunk_rx.process_qmsg)
         udp_port = 0
         if self.options.wireshark:
             udp_port = WIRESHARK_PORT
@@ -368,7 +370,7 @@ class p25_rx_block (stdgui2.std_top_block):
 
                 alpha = self.options.costas_alpha
                 beta = 0.125 * alpha * alpha
-                fmax = 1200	# Hz
+                fmax = 2400	# Hz
                 fmax = 2*pi * fmax / self.basic_rate
 
                 self.clock = op25_repeater.gardner_costas_cc(omega, gain_mu, gain_omega, alpha,  beta, fmax, -fmax)
@@ -390,6 +392,18 @@ class p25_rx_block (stdgui2.std_top_block):
             self.connect(self.mixer, self.lpf, self.arb_resampler)
             self.set_connection(fft=1)
             self.connect_demods()
+
+        logfile_workers = []
+        if self.options.logfile_workers:
+            for i in xrange(self.options.logfile_workers):
+                demod = p25_demodulator.p25_demod_cb(input_rate=capture_rate, demod_type='cqpsk', offset=self.options.offset)
+                decoder = p25_decoder.p25_decoder_c(debug = self.options.verbosity, do_imbe = self.options.vocoder, do_ambe=self.options.phase2_tdma)
+                logfile_workers.append({'demod': demod, 'decoder': decoder, 'active': False})
+                self.connect(source, demod, decoder)
+
+        self.trunk_rx = trunking.rx_ctl(frequency_set = self.change_freq, debug = self.options.verbosity, conf_file = self.options.trunk_conf_file, logfile_workers=logfile_workers)
+
+        self.du_watcher = du_queue_watcher(self.rx_q, self.trunk_rx.process_qmsg)
 
     # Connect up the flow graph
     #
@@ -432,6 +446,10 @@ class p25_rx_block (stdgui2.std_top_block):
         nac = params['nac']
         system = params['system']
         self.myform['system'].set_value('%X:%s' % (nac, system))
+        if 'tdma' in params and params['tdma'] is not None:
+            self.myform['tdma'].set_value('TDMA Slot %d' % (params['tdma']))
+        else:
+            self.myform['tdma'].set_value('')
 
     def set_speed(self, new_speed):
      # assumes that lock is held, or that we are in init
@@ -661,7 +679,14 @@ class p25_rx_block (stdgui2.std_top_block):
             parent=self.panel, sizer=vbox_form, label="Talkgroup", weight=0)
         myform['talkgroup'].set_value("........................................")
 
-        if not self.baseband_input:
+        if self.baseband_input:
+            min_gain = 0
+            max_gain = 200
+            initial_val = 50
+        else:
+            min_gain = 0
+            max_gain = 25
+            initial_val = 10
             if self.options.trunk_conf_file:
                 myform['freq'] = form.static_text_field(
                     parent=self.panel, sizer=vbox_form, label="Frequency", weight=0)
@@ -671,14 +696,9 @@ class p25_rx_block (stdgui2.std_top_block):
                     parent=self.panel, sizer=vbox_form, label="Frequency", weight=0,
                     callback=myform.check_input_and_call(_form_set_freq, self._set_status_msg))
                 myform['freq'].set_value(self.options.frequency)
-        if self.baseband_input:
-            min_gain = 0
-            max_gain = 200
-            initial_val = 50
-        else:
-            min_gain = 0
-            max_gain = 25
-            initial_val = 10
+        myform['tdma'] = form.static_text_field(
+            parent=self.panel, sizer=vbox_form, label=None, weight=0)
+        myform['tdma'].set_value("")
 
         hbox.Add(vbox_form, 0, 0)
 
@@ -749,7 +769,7 @@ class p25_rx_block (stdgui2.std_top_block):
             self.hamlib.set_freq(freq)
         elif params['center_frequency']:
             relative_freq = center_freq - freq
-            if relative_freq + self.options.offset > self.channel_rate / 2:
+            if abs(relative_freq + self.options.offset) > self.channel_rate / 2:
                 print '***unable to tune Local Oscillator to offset %d Hz' % (relative_freq + self.options.offset)
                 print '***limit is one half of sample-rate %d = %d' % (self.channel_rate, self.channel_rate / 2)
                 print '***request for frequency %d rejected' % freq
@@ -1126,10 +1146,10 @@ class p25_rx_block (stdgui2.std_top_block):
                 "source-dev": "AUDIO",
                 "source-decim": 1 }
         self.audio_source = audio.source(capture_rate, audio_input_filename)
-        self.audio_cvt = gr.float_to_complex()
+        self.audio_cvt = blocks.float_to_complex()
         self.connect((self.audio_source, 0), (self.audio_cvt, 0))
         self.connect((self.audio_source, 1), (self.audio_cvt, 1))
-        self.source = gr.multiply_const_cc(gain)
+        self.source = blocks.multiply_const_cc(gain)
         self.connect(self.audio_cvt, self.source)
         self.__set_rx_from_audio(capture_rate)
         self._set_titlebar("Capturing")
