@@ -34,6 +34,8 @@
 #include <cstdio>
 #include <string.h>
 
+#include "p25_frame.h"
+
 #define ENABLE_COSTAS_CQPSK_HACK 0
 
 static const float M_TWOPI = 2 * M_PI;
@@ -44,6 +46,58 @@ static const int NUM_COMPLEX=100;
 
 namespace gr {
   namespace op25_repeater {
+
+// count no. of 1 bits in masked, xor'ed, FS, return true if < threshold
+static inline bool check_frame_sync(uint64_t ch, int err_threshold, int len) {
+	int errs=0;
+	for (int i=0; i < len; i++) {
+		errs += (ch & 1);
+		ch = ch >> 1;
+	}
+	if (errs <= err_threshold) return true;
+	return false;
+}
+
+static inline std::complex<float> sgn(std::complex<float>c) {
+	if (c == std::complex<float>(0.0,0.0))
+		return std::complex<float>(0.0, 0.0);
+	return c/abs(c);
+}
+
+uint8_t gardner_costas_cc_impl::slicer(float sym) {
+    uint8_t dibit = 0;
+    static const float PI_4 = M_PI / 4.0;
+    static const float d_slice_levels[4] = {-2.0*PI_4, 0.0*PI_4, 2.0*PI_4, 4.0*PI_4};
+    if (d_slice_levels[3] < 0) {
+      dibit = 1;
+      if (d_slice_levels[3] <= sym && sym < d_slice_levels[0])
+        dibit = 3;
+    } else {
+      dibit = 3;
+      if (d_slice_levels[2] <= sym && sym < d_slice_levels[3])
+        dibit = 1;
+    }
+    if (d_slice_levels[0] <= sym && sym < d_slice_levels[1])
+      dibit = 2;
+    if (d_slice_levels[1] <= sym && sym < d_slice_levels[2])
+      dibit = 0;
+    nid_accum <<= 2;
+    nid_accum |= dibit;
+
+	if(check_frame_sync((nid_accum & P25_FRAME_SYNC_MASK) ^ P25_FRAME_SYNC_MAGIC, 0, 48)) {
+//		fprintf(stderr, "P25P1 Framing detect\n");
+	}
+	if(check_frame_sync((nid_accum & P25_FRAME_SYNC_MASK) ^ 0x001050551155LL, 0, 48)) {
+		fprintf(stderr, "tuning error -1200\n");
+	}
+	if(check_frame_sync((nid_accum & P25_FRAME_SYNC_MASK) ^ 0xFFEFAFAAEEAALL, 0, 48)) {
+		fprintf(stderr, "tuning error +1200\n");
+	}
+	if(check_frame_sync((nid_accum & P25_FRAME_SYNC_MASK) ^ 0xAA8A0A008800LL, 0, 48)) {
+		fprintf(stderr, "tuning error +/- 2400\n");
+	}
+    return dibit;
+}
 
     gardner_costas_cc::sptr
     gardner_costas_cc::make(float samples_per_symbol, float gain_mu, float gain_omega, float alpha, float beta, float max_freq, float min_freq)
@@ -70,7 +124,8 @@ namespace gr {
     d_dl_index(0),
     d_alpha(alpha), d_beta(beta), 
     d_interp_counter(0),
-    d_theta(M_PI / 4.0), d_phase(0), d_freq(0), d_max_freq(max_freq)
+    d_theta(M_PI / 4.0), d_phase(0), d_freq(0), d_max_freq(max_freq),
+    nid_accum(0)
     {
   set_omega(samples_per_symbol);
   set_relative_rate (1.0 / d_omega);
@@ -140,7 +195,7 @@ gardner_costas_cc_impl::phase_error_tracking(gr_complex sample)
 #endif /* ENABLE_COSTAS_CQPSK_HACK */
 
   // Make phase and frequency corrections based on sampled value
-  phase_error = -phase_error_detector_qpsk(sample);
+  phase_error =  phase_error_detector_qpsk(sample);
     
   d_freq += d_beta*phase_error*abs(sample);             // adjust frequency based on error
   d_phase += d_freq + d_alpha*phase_error*abs(sample);  // adjust phase based on error
@@ -214,8 +269,13 @@ gardner_costas_cc_impl::general_work (int noutput_items,
 		float error_real = (d_last_sample.real() - interp_samp.real()) * interp_samp_mid.real();
 		float error_imag = (d_last_sample.imag() - interp_samp.imag()) * interp_samp_mid.imag();
 		gr_complex diffdec = interp_samp * conj(d_last_sample);
+		(void)slicer(std::arg(diffdec));
 		d_last_sample = interp_samp;	// save for next time
+#if 1
 		float symbol_error = error_real + error_imag; // Gardner loop error
+#else
+		float symbol_error = ((sgn(interp_samp) - sgn(d_last_sample)) * conj(interp_samp_mid)).real();
+#endif
 		if (isnan(symbol_error)) symbol_error = 0.0;
 		if (symbol_error < -1.0) symbol_error = -1.0;
 		if (symbol_error >  1.0) symbol_error =  1.0;
@@ -227,7 +287,7 @@ gardner_costas_cc_impl::general_work (int noutput_items,
 #endif
 		d_mu += d_omega + d_gain_mu * symbol_error;   // update mu based on loop error
 
-		phase_error_tracking(diffdec);
+		phase_error_tracking(diffdec * PT_45);
   
       out[o++] = interp_samp;
     }
