@@ -37,7 +37,7 @@ namespace gr {
     class gardner_costas_cc_impl : public gardner_costas_cc
     {
      private:
-      // Nothing to declare in this block.
+	uint8_t slicer(float sym);
 
      public:
       gardner_costas_cc_impl(float samples_per_symbol, float gain_mu, float gain_omega, float alpha, float beta, float max_freq, float min_freq);
@@ -95,6 +95,8 @@ protected:
   float				d_phase;
   float				d_freq;
   float				d_max_freq;
+
+  uint64_t			nid_accum;
 
   float phase_error_detector_qpsk(gr_complex sample);
   void phase_error_tracking(gr_complex sample);

@@ -21,6 +21,8 @@
 #ifndef INCLUDED_OP25_P25_FRAME_H
 #define INCLUDED_OP25_P25_FRAME_H 1
 
+#include <vector>
+typedef std::vector<bool> bit_vector;
 namespace gr {
   namespace op25_repeater {
 static const size_t P25_VOICE_FRAME_SIZE = 1728;
