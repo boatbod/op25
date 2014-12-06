@@ -56,7 +56,7 @@ namespace gr {
       pcap_t *pcap = pcap_open_offline(path, err);
       if(pcap) {
 	struct pcap_pkthdr hdr;
-	for(const uint8_t *octets; octets = pcap_next(pcap, &hdr);) {
+	for(const uint8_t *octets; (octets = pcap_next(pcap, &hdr));) {
 	  const size_t ETHERNET_SZ = 14;
 	  const size_t IP_SZ = 20;
 	  const size_t UDP_SZ = 8;

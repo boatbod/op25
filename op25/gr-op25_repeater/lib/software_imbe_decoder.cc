@@ -960,7 +960,7 @@ software_imbe_decoder::decode_tap(int _L, int _K, float _w0, const int * _v, con
          // voiced samples:
          float sample = suv[en] + sv[en] * 4; //balance v/uv loudness
          if(abs((int)sample) > 32767) {
-            sample = 32767 * (sample < 0) ? -1 : 1; // * sgn(sample)
+            sample = (sample < 0) ? -32767 : 32767; // * sgn(sample)
          }
          samples->push_back((short)sample);
       }

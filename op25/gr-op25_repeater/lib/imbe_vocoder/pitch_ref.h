@@ -21,7 +21,7 @@
 
 
 #ifndef _PITCH_REF
-#define _PIRCH_REF
+#define _PITCH_REF
 
 void pitch_ref(IMBE_PARAM *imbe_param, Cmplx16 *fft_buf);
 

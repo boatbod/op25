@@ -522,7 +522,7 @@ void ProcLC(uint8_t HB[]) {
 	int ec = rsDec(12, 39, HB);
 	int pb = HB[39] >> 5;
 	int sf = (HB[39] & 16) >> 4;
-	int lco = (HB[39] and 15) * 4 + (HB[40] >> 4);
+	int lco = (HB[39] & 15) * 4 + (HB[40] >> 4);
 	fprintf(stderr, " LC: rc %d pb %d sf %d lco %d", ec, pb, sf, lco);
 }
 

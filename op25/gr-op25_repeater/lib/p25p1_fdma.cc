@@ -248,14 +248,13 @@ p25p1_fdma::rx_sym (const uint8_t *syms, int nsyms)
 		if (d_debug >= 10) {
 			fprintf (stderr, "NAC 0x%X DUID 0x%X len %u errs %u ", framer->nac, framer->duid, framer->frame_size >> 1, framer->bch_errors);
 		}
-		if (framer->bch_errors >= 0 &&
-			((framer->duid == 0x03) ||
-			 (framer->duid == 0x05) ||
-			 (framer->duid == 0x0A) ||
-			 (framer->duid == 0x0F))) {
+		if ((framer->duid == 0x03) ||
+		 (framer->duid == 0x05) ||
+		 (framer->duid == 0x0A) ||
+		 (framer->duid == 0x0F)) {
 			process_duid(framer->duid, framer->nac, NULL, 0);
 		}
-		if ((framer->duid == 0x07 || framer->duid == 0x0c) && framer->bch_errors >= 0) {
+		if ((framer->duid == 0x07 || framer->duid == 0x0c)) {
 			unsigned int d, b;
 			int rc[3];
 			bit_vector bv1(720);
