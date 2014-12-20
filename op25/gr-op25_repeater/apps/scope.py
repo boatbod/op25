@@ -137,40 +137,41 @@ class p25_rx_block (stdgui2.std_top_block):
         self.channel_rate = 0
         self.baseband_input = False
         self.rtl_found = False
+        self.channel_rate = options.sample_rate
 
-        # check if osmocom is accessible
-        try:
-            self.src = None
-            import osmosdr
-            self.src = osmosdr.source(options.args)
-            self.channel_rate = options.sample_rate
-        except Exception:
-            print "osmosdr source_c creation failure"
-            ignore = True
+        self.src = None
+        if not options.input:
+            # check if osmocom is accessible
+            try:
+                import osmosdr
+                self.src = osmosdr.source(options.args)
+            except Exception:
+                print "osmosdr source_c creation failure"
+                ignore = True
  
-        if "rtl" in options.args.lower():
-            #print "'rtl' has been found in options.args (%s)" % (options.args)
-            self.rtl_found = True
+            if "rtl" in options.args.lower():
+                #print "'rtl' has been found in options.args (%s)" % (options.args)
+                self.rtl_found = True
 
-        gain_names = self.src.get_gain_names()
-        for name in gain_names:
-            range = self.src.get_gain_range(name)
-            print "gain: name: %s range: start %d stop %d step %d" % (name, range[0].start(), range[0].stop(), range[0].step())
-        if options.gains:
-            for tuple in options.gains.split(","):
-                name, gain = tuple.split(":")
-                gain = int(gain)
-                print "setting gain %s to %d" % (name, gain)
-                self.src.set_gain(gain, name)
+            gain_names = self.src.get_gain_names()
+            for name in gain_names:
+                range = self.src.get_gain_range(name)
+                print "gain: name: %s range: start %d stop %d step %d" % (name, range[0].start(), range[0].stop(), range[0].step())
+            if options.gains:
+                for tuple in options.gains.split(","):
+                    name, gain = tuple.split(":")
+                    gain = int(gain)
+                    print "setting gain %s to %d" % (name, gain)
+                    self.src.set_gain(gain, name)
 
-        rates = self.src.get_sample_rates()
-        try:
-            print 'supported sample rates %d-%d step %d' % (rates.start(), rates.stop(), rates.step())
-        except:
-            pass	# ignore
+            rates = self.src.get_sample_rates()
+            try:
+                print 'supported sample rates %d-%d step %d' % (rates.start(), rates.stop(), rates.step())
+            except:
+                pass	# ignore
 
-        if options.freq_corr:
-            self.src.set_freq_corr(options.freq_corr)
+            if options.freq_corr:
+                self.src.set_freq_corr(options.freq_corr)
 
         if options.audio:
             self.channel_rate = 48000
@@ -248,9 +249,6 @@ class p25_rx_block (stdgui2.std_top_block):
         udp_port = 0
         if self.options.wireshark:
             udp_port = WIRESHARK_PORT
-        if self.options.raw_symbols:
-            self.sink_sf = blocks.file_sink(gr.sizeof_char, self.options.raw_symbols)
-            self.connect(self.slicer, self.sink_sf)
 
         self.tdma_state = False
         self.xor_cache = {}
@@ -288,18 +286,28 @@ class p25_rx_block (stdgui2.std_top_block):
         if self.options.wireshark:
             udp_port = WIRESHARK_PORT
 
-        self.decoder = p25_decoder.p25_decoder_c(dest='audio', do_imbe=True, do_ambe=self.options.phase2_tdma, wireshark_host=self.options.wireshark_host, udp_port=udp_port, do_msgq = True, msgq=self.rx_q, audio_output=self.options.audio_output, debug=self.options.verbosity)
+        num_ambe = 0
+        if self.options.phase2_tdma:
+            num_ambe = 1
+
+        self.decoder = p25_decoder.p25_decoder_sink_b(dest='audio', do_imbe=True, num_ambe=num_ambe, wireshark_host=self.options.wireshark_host, udp_port=udp_port, do_msgq = True, msgq=self.rx_q, audio_output=self.options.audio_output, debug=self.options.verbosity)
 
         # connect it all up
         self.connect(source, self.demod, self.decoder)
 
+        if self.options.raw_symbols:
+            self.sink_sf = blocks.file_sink(gr.sizeof_char, self.options.raw_symbols)
+            self.connect(self.demod, self.sink_sf)
+
         logfile_workers = []
+        if self.options.phase2_tdma:
+            num_ambe = 2
         if self.options.logfile_workers:
             for i in xrange(self.options.logfile_workers):
                 demod = p25_demodulator.p25_demod_cb(input_rate=capture_rate,
                                                      demod_type='cqpsk',	### FIXME
                                                      offset=self.options.offset)
-                decoder = p25_decoder.p25_decoder_c(debug = self.options.verbosity, do_imbe = self.options.vocoder, do_ambe=self.options.phase2_tdma)
+                decoder = p25_decoder.p25_decoder_sink_b(debug = self.options.verbosity, do_imbe = self.options.vocoder, num_ambe=num_ambe)
                 logfile_workers.append({'demod': demod, 'decoder': decoder, 'active': False})
                 self.connect(source, demod, decoder)
 
@@ -667,18 +675,15 @@ class p25_rx_block (stdgui2.std_top_block):
             return	# already in desired state
         self.tdma_state = set_tdma
         if set_tdma:
-            self.p25decoder.set_slotid(params['tdma'])
+            self.decoder.set_slotid(params['tdma'])
             hash = '%x%x%x' % (params['nac'], params['sysid'], params['wacn'])
             if hash not in self.xor_cache:
-                sreg = lfsr.p25p2_lfsr(params['nac'], params['sysid'], params['wacn'])
-                self.xor_cache[hash] = ''
-                for c in sreg.xorsyms:
-                    self.xor_cache[hash] += chr(c)
-            self.p25decoder.set_xormask(self.xor_cache[hash])
+                self.xor_cache[hash] = lfsr.p25p2_lfsr(params['nac'], params['sysid'], params['wacn']).xor_chars
+            self.decoder.set_xormask(self.xor_cache[hash], hash)
             sps = self.basic_rate / 6000
         else:
             sps = self.basic_rate / 4800
-        self.clock.set_omega(float(sps))
+        self.demod.clock.set_omega(float(sps))
 
     def change_freq(self, params):
         freq = params['freq']
@@ -753,7 +758,7 @@ class p25_rx_block (stdgui2.std_top_block):
 
     def set_audio_scaler(self, vol):
         #print 'audio scaler: %f' % ((1 / 32768.0) * (vol * 0.1))
-        self.decoder.scaler.set_k((1 / 32768.0) * (vol * 0.1))
+        self.decoder.set_scaler_k((1 / 32768.0) * (vol * 0.1))
 
     def set_rtl_ppm(self, ppm):
         self.src.set_freq_corr(ppm)
@@ -774,6 +779,8 @@ class p25_rx_block (stdgui2.std_top_block):
         the result of that operation and our target_frequency to
         determine the value for the digital down converter.
         """
+        if not self.src:
+            return False
         tune_freq = target_freq + self.options.calibration + self.options.offset
         r = self.src.set_center_freq(tune_freq)
         

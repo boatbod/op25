@@ -28,7 +28,8 @@ class p25p2_lfsr(object):
 		self.xorsyms = [0] * (len(xorbits)/2)
 		for i in xrange(len(self.xorsyms)):
 			self.xorsyms[i] = (xorbits[i*2] << 1) + xorbits[i*2+1]
-	
+		self.xor_chars = ''.join([chr(c) for c in self.xorsyms])
+
 	def asm_reg(self,s1,s2,s3,s4,s5,s6):
 		s1 = s1 & 0xfL
 		s2 = s2 & 0x1fL

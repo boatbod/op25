@@ -112,6 +112,7 @@ class p25_demod_fb(p25_demod_base):
 
         p25_demod_base.__init__(self, if_rate=input_rate, symbol_rate=symbol_rate)
 
+        self.input_rate = input_rate
         self.float_sink = None
 
         self.connect(self, self.baseband_amp, self.symbol_filter, self.fsk4_demod, self.slicer, self)

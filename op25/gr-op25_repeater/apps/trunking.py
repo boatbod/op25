@@ -21,7 +21,10 @@
 # FIXME: hideously mixes indentation, some is tabs and some is spaces
 #
 
+import sys
 import time
+sys.path.append('tdma')
+import lfsr
 
 def crc16(dat,len):	# slow version
         poly = (1<<12) + (1<<5) + (1<<0)
@@ -66,8 +69,16 @@ class trunked_system (object):
 	self.tgid_map = {}
 	self.offset = 0
 	self.sysname = 0
+
 	self.trunk_cc = 0
+	self.cc_list = []
+	self.cc_list_index = 0
+        self.CC_HUNT_TIME = 5.0
 	self.center_frequency = 0
+	self.last_tsbk = 0
+        self.cc_timeouts = 0
+
+	self.talkgroups = {}
         if config:
             self.blacklist = config['blacklist']
             self.whitelist = config['whitelist']
@@ -75,7 +86,9 @@ class trunked_system (object):
             self.offset    = config['offset']
             self.sysname   = config['sysname']
             self.trunk_cc  = config['cclist'][0]	# TODO: scan thru list
+            self.cc_list   = config['cclist']
             self.center_frequency = config['center_frequency']
+            self.modulation = config['modulation']
 
     def to_string(self):
         s = []
@@ -86,7 +99,8 @@ class trunked_system (object):
 	s.append('')
         t = time.time()
         for f in self.voice_frequencies:
-            s.append('voice frequency %f tgid %d %4.1fs ago count %d' %  (f / 1000000.0, self.voice_frequencies[f]['tgid'], t - self.voice_frequencies[f]['time'], self.voice_frequencies[f]['counter']))
+            tgs = '%s %s' % (self.voice_frequencies[f]['tgid'][0], self.voice_frequencies[f]['tgid'][1])
+            s.append('voice frequency %f tgid(s) %s %4.1fs ago count %d' %  (f / 1000000.0, tgs, t - self.voice_frequencies[f]['time'], self.voice_frequencies[f]['counter']))
 	s.append('')
         for table in self.freq_table:
             a = self.freq_table[table]['frequency'] / 1000000.0
@@ -130,42 +144,47 @@ class trunked_system (object):
             return "Talkgroup ID %d [0x%x]" % (tgid, tgid)
         return self.tgid_map[tgid]
 
+    def update_talkgroup(self, frequency, tgid, tdma_slot):
+        if tgid not in self.talkgroups:
+            self.talkgroups[tgid] = {'counter':0}
+        self.talkgroups[tgid]['time'] = time.time()
+        self.talkgroups[tgid]['frequency'] = frequency
+        self.talkgroups[tgid]['tdma_slot'] = tdma_slot
+
     def update_voice_frequency(self, frequency, tgid=None, tdma_slot=None):
-        if frequency is None:
+        if not frequency:	# e.g., channel identifier not yet known
             return
+        self.update_talkgroup(frequency, tgid, tdma_slot)
         if frequency not in self.voice_frequencies:
             self.voice_frequencies[frequency] = {'counter':0}
-        self.voice_frequencies[frequency]['tgid'] = tgid
+        if tdma_slot is None:
+            tdma_slot = 0
+        if 'tgid' not in self.voice_frequencies[frequency]:
+            self.voice_frequencies[frequency]['tgid'] = [None, None]
+        self.voice_frequencies[frequency]['tgid'][tdma_slot] = tgid
         self.voice_frequencies[frequency]['counter'] += 1
         self.voice_frequencies[frequency]['time'] = time.time()
-        self.voice_frequencies[frequency]['slot'] = tdma_slot
 
-    def get_updated_talkgroup_frequencies(self, start_time):
-        updated_talkgroup_frequencies = []
-        for frequency in self.voice_frequencies:
-            if self.voice_frequencies[frequency]['time'] < start_time:
+    def get_updated_talkgroups(self, start_time):
+        return [tgid for tgid in self.talkgroups if (
+                       self.talkgroups[tgid]['time'] >= start_time and
+                       tgid not in self.blacklist and
+                       not (self.whitelist and tgid not in self.whitelist))]
+
+    def find_talkgroup(self, start_time, tgid=None):
+        if tgid is not None and tgid in self.talkgroups and self.talkgroups[tgid]['time'] >= start_time:
+            return self.talkgroups[tgid]['frequency'], tgid, self.talkgroups[tgid]['tdma_slot']
+        for active_tgid in self.talkgroups:
+            if self.talkgroups[active_tgid]['time'] < start_time:
                 continue
-            active_tgid = self.voice_frequencies[frequency]['tgid']
             if active_tgid in self.blacklist:
                 continue
             if self.whitelist and active_tgid not in self.whitelist:
                 continue
-            updated_talkgroup_frequencies.append(frequency)
-        return updated_talkgroup_frequencies
-
-    def find_voice_frequency(self, start_time, tgid=None):
-        for frequency in self.voice_frequencies:
-            if self.voice_frequencies[frequency]['time'] < start_time:
+            if self.talkgroups[active_tgid]['tdma_slot'] is not None and (self.ns_syid < 0 or self.ns_wacn < 0):
                 continue
-            active_tgid = self.voice_frequencies[frequency]['tgid']
-            if active_tgid in self.blacklist:
-                continue
-            if self.whitelist and active_tgid not in self.whitelist:
-                continue
-            if self.voice_frequencies[frequency]['slot'] is not None and (self.ns_syid < 0 or self.ns_wacn < 0):
-                continue
-            if tgid is None or tgid == active_tgid:
-                return frequency, active_tgid, self.voice_frequencies[frequency]['slot']
+            if tgid is None:
+                return self.talkgroups[active_tgid]['frequency'], active_tgid, self.talkgroups[active_tgid]['tdma_slot']
         return None, None, None
 
     def add_blacklist(self, tgid):
@@ -174,6 +193,8 @@ class trunked_system (object):
         self.blacklist[tgid] = 1
 
     def decode_mbt_data(self, opcode, header, mbt_data):
+        self.cc_timeouts = 0
+        self.last_tsbk = time.time()
         if self.debug > 10:
             print "decode_mbt_data: %x %x" %(opcode, mbt_data)
 	if opcode == 0x0:  # grp voice channel grant
@@ -227,6 +248,7 @@ class trunked_system (object):
 	#	print "mbt other %x" % opcode
 
     def decode_tsbk(self, tsbk):
+        self.cc_timeouts = 0
 	self.stats['tsbks'] += 1
         updated = 0
 #	if crc16(tsbk, 12) != 0:
@@ -387,6 +409,20 @@ class trunked_system (object):
 	#	print "tsbk other %x" % opcode
         return updated
 
+    def hunt_cc(self, curr_time):
+        if self.cc_timeouts < 6:
+            return
+        self.cc_timeouts = 0
+        self.cc_list_index += 1
+        if self.cc_list_index >= len(self.cc_list):
+            self.cc_list_index = 0
+        self.trunk_cc = self.cc_list[self.cc_list_index]
+        print '%f set trunk_cc to %s' % (curr_time, self.trunk_cc)
+
+def get_int_dict(s):
+    if s[0].isdigit():
+        return dict.fromkeys([int(d) for d in s.split(',')])
+    return dict.fromkeys([int(d) for d in open(s).readlines()])
 
 class rx_ctl (object):
     def __init__(self, debug=0, frequency_set=None, conf_file=None, logfile_workers=None):
@@ -413,6 +449,11 @@ class rx_ctl (object):
         self.P2_GRACE_TIME = 1.0	# TODO: make more configurable
         self.logfile_workers = logfile_workers
         self.active_talkgroups = {}
+        self.working_frequencies = {}
+        self.xor_cache = {}
+        self.last_garbage_collect = 0
+        if self.logfile_workers:
+            self.input_rate = self.logfile_workers[0]['demod'].input_rate
 
         if conf_file:
             if conf_file.endswith('.tsv'):
@@ -424,6 +465,11 @@ class rx_ctl (object):
             self.current_state = self.states.CC
 
             tsys = self.trunked_systems[self.current_nac]
+
+            if self.logfile_workers and tsys.modulation == 'c4fm':
+                for worker in self.logfile_workers:
+                    worker['demod'].connect_chain('fsk4')
+
             self.set_frequency({
 		'freq':   tsys.trunk_cc,
 		'tgid':   None,
@@ -502,10 +548,9 @@ class rx_ctl (object):
                 self.configs[nac]['modulation'] = configs[nac]['modulation']
             else:
                 self.configs[nac]['modulation'] = 'cqpsk'
-            if 'whitelist' in configs[nac]:
-                self.configs[nac]['whitelist'] = dict.fromkeys([int(d) for d in configs[nac]['whitelist'].split(',')])
-            if 'blacklist' in configs[nac]:
-                self.configs[nac]['blacklist'] = dict.fromkeys([int(d) for d in configs[nac]['blacklist'].split(',')])
+            for k in ['whitelist', 'blacklist']:
+                if k in configs[nac]:
+                    self.configs[nac][k] = get_int_dict(configs[nac][k])
             if 'tgid_tags_file' in configs[nac]:
                 import csv
                 with open(configs[nac]['tgid_tags_file'], 'rb') as csvfile:
@@ -545,6 +590,8 @@ class rx_ctl (object):
         elif type == -1:	# timeout
             print "process_data_unit timeout"
             self.update_state('timeout', curr_time)
+            if self.logfile_workers:
+                self.logging_scheduler(curr_time)
             return
         elif type < 0:
             print 'unknown message type %d' % (type)
@@ -587,7 +634,7 @@ class rx_ctl (object):
             return
 
         if self.logfile_workers:
-            self.update_logging_state(curr_time)
+            self.logging_scheduler(curr_time)
             return
 
         if updated:
@@ -602,51 +649,102 @@ class rx_ctl (object):
                 return worker
         return None
 
-    def update_logging_state(self, curr_time):
+    def free_frequency(self, frequency, curr_time):
+        assert not self.working_frequencies[frequency]['tgids']
+        self.working_frequencies[frequency]['worker']['demod'].set_relative_frequency(0)
+        self.working_frequencies[frequency]['worker']['active'] = False
+        self.working_frequencies.pop(frequency)
+        print '%f release worker frequency %d' % (curr_time, frequency)
+
+    def free_talkgroup(self, frequency, tgid, curr_time):
+        decoder = self.working_frequencies[frequency]['worker']['decoder']
+        tdma_slot = self.working_frequencies[frequency]['tgids'][tgid]['tdma_slot']
+        index = tdma_slot
+        if tdma_slot is None:
+            index = 0
+        filename = 'idle-channel-%d-%d-%f.wav' % (frequency, index, curr_time)
+        decoder.set_output(filename, index=index)
+        self.working_frequencies[frequency]['tgids'].pop(tgid)
+        print '%f release tgid %d frequency %d' % (curr_time, tgid, frequency)
+
+    def logging_scheduler(self, curr_time):
         tsys = self.trunked_systems[self.current_nac]
-        freqs = tsys.get_updated_talkgroup_frequencies(curr_time)
-        for frequency in freqs:
-            tgid = tsys.voice_frequencies[frequency]['tgid']
-            relative_freq = tsys.center_frequency - frequency
-
-            if tgid in self.active_talkgroups:
-                self.active_talkgroups[tgid]['updated'] = curr_time
-                self.active_talkgroups[tgid]['worker']['demod'].set_relative_frequency(relative_freq)
+        for tgid in tsys.get_updated_talkgroups(curr_time):
+            frequency = tsys.talkgroups[tgid]['frequency']
+            tdma_slot = tsys.talkgroups[tgid]['tdma_slot']
+            # see if this tgid active on any other freq(s)
+            other_freqs = [f for f in self.working_frequencies if f != frequency and tgid in self.working_frequencies[f]['tgids']]
+            if other_freqs:
+                print '%f tgid %d slot %s frequency %d found on other frequencies %s' % (curr_time, tgid, tdma_slot, frequency, ','.join(['%s' % f for f in other_freqs]))
+                for f in other_freqs:
+                    self.free_talkgroup(f, tgid, curr_time)
+                    if not self.working_frequencies[f]['tgids']:
+                        self.free_frequency(f, curr_time)
+            diff = abs(tsys.center_frequency - frequency)
+            if diff > self.input_rate/2:
+                #print '%f request for frequency %d tgid %d failed, offset %d exceeds maximum %d' % (curr_time, frequency, tgid, diff, self.input_rate/2)
                 continue
 
-            worker = self.find_available_worker()
-            if worker is None:
-                print '*** error, no free demodulators, freq %d tgid %d' % (frequency, tgid)
+            update = True
+            if frequency in self.working_frequencies:
+                tgids = self.working_frequencies[frequency]['tgids']
+                if tgid in tgids:
+                    if tgids[tgid]['tdma_slot'] == tdma_slot:
+                        update = False
+                    else:
+                        print '%f slot switch %s was %s tgid %d frequency %d' % (curr_time, tdma_slot, tgids[tgid]['tdma_slot'], tgid, frequency)
+                        worker = self.working_frequencies[frequency]['worker']
+                else:
+                    #active_tdma_slots = [tgids[tg]['tdma_slot'] for tg in tgids]
+                    print '%f new tgid %d slot %s arriving on already active frequency %d' % (curr_time, tgid, tdma_slot, frequency)
+                    worker = self.working_frequencies[frequency]['worker']
+            else:
+                worker = self.find_available_worker()
+                if worker is None:
+                    print '*** error, no free demodulators, freq %d tgid %d' % (frequency, tgid)
+                    continue
+                self.working_frequencies[frequency] = {'tgids' : {}, 'worker': worker}
+                worker['demod'].set_relative_frequency(tsys.center_frequency - frequency)
+                print '%f starting worker frequency %d tg %d slot %s' % (curr_time, frequency, tgid, tdma_slot)
+            self.working_frequencies[frequency]['tgids'][tgid] = {'updated': curr_time, 'tdma_slot': tdma_slot}
+            if not update:
                 continue
-
-            self.active_talkgroups[tgid] = {}
-            self.active_talkgroups[tgid]['updated'] = curr_time
-            self.active_talkgroups[tgid]['worker'] = worker
+            filename = 'tgid-%d-%f.wav' % (tgid, curr_time)
+            print '%f update frequency %d tg %d slot %s file %s' % (curr_time, frequency, tgid, tdma_slot, filename)
+            # set demod speed, decoder slot, output file name
             demod = worker['demod']
             decoder = worker['decoder']
-            demod.set_relative_frequency(relative_freq)
             symbol_rate = 4800
 
-            if tsys.voice_frequencies[frequency]['slot'] is not None:
+            if tdma_slot is None:
+                index = 0
+            else:
+                index = tdma_slot
                 symbol_rate = 6000
-                demod.set_tdma_slotid(tsys.voice_frequencies[frequency]['slot'])
-                demod.set_tdma_parameters(self.current_nac, tsys.ns_syid, tsys.ns_wacn)
-
+                xorhash = '%x%x%x' % (self.current_nac, tsys.ns_syid, tsys.ns_wacn)
+                if xorhash not in self.xor_cache:
+                    self.xor_cache[xorhash] = lfsr.p25p2_lfsr(self.current_nac, tsys.ns_syid, tsys.ns_wacn).xor_chars
+                decoder.set_xormask(self.xor_cache[xorhash], xorhash, index=index)
             demod.set_omega(symbol_rate)
+            decoder.set_output(filename, index=index)
 
-            filename = 'tgid-%d-%f.wav' % (tgid, curr_time)
-            decoder.set_output(tsys.voice_frequencies[frequency]['slot'], filename)
+        # garbage collection
+        if self.last_garbage_collect + 1 > curr_time:
+            return
+        self.last_garbage_collect = curr_time
 
-        # look for inactive talkgroups
-        timeout_groups = []
-        for tgid in self.active_talkgroups:
-            if self.active_talkgroups[tgid]['updated'] + self.TGID_HOLD_TIME < curr_time:
-                timeout_groups.append(tgid)
-        for tgid in timeout_groups:
-            print '%f release %d' % (time.time(), tgid)
-            self.active_talkgroups[tgid]['worker']['decoder'].close_file()
-            self.active_talkgroups[tgid]['worker']['active'] = False
-            self.active_talkgroups.pop(tgid)
+        gc_frequencies = []
+        gc_tgids = []
+        for frequency in self.working_frequencies:
+            tgids = self.working_frequencies[frequency]['tgids']
+            inactive_tgids = [[frequency, tgid] for tgid in tgids if tgids[tgid]['updated'] + self.TGID_HOLD_TIME < curr_time]
+            if len(inactive_tgids) == len(tgids):
+                gc_frequencies += [frequency]
+            gc_tgids += inactive_tgids
+        for frequency, tgid in gc_tgids:	# expire talkgroups
+            self.free_talkgroup(frequency, tgid, curr_time)
+        for frequency in gc_frequencies:	# expire working frequencies
+            self.free_frequency(frequency, curr_time)
 
     def update_state(self, command, curr_time):
         if not self.configs:
@@ -662,7 +760,9 @@ class rx_ctl (object):
         new_slot = None
 
         if command == 'timeout' or command == 'duid15':
-            if self.current_state != self.states.CC and curr_time - self.last_tdma_vf > self.P2_GRACE_TIME:
+            if self.current_state == self.states.CC:
+                tsys.cc_timeouts += 1
+            elif self.current_state != self.states.CC and curr_time - self.last_tdma_vf > self.P2_GRACE_TIME:
                 new_state = self.states.CC
                 new_frequency = tsys.trunk_cc
         elif command == 'update':
@@ -670,7 +770,7 @@ class rx_ctl (object):
                 desired_tgid = None
                 if self.tgid_hold_until > curr_time:
                     desired_tgid = self.tgid_hold
-                new_frequency, new_tgid, tdma_slot = tsys.find_voice_frequency(curr_time, tgid=desired_tgid)
+                new_frequency, new_tgid, tdma_slot = tsys.find_talkgroup(curr_time, tgid=desired_tgid)
                 if new_frequency:
                     new_state = self.states.TO_VC
                     self.current_tgid = new_tgid
@@ -713,6 +813,8 @@ class rx_ctl (object):
         else:
             print 'update_state: unknown command: %s\n' % command
             assert 0 == 1
+
+        tsys.hunt_cc(curr_time)
 
         if self.wait_until <= curr_time and self.tgid_hold_until <= curr_time and new_state is None:
             self.wait_until = curr_time + self.TSYS_HOLD_TIME
