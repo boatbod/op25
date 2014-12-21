@@ -23,21 +23,22 @@
 
 import sys
 import time
+import collections
 sys.path.append('tdma')
 import lfsr
 
 def crc16(dat,len):	# slow version
-        poly = (1<<12) + (1<<5) + (1<<0)
-        crc = 0
-        for i in range(len):
-                bits = (dat >> (((len-1)-i)*8)) & 0xff
-                for j in range(8):
-                        bit = (bits >> (7-j)) & 1
-                        crc = ((crc << 1) | bit) & 0x1ffff
-                        if crc & 0x10000:
-                                crc = (crc & 0xffff) ^ poly
-        crc = crc ^ 0xffff
-        return crc
+    poly = (1<<12) + (1<<5) + (1<<0)
+    crc = 0
+    for i in range(len):
+        bits = (dat >> (((len-1)-i)*8)) & 0xff
+        for j in range(8):
+            bit = (bits >> (7-j)) & 1
+            crc = ((crc << 1) | bit) & 0x1ffff
+            if crc & 0x10000:
+                crc = (crc & 0xffff) ^ poly
+    crc = crc ^ 0xffff
+    return crc
 
 def get_frequency(f):	# return frequency in Hz
     if f.find('.') == -1:	# assume in Hz
@@ -47,38 +48,38 @@ def get_frequency(f):	# return frequency in Hz
 
 class trunked_system (object):
     def __init__(self, debug=0, config=None):
-	self.debug = debug
-	self.freq_table = {}
-	self.stats = {}
-	self.stats['tsbks'] = 0
-	self.stats['crc'] = 0
-	self.tsbk_cache = {}
-	self.secondary = {}
-	self.adjacent = {}
-	self.rfss_syid = 0
-	self.rfss_rfid = 0
-	self.rfss_stid = 0
-	self.rfss_chan = 0
-	self.rfss_txchan = 0
-	self.ns_syid = -1
-	self.ns_wacn = -1
-	self.ns_chan = 0
-	self.voice_frequencies = {}
-	self.blacklist = {}
-	self.whitelist = None
-	self.tgid_map = {}
-	self.offset = 0
-	self.sysname = 0
+        self.debug = debug
+        self.freq_table = {}
+        self.stats = {}
+        self.stats['tsbks'] = 0
+        self.stats['crc'] = 0
+        self.tsbk_cache = {}
+        self.secondary = {}
+        self.adjacent = {}
+        self.rfss_syid = 0
+        self.rfss_rfid = 0
+        self.rfss_stid = 0
+        self.rfss_chan = 0
+        self.rfss_txchan = 0
+        self.ns_syid = -1
+        self.ns_wacn = -1
+        self.ns_chan = 0
+        self.voice_frequencies = {}
+        self.blacklist = {}
+        self.whitelist = None
+        self.tgid_map = {}
+        self.offset = 0
+        self.sysname = 0
 
-	self.trunk_cc = 0
-	self.cc_list = []
-	self.cc_list_index = 0
+        self.trunk_cc = 0
+        self.cc_list = []
+        self.cc_list_index = 0
         self.CC_HUNT_TIME = 5.0
-	self.center_frequency = 0
-	self.last_tsbk = 0
+        self.center_frequency = 0
+        self.last_tsbk = 0
         self.cc_timeouts = 0
 
-	self.talkgroups = {}
+        self.talkgroups = {}
         if config:
             self.blacklist = config['blacklist']
             self.whitelist = config['whitelist']
@@ -96,12 +97,12 @@ class trunked_system (object):
         s.append('net: syid %x wacn %x frequency %f' % ( self.ns_syid, self.ns_wacn, float(self.ns_chan) / 1000000.0))
         s.append('secondary control channel(s): %s' % ','.join(['%f' % (float(k) / 1000000.0) for k in self.secondary.keys()]))
         s.append('stats: tsbks %d crc %d' % (self.stats['tsbks'], self.stats['crc']))
-	s.append('')
+        s.append('')
         t = time.time()
         for f in self.voice_frequencies:
             tgs = '%s %s' % (self.voice_frequencies[f]['tgid'][0], self.voice_frequencies[f]['tgid'][1])
             s.append('voice frequency %f tgid(s) %s %4.1fs ago count %d' %  (f / 1000000.0, tgs, t - self.voice_frequencies[f]['time'], self.voice_frequencies[f]['counter']))
-	s.append('')
+        s.append('')
         for table in self.freq_table:
             a = self.freq_table[table]['frequency'] / 1000000.0
             b = self.freq_table[table]['step'] / 1000000.0
@@ -113,28 +114,28 @@ class trunked_system (object):
         return '\n'.join(s)
 
     def get_tdma_slot(self, id):
-	table = (id >> 12) & 0xf
-	channel = id & 0xfff
-	if table not in self.freq_table:
-		return None
-	if 'tdma' not in self.freq_table[table]:
-		return None
-	return channel & 1
+        table = (id >> 12) & 0xf
+        channel = id & 0xfff
+        if table not in self.freq_table:
+            return None
+        if 'tdma' not in self.freq_table[table]:
+            return None
+        return channel & 1
 
 # return frequency in Hz
     def channel_id_to_frequency(self, id):
-	table = (id >> 12) & 0xf
-	channel = id & 0xfff
-	if table not in self.freq_table:
-		return None
-	if 'tdma' not in self.freq_table[table]:
-		return self.freq_table[table]['frequency'] + self.freq_table[table]['step'] * channel
-	return self.freq_table[table]['frequency'] + self.freq_table[table]['step'] * int(channel / self.freq_table[table]['tdma'])
+        table = (id >> 12) & 0xf
+        channel = id & 0xfff
+        if table not in self.freq_table:
+            return None
+        if 'tdma' not in self.freq_table[table]:
+            return self.freq_table[table]['frequency'] + self.freq_table[table]['step'] * channel
+        return self.freq_table[table]['frequency'] + self.freq_table[table]['step'] * int(channel / self.freq_table[table]['tdma'])
 
     def channel_id_to_string(self, id):
         f = self.channel_id_to_frequency(id)
         if f is None:
-		return "ID-0x%x" % (id)
+            return "ID-0x%x" % (id)
         return "%f" % (f / 1000000.0)
 
     def get_tag(self, tgid):
@@ -157,6 +158,8 @@ class trunked_system (object):
         self.update_talkgroup(frequency, tgid, tdma_slot)
         if frequency not in self.voice_frequencies:
             self.voice_frequencies[frequency] = {'counter':0}
+            sorted_freqs = collections.OrderedDict(sorted(self.voice_frequencies.items()))
+            self.voice_frequencies = sorted_freqs
         if tdma_slot is None:
             tdma_slot = 0
         if 'tgid' not in self.voice_frequencies[frequency]:
@@ -197,216 +200,217 @@ class trunked_system (object):
         self.last_tsbk = time.time()
         if self.debug > 10:
             print "decode_mbt_data: %x %x" %(opcode, mbt_data)
-	if opcode == 0x0:  # grp voice channel grant
-		ch1  = (mbt_data >> 64) & 0xffff
-		ch2  = (mbt_data >> 48) & 0xffff
-		ga   = (mbt_data >> 32) & 0xffff
-		if self.debug > 10:
-			print "mbt00 voice grant ch1 %x ch2 %x addr 0x%x" %(ch1, ch2, ga)
-	elif opcode == 0x3c:  # adjacent status
-		syid = (header >> 48) & 0xfff
-		rfid = (header >> 24) & 0xff
-		stid = (header >> 16) & 0xff
-		ch1  = (mbt_data >> 80) & 0xffff
-		ch2  = (mbt_data >> 64) & 0xffff
-		f1 = self.channel_id_to_frequency(ch1)
-		f2 = self.channel_id_to_frequency(ch2)
-		if f1 and f2:
-			self.adjacent[f1] = 'rfid: %d stid:%d uplink:%f' % (rfid, stid, f2 / 1000000.0)
-		if self.debug > 10:
-			print "mbt3c adjacent sys %x rfid %x stid %x ch1 %x ch2 %x f1 %s f2 %s" %(syid, rfid, stid, ch1, ch2, self.channel_id_to_string(ch1), self.channel_id_to_string(ch2))
-	elif opcode == 0x3b:  # network status
-		syid = (header >> 48) & 0xfff
-		wacn = (mbt_data >> 76) & 0xfffff
-		ch1  = (mbt_data >> 56) & 0xffff
-		ch2  = (mbt_data >> 40) & 0xffff
-		f1 = self.channel_id_to_frequency(ch1)
-		f2 = self.channel_id_to_frequency(ch2)
-		if f1 and f2:
-			self.ns_syid = syid
-			self.ns_wacn = wacn
-			self.ns_chan = f1
-		if self.debug > 10:
-			print "mbt3b net stat sys %x wacn %x ch1 %s ch2 %s" %(syid, wacn, self.channel_id_to_string(ch1), self.channel_id_to_string(ch2))
-	elif opcode == 0x3a:  # rfss status
-		syid = (header >> 48) & 0xfff
-		rfid = (mbt_data >> 88) & 0xff
-		stid = (mbt_data >> 80) & 0xff
-		ch1  = (mbt_data >> 64) & 0xffff
-		ch2  = (mbt_data >> 48) & 0xffff
-		f1 = self.channel_id_to_frequency(ch1)
-		f2 = self.channel_id_to_frequency(ch2)
-		if f1 and f2:
-			self.rfss_syid = syid
-			self.rfss_rfid = rfid
-			self.rfss_stid = stid
-			self.rfss_chan = f1
-			self.rfss_txchan = f2
-		if self.debug > 10:
-			print "mbt3a rfss stat sys %x rfid %x stid %x ch1 %s ch2 %s" %(syid, rfid, stid, self.channel_id_to_string(ch1), self.channel_id_to_string(ch2))
-	#else:
-	#	print "mbt other %x" % opcode
+        if opcode == 0x0:  # grp voice channel grant
+            ch1  = (mbt_data >> 64) & 0xffff
+            ch2  = (mbt_data >> 48) & 0xffff
+            ga   = (mbt_data >> 32) & 0xffff
+            if self.debug > 10:
+                print "mbt00 voice grant ch1 %x ch2 %x addr 0x%x" %(ch1, ch2, ga)
+        elif opcode == 0x3c:  # adjacent status
+            syid = (header >> 48) & 0xfff
+            rfid = (header >> 24) & 0xff
+            stid = (header >> 16) & 0xff
+            ch1  = (mbt_data >> 80) & 0xffff
+            ch2  = (mbt_data >> 64) & 0xffff
+            f1 = self.channel_id_to_frequency(ch1)
+            f2 = self.channel_id_to_frequency(ch2)
+            if f1 and f2:
+                self.adjacent[f1] = 'rfid: %d stid:%d uplink:%f' % (rfid, stid, f2 / 1000000.0)
+            if self.debug > 10:
+                print "mbt3c adjacent sys %x rfid %x stid %x ch1 %x ch2 %x f1 %s f2 %s" %(syid, rfid, stid, ch1, ch2, self.channel_id_to_string(ch1), self.channel_id_to_string(ch2))
+        elif opcode == 0x3b:  # network status
+            syid = (header >> 48) & 0xfff
+            wacn = (mbt_data >> 76) & 0xfffff
+            ch1  = (mbt_data >> 56) & 0xffff
+            ch2  = (mbt_data >> 40) & 0xffff
+            f1 = self.channel_id_to_frequency(ch1)
+            f2 = self.channel_id_to_frequency(ch2)
+            if f1 and f2:
+                self.ns_syid = syid
+                self.ns_wacn = wacn
+                self.ns_chan = f1
+            if self.debug > 10:
+                print "mbt3b net stat sys %x wacn %x ch1 %s ch2 %s" %(syid, wacn, self.channel_id_to_string(ch1), self.channel_id_to_string(ch2))
+        elif opcode == 0x3a:  # rfss status
+            syid = (header >> 48) & 0xfff
+            rfid = (mbt_data >> 88) & 0xff
+            stid = (mbt_data >> 80) & 0xff
+            ch1  = (mbt_data >> 64) & 0xffff
+            ch2  = (mbt_data >> 48) & 0xffff
+            f1 = self.channel_id_to_frequency(ch1)
+            f2 = self.channel_id_to_frequency(ch2)
+            if f1 and f2:
+                self.rfss_syid = syid
+                self.rfss_rfid = rfid
+                self.rfss_stid = stid
+                self.rfss_chan = f1
+                self.rfss_txchan = f2
+            if self.debug > 10:
+                print "mbt3a rfss stat sys %x rfid %x stid %x ch1 %s ch2 %s" %(syid, rfid, stid, self.channel_id_to_string(ch1), self.channel_id_to_string(ch2))
+        #else:
+        #    print "mbt other %x" % opcode
 
     def decode_tsbk(self, tsbk):
         self.cc_timeouts = 0
-	self.stats['tsbks'] += 1
+        self.stats['tsbks'] += 1
         updated = 0
-#	if crc16(tsbk, 12) != 0:
-#		self.stats['crc'] += 1
-#		return	# crc check failed
-	tsbk = tsbk << 16	# for missing crc
-	opcode = (tsbk >> 88) & 0x3f
-	if self.debug > 10:
-		print "TSBK: 0x%02x 0x%024x" % (opcode, tsbk)
-	if opcode == 0x00:   # group voice chan grant
-		mfrid  = (tsbk >> 80) & 0xff
-		opts  = (tsbk >> 72) & 0xff
-		ch   = (tsbk >> 56) & 0xffff
-		ga   = (tsbk >> 40) & 0xffff
-		sa   = (tsbk >> 16) & 0xffffff
-		if mfrid == 0x90:
-			pass
-		else:
-			if self.debug > 10:
-				f1 = self.channel_id_to_frequency(ch)
-				if f1 == None: f1 = 0
-				print "tsbk00 ch%x freq %f ga %x sa %x" % (ch, f1 / 1000000.0, ga, sa)
-				
-	elif opcode == 0x02:   # group voice chan grant update
-		mfrid  = (tsbk >> 80) & 0xff
-		ch1  = (tsbk >> 64) & 0xffff
-		ga1  = (tsbk >> 48) & 0xffff
-		ch2  = (tsbk >> 32) & 0xffff
-		ga2  = (tsbk >> 16) & 0xffff
-		if mfrid == 0x90:
-			if self.debug > 10:
-				ch1  = (tsbk >> 56) & 0xffff
-				f1 = self.channel_id_to_frequency(ch1)
-				if f1 == None: f1 = 0
-				print "tsbk02[90] %x %f" % (ch1, f1 / 1000000.0)
-		else:
-			f1 = self.channel_id_to_frequency(ch1)
-			f2 = self.channel_id_to_frequency(ch2)
-			self.update_voice_frequency(f1, tgid=ga1, tdma_slot=self.get_tdma_slot(ch1))
-			if f1 != f2:
-				self.update_voice_frequency(f2, tgid=ga2, tdma_slot=self.get_tdma_slot(ch2))
-			if f1:
-				updated += 1
-			if f2:
-				updated += 1
-			if self.debug > 10:
-				print "tsbk02 grant update: chan %s %d %s %d" %(self.channel_id_to_string(ch1), ga1, self.channel_id_to_string(ch2), ga2)
-	elif opcode == 0x16:   # sndcp data ch
-		ch1  = (tsbk >> 48) & 0xffff
-		ch2  = (tsbk >> 32) & 0xffff
-		if self.debug > 10:
-			print "tsbk16 sndcp data ch: chan %x %x" %(ch1, ch2)
-	elif opcode == 0x34:   # iden_up vhf uhf
-		iden = (tsbk >> 76) & 0xf
-		bwvu = (tsbk >> 72) & 0xf
-		toff0 = (tsbk >> 58) & 0x3fff
-		spac = (tsbk >> 48) & 0x3ff
-		freq = (tsbk >> 16) & 0xffffffff
-		toff_sign = (toff0 >> 13) & 1
-		toff = toff0 & 0x1fff
-		if toff_sign == 0:
-			toff = 0 - toff
-		txt = ["mob Tx-", "mob Tx+"]
-		self.freq_table[iden] = {}
-		self.freq_table[iden]['offset'] = toff * spac * 125
-		self.freq_table[iden]['step'] = spac * 125
-		self.freq_table[iden]['frequency'] = freq * 5
-		if self.debug > 10:
-			print "tsbk34 iden vhf/uhf id %d toff %f spac %f freq %f [%s]" % (iden, toff * spac * 0.125 * 1e-3, spac * 0.125, freq * 0.000005, txt[toff_sign])
-	elif opcode == 0x33:   # iden_up_tdma
-		mfrid  = (tsbk >> 80) & 0xff
-		if mfrid == 0:
-			iden = (tsbk >> 76) & 0xf
-			channel_type = (tsbk >> 72) & 0xf
-			toff0 = (tsbk >> 58) & 0x3fff
-			spac = (tsbk >> 48) & 0x3ff
-			toff_sign = (toff0 >> 13) & 1
-			toff = toff0 & 0x1fff
-			if toff_sign == 0:
-				toff = 0 - toff
-			f1   = (tsbk >> 16) & 0xffffffff
-			slots_per_carrier = [1,1,1,2,4,2]
-			self.freq_table[iden] = {}
-			self.freq_table[iden]['offset'] = toff * spac * 125
-			self.freq_table[iden]['step'] = spac * 125
-			self.freq_table[iden]['frequency'] = f1 * 5
-			self.freq_table[iden]['tdma'] = slots_per_carrier[channel_type]
-			if self.debug > 10:
-				print "tsbk33 iden up tdma id %d f %d offset %d spacing %d slots/carrier %d" % (iden, self.freq_table[iden]['frequency'], self.freq_table[iden]['offset'], self.freq_table[iden]['step'], self.freq_table[iden]['tdma'])
+        #if crc16(tsbk, 12) != 0:
+        #    self.stats['crc'] += 1
+        #    return	# crc check failed
+        tsbk = tsbk << 16	# for missing crc
+        opcode = (tsbk >> 88) & 0x3f
+        if self.debug > 10:
+            print "TSBK: 0x%02x 0x%024x" % (opcode, tsbk)
+        if opcode == 0x00:   # group voice chan grant
+            mfrid  = (tsbk >> 80) & 0xff
+            opts  = (tsbk >> 72) & 0xff
+            ch   = (tsbk >> 56) & 0xffff
+            ga   = (tsbk >> 40) & 0xffff
+            sa   = (tsbk >> 16) & 0xffffff
+            if mfrid == 0x90:
+                pass
+            else:
+                if self.debug > 10:
+                    f1 = self.channel_id_to_frequency(ch)
+                    if f1 == None: f1 = 0
+                    print "tsbk00 ch%x freq %f ga %x sa %x" % (ch, f1 / 1000000.0, ga, sa)
+        elif opcode == 0x02:   # group voice chan grant update
+            mfrid  = (tsbk >> 80) & 0xff
+            ch1  = (tsbk >> 64) & 0xffff
+            ga1  = (tsbk >> 48) & 0xffff
+            ch2  = (tsbk >> 32) & 0xffff
+            ga2  = (tsbk >> 16) & 0xffff
+            if mfrid == 0x90:
+                if self.debug > 10:
+                    ch1  = (tsbk >> 56) & 0xffff
+                    f1 = self.channel_id_to_frequency(ch1)
+                    if f1 == None: f1 = 0
+                    print "tsbk02[90] %x %f" % (ch1, f1 / 1000000.0)
+            else:
+                f1 = self.channel_id_to_frequency(ch1)
+                f2 = self.channel_id_to_frequency(ch2)
+                self.update_voice_frequency(f1, tgid=ga1, tdma_slot=self.get_tdma_slot(ch1))
+                if f1 != f2:
+                    self.update_voice_frequency(f2, tgid=ga2, tdma_slot=self.get_tdma_slot(ch2))
+                if f1:
+                    updated += 1
+                if f2:
+                    updated += 1
+                if self.debug > 10:
+                    print "tsbk02 grant update: chan %s %d %s %d" %(self.channel_id_to_string(ch1), ga1, self.channel_id_to_string(ch2), ga2)
+        elif opcode == 0x16:   # sndcp data ch
+            ch1  = (tsbk >> 48) & 0xffff
+            ch2  = (tsbk >> 32) & 0xffff
+            if self.debug > 10:
+                print "tsbk16 sndcp data ch: chan %x %x" %(ch1, ch2)
+        elif opcode == 0x34:   # iden_up vhf uhf
+            iden = (tsbk >> 76) & 0xf
+            bwvu = (tsbk >> 72) & 0xf
+            toff0 = (tsbk >> 58) & 0x3fff
+            spac = (tsbk >> 48) & 0x3ff
+            freq = (tsbk >> 16) & 0xffffffff
+            toff_sign = (toff0 >> 13) & 1
+            toff = toff0 & 0x1fff
+            if toff_sign == 0:
+                toff = 0 - toff
+            txt = ["mob Tx-", "mob Tx+"]
+            self.freq_table[iden] = {}
+            self.freq_table[iden]['offset'] = toff * spac * 125
+            self.freq_table[iden]['step'] = spac * 125
+            self.freq_table[iden]['frequency'] = freq * 5
+            if self.debug > 10:
+                print "tsbk34 iden vhf/uhf id %d toff %f spac %f freq %f [%s]" % (iden, toff * spac * 0.125 * 1e-3, spac * 0.125, freq * 0.000005, txt[toff_sign])
+        elif opcode == 0x33:   # iden_up_tdma
+            mfrid  = (tsbk >> 80) & 0xff
+            if mfrid == 0:
+                iden = (tsbk >> 76) & 0xf
+                channel_type = (tsbk >> 72) & 0xf
+                toff0 = (tsbk >> 58) & 0x3fff
+                spac = (tsbk >> 48) & 0x3ff
+                toff_sign = (toff0 >> 13) & 1
+                toff = toff0 & 0x1fff
+                if toff_sign == 0:
+                    toff = 0 - toff
+                f1   = (tsbk >> 16) & 0xffffffff
+                slots_per_carrier = [1,1,1,2,4,2]
+                self.freq_table[iden] = {}
+                self.freq_table[iden]['offset'] = toff * spac * 125
+                self.freq_table[iden]['step'] = spac * 125
+                self.freq_table[iden]['frequency'] = f1 * 5
+                self.freq_table[iden]['tdma'] = slots_per_carrier[channel_type]
+                if self.debug > 10:
+                    print "tsbk33 iden up tdma id %d f %d offset %d spacing %d slots/carrier %d" % (iden, self.freq_table[iden]['frequency'], self.freq_table[iden]['offset'], self.freq_table[iden]['step'], self.freq_table[iden]['tdma'])
 
-	elif opcode == 0x3d:   # iden_up
-		iden = (tsbk >> 76) & 0xf
-		bw   = (tsbk >> 67) & 0x1ff
-		toff0 = (tsbk >> 58) & 0x1ff
-		spac = (tsbk >> 48) & 0x3ff
-		freq = (tsbk >> 16) & 0xffffffff
-		toff_sign = (toff0 >> 8) & 1
-		toff = toff0 & 0xff
-		if toff_sign == 0:
-			toff = 0 - toff
-		txt = ["mob xmit < recv", "mob xmit > recv"]
-		self.freq_table[iden] = {}
-		self.freq_table[iden]['offset'] = toff * 250000
-		self.freq_table[iden]['step'] = spac * 125
-		self.freq_table[iden]['frequency'] = freq * 5
-		if self.debug > 10:
-			print "tsbk3d iden id %d toff %f spac %f freq %f" % (iden, toff * 0.25, spac * 0.125, freq * 0.000005)
-	elif opcode == 0x3a:   # rfss status
-		syid = (tsbk >> 56) & 0xfff
-		rfid = (tsbk >> 48) & 0xff
-		stid = (tsbk >> 40) & 0xff
-		chan = (tsbk >> 24) & 0xffff
-		f1 = self.channel_id_to_frequency(chan)
-		if f1:
-			self.rfss_syid = syid
-			self.rfss_rfid = rfid
-			self.rfss_stid = stid
-			self.rfss_chan = f1
-			self.rfss_txchan = f1 + self.freq_table[chan >> 12]['offset']
-		if self.debug > 10:
-			print "tsbk3a rfss status: syid: %x rfid %x stid %d ch1 %x(%s)" %(syid, rfid, stid, chan, self.channel_id_to_string(chan))
-	elif opcode == 0x39:   # secondary cc
-		rfid = (tsbk >> 72) & 0xff
-		stid = (tsbk >> 64) & 0xff
-		ch1  = (tsbk >> 48) & 0xffff
-		ch2  = (tsbk >> 24) & 0xffff
-		f1 = self.channel_id_to_frequency(ch1)
-		f2 = self.channel_id_to_frequency(ch2)
-		if f1 and f2:
-			self.secondary[ f1 ] = 1
-			self.secondary[ f2 ] = 1
-		if self.debug > 10:
-			print "tsbk39 secondary cc: rfid %x stid %d ch1 %x(%s) ch2 %x(%s)" %(rfid, stid, ch1, self.channel_id_to_string(ch1), ch2, self.channel_id_to_string(ch2))
-	elif opcode == 0x3b:   # network status
-		wacn = (tsbk >> 52) & 0xfffff
-		syid = (tsbk >> 40) & 0xfff
-		ch1  = (tsbk >> 24) & 0xffff
-		f1 = self.channel_id_to_frequency(ch1)
-		if f1:
-			self.ns_syid = syid
-			self.ns_wacn = wacn
-			self.ns_chan = f1
-		if self.debug > 10:
-			print "tsbk3b net stat: wacn %x syid %x ch1 %x(%s)" %(wacn, syid, ch1, self.channel_id_to_string(ch1))
-	elif opcode == 0x3c:   # adjacent status
-		rfid = (tsbk >> 48) & 0xff
-		stid = (tsbk >> 40) & 0xff
-		ch1  = (tsbk >> 24) & 0xffff
-		table = (ch1 >> 12) & 0xf
-		f1 = self.channel_id_to_frequency(ch1)
-		if f1 and table in self.freq_table:
-			self.adjacent[f1] = 'rfid: %d stid:%d uplink:%f tbl:%d' % (rfid, stid, (f1 + self.freq_table[table]['offset']) / 1000000.0, table)
-		if self.debug > 10:
-			print "tsbk3c adjacent: rfid %x stid %d ch1 %x(%s)" %(rfid, stid, ch1, self.channel_id_to_string(ch1))
-			if table in self.freq_table:
-			        print "tsbk3c : %s %s" % (self.freq_table[table]['frequency'] , self.freq_table[table]['step'] )
-	#else:
-	#	print "tsbk other %x" % opcode
+        elif opcode == 0x3d:   # iden_up
+            iden = (tsbk >> 76) & 0xf
+            bw   = (tsbk >> 67) & 0x1ff
+            toff0 = (tsbk >> 58) & 0x1ff
+            spac = (tsbk >> 48) & 0x3ff
+            freq = (tsbk >> 16) & 0xffffffff
+            toff_sign = (toff0 >> 8) & 1
+            toff = toff0 & 0xff
+            if toff_sign == 0:
+                toff = 0 - toff
+            txt = ["mob xmit < recv", "mob xmit > recv"]
+            self.freq_table[iden] = {}
+            self.freq_table[iden]['offset'] = toff * 250000
+            self.freq_table[iden]['step'] = spac * 125
+            self.freq_table[iden]['frequency'] = freq * 5
+            if self.debug > 10:
+                print "tsbk3d iden id %d toff %f spac %f freq %f" % (iden, toff * 0.25, spac * 0.125, freq * 0.000005)
+        elif opcode == 0x3a:   # rfss status
+            syid = (tsbk >> 56) & 0xfff
+            rfid = (tsbk >> 48) & 0xff
+            stid = (tsbk >> 40) & 0xff
+            chan = (tsbk >> 24) & 0xffff
+            f1 = self.channel_id_to_frequency(chan)
+            if f1:
+                self.rfss_syid = syid
+                self.rfss_rfid = rfid
+                self.rfss_stid = stid
+                self.rfss_chan = f1
+                self.rfss_txchan = f1 + self.freq_table[chan >> 12]['offset']
+            if self.debug > 10:
+                print "tsbk3a rfss status: syid: %x rfid %x stid %d ch1 %x(%s)" %(syid, rfid, stid, chan, self.channel_id_to_string(chan))
+        elif opcode == 0x39:   # secondary cc
+            rfid = (tsbk >> 72) & 0xff
+            stid = (tsbk >> 64) & 0xff
+            ch1  = (tsbk >> 48) & 0xffff
+            ch2  = (tsbk >> 24) & 0xffff
+            f1 = self.channel_id_to_frequency(ch1)
+            f2 = self.channel_id_to_frequency(ch2)
+            if f1 and f2:
+                self.secondary[ f1 ] = 1
+                self.secondary[ f2 ] = 1
+                sorted_freqs = collections.OrderedDict(sorted(self.secondary.items()))
+                self.secondary = sorted_freqs
+            if self.debug > 10:
+                print "tsbk39 secondary cc: rfid %x stid %d ch1 %x(%s) ch2 %x(%s)" %(rfid, stid, ch1, self.channel_id_to_string(ch1), ch2, self.channel_id_to_string(ch2))
+        elif opcode == 0x3b:   # network status
+            wacn = (tsbk >> 52) & 0xfffff
+            syid = (tsbk >> 40) & 0xfff
+            ch1  = (tsbk >> 24) & 0xffff
+            f1 = self.channel_id_to_frequency(ch1)
+            if f1:
+                self.ns_syid = syid
+                self.ns_wacn = wacn
+                self.ns_chan = f1
+            if self.debug > 10:
+                print "tsbk3b net stat: wacn %x syid %x ch1 %x(%s)" %(wacn, syid, ch1, self.channel_id_to_string(ch1))
+        elif opcode == 0x3c:   # adjacent status
+            rfid = (tsbk >> 48) & 0xff
+            stid = (tsbk >> 40) & 0xff
+            ch1  = (tsbk >> 24) & 0xffff
+            table = (ch1 >> 12) & 0xf
+            f1 = self.channel_id_to_frequency(ch1)
+            if f1 and table in self.freq_table:
+                self.adjacent[f1] = 'rfid: %d stid:%d uplink:%f tbl:%d' % (rfid, stid, (f1 + self.freq_table[table]['offset']) / 1000000.0, table)
+            if self.debug > 10:
+                print "tsbk3c adjacent: rfid %x stid %d ch1 %x(%s)" %(rfid, stid, ch1, self.channel_id_to_string(ch1))
+                if table in self.freq_table:
+                    print "tsbk3c : %s %s" % (self.freq_table[table]['frequency'] , self.freq_table[table]['step'] )
+            #else:
+            #	print "tsbk other %x" % opcode
         return updated
 
     def hunt_cc(self, curr_time):
@@ -471,16 +475,16 @@ class rx_ctl (object):
                     worker['demod'].connect_chain('fsk4')
 
             self.set_frequency({
-		'freq':   tsys.trunk_cc,
-		'tgid':   None,
-		'offset': tsys.offset,
-		'tag':    "",
-		'nac':    self.current_nac,
-		'system': tsys.sysname,
-		'center_frequency': tsys.center_frequency,
-		'tdma':   None, 
-		'wacn':   None, 
-		'sysid':  None})
+                'freq':   tsys.trunk_cc,
+                'tgid':   None,
+                'offset': tsys.offset,
+                'tag':    "",
+                'nac':    self.current_nac,
+                'system': tsys.sysname,
+                'center_frequency': tsys.center_frequency,
+                'tdma':   None, 
+                'wacn':   None, 
+                'sysid':  None})
 
     def set_frequency(self, params):
         frequency = params['freq']
@@ -528,9 +532,9 @@ class rx_ctl (object):
         config.read(config_filename)
         configs = {}
         for section in config.sections():
-            nac = int(config.get(section, 'nac'), 0) # nac required
-            assert nac != 0			# nac=0 not allowed
-            assert nac not in configs		# duplicate nac not allowed
+            nac = int(config.get(section, 'nac'), 0)	# nac required
+            assert nac != 0				# nac=0 not allowed
+            assert nac not in configs	# duplicate nac not allowed
             configs[nac] = {}
             for option in config.options(section):
                 configs[nac][option] = config.get(section, option).lower()
@@ -617,7 +621,7 @@ class rx_ctl (object):
             for c in s:
                 t = (t << 8) + ord(c)
             updated += self.trunked_systems[nac].decode_tsbk(t)
-	elif type == 12:	# trunk: MBT
+        elif type == 12:	# trunk: MBT
             s1 = s[:10]
             s2 = s[10:]
             header = mbt_data = 0
@@ -829,37 +833,37 @@ class rx_ctl (object):
 
         if new_frequency:
             self.set_frequency({
-		'freq':   new_frequency,
-		'tgid':   self.current_tgid,
-		'offset': tsys.offset,
-		'tag':    tsys.get_tag(self.current_tgid),
-		'nac':    nac,
-		'system': tsys.sysname,
-		'center_frequency': tsys.center_frequency,
-		'tdma':   new_slot, 
-		'wacn':   tsys.ns_wacn, 
-		'sysid':  tsys.ns_syid})
+                'freq':   new_frequency,
+                'tgid':   self.current_tgid,
+                'offset': tsys.offset,
+                'tag':    tsys.get_tag(self.current_tgid),
+                'nac':    nac,
+                'system': tsys.sysname,
+                'center_frequency': tsys.center_frequency,
+                'tdma':   new_slot, 
+                'wacn':   tsys.ns_wacn, 
+                'sysid':  tsys.ns_syid})
 
         if new_state:
             self.current_state = new_state
 
 def main():
-	q = 0x3a000012ae01013348704a54
-	rc = crc16(q,12)
-	print "should be zero: %x" % rc
-	assert rc == 0
+    q = 0x3a000012ae01013348704a54
+    rc = crc16(q,12)
+    print "should be zero: %x" % rc
+    assert rc == 0
 
-	q = 0x3a001012ae01013348704a54
-	rc = crc16(q,12)
-	print "should be nonzero: %x" % rc
-	assert rc != 0
+    q = 0x3a001012ae01013348704a54
+    rc = crc16(q,12)
+    print "should be nonzero: %x" % rc
+    assert rc != 0
 
-	t = trunked_system(debug=255)
-	q = 0x3a000012ae0101334870
-	t.decode_tsbk(q)
+    t = trunked_system(debug=255)
+    q = 0x3a000012ae0101334870
+    t.decode_tsbk(q)
 
-	q = 0x02900031210020018e7c
-	t.decode_tsbk(q)
+    q = 0x02900031210020018e7c
+    t.decode_tsbk(q)
 
 if __name__ == '__main__':
-	main()
+    main()
