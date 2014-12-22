@@ -18,8 +18,6 @@
 # Software Foundation, Inc., 51 Franklin Street, Boston, MA
 # 02110-1301, USA.
 #
-# FIXME: hideously mixes indentation, some is tabs and some is spaces
-#
 
 import sys
 import time
