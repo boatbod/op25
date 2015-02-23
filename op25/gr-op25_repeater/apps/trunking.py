@@ -261,30 +261,50 @@ class trunked_system (object):
             print "TSBK: 0x%02x 0x%024x" % (opcode, tsbk)
         if opcode == 0x00:   # group voice chan grant
             mfrid  = (tsbk >> 80) & 0xff
-            opts  = (tsbk >> 72) & 0xff
-            ch   = (tsbk >> 56) & 0xffff
-            ga   = (tsbk >> 40) & 0xffff
-            sa   = (tsbk >> 16) & 0xffffff
-            if mfrid == 0x90:
-                pass
-            else:
+            if mfrid == 0x90:	# MOT_GRG_ADD_CMD
+                sg  = (tsbk >> 64) & 0xffff
+                ga1   = (tsbk >> 48) & 0xffff
+                ga2   = (tsbk >> 32) & 0xffff
+                ga3   = (tsbk >> 16) & 0xffff
                 if self.debug > 10:
-                    f1 = self.channel_id_to_frequency(ch)
-                    if f1 == None: f1 = 0
-                    print "tsbk00 ch%x freq %f ga %x sa %x" % (ch, f1 / 1000000.0, ga, sa)
+                    print "MOT_GRG_ADD_CMD(0x00): sg:%d ga1:%d ga2:%d ga3:%d" % (sg, ga1, ga2, ga3)
+            else:
+                opts  = (tsbk >> 72) & 0xff
+                ch   = (tsbk >> 56) & 0xffff
+                ga   = (tsbk >> 40) & 0xffff
+                sa   = (tsbk >> 16) & 0xffffff
+                f = self.channel_id_to_frequency(ch)
+                self.update_voice_frequency(f, tgid=ga, tdma_slot=self.get_tdma_slot(ch))
+                if f:
+                    updated += 1
+                if self.debug > 10:
+                    print "tsbk00 grant freq %s ga %d sa %d" % (self.channel_id_to_string(ch), ga, sa)
+        elif opcode == 0x01:   # reserved
+            mfrid  = (tsbk >> 80) & 0xff
+            if mfrid == 0x90: #MOT_GRG_DEL_CMD
+                sg  = (tsbk >> 64) & 0xffff
+                ga1   = (tsbk >> 48) & 0xffff
+                ga2   = (tsbk >> 32) & 0xffff
+                ga3   = (tsbk >> 16) & 0xffff
+                if self.debug > 10:
+                    print "MOT_GRG_DEL_CMD(0x01): sg:%d ga1:%d ga2:%d ga3:%d" % (sg, ga1, ga2, ga3)
         elif opcode == 0x02:   # group voice chan grant update
             mfrid  = (tsbk >> 80) & 0xff
-            ch1  = (tsbk >> 64) & 0xffff
-            ga1  = (tsbk >> 48) & 0xffff
-            ch2  = (tsbk >> 32) & 0xffff
-            ga2  = (tsbk >> 16) & 0xffff
             if mfrid == 0x90:
+                ch  = (tsbk >> 56) & 0xffff
+                sg  = (tsbk >> 40) & 0xffff
+                sa  = (tsbk >> 16) & 0xffffff
+                f = self.channel_id_to_frequency(ch)
+                self.update_voice_frequency(f, tgid=sg, tdma_slot=self.get_tdma_slot(ch))
+                if f:
+                    updated += 1
                 if self.debug > 10:
-                    ch1  = (tsbk >> 56) & 0xffff
-                    f1 = self.channel_id_to_frequency(ch1)
-                    if f1 == None: f1 = 0
-                    print "tsbk02[90] %x %f" % (ch1, f1 / 1000000.0)
+                    print "MOT_GRG_CN_GRANT(0x02): freq %s sg:%d sa:%d" % (self.channel_id_to_string(ch), sg, sa)
             else:
+                ch1  = (tsbk >> 64) & 0xffff
+                ga1  = (tsbk >> 48) & 0xffff
+                ch2  = (tsbk >> 32) & 0xffff
+                ga2  = (tsbk >> 16) & 0xffff
                 f1 = self.channel_id_to_frequency(ch1)
                 f2 = self.channel_id_to_frequency(ch2)
                 self.update_voice_frequency(f1, tgid=ga1, tdma_slot=self.get_tdma_slot(ch1))
@@ -296,6 +316,24 @@ class trunked_system (object):
                     updated += 1
                 if self.debug > 10:
                     print "tsbk02 grant update: chan %s %d %s %d" %(self.channel_id_to_string(ch1), ga1, self.channel_id_to_string(ch2), ga2)
+        elif opcode == 0x03:   # group voice chan grant update exp : TIA.102-AABC-B-2005 page 56
+            mfrid  = (tsbk >> 80) & 0xff
+            if mfrid == 0x90: #MOT_GRG_CN_GRANT_UPDT
+                ch1   = (tsbk >> 64) & 0xffff
+                sg1  = (tsbk >> 48) & 0xffff
+                ch2   = (tsbk >> 32) & 0xffff
+                sg2  = (tsbk >> 16) & 0xffff
+                f1 = self.channel_id_to_frequency(ch1)
+                f2 = self.channel_id_to_frequency(ch2)
+                self.update_voice_frequency(f1, tgid=sg1, tdma_slot=self.get_tdma_slot(ch1))
+                if f1 != f2:
+                    self.update_voice_frequency(f2, tgid=sg2, tdma_slot=self.get_tdma_slot(ch2))
+                if f1:
+                    updated += 1
+                if f2:
+                    updated += 1
+                if self.debug > 10:
+                    print "MOT_GRG_CN_GRANT_UPDT(0x03): freq %s sg1:%d freq %s sg2:%d" % (self.channel_id_to_string(ch1), sg1, self.channel_id_to_string(ch2), sg2)
         elif opcode == 0x16:   # sndcp data ch
             ch1  = (tsbk >> 48) & 0xffff
             ch2  = (tsbk >> 32) & 0xffff
