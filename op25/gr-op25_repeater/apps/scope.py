@@ -2,7 +2,7 @@
 
 # Copyright 2008-2011 Steve Glass
 # 
-# Copyright 2011, 2012, 2013, 2014 Max H. Parke KA1RBI
+# Copyright 2011, 2012, 2013, 2014, 2015 Max H. Parke KA1RBI
 # 
 # Copyright 2003,2004,2005,2006 Free Software Foundation, Inc.
 #         (from radiorausch)
@@ -418,7 +418,8 @@ class p25_rx_block (stdgui2.std_top_block):
         sel = self.notebook.GetSelection()
         self.lock()
         self.disconnect_data_scope()
-        self.disconnect_constellation_scope()
+        if not self.baseband_input:
+            self.disconnect_constellation_scope()
         if sel == 0:   # spectrum
             if not self.baseband_input:
                 self.set_connection(fft=1)
@@ -871,7 +872,7 @@ class p25_rx_block (stdgui2.std_top_block):
         self.state = new_state
         if "STOPPED" == self.state:
             # menu items
-            can_capture = self.usrp is not None
+            can_capture = False # self.usrp is not None
             self.file_new.Enable(can_capture)
             self.file_open.Enable(True)
             self.file_properties.Enable(False)

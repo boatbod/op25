@@ -2,7 +2,7 @@
 # Copyright 2005,2006,2007 Free Software Foundation, Inc.
 #
 # OP25 Demodulator Block
-# Copyright 2009, 2010, 2011, 2012, 2013, 2014 Max H. Parke KA1RBI
+# Copyright 2009, 2010, 2011, 2012, 2013, 2014, 2015 Max H. Parke KA1RBI
 # 
 # This file is part of GNU Radio and part of OP25
 # 
@@ -26,6 +26,7 @@
 P25 C4FM/CQPSK demodulation block.
 """
 
+import sys
 from gnuradio import gr, gru, eng_notation
 from gnuradio import filter, analog, digital, blocks
 from gnuradio.eng_option import eng_option
@@ -33,9 +34,11 @@ import op25
 import op25_repeater
 from math import pi
 
+sys.path.append('tx')
+import op25_c4fm_mod
+
 # default values (used in __init__ and add_options)
 _def_output_sample_rate = 48000
-_def_excess_bw = 0.1
 _def_if_rate = 24000
 _def_gain_mu = 0.025
 _def_costas_alpha = 0.04
@@ -62,11 +65,8 @@ class p25_demod_base(gr.hier_block2):
         self.bb_sink = None
 
         self.baseband_amp = blocks.multiply_const_ff(_def_bb_gain)
-        sps = int(self.if_rate // self.symbol_rate)
-        symbol_decim = 1
-        ntaps = 11 * sps
-        rrc_coeffs = (1.0/sps,)*sps
-        self.symbol_filter = filter.fir_filter_fff(symbol_decim, rrc_coeffs)
+        coeffs = op25_c4fm_mod.c4fm_taps(sample_rate=self.if_rate, span=9, generator=op25_c4fm_mod.transfer_function_rx).generate()
+        self.symbol_filter = filter.fir_filter_fff(1, coeffs)
         autotuneq = gr.msg_queue(2)
         self.fsk4_demod = op25.fsk4_demod_ff(autotuneq, self.if_rate, self.symbol_rate)
 
@@ -168,7 +168,7 @@ class p25_demod_cb(p25_demod_base):
         # local osc
         self.lo = analog.sig_source_c (input_rate, analog.GR_SIN_WAVE, 0, 1.0, 0)
         self.mixer = blocks.multiply_cc()
-        lpf_coeffs = filter.firdes.low_pass(1.0, input_rate, 15000, 1500, filter.firdes.WIN_HANN)
+        lpf_coeffs = filter.firdes.low_pass(1.0, input_rate, 7250, 725, filter.firdes.WIN_HANN)
         decimation = int(input_rate / if_rate)
         self.lpf = filter.fir_filter_ccf(decimation, lpf_coeffs)
 
