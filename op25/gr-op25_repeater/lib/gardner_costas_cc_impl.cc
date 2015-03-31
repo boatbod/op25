@@ -1,8 +1,10 @@
 /* -*- c++ -*- */
 /* 
- * Gardner symbol recovery block for GR - Copyright 2010, 2011, 2012, 2013 KA1RBI
+ * Copyright 2005,2006,2007 Free Software Foundation, Inc.
+ *
+ * Gardner symbol recovery block for GR - Copyright 2010, 2011, 2012, 2013, 2014, 2015 KA1RBI
  * 
- * This file is part of OP25
+ * This file is part of OP25 and part of GNU Radio
  * 
  * This is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
