@@ -620,10 +620,10 @@ class p25_rx_block (stdgui2.std_top_block):
         hbox.Add(vbox_form, 0, 0)
 
         vbox_buttons = wx.BoxSizer(wx.VERTICAL)
-#       skip_button = form.button_with_callback(
-#           parent=self.panel, label="Skip",
-#           callback=self.form_skip)
-#       vbox_buttons.Add(skip_button, 0, 0)
+        skip_button = form.button_with_callback(
+            parent=self.panel, label="Skip",
+            callback=self.form_skip)
+        vbox_buttons.Add(skip_button, 0, 0)
         lockout_button = form.button_with_callback(
             parent=self.panel, label="Lockout",
             callback=self.form_lockout)

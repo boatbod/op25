@@ -172,7 +172,15 @@ class trunked_system (object):
                        tgid not in self.blacklist and
                        not (self.whitelist and tgid not in self.whitelist))]
 
+    def blacklist_update(self, start_time):
+        expired_tgs = [tg for tg in self.blacklist.keys()
+                            if self.blacklist[tg] is not None
+                            and self.blacklist[tg] < start_time]
+        for tg in expired_tgs:
+            self.blacklist.pop(tg)
+
     def find_talkgroup(self, start_time, tgid=None):
+        self.blacklist_update(start_time)
         if tgid is not None and tgid in self.talkgroups and self.talkgroups[tgid]['time'] >= start_time:
             return self.talkgroups[tgid]['frequency'], tgid, self.talkgroups[tgid]['tdma_slot']
         for active_tgid in self.talkgroups:
@@ -188,10 +196,10 @@ class trunked_system (object):
                 return self.talkgroups[active_tgid]['frequency'], active_tgid, self.talkgroups[active_tgid]['tdma_slot']
         return None, None, None
 
-    def add_blacklist(self, tgid):
+    def add_blacklist(self, tgid, end_time=None):
         if not tgid:
             return
-        self.blacklist[tgid] = 1
+        self.blacklist[tgid] = end_time
 
     def decode_mbt_data(self, opcode, header, mbt_data):
         self.cc_timeouts = 0
@@ -480,6 +488,7 @@ class rx_ctl (object):
         self.tgid_hold = None
         self.tgid_hold_until = time.time()
         self.TGID_HOLD_TIME = 2.0	# TODO: make more configurable
+        self.TGID_SKIP_TIME = 15.0	# TODO: make more configurable
         self.current_nac = None
         self.current_id = 0
         self.TSYS_HOLD_TIME = 3.0	# TODO: make more configurable
@@ -839,11 +848,12 @@ class rx_ctl (object):
                 self.current_tgid = None
                 self.tgid_hold = None
                 self.tgid_hold_until = curr_time
-        elif command == 'skip':
-            pass	# TODO
-        elif command == 'lockout':
+        elif command == 'skip' or command == 'lockout':
             if self.current_tgid:
-                tsys.add_blacklist(self.current_tgid)
+                end_time = None
+                if command == 'skip':
+                    end_time = curr_time + self.TGID_SKIP_TIME
+                tsys.add_blacklist(self.current_tgid, end_time=end_time)
                 self.current_tgid = None
                 self.tgid_hold = None
                 self.tgid_hold_until = curr_time
