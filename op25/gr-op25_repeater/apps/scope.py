@@ -463,7 +463,8 @@ class p25_rx_block (stdgui2.std_top_block):
             return self.set_freq(kv['freq'])
 
         self.frame = frame
-        self.frame.CreateStatusBar()
+        if int(wx.__version__.split('.')[0]) < 3:
+            self.frame.CreateStatusBar()
         self.panel = panel
         self.vbox = vbox
         
@@ -1464,7 +1465,7 @@ class datascope_sink_f(gr.hier_block2):
                                 gr.io_signature(0,0,0))
 
         msgq = gr.msg_queue(2)         # message queue that holds at most 2 messages
-        self.st = blocks.message_sink(gr.sizeof_float, msgq, 1)
+        self.st = blocks.message_sink(gr.sizeof_float, msgq, True)
         self.connect((self, 0), self.st)
 
         self.win = datascope_window(datascope_win_info (msgq, sample_rate, frame_decim,
@@ -1683,7 +1684,7 @@ class constellation_plot_c(gr.hier_block2):
                                 gr.io_signature(0,0,0))
 
         msgq = gr.msg_queue(2)         # message queue that holds at most 2 messages
-        self.st = blocks.message_sink(gr.sizeof_gr_complex, msgq, 1)
+        self.st = blocks.message_sink(gr.sizeof_gr_complex, msgq, True)
         self.connect((self, 0), self.st)
 
         self.win = constellation_plot_window(constellation_plot_win_info (msgq, sample_rate, frame_decim, None, title), parent, num_plots=num_plots)
@@ -2035,7 +2036,7 @@ class correlation_plot_f(gr.hier_block2):
                                 gr.io_signature(0,0,0))
 
         msgq = gr.msg_queue(2)         # message queue that holds at most 2 messages
-        self.st = blocks.message_sink(gr.sizeof_float, msgq, 1)
+        self.st = blocks.message_sink(gr.sizeof_float, msgq, True)
         self.connect((self, 0), self.st)
 
         self.win = correlation_plot_window(correlation_plot_win_info (msgq, sps, frame_decim, None, title), parent, sps=sps)

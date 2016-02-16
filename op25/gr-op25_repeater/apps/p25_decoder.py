@@ -76,7 +76,7 @@ class p25_decoder_sink_b(gr.hier_block2):
 
         self.debug = debug
         self.dest = dest
-        do_output = 1
+        do_output = True
         do_audio_output = True
 
         if msgq is None:
