@@ -210,6 +210,10 @@ class trunked_system (object):
             ch1  = (mbt_data >> 64) & 0xffff
             ch2  = (mbt_data >> 48) & 0xffff
             ga   = (mbt_data >> 32) & 0xffff
+            f = self.channel_id_to_frequency(ch1)
+            self.update_voice_frequency(f, tgid=ga, tdma_slot=self.get_tdma_slot(ch1))
+            if f:
+                updated += 1
             if self.debug > 10:
                 print "mbt00 voice grant ch1 %x ch2 %x addr 0x%x" %(ch1, ch2, ga)
         elif opcode == 0x3c:  # adjacent status
@@ -342,6 +346,17 @@ class trunked_system (object):
                     updated += 1
                 if self.debug > 10:
                     print "MOT_GRG_CN_GRANT_UPDT(0x03): freq %s sg1:%d freq %s sg2:%d" % (self.channel_id_to_string(ch1), sg1, self.channel_id_to_string(ch2), sg2)
+            elif mfrid == 0:
+                ch1  = (tsbk >> 48) & 0xffff
+                ch2   = (tsbk >> 32) & 0xffff
+                ga  = (tsbk >> 16) & 0xffff
+                f = self.channel_id_to_frequency(ch1)
+                self.update_voice_frequency(f, tgid=ga, tdma_slot=self.get_tdma_slot(ch1))
+                if f:
+                    updated += 1
+                if self.debug > 10:
+                    print "tsbk03: freq-t %s freq-r %s ga:%d" % (self.channel_id_to_string(ch1), self.channel_id_to_string(ch2), ga)
+
         elif opcode == 0x16:   # sndcp data ch
             ch1  = (tsbk >> 48) & 0xffff
             ch2  = (tsbk >> 32) & 0xffff
