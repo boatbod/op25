@@ -204,6 +204,7 @@ class trunked_system (object):
     def decode_mbt_data(self, opcode, header, mbt_data):
         self.cc_timeouts = 0
         self.last_tsbk = time.time()
+        updated = 0
         if self.debug > 10:
             print "decode_mbt_data: %x %x" %(opcode, mbt_data)
         if opcode == 0x0:  # grp voice channel grant
@@ -259,6 +260,7 @@ class trunked_system (object):
                 print "mbt3a rfss stat sys %x rfid %x stid %x ch1 %s ch2 %s" %(syid, rfid, stid, self.channel_id_to_string(ch1), self.channel_id_to_string(ch2))
         #else:
         #    print "mbt other %x" % opcode
+        return updated
 
     def decode_tsbk(self, tsbk):
         self.cc_timeouts = 0
@@ -692,7 +694,7 @@ class rx_ctl (object):
             opcode = (header >> 16) & 0x3f
             if self.debug > 10:
                 print "type %d at %f state %d len %d/%d opcode %x [%x/%x]" %(type, time.time(), self.state, len(s1), len(s2), opcode, header,mbt_data)
-            self.trunked_systems[nac].decode_mbt_data(opcode, header << 16, mbt_data << 32)
+            updated += self.trunked_systems[nac].decode_mbt_data(opcode, header << 16, mbt_data << 32)
 
         if nac != self.current_nac:
             return
