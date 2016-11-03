@@ -930,7 +930,7 @@ void
 software_imbe_decoder::decode_tap(int _L, int _K, float _w0, const int * _v, const float * _mu)
 {
 	int ell;
-	uint32_t ET;
+	uint32_t ET=0;
 	float SE = 0, ER = 0;
 	int en, tmp_f;
 
