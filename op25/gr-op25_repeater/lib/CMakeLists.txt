@@ -26,6 +26,7 @@ include_directories(${Boost_INCLUDE_DIR})
 link_directories(${Boost_LIBRARY_DIRS})
 list(APPEND op25_repeater_sources
     ambe_encoder_sb_impl.cc
+    dmr_bs_tx_bb_impl.cc
     vocoder_impl.cc
     gardner_costas_cc_impl.cc
     p25_frame_assembler_impl.cc
