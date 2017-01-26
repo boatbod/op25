@@ -62,7 +62,7 @@ static const int MAX_OUT = 1;
     ambe_encoder_sb_impl::ambe_encoder_sb_impl(int verbose_flag)
       : gr::block("ambe_encoder_sb",
               gr::io_signature::make (MIN_IN, MAX_IN, sizeof(short)),
-              gr::io_signature::make (MAX_IN, MAX_OUT, sizeof(char)))
+              gr::io_signature::make (MIN_OUT, MAX_OUT, sizeof(char)))
     {
       set_output_multiple(36);
       set_history(160);
