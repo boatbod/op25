@@ -12,6 +12,8 @@
 #include <op25_p25_frame.h>
 #include <p25_framer.h>
 
+#include "check_frame_sync.h"
+
 static const int max_frame_lengths[16] = {
 // lengths are in bits, not symbols
 	792,	// 0 - pdu
@@ -45,17 +47,6 @@ p25_framer::p25_framer() :
 // destructor
 p25_framer::~p25_framer ()
 {
-}
-
-// count no. of 1 bits in masked, xor'ed, FS, return true if < threshold
-static inline bool check_frame_sync(uint64_t ch, int err_threshold) {
-	int errs=0;
-	for (int i=0; i < 48; i++) {
-		errs += (ch & 1);
-		ch = ch >> 1;
-	}
-	if (errs <= err_threshold) return 1;
-	return 0;
 }
 
 /*
@@ -134,21 +125,21 @@ bool p25_framer::rx_sym(uint8_t dibit) {
 	if (nid_syms > 0) // if nid accumulation in progress
 		nid_syms++; // count symbols in nid
 
-	if(check_frame_sync((nid_accum & P25_FRAME_SYNC_MASK) ^ P25_FRAME_SYNC_MAGIC, 6)) {
+	if(check_frame_sync((nid_accum & P25_FRAME_SYNC_MASK) ^ P25_FRAME_SYNC_MAGIC, 6, 48)) {
 		nid_syms = 1;
 	}
-	if(check_frame_sync((nid_accum & P25_FRAME_SYNC_MASK) ^ P25_FRAME_SYNC_REV_P, 0)) {
+	if(check_frame_sync((nid_accum & P25_FRAME_SYNC_MASK) ^ P25_FRAME_SYNC_REV_P, 0, 48)) {
 		nid_syms = 1;
 		reverse_p ^= 0x02;   // auto flip polarity reversal
 		fprintf(stderr, "Reversed FS polarity detected - autocorrecting\n");
 	}
-	if(check_frame_sync((nid_accum & P25_FRAME_SYNC_MASK) ^ 0x001050551155LL, 0)) {
+	if(check_frame_sync((nid_accum & P25_FRAME_SYNC_MASK) ^ 0x001050551155LL, 0, 48)) {
 		fprintf(stderr, "tuning error -1200\n");
 	}
-	if(check_frame_sync((nid_accum & P25_FRAME_SYNC_MASK) ^ 0xFFEFAFAAEEAALL, 0)) {
+	if(check_frame_sync((nid_accum & P25_FRAME_SYNC_MASK) ^ 0xFFEFAFAAEEAALL, 0, 48)) {
 		fprintf(stderr, "tuning error +1200\n");
 	}
-	if(check_frame_sync((nid_accum & P25_FRAME_SYNC_MASK) ^ 0xAA8A0A008800LL, 0)) {
+	if(check_frame_sync((nid_accum & P25_FRAME_SYNC_MASK) ^ 0xAA8A0A008800LL, 0, 48)) {
 		fprintf(stderr, "tuning error +/- 2400\n");
 	}
 	if (next_bit > 0) {
