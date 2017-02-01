@@ -62,9 +62,8 @@ static const int MAX_OUT = 1;
     ambe_encoder_sb_impl::ambe_encoder_sb_impl(int verbose_flag)
       : gr::block("ambe_encoder_sb",
               gr::io_signature::make (MIN_IN, MAX_IN, sizeof(short)),
-              gr::io_signature::make (MIN_OUT, MAX_OUT, sizeof(char)))
+              gr::io_signature::make (MIN_OUT, MAX_OUT, 36))
     {
-      set_output_multiple(36);
       set_history(160);
     }
 
@@ -78,10 +77,10 @@ static const int MAX_OUT = 1;
 void
 ambe_encoder_sb_impl::forecast(int nof_output_items, gr_vector_int &nof_input_items_reqd)
 {
-   /* produces 36 samples per 160 samples input
+   /* produces 1 36-byte-block sample per 160 samples input
     */
    const size_t nof_inputs = nof_input_items_reqd.size();
-   const int nof_samples_reqd = 160.0 * (nof_output_items / 36.0);
+   const int nof_samples_reqd = 160.0 * (nof_output_items);
    std::fill(&nof_input_items_reqd[0], &nof_input_items_reqd[nof_inputs], nof_samples_reqd);
 }
 
@@ -92,7 +91,7 @@ ambe_encoder_sb_impl::general_work (int noutput_items,
 			       gr_vector_void_star &output_items)
 {
   int nframes = ninput_items[0] / 160;
-  nframes = std::min(nframes, noutput_items / 36);
+  nframes = std::min(nframes, noutput_items);
   if (nframes < 1) return 0;
   short *in = (short *) input_items[0];
   uint8_t *out = reinterpret_cast<uint8_t*>(output_items[0]);
@@ -107,7 +106,7 @@ ambe_encoder_sb_impl::general_work (int noutput_items,
   consume_each (nframes * 160);
 
   // Tell runtime system how many output items we produced.
-  return (nframes * 36);
+  return (nframes);
 }
 
   } /* namespace op25_repeater */

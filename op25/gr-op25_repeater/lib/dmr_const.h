@@ -823,4 +823,8 @@ static const uint8_t dmr_bs_voice_sync[24] = {
 	1,3,1,1,1,1,3,3,3,1,1,3,3,1,3,3,1,3,1,1,3,3,1,3
 };
 
+static const uint8_t dmr_bs_idle_sync[24] = {
+	3,1,3,3,3,3,1,1,1,3,3,1,1,3,1,1,3,1,3,3,1,1,3,1
+};
+
 #endif /* INCLUDED_OP25_REPEATER_DMR_CONST_H */

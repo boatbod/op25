@@ -193,11 +193,6 @@ static void generate_cach(uint8_t at, uint8_t tc, uint8_t lcss, const uint8_t ca
 	}
 }
 
-#if 0
-int main(int argc, char * argv[]) {
-}
-#endif
-
 namespace gr {
   namespace op25_repeater {
 
@@ -239,7 +234,7 @@ static const int MAX_OUT = 1;
      */
     dmr_bs_tx_bb_impl::dmr_bs_tx_bb_impl(int verbose_flag, const char * config_file)
       : gr::block("dmr_bs_tx_bb",
-              gr::io_signature::make (MIN_IN, MAX_IN, sizeof(char)),
+              gr::io_signature::make (MIN_IN, MAX_IN, 36),
               gr::io_signature::make (MIN_OUT, MAX_OUT, sizeof(char))),
               d_verbose_flag(verbose_flag),
               d_config_file(config_file),
@@ -257,7 +252,7 @@ static const int MAX_OUT = 1;
 	d_sa[0] = 0;
 	d_sa[1] = 0;
       set_output_multiple(144);
-      set_history(36*3);
+      set_history(3);
       config();
     }
 
@@ -396,7 +391,7 @@ dmr_bs_tx_bb_impl::forecast(int nof_output_items, gr_vector_int &nof_input_items
    // the three codewords though are only read from one of the two inputs per burst
    const size_t nof_inputs = nof_input_items_reqd.size();
    const int nof_bursts = nof_output_items / 144.0;
-   const int nof_samples_reqd = 108.0 * ((nof_bursts+1)>>1);
+   const int nof_samples_reqd = 3 * ((nof_bursts+1)>>1);
    std::fill(&nof_input_items_reqd[0], &nof_input_items_reqd[nof_inputs], nof_samples_reqd);
 }
 
@@ -408,11 +403,13 @@ dmr_bs_tx_bb_impl::general_work (int noutput_items,
 {
 
   static const int burst_schedule[2][6] = {
+    // -3: idle SYNC
     // -2: voice SYNC
     // -1: RC
     // 0|1|2|3: segment no. of embedded signalling
     {-2, 0, 1, -1, 2, 3},
-    {-2, 0, 1, 2, 3, -1}
+    /* {-2, 0, 1, 2, 3, -1} */
+    {-3, -3, -3, -3, -3, -3}
   };
 
   int nconsumed[2] = {0,0};
@@ -423,7 +420,8 @@ dmr_bs_tx_bb_impl::general_work (int noutput_items,
   int nframes=0;
 
   for (int n=0;n < (noutput_items/144);n++) {
-    if (((ninput_items[d_next_slot] - nconsumed[d_next_slot]) / 108) < 1) break;
+    // need (at least) three voice codewords
+    if ((ninput_items[d_next_slot] - nconsumed[d_next_slot]) < 3) break;
 
     int cach_id = ((d_next_burst & 1) << 1) + d_next_slot;
     memcpy(&out[0], d_cach[cach_id], 12);
@@ -434,13 +432,15 @@ dmr_bs_tx_bb_impl::general_work (int noutput_items,
       memcpy(&out[66], dmr_bs_voice_sync, 24);
     else if (schedule == -1)
       memset(&out[66], 0, 24);
+    else if (schedule == -3)
+      memcpy(&out[66], dmr_bs_idle_sync, 24);
     else 
       memcpy(&out[66], &d_embedded[d_next_slot][schedule*24], 24);
     memcpy(&out[90], &in[d_next_slot][36+18], 18);
     memcpy(&out[108], &in[d_next_slot][36+36], 36);
     in[d_next_slot] += 108;
     out += 144;
-    nconsumed[d_next_slot] += 108;
+    nconsumed[d_next_slot] += 3;
 
     d_next_slot = (d_next_slot + 1) & 1;
     if (d_next_slot == 0) {
