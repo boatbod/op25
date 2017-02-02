@@ -251,6 +251,8 @@ static const int MAX_OUT = 1;
 	d_ga[1] = 0;
 	d_sa[0] = 0;
 	d_sa[1] = 0;
+	d_en[0] = 0;
+	d_en[1] = 0;
       set_output_multiple(144);
       set_history(3);
       config();
@@ -283,7 +285,7 @@ dmr_bs_tx_bb_impl::config()
 		if (!cp) break;
 		if (memcmp(line, "ts1=", 4) == 0)
 			sscanf(&line[4], "%d", &d_ts[0]);
-		if (memcmp(line, "ts2=", 4) == 0)
+		else if (memcmp(line, "ts2=", 4) == 0)
 			sscanf(&line[4], "%d", &d_ts[1]);
 		else if (memcmp(line, "cc1=", 4) == 0)
 			sscanf(&line[4], "%d", &d_cc[0]);
@@ -301,6 +303,10 @@ dmr_bs_tx_bb_impl::config()
 			sscanf(&line[4], "%d", &d_sa[0]);
 		else if (memcmp(line, "sa2=", 4) == 0)
 			sscanf(&line[4], "%d", &d_sa[1]);
+		else if (memcmp(line, "en1=", 4) == 0)
+			sscanf(&line[4], "%d", &d_en[0]);
+		else if (memcmp(line, "en2=", 4) == 0)
+			sscanf(&line[4], "%d", &d_en[1]);
 	}
 	fclose(fp1);
 
@@ -314,6 +320,8 @@ dmr_bs_tx_bb_impl::config()
 	d_ga[1] &= 0xffffff;
 	d_sa[0] &= 0xffffff;
 	d_sa[1] &= 0xffffff;
+	d_en[0] &= 0x1;
+	d_en[1] &= 0x1;
 #if 0
 	fprintf(stderr, "dmr_bs_tx_bb_impl:config: ts[0] %d ts[1] %d cc[0] %d cc[1] %d\n", d_ts[0], d_ts[1], d_cc[0], d_cc[1]);
 	fprintf(stderr, "dmr_bs_tx_bb_impl:config: so[0] %d so[1] %d ga[0] %d ga[1] %d\n", d_so[0], d_so[1], d_ga[0], d_ga[1]);
@@ -408,8 +416,7 @@ dmr_bs_tx_bb_impl::general_work (int noutput_items,
     // -1: RC
     // 0|1|2|3: segment no. of embedded signalling
     {-2, 0, 1, -1, 2, 3},
-    /* {-2, 0, 1, 2, 3, -1} */
-    {-3, -3, -3, -3, -3, -3}
+    {-2, 0, 1, 2, 3, -1}
   };
 
   int nconsumed[2] = {0,0};
@@ -428,12 +435,12 @@ dmr_bs_tx_bb_impl::general_work (int noutput_items,
     memcpy(&out[12], &in[d_next_slot][0], 36);
     memcpy(&out[48], &in[d_next_slot][36], 18);
     int schedule = burst_schedule[d_next_slot][d_next_burst];
-    if (schedule == -2)
+    if (schedule == -3 || !d_en[d_next_slot])
+      memcpy(&out[66], dmr_bs_idle_sync, 24);
+    else if (schedule == -2)
       memcpy(&out[66], dmr_bs_voice_sync, 24);
     else if (schedule == -1)
       memset(&out[66], 0, 24);
-    else if (schedule == -3)
-      memcpy(&out[66], dmr_bs_idle_sync, 24);
     else 
       memcpy(&out[66], &d_embedded[d_next_slot][schedule*24], 24);
     memcpy(&out[90], &in[d_next_slot][36+18], 18);

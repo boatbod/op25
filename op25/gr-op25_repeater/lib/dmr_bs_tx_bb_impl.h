@@ -62,6 +62,7 @@ namespace gr {
   private:
 	int d_verbose_flag;
         const char * d_config_file;
+	int d_en[2];
 	int d_ts[2];
 	int d_cc[2];
 	int d_so[2];
