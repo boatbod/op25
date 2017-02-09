@@ -76,6 +76,18 @@ def transfer_function_tx():
 		xfer.append(pf * hf)
 	return xfer
 
+def transfer_function_dmr():
+	xfer = []	# frequency domain transfer function
+	for f in xrange(0, 2881):	# specs cover 0 - 2,880 Hz
+		if f < 1920:
+			hf = 1.0
+		else:
+			hf = 0.5 + 0.5 * cos (2 * pi * float(f) / 1920.0)
+		xfer.append(hf)
+	xfer = np.array(xfer, dtype=np.float64)
+	xfer = np.sqrt(xfer)	# root cosine
+	return xfer
+
 class c4fm_taps(object):
 	"""Generate filter coefficients as per P25 C4FM spec"""
 	def __init__(self, filter_gain = 1.0, sample_rate=_def_output_sample_rate, symbol_rate=_def_symbol_rate, span=_def_span, generator=transfer_function_tx):
@@ -106,6 +118,7 @@ class p25_mod_bf(gr.hier_block2):
                  output_sample_rate=_def_output_sample_rate,
                  reverse=_def_reverse,
                  verbose=_def_verbose,
+                 generator=transfer_function_tx,
                  log=_def_log):
         """
 	Hierarchical block for RRC-filtered P25 FM modulation.
@@ -143,7 +156,9 @@ class p25_mod_bf(gr.hier_block2):
         else:
             self.polarity = blocks.multiply_const_ff( 1)
 
-        self.filter = filter.interp_fir_filter_fff(self._interp_factor, c4fm_taps(sample_rate=output_sample_rate).generate())
+        self.generator = generator
+
+        self.filter = filter.interp_fir_filter_fff(self._interp_factor, c4fm_taps(sample_rate=output_sample_rate, generator=self.generator).generate())
 
         if verbose:
             self._print_verbage()

@@ -119,17 +119,20 @@ static void encode_embedded(const uint8_t lc[72], uint8_t result[32*4]) {
 	for (int i=0; i<9; i++) {
 		csum += load_i(&lc[i*8], 8);
 	}
+	csum = csum % 31;
+	for (int i=0; i<7; i++) {
+		memcpy(&encode[16*i], &lc[s_index], lengths[i]);
+		s_index += lengths[i];
+	}
 	for (int i=0; i<5; i++) {
 		encode[(i+2)*16+10] = (csum >> (4-i)) & 1;
 	}
 	for (int i=0; i<7; i++) {
-		memcpy(&encode[16*i], &lc[s_index], lengths[i]);
-		int acc = load_i(&lc[s_index], 11);
+		int acc = load_i(&encode[16*i], 11);
 		acc = hamming_16_11[acc];
 		for (int j=0; j<5; j++){
 			encode[i*16+j+11] = (acc >> (4-j)) & 1;
 		}
-		s_index += lengths[i];
 	}
 	for (int i=0; i<16; i++) {
 		encode[7*16+i] = (encode[0*16+i] + encode[1*16+i] + encode[2*16+i] + \
@@ -277,12 +280,12 @@ dmr_bs_tx_bb_impl::config()
 	}
 	for (;;) {
 		cp = fgets(line, sizeof(line) - 2, fp1);
+		if (!cp) break;
 		if (line[0] == '#') continue;
 		// cach: hashed addr ts1(8) and hashed addr ts2(8)
 		// emb: (one per ch) cc(4)
 		// group voice channel user PDU: service options (8), group address(24), source address(24)
 		// (one per ch)
-		if (!cp) break;
 		if (memcmp(line, "ts1=", 4) == 0)
 			sscanf(&line[4], "%d", &d_ts[0]);
 		else if (memcmp(line, "ts2=", 4) == 0)
@@ -416,7 +419,7 @@ dmr_bs_tx_bb_impl::general_work (int noutput_items,
     // -1: RC
     // 0|1|2|3: segment no. of embedded signalling
     {-2, 0, 1, -1, 2, 3},
-    {-2, 0, 1, 2, 3, -1}
+    {-1, 2, 3, -2, 0, 1}
   };
 
   int nconsumed[2] = {0,0};
