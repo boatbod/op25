@@ -50,15 +50,6 @@ namespace gr {
 		       gr_vector_const_void_star &input_items,
 		       gr_vector_void_star &output_items);
 
-      int general_work_encode (int noutput_items,
-		    gr_vector_int &ninput_items,
-		    gr_vector_const_void_star &input_items,
-		    gr_vector_void_star &output_items);
-      int general_work_decode (int noutput_items,
-		    gr_vector_int &ninput_items,
-		    gr_vector_const_void_star &input_items,
-		    gr_vector_void_star &output_items);
-
   private:
 	int d_verbose_flag;
         const char * d_config_file;
