@@ -26,11 +26,13 @@ class ambe_encoder {
 public:
 	void encode(int16_t samples[], uint8_t codeword[]);
 	ambe_encoder(void);
+	void set_49bit_mode(void);
 private:
 	imbe_vocoder vocoder;
 	p25p2_vf interleaver;
 	mbe_parms cur_mp;
 	mbe_parms prev_mp;
+	bool d_49bit_mode;
 };
 
 #endif /* INCLUDED_AMBE_ENCODER_H */

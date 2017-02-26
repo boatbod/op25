@@ -415,14 +415,72 @@ static void encode_ambe(const IMBE_PARAM *imbe_param, int b[], mbe_parms*cur_mp,
 	mbe_moveMbeParms (cur_mp, prev_mp);
 }
 
+static void encode_49bit(uint8_t outp[49], const int b[9]) {
+	outp[0] = (b[0] >> 6) & 1;
+	outp[1] = (b[0] >> 5) & 1;
+	outp[2] = (b[0] >> 4) & 1;
+	outp[3] = (b[0] >> 3) & 1;
+	outp[4] = (b[1] >> 4) & 1;
+	outp[5] = (b[1] >> 3) & 1;
+	outp[6] = (b[1] >> 2) & 1;
+	outp[7] = (b[1] >> 1) & 1;
+	outp[8] = (b[2] >> 4) & 1;
+	outp[9] = (b[2] >> 3) & 1;
+	outp[10] = (b[2] >> 2) & 1;
+	outp[11] = (b[2] >> 1) & 1;
+	outp[12] = (b[3] >> 8) & 1;
+	outp[13] = (b[3] >> 7) & 1;
+	outp[14] = (b[3] >> 6) & 1;
+	outp[15] = (b[3] >> 5) & 1;
+	outp[16] = (b[3] >> 4) & 1;
+	outp[17] = (b[3] >> 3) & 1;
+	outp[18] = (b[3] >> 2) & 1;
+	outp[19] = (b[3] >> 1) & 1;
+	outp[20] = (b[4] >> 6) & 1;
+	outp[21] = (b[4] >> 5) & 1;
+	outp[22] = (b[4] >> 4) & 1;
+	outp[23] = (b[4] >> 3) & 1;
+	outp[24] = (b[5] >> 4) & 1;
+	outp[25] = (b[5] >> 3) & 1;
+	outp[26] = (b[5] >> 2) & 1;
+	outp[27] = (b[5] >> 1) & 1;
+	outp[28] = (b[6] >> 3) & 1;
+	outp[29] = (b[6] >> 2) & 1;
+	outp[30] = (b[6] >> 1) & 1;
+	outp[31] = (b[7] >> 3) & 1;
+	outp[32] = (b[7] >> 2) & 1;
+	outp[33] = (b[7] >> 1) & 1;
+	outp[34] = (b[8] >> 2) & 1;
+	outp[35] = b[1] & 1;
+	outp[36] = b[2] & 1;
+	outp[37] = (b[0] >> 2) & 1;
+	outp[38] = (b[0] >> 1) & 1;
+	outp[39] = b[0] & 1;
+	outp[40] = b[3] & 1;
+	outp[41] = (b[4] >> 2) & 1;
+	outp[42] = (b[4] >> 1) & 1;
+	outp[43] = b[4] & 1;
+	outp[44] = b[5] & 1;
+	outp[45] = b[6] & 1;
+	outp[46] = b[7] & 1;
+	outp[47] = (b[8] >> 1) & 1;
+	outp[48] = b[8] & 1;
+}
+
 ambe_encoder::ambe_encoder(void)
+	: d_49bit_mode(false)
 {
 	mbe_parms enh_mp;
 	mbe_initMbeParms (&cur_mp, &prev_mp, &enh_mp);
 }
 
+void ambe_encoder::set_49bit_mode(void)
+{
+	d_49bit_mode = true;
+}
 // given a buffer of 160 audio samples (S16_LE),
 // generate 72-bit ambe codeword (as 36 dibits in codeword[])
+// or 49-bit output codeword (if set_49bit_mode() has been called)
 void ambe_encoder::encode(int16_t samples[], uint8_t codeword[])
 {
 	int b[9];
@@ -437,6 +495,10 @@ void ambe_encoder::encode(int16_t samples[], uint8_t codeword[])
 	// halfrate audio encoding - output rate is 2450 (49 bits)
 	encode_ambe(vocoder.param(), b, &cur_mp, &prev_mp);
 
-	// add FEC and interleaving - output rate is 3600 (72 bits)
-	interleaver.encode_vcw(codeword, b);
+	if (d_49bit_mode) {
+		encode_49bit(codeword, b);
+	} else {
+		// add FEC and interleaving - output rate is 3600 (72 bits)
+		interleaver.encode_vcw(codeword, b);
+	}
 }
