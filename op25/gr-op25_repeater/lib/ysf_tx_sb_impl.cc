@@ -409,6 +409,7 @@ ysf_tx_sb_impl::general_work (int noutput_items,
   int16_t frame_vector[8];
   voice_codeword cw(voice_codeword_sz);
   uint8_t ambe_49bit_codeword[49];
+  std::vector <bool> interleaved_buf(144);
 
   for (int n=0;n < (noutput_items/480);n++) {
     // need (at least) five voice codewords worth of samples
@@ -423,9 +424,12 @@ ysf_tx_sb_impl::general_work (int noutput_items,
     // TODO: would be nice to multithread these 5
     for (int vcw = 0; vcw < 5; vcw++) {
       if (d_fullrate_mode) {
-        d_fullrate_encoder.imbe_encode(frame_vector, in+vcw*160);
+        d_fullrate_encoder.imbe_encode(frame_vector, in);
         imbe_header_encode(cw, frame_vector[0], frame_vector[1], frame_vector[2], frame_vector[3], frame_vector[4], frame_vector[5], frame_vector[6], frame_vector[7]);
-        bool_to_dibits(out + vcw*72 + 120, cw, 72);
+        for (int i=0; i<144; i++) {
+          interleaved_buf[ysf_permutation[i]] = cw[i];
+        }
+        bool_to_dibits(out + vcw*72 + 120, interleaved_buf, 72);
       } else {   /* halfrate mode */
         d_halfrate_encoder.encode(in, ambe_49bit_codeword);
         generate_vch_vd2(out + vcw*72 + 120 + 20, ambe_49bit_codeword);

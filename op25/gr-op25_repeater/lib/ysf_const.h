@@ -297,4 +297,24 @@ static const uint8_t scramble_code[180] = {
 // frame sync dibits
 static const uint8_t ysf_fs[20] = { 3, 1, 1, 0, 1, 3, 0, 1, 3, 0, 2, 1, 1, 2, 0, 3, 1, 0, 3, 1 };
 
+/* thx gr-ysf fr_vch_decoder_bb_impl.cc * Copyright 2015 Mathias Weyland */
+// I hold Sylvain Munaut in high esteem for figuring this out.
+static const uint8_t ysf_permutation[144] = {
+              0,   7,  12,  19,  24,  31,  36,  43,  48,  55,  60,  67, // [  0 -  11] yellow message
+             72,  79,  84,  91,  96, 103, 108, 115, 120, 127, 132,      // [ 12 -  22] yellow FEC
+            139,   1,   6,  13,  18,  25,  30,  37,  42,  49,  54,  61, // [ 23 -  34] orange message
+             66,  73,  78,  85,  90,  97, 102, 109, 114, 121, 126,      // [ 35 -  45] orange FEC
+            133, 138,   2,   9,  14,  21,  26,  33,  38,  45,  50,  57, // [ 46 -  57] red message
+             62,  69,  74,  81,  86,  93,  98, 105, 110, 117, 122,      // [ 58 -  68] red FEC
+            129, 134, 141,   3,   8,  15,  20,  27,  32,  39,  44,  51, // [ 69 -  80] pink message
+             56,  63,  68,  75,  80,  87,  92,  99, 104, 111, 116,      // [ 81 -  91] pink FEC
+            123, 128, 135, 140,   4,  11,  16,  23,  28,  35,  40,      // [ 92 - 102] dark blue message
+             47,  52,  59,  64,                                         // [103 - 106] dark blue FEC
+             71,  76,  83,  88,  95, 100, 107, 112, 119, 124, 131,      // [107 - 117] light blue message
+            136, 143,   5,  10,                                         // [118 - 121] light blue FEC
+             17,  22,  29,  34,  41,  46,  53,  58,  65,  70,  77,      // [122 - 132] green message
+             82,  89,  94, 101,                                         // [133 - 136] green FEC
+            106, 113, 118, 125, 130, 137, 142,                          // [137 - 143] unprotected
+};
+
 #endif /* INCLUDED_YSF_CONST_H */
