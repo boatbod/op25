@@ -427,7 +427,7 @@ ysf_tx_sb_impl::general_work (int noutput_items,
         imbe_header_encode(cw, frame_vector[0], frame_vector[1], frame_vector[2], frame_vector[3], frame_vector[4], frame_vector[5], frame_vector[6], frame_vector[7]);
         bool_to_dibits(out + vcw*72 + 120, cw, 72);
       } else {   /* halfrate mode */
-        d_halfrate_encoder.encode(in+vcw*160, ambe_49bit_codeword);
+        d_halfrate_encoder.encode(in, ambe_49bit_codeword);
         generate_vch_vd2(out + vcw*72 + 120 + 20, ambe_49bit_codeword);
         memcpy(out + vcw*72 + 120,d_vd2_dch[d_next_fn]+vcw*20, 20);
       }
