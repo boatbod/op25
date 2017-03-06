@@ -31,6 +31,7 @@
 
 #include "imbe_vocoder/imbe_vocoder.h"
 #include "ambe3600x2250_const.h"
+#include "ambe3600x2400_const.h"
 #include "op25_imbe_frame.h"
 #include "mbelib.h"
 #include "ambe.h"
@@ -150,7 +151,11 @@ static mbe_parms cur_mp;
 static mbe_parms prev_mp;
 #endif
 
-static void encode_ambe(const IMBE_PARAM *imbe_param, int b[], mbe_parms*cur_mp, mbe_parms*prev_mp) {
+static inline float make_f0(int b0) {
+	return (powf(2, (-4.311767578125 - (2.1336e-2 * ((float)b0+0.5)))));
+}
+
+static void encode_ambe(const IMBE_PARAM *imbe_param, int b[], mbe_parms*cur_mp, mbe_parms*prev_mp, bool dstar) {
 	static const float SQRT_2 = sqrtf(2.0);
 	static const int b0_lmax = sizeof(b0_lookup) / sizeof(b0_lookup[0]);
 	// int b[9];
@@ -162,7 +167,11 @@ static void encode_ambe(const IMBE_PARAM *imbe_param, int b[], mbe_parms*cur_mp,
 		return;
 	}
 	b[0] = b0_lookup[b0_i];
-	int L = (int) AmbeLtable[b[0]];
+	int L;
+	if (dstar)
+		L = (int) AmbePlusLtable[b[0]];
+	else
+		L = (int) AmbeLtable[b[0]];
 #if 1
 	// adjust b0 until L agrees
 	while (L != imbe_param->num_harms) {
@@ -175,7 +184,10 @@ static void encode_ambe(const IMBE_PARAM *imbe_param, int b[], mbe_parms*cur_mp,
 			return;
 		}
 		b[0] = b0_lookup[b0_i];
-		L = (int) AmbeLtable[b[0]];
+		if (dstar)
+			L = (int) AmbePlusLtable[b[0]];
+		else
+			L = (int) AmbeLtable[b[0]];
 	}
 #endif
 	float m_float2[NUM_HARMS_MAX];
@@ -186,15 +198,25 @@ static void encode_ambe(const IMBE_PARAM *imbe_param, int b[], mbe_parms*cur_mp,
 
 	float en_min = 0;
 	b[1] = 0;
-	for (int n=0; n < 17; n++) {
+	int vuv_max = (dstar) ? 16 : 17;
+	for (int n=0; n < vuv_max; n++) {
 		float En = 0;
 		for (int l=1; l <= L; l++) {
-			int jl = (int) ((float) l * (float) 16.0 * AmbeW0table[b[0]]);
+			int jl;
+			if (dstar)
+				jl = (int) ((float) l * (float) 16.0 * make_f0(b[0]));
+			else
+				jl = (int) ((float) l * (float) 16.0 * AmbeW0table[b[0]]);
 			int kl = 12;
 			if (l <= 36)
 				kl = (l + 2) / 3;
-			if (imbe_param->v_uv_dsn[(kl-1)*3] != AmbeVuv[n][jl])
-				En += m_float2[l-1];
+			if (dstar) {
+				if (imbe_param->v_uv_dsn[(kl-1)*3] != AmbePlusVuv[n][jl])
+					En += m_float2[l-1];
+			} else {
+				if (imbe_param->v_uv_dsn[(kl-1)*3] != AmbeVuv[n][jl])
+					En += m_float2[l-1];
+			}
 		}
 		if (n == 0)
 			en_min = En;
@@ -207,8 +229,11 @@ static void encode_ambe(const IMBE_PARAM *imbe_param, int b[], mbe_parms*cur_mp,
 	// log spectral amplitudes
 	float num_harms_f = (float) imbe_param->num_harms;
 	float log_l_2 =  0.5 * log2f(num_harms_f);	// fixme: table lookup
-	float log_l_w0 = 0.5 * log2f(num_harms_f * AmbeW0table[b[0]] * 2.0 * M_PI) + 2.289;
-	// float log_l_w0 = 0.5 * log2f(num_harms_f * AmbeW0table[b[0]]) + 2.289;
+	float log_l_w0;
+	if (dstar)
+		log_l_w0 = 0.5 * log2f(num_harms_f * make_f0(b[0]) * 2.0 * M_PI) + 2.289;
+	else
+		log_l_w0 = 0.5 * log2f(num_harms_f * AmbeW0table[b[0]] * 2.0 * M_PI) + 2.289;
 	float lsa[NUM_HARMS_MAX];
 	float lsa_sum=0.0;
 
@@ -228,8 +253,13 @@ static void encode_ambe(const IMBE_PARAM *imbe_param, int b[], mbe_parms*cur_mp,
 
 	float error;
 	int error_index;
-	for (int i1 = 0; i1 < 32; i1++) {
-		float diff = fabsf(diff_gain - AmbeDg[i1]);
+	int max_dg = (dstar) ? 64 : 32;
+	for (int i1 = 0; i1 < max_dg; i1++) {
+		float diff;
+		if (dstar)
+			diff = fabsf(diff_gain - AmbePlusDg[i1]);
+		else
+			diff = fabsf(diff_gain - AmbeDg[i1]);
 		if (i1 == 0 || diff < error) {
 			error = diff;
 			error_index = i1;
@@ -258,7 +288,11 @@ static void encode_ambe(const IMBE_PARAM *imbe_param, int b[], mbe_parms*cur_mp,
 	}
 
 	// DCT
-	const int * J = AmbeLmprbl[imbe_param->num_harms];
+	const int * J;
+	if (dstar)
+		J = AmbePlusLmprbl[imbe_param->num_harms];
+	else
+		J = AmbeLmprbl[imbe_param->num_harms];
 	float * c[4];
 	int acc = 0;
 	for (int i=0; i<4; i++) {
@@ -299,12 +333,21 @@ static void encode_ambe(const IMBE_PARAM *imbe_param, int b[], mbe_parms*cur_mp,
 	for (int i=0; i<512; i++) {
 		float err=0.0;
 		float diff;
-		diff = G[1] - AmbePRBA24[i][0];
-		err += (diff * diff);
-		diff = G[2] - AmbePRBA24[i][1];
-		err += (diff * diff);
-		diff = G[3] - AmbePRBA24[i][2];
-		err += (diff * diff);
+		if (dstar) {
+			diff = G[1] - AmbePlusPRBA24[i][0];
+			err += (diff * diff);
+			diff = G[2] - AmbePlusPRBA24[i][1];
+			err += (diff * diff);
+			diff = G[3] - AmbePlusPRBA24[i][2];
+			err += (diff * diff);
+		} else {
+			diff = G[1] - AmbePRBA24[i][0];
+			err += (diff * diff);
+			diff = G[2] - AmbePRBA24[i][1];
+			err += (diff * diff);
+			diff = G[3] - AmbePRBA24[i][2];
+			err += (diff * diff);
+		}
 		if (i == 0 || err < error) {
 			error = err;
 			error_index = i;
@@ -316,14 +359,25 @@ static void encode_ambe(const IMBE_PARAM *imbe_param, int b[], mbe_parms*cur_mp,
 	for (int i=0; i<128; i++) {
 		float err=0.0;
 		float diff;
-		diff = G[4] - AmbePRBA58[i][0];
-		err += (diff * diff);
-		diff = G[5] - AmbePRBA58[i][1];
-		err += (diff * diff);
-		diff = G[6] - AmbePRBA58[i][2];
-		err += (diff * diff);
-		diff = G[7] - AmbePRBA58[i][3];
-		err += (diff * diff);
+		if (dstar) {
+			diff = G[4] - AmbePlusPRBA58[i][0];
+			err += (diff * diff);
+			diff = G[5] - AmbePlusPRBA58[i][1];
+			err += (diff * diff);
+			diff = G[6] - AmbePlusPRBA58[i][2];
+			err += (diff * diff);
+			diff = G[7] - AmbePlusPRBA58[i][3];
+			err += (diff * diff);
+		} else {
+			diff = G[4] - AmbePRBA58[i][0];
+			err += (diff * diff);
+			diff = G[5] - AmbePRBA58[i][1];
+			err += (diff * diff);
+			diff = G[6] - AmbePRBA58[i][2];
+			err += (diff * diff);
+			diff = G[7] - AmbePRBA58[i][3];
+			err += (diff * diff);
+		}
 		if (i == 0 || err < error) {
 			error = err;
 			error_index = i;
@@ -336,11 +390,15 @@ static void encode_ambe(const IMBE_PARAM *imbe_param, int b[], mbe_parms*cur_mp,
 	if (J[ii-1] <= 2) {
 		b[4+ii] = 0.0;
 	} else {
-		for (int n=0; n < 32; n++) {
+		int max_5 = (dstar) ? 16 : 32;
+		for (int n=0; n < max_5; n++) {
 			float err=0.0;
 			float diff;
 			for (int j=1; j <= J[ii-1]-2 && j <= 4; j++) {
-				diff = AmbeHOCb5[n][j-1] - C[ii-1][j+2-1];
+				if (dstar)
+					diff = AmbePlusHOCb5[n][j-1] - C[ii-1][j+2-1];
+				else
+					diff = AmbeHOCb5[n][j-1] - C[ii-1][j+2-1];
 				err += (diff * diff);
 			}
 			if (n == 0 || err < error) {
@@ -360,7 +418,10 @@ static void encode_ambe(const IMBE_PARAM *imbe_param, int b[], mbe_parms*cur_mp,
 			float err=0.0;
 			float diff;
 			for (int j=1; j <= J[ii-1]-2 && j <= 4; j++) {
-				diff = AmbeHOCb6[n][j-1] - C[ii-1][j+2-1];
+				if (dstar)
+					diff = AmbePlusHOCb6[n][j-1] - C[ii-1][j+2-1];
+				else
+					diff = AmbeHOCb6[n][j-1] - C[ii-1][j+2-1];
 				err += (diff * diff);
 			}
 			if (n == 0 || err < error) {
@@ -380,7 +441,10 @@ static void encode_ambe(const IMBE_PARAM *imbe_param, int b[], mbe_parms*cur_mp,
 			float err=0.0;
 			float diff;
 			for (int j=1; j <= J[ii-1]-2 && j <= 4; j++) {
-				diff = AmbeHOCb7[n][j-1] - C[ii-1][j+2-1];
+				if (dstar)
+					diff = AmbePlusHOCb7[n][j-1] - C[ii-1][j+2-1];
+				else
+					diff = AmbeHOCb7[n][j-1] - C[ii-1][j+2-1];
 				err += (diff * diff);
 			}
 			if (n == 0 || err < error) {
@@ -396,11 +460,15 @@ static void encode_ambe(const IMBE_PARAM *imbe_param, int b[], mbe_parms*cur_mp,
 	if (J[ii-1] <= 2) {
 		b[4+ii] = 0.0;
 	} else {
-		for (int n=0; n < 8; n++) {
+		int max_8 = (dstar) ? 16 : 8;
+		for (int n=0; n < max_8; n++) {
 			float err=0.0;
 			float diff;
 			for (int j=1; j <= J[ii-1]-2 && j <= 4; j++) {
-				diff = AmbeHOCb8[n][j-1] - C[ii-1][j+2-1];
+				if (dstar)
+					diff = AmbePlusHOCb8[n][j-1] - C[ii-1][j+2-1];
+				else
+					diff = AmbeHOCb8[n][j-1] - C[ii-1][j+2-1];
 				err += (diff * diff);
 			}
 			if (n == 0 || err < error) {
@@ -411,7 +479,11 @@ static void encode_ambe(const IMBE_PARAM *imbe_param, int b[], mbe_parms*cur_mp,
 		b[4+ii] = error_index;
 	}
 	// fprintf (stderr, "B\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\n", b[0], b[1], b[2], b[3], b[4], b[5], b[6], b[7], b[8]);
-	int rc = mbe_dequantizeAmbe2250Parms (cur_mp, prev_mp, b);
+	int rc;
+	if (dstar)
+		rc = mbe_dequantizeAmbe2400Parms (cur_mp, prev_mp, b);
+	else
+		rc = mbe_dequantizeAmbe2250Parms (cur_mp, prev_mp, b);
 	mbe_moveMbeParms (cur_mp, prev_mp);
 }
 
@@ -468,10 +540,16 @@ static void encode_49bit(uint8_t outp[49], const int b[9]) {
 }
 
 ambe_encoder::ambe_encoder(void)
-	: d_49bit_mode(false)
+	: d_49bit_mode(false),
+	d_dstar_mode(false)
 {
 	mbe_parms enh_mp;
 	mbe_initMbeParms (&cur_mp, &prev_mp, &enh_mp);
+}
+
+void ambe_encoder::set_dstar_mode(void)
+{
+	d_dstar_mode = true;
 }
 
 void ambe_encoder::set_49bit_mode(void)
@@ -480,6 +558,7 @@ void ambe_encoder::set_49bit_mode(void)
 }
 // given a buffer of 160 audio samples (S16_LE),
 // generate 72-bit ambe codeword (as 36 dibits in codeword[])
+// (as 72 bits in codeword[] if in dstar mode)
 // or 49-bit output codeword (if set_49bit_mode() has been called)
 void ambe_encoder::encode(int16_t samples[], uint8_t codeword[])
 {
@@ -493,9 +572,11 @@ void ambe_encoder::encode(int16_t samples[], uint8_t codeword[])
 	vocoder.imbe_encode(frame_vector, samples);
 
 	// halfrate audio encoding - output rate is 2450 (49 bits)
-	encode_ambe(vocoder.param(), b, &cur_mp, &prev_mp);
+	encode_ambe(vocoder.param(), b, &cur_mp, &prev_mp, d_dstar_mode);
 
-	if (d_49bit_mode) {
+	if (d_dstar_mode) {
+		interleaver.encode_dstar(codeword, b);
+	} else if (d_49bit_mode) {
 		encode_49bit(codeword, b);
 	} else {
 		// add FEC and interleaving - output rate is 3600 (72 bits)

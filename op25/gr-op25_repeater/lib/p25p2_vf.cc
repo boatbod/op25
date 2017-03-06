@@ -35,6 +35,20 @@ static void dump_i(uint8_t dest[], int src, int count) {
 	}
 }
 
+static inline void store_reg(int reg, uint8_t val[], int len) {
+	for (int i=0; i<len; i++){
+		val[i] = (reg >> (len-1-i)) & 1;
+	}
+}
+
+static inline int load_reg(const uint8_t val[], int len) {
+	int acc = 0;
+	for (int i=0; i<len; i++){
+		acc = (acc << 1) + (val[i] & 1);
+	}
+	return acc;
+}
+
 static const uint32_t pr_n[4096] = {	\
 2188835, 846719, 1581972, 3511912, 3170211, 1880711, 3779192, 7694256, 	\
 	4247119, 7279335, 7068578, 4613212, 4631701, 8096043, 6180930, 5429652, 	\
@@ -797,3 +811,145 @@ static const uint32_t pr_n[4096] = {	\
 		load_i(c2, _c2, 11);
 		load_i(c3, _c3, 14);
 	}
+
+void p25p2_vf::encode_dstar(uint8_t result[72], const int b[9]) {
+	uint8_t pbuf[49];
+	pbuf[0] = (b[0] >> 6) & 1;
+	pbuf[1] = (b[0] >> 5) & 1;
+	pbuf[2] = (b[0] >> 4) & 1;
+	pbuf[3] = (b[0] >> 3) & 1;
+	pbuf[4] = (b[0] >> 2) & 1;
+	pbuf[5] = (b[0] >> 1) & 1;
+	pbuf[6] = (b[2] >> 5) & 1;
+	pbuf[7] = (b[2] >> 4) & 1;
+	pbuf[8] = (b[2] >> 3) & 1;
+	pbuf[9] = (b[2] >> 2) & 1;
+	pbuf[10] = (b[3] >> 8) & 1;
+	pbuf[11] = (b[3] >> 7) & 1;
+	pbuf[12] = (b[3] >> 6) & 1;
+	pbuf[13] = (b[3] >> 5) & 1;
+	pbuf[14] = (b[3] >> 4) & 1;
+	pbuf[15] = (b[3] >> 3) & 1;
+	pbuf[16] = (b[3] >> 2) & 1;
+	pbuf[17] = (b[4] >> 6) & 1;
+	pbuf[18] = (b[4] >> 5) & 1;
+	pbuf[19] = (b[4] >> 4) & 1;
+	pbuf[20] = (b[4] >> 3) & 1;
+	pbuf[21] = (b[4] >> 2) & 1;
+	pbuf[22] = (b[5] >> 3) & 1;
+	pbuf[23] = (b[5] >> 2) & 1;
+	pbuf[25] = (b[5] >> 1) & 1;
+	pbuf[26] = b[5] & 1;
+	pbuf[27] = (b[6] >> 3) & 1;
+	pbuf[28] = (b[6] >> 2) & 1;
+	pbuf[29] = (b[6] >> 1) & 1;
+	pbuf[30] = b[6] & 1;
+	pbuf[31] = (b[7] >> 3) & 1;
+	pbuf[32] = (b[7] >> 2) & 1;
+	pbuf[33] = (b[7] >> 1) & 1;
+	pbuf[34] = b[7] & 1;
+	pbuf[35] = (b[8] >> 3) & 1;
+	pbuf[36] = (b[8] >> 2) & 1;
+	pbuf[37] = (b[8] >> 1) & 1;
+	pbuf[38] = (b[1] >> 3) & 1;
+	pbuf[39] = (b[1] >> 2) & 1;
+	pbuf[40] = (b[1] >> 1) & 1;
+	pbuf[41] = b[1] & 1;
+	pbuf[42] = (b[2] >> 1) & 1;
+	pbuf[43] = b[2] & 1;
+	pbuf[44] = (b[3] >> 1) & 1;
+	pbuf[45] = b[3] & 1;
+	pbuf[46] = (b[4] >> 1) & 1;
+	pbuf[47] = b[4] & 1;
+	pbuf[48] = b[0] & 1;
+
+	int u0 = load_reg(pbuf+0, 12);
+	int u1 = load_reg(pbuf+12, 12);
+	int u2 = load_reg(pbuf+24, 11);
+	int u3 = load_reg(pbuf+35, 14);
+
+	int m1 = pr_n[u0];
+	int c0 = golay_24_encode(u0);
+	int c1 = golay_23_encode(u1) ^ m1;
+	int c2 = u2;
+	int c3 = u3;
+
+	uint8_t ambe_fr[4][24];
+	store_reg(c0, ambe_fr[0], 24);
+	store_reg(c1, ambe_fr[1], 23);
+	store_reg(c2, ambe_fr[2], 11);
+	store_reg(c3, ambe_fr[3], 14);
+
+	result[0] = ambe_fr[0][10];
+	result[1] = ambe_fr[0][22];
+	result[2] = ambe_fr[3][11];
+	result[3] = ambe_fr[2][9];
+	result[4] = ambe_fr[1][10];
+	result[5] = ambe_fr[1][22];
+	result[6] = ambe_fr[0][11];
+	result[7] = ambe_fr[0][23];
+	result[8] = ambe_fr[1][8];
+	result[9] = ambe_fr[1][20];
+	result[10] = ambe_fr[0][9];
+	result[11] = ambe_fr[0][21];
+	result[12] = ambe_fr[3][10];
+	result[13] = ambe_fr[2][8];
+	result[14] = ambe_fr[1][9];
+	result[15] = ambe_fr[1][21];
+	result[16] = ambe_fr[3][8];
+	result[17] = ambe_fr[2][6];
+	result[18] = ambe_fr[1][7];
+	result[19] = ambe_fr[1][19];
+	result[20] = ambe_fr[0][8];
+	result[21] = ambe_fr[0][20];
+	result[22] = ambe_fr[3][9];
+	result[23] = ambe_fr[2][7];
+	result[24] = ambe_fr[0][6];
+	result[25] = ambe_fr[0][18];
+	result[26] = ambe_fr[3][7];
+	result[27] = ambe_fr[2][5];
+	result[28] = ambe_fr[1][6];
+	result[29] = ambe_fr[1][18];
+	result[30] = ambe_fr[0][7];
+	result[31] = ambe_fr[0][19];
+	result[32] = ambe_fr[1][4];
+	result[33] = ambe_fr[1][16];
+	result[34] = ambe_fr[0][5];
+	result[35] = ambe_fr[0][17];
+	result[36] = ambe_fr[3][6];
+	result[37] = ambe_fr[2][4];
+	result[38] = ambe_fr[1][5];
+	result[39] = ambe_fr[1][17];
+	result[40] = ambe_fr[3][4];
+	result[41] = ambe_fr[2][2];
+	result[42] = ambe_fr[1][3];
+	result[43] = ambe_fr[1][15];
+	result[44] = ambe_fr[0][4];
+	result[45] = ambe_fr[0][16];
+	result[46] = ambe_fr[3][5];
+	result[47] = ambe_fr[2][3];
+	result[48] = ambe_fr[0][2];
+	result[49] = ambe_fr[0][14];
+	result[50] = ambe_fr[3][3];
+	result[51] = ambe_fr[2][1];
+	result[52] = ambe_fr[1][2];
+	result[53] = ambe_fr[1][14];
+	result[54] = ambe_fr[0][3];
+	result[55] = ambe_fr[0][15];
+	result[56] = ambe_fr[1][0];
+	result[57] = ambe_fr[1][12];
+	result[58] = ambe_fr[0][1];
+	result[59] = ambe_fr[0][13];
+	result[60] = ambe_fr[3][2];
+	result[61] = ambe_fr[2][0];
+	result[62] = ambe_fr[1][1];
+	result[63] = ambe_fr[1][13];
+	result[64] = ambe_fr[3][0];
+	result[65] = ambe_fr[3][12];
+	result[66] = ambe_fr[2][10];
+	result[67] = ambe_fr[1][11];
+	result[68] = ambe_fr[0][0];
+	result[69] = ambe_fr[0][12];
+	result[70] = ambe_fr[3][1];
+	result[71] = ambe_fr[3][13];
+}
