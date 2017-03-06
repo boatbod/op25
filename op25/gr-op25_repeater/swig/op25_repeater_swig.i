@@ -15,6 +15,7 @@
 #include "op25_repeater/ambe_encoder_sb.h"
 #include "op25_repeater/dmr_bs_tx_bb.h"
 #include "op25_repeater/ysf_tx_sb.h"
+#include "op25_repeater/dstar_tx_sb.h"
 %}
 
 %include "op25_repeater/ambe_encoder_sb.h"
@@ -25,6 +26,9 @@ GR_SWIG_BLOCK_MAGIC2(op25_repeater, dmr_bs_tx_bb);
 
 %include "op25_repeater/ysf_tx_sb.h"
 GR_SWIG_BLOCK_MAGIC2(op25_repeater, ysf_tx_sb);
+
+%include "op25_repeater/dstar_tx_sb.h"
+GR_SWIG_BLOCK_MAGIC2(op25_repeater, dstar_tx_sb);
 
 %include "op25_repeater/vocoder.h"
 GR_SWIG_BLOCK_MAGIC2(op25_repeater, vocoder);
