@@ -838,6 +838,7 @@ void p25p2_vf::encode_dstar(uint8_t result[72], const int b[9]) {
 	pbuf[21] = (b[4] >> 2) & 1;
 	pbuf[22] = (b[5] >> 3) & 1;
 	pbuf[23] = (b[5] >> 2) & 1;
+	pbuf[24] = 0;                  /* ? */ 
 	pbuf[25] = (b[5] >> 1) & 1;
 	pbuf[26] = b[5] & 1;
 	pbuf[27] = (b[6] >> 3) & 1;
@@ -875,10 +876,10 @@ void p25p2_vf::encode_dstar(uint8_t result[72], const int b[9]) {
 	int c3 = u3;
 
 	uint8_t ambe_fr[4][24];
-	store_reg(c0, ambe_fr[0], 24);
-	store_reg(c1, ambe_fr[1], 23);
-	store_reg(c2, ambe_fr[2], 11);
-	store_reg(c3, ambe_fr[3], 14);
+	dump_i(ambe_fr[0], c0, 24);
+	dump_i(ambe_fr[1], c1, 23);
+	dump_i(ambe_fr[2], c2, 11);
+	dump_i(ambe_fr[3], c3, 14);
 
 	result[0] = ambe_fr[0][10];
 	result[1] = ambe_fr[0][22];

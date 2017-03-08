@@ -52,6 +52,9 @@ static inline void print_result(char title[], const uint8_t r[], int len) {
 }
 #endif
 
+static const uint8_t FS[24] = { 1,0,1,0,1,0,1,0,1,0,1,1,0,1,0,0,0,1,1,0,1,0,0,0 };
+static const uint8_t FS_DUMMY[24] = { 0,0,0,0,1,1,1,1,0,0,0,0,1,1,1,1,0,0,0,0,1,1,1,1 };
+
 namespace gr {
   namespace op25_repeater {
 
@@ -78,7 +81,8 @@ static const int MAX_OUT = 1;
               gr::io_signature::make (MIN_IN, MAX_IN, sizeof(short)),
               gr::io_signature::make (MIN_OUT, MAX_OUT, sizeof(char))),
               d_verbose_flag(verbose_flag),
-              d_config_file(config_file)
+              d_config_file(config_file),
+              d_frame_counter(0)
     {
       set_output_multiple(96);
       d_encoder.set_dstar_mode();
@@ -119,8 +123,8 @@ dstar_tx_sb_impl::forecast(int nof_output_items, gr_vector_int &nof_input_items_
 {
    // each 96-bit output frame contains one voice code word=160 samples input
    const size_t nof_inputs = nof_input_items_reqd.size();
-   const int nof_vcw = nof_output_items / 480.0;
-   const int nof_samples_reqd = nof_vcw * 5 * 160;
+   const int nof_vcw = nof_output_items / 96.0;
+   const int nof_samples_reqd = nof_vcw * 160;
    std::fill(&nof_input_items_reqd[0], &nof_input_items_reqd[nof_inputs], nof_samples_reqd);
 }
 
@@ -142,6 +146,12 @@ dstar_tx_sb_impl::general_work (int noutput_items,
     if (ninput_items[0] - nconsumed < 160)
       break;
     d_encoder.encode(in, out);
+    if (d_frame_counter == 0)
+        memcpy(out+72, FS, 24);
+    else
+        memcpy(out+72, FS_DUMMY, 24);
+    d_frame_counter += 1;
+    d_frame_counter = (d_frame_counter + 1) % 21;
     in += 160;
     nconsumed += 160;
     nframes += 1;

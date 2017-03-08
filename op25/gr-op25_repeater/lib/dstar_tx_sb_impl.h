@@ -58,6 +58,7 @@ namespace gr {
 	int d_verbose_flag;
 	const char * d_config_file;
         ambe_encoder d_encoder;
+	int d_frame_counter;
     };
 
   } // namespace op25_repeater
