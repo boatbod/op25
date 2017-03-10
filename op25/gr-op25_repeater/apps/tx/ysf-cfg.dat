@@ -1,0 +1,55 @@
+#################################################################################
+#
+# config file for YSF TX 
+#
+#################################################################################
+# 
+# YSF Encoder (C) Copyright 2017 Max H. Parke KA1RBI
+# 
+# This file is part of OP25
+# 
+# This is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 3, or (at your option)
+# any later version.
+# 
+# This software is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License
+# along with this software; see the file COPYING.  If not, write to
+# the Free Software Foundation, Inc., 51 Franklin Street,
+# Boston, MA 02110-1301, USA.
+#################################################################################
+#
+# NOTE 
+#
+# Syntax is unforgiving - no whitespace allowed (outside of comments)
+#
+# REFER TO THE Yaesu_Amateur_Radio_Digital_Specs PDF for details on field defs
+# 
+#################################################################################
+# ft = number of frames for rolling embedded data (callsign data) in halfrate mode
+# (3 bits)
+ft=1
+# message routing field (3 bits)
+mr=0
+# sq type (1 bit)
+sq=0
+# sc type (7 bits)
+sc=0
+# deviation flag (1 bit)
+dev=0
+# voip path (1 bit)
+voip=0
+#################################################################################
+# call sign data fields (10 byte, except rem12 and rem34 are five byte)
+#################################################################################
+dest=**********
+src=SRC
+down=down1
+up=up1
+rem12=rem12
+rem34=rem34
