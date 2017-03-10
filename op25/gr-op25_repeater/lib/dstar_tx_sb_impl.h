@@ -44,7 +44,7 @@ namespace gr {
      void config(void);
 
      public:
-      dstar_tx_sb_impl(int verbose_flag, const char * config_file, bool fullrate_mode);
+      dstar_tx_sb_impl(int verbose_flag, const char * config_file);
       ~dstar_tx_sb_impl();
 
       void forecast (int noutput_items, gr_vector_int &ninput_items_required);

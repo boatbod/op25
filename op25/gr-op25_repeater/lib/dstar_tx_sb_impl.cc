@@ -59,10 +59,10 @@ namespace gr {
   namespace op25_repeater {
 
     dstar_tx_sb::sptr
-    dstar_tx_sb::make(int verbose_flag, const char * config_file, bool fullrate_mode)
+    dstar_tx_sb::make(int verbose_flag, const char * config_file)
     {
       return gnuradio::get_initial_sptr
-        (new dstar_tx_sb_impl(verbose_flag, config_file, fullrate_mode));
+        (new dstar_tx_sb_impl(verbose_flag, config_file));
     }
 
 //////////////////////////////////////////////////////////////////////////
@@ -76,7 +76,7 @@ static const int MAX_OUT = 1;
     /*
      * The private constructor
      */
-    dstar_tx_sb_impl::dstar_tx_sb_impl(int verbose_flag, const char * config_file, bool fullrate_mode)
+    dstar_tx_sb_impl::dstar_tx_sb_impl(int verbose_flag, const char * config_file)
       : gr::block("dstar_tx_sb",
               gr::io_signature::make (MIN_IN, MAX_IN, sizeof(short)),
               gr::io_signature::make (MIN_OUT, MAX_OUT, sizeof(char))),
@@ -102,6 +102,8 @@ dstar_tx_sb_impl::config()
 	FILE * fp1 = fopen(d_config_file, "r");
 	char line[256];
 	char * cp;
+	// TODO: add code to generate slow speed datastream
+	return;
 	if (!fp1) {
 		fprintf(stderr, "dstar_tx_sb_impl:config: failed to open %s\n", d_config_file);
 		return;

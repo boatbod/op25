@@ -47,7 +47,7 @@ namespace gr {
        * class. op25_repeater::dstar_tx_sb::make is the public interface for
        * creating new instances.
        */
-      static sptr make(int versbose_flag, const char * conf_file, bool fullrate_mode);
+      static sptr make(int versbose_flag, const char * conf_file);
     };
 
   } // namespace op25_repeater
