@@ -2,7 +2,10 @@
 # Copyright 2005,2006,2007 Free Software Foundation, Inc.
 #
 # OP25 4-Level Modulator Block
-# Copyright 2009, 2010, 2011, 2012, 2013, 2014, 2015 Max H. Parke KA1RBI
+# Copyright 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017 Max H. Parke KA1RBI
+#
+# GMSK code from gnuradio gr-digital/python/digital/gmsk.py
+# gmsk.py is Copyright 2005-2007,2012 Free Software Foundation, Inc.
 #
 # This file is part of GNU Radio and part of OP25
 # 
@@ -23,7 +26,8 @@
 # 
 
 """
-P25 C4FM pre-modulation block.
+P25 C4FM pre-modulation block
+with additions for RRC (for dmr/ysf) and dstar gmsk
 """
 
 from gnuradio import gr, gru, eng_notation
@@ -42,6 +46,8 @@ _def_reverse = False
 _def_verbose = False
 _def_log = False
 _def_span = 13  #desired number of impulse response coeffs, in units of symbols
+_def_gmsk_span = 4
+_def_bt = 0.25
 
 def transfer_function_rx():
 	# p25 c4fm de-emphasis filter
@@ -108,6 +114,32 @@ class c4fm_taps(object):
 	def generate_code(self, varname='taps'):
 		return '%s = [\n\t%s]' % (varname, ',\n\t'.join(['%10.6e' % f for f in self.generate()]))
 
+class gmsk_taps(object):
+	def __init__(self, filter_gain = 1.0, sample_rate=_def_output_sample_rate, symbol_rate=_def_symbol_rate, span=_def_gmsk_span, bt=_def_bt):
+		self.filter_gain = filter_gain
+		self.sample_rate = sample_rate
+		self.symbol_rate = symbol_rate
+		self.span = span
+		self.bt = bt
+
+		self.samples_per_symbol = self.sample_rate / self.symbol_rate
+	        self.ntaps = self.span * self.samples_per_symbol
+
+	def generate(self):
+		# from gnuradio gr-digital/python/digital/gmsk.py
+		# Form Gaussian filter
+		# Generate Gaussian response (Needs to be convolved with window below).
+		gaussian_taps = filter.firdes.gaussian(
+			self.filter_gain,	       # gain
+			self.samples_per_symbol,    # symbol_rate
+			self.bt,	       # bandwidth * symbol time
+			self.ntaps	               # number of taps
+			)
+
+		sqwave = (1,) * self.samples_per_symbol       # rectangular window
+		taps = np.convolve(np.array(gaussian_taps),np.array(sqwave))
+		return taps
+
 # /////////////////////////////////////////////////////////////////////////////
 #                           modulator
 # /////////////////////////////////////////////////////////////////////////////
@@ -119,6 +151,8 @@ class p25_mod_bf(gr.hier_block2):
                  reverse=_def_reverse,
                  verbose=_def_verbose,
                  generator=transfer_function_tx,
+                 dstar=False,
+                 bt=_def_bt,
                  log=_def_log):
         """
 	Hierarchical block for RRC-filtered P25 FM modulation.
@@ -149,8 +183,14 @@ class p25_mod_bf(gr.hier_block2):
         self._interp_factor = int(lcm // input_sample_rate)
         self._decimation = int(lcm // output_sample_rate)
 
-        mod_map = [1.0/3.0, 1.0, -(1.0/3.0), -1.0]
-        self.C2S = digital.chunks_to_symbols_bf(mod_map)
+        self.dstar = dstar
+        self.bt = bt
+
+        if self.dstar:
+            self.C2S = digital.chunks_to_symbols_bf([-1, 1], 1)
+        else:
+            mod_map = [1.0/3.0, 1.0, -(1.0/3.0), -1.0]
+            self.C2S = digital.chunks_to_symbols_bf(mod_map)
         if reverse:
             self.polarity = blocks.multiply_const_ff(-1)
         else:
@@ -158,7 +198,11 @@ class p25_mod_bf(gr.hier_block2):
 
         self.generator = generator
 
-        self.filter = filter.interp_fir_filter_fff(self._interp_factor, c4fm_taps(sample_rate=output_sample_rate, generator=self.generator).generate())
+        if self.dstar:
+            coeffs = gmsk_taps(sample_rate=output_sample_rate, bt=self.bt).generate()
+        else:
+            coeffs = c4fm_taps(sample_rate=output_sample_rate, generator=self.generator).generate()
+        self.filter = filter.interp_fir_filter_fff(self._interp_factor, coeffs)
 
         if verbose:
             self._print_verbage()
