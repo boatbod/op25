@@ -35,7 +35,7 @@ import op25_repeater
 
 from math import pi
 
-from op25_c4fm_mod import c4fm_taps, transfer_function_dmr, p25_mod_bf
+from op25_c4fm_mod import c4fm_taps, transfer_function_dmr, transfer_function_tx, p25_mod_bf
 
 class my_top_block(gr.top_block):
 
@@ -77,6 +77,7 @@ class my_top_block(gr.top_block):
             self.connect(ENCODER, (DMR, 0))
             self.connect(ENCODER2, (DMR, 1))
             output_gain = 5.5
+            generator = transfer_function_dmr	# RRC
         elif options.protocol == 'dstar':
             ENCODER = op25_repeater.dstar_tx_sb(options.verbose, options.config_file)
             output_gain = 0.95
@@ -88,9 +89,11 @@ class my_top_block(gr.top_block):
                                   0,			# udp port
                                   False) 		# dump raw u vectors
             output_gain = 5.5
+            generator = transfer_function_tx	# RC+preemphasis
         elif options.protocol == 'ysf':
             ENCODER = op25_repeater.ysf_tx_sb(options.verbose, options.config_file, options.fullrate_mode)
             output_gain = 5.5
+            generator = transfer_function_dmr	# RRC
 	else:
             print 'protocol [-p] option missing'
             sys.exit(0)
@@ -102,9 +105,12 @@ class my_top_block(gr.top_block):
             nfiles += 1
         if nfiles < max_inputs:
             AUDIO = audio.source(options.sample_rate, options.audio_input)
+            lpf_taps = filter.firdes.low_pass(1.0, options.sample_rate, 3400.0, 3400 * 0.1, filter.firdes.WIN_HANN)
+            audio_rate = 8000
+            AUDIO_DECIM = filter.fir_filter_fff (int(options.sample_rate / audio_rate), lpf_taps)
             AUDIO_SCALE = blocks.multiply_const_ff(32767.0 * options.gain)
             AUDIO_F2S = blocks.float_to_short()
-            self.connect(AUDIO, AUDIO_SCALE, AUDIO_F2S)
+            self.connect(AUDIO, AUDIO_DECIM, AUDIO_SCALE, AUDIO_F2S)
 
         if options.file1: 
             IN1 = blocks.file_source(gr.sizeof_short, options.file1, options.repeat)
@@ -128,7 +134,7 @@ class my_top_block(gr.top_block):
         if options.protocol == 'dstar':
             MOD = p25_mod_bf(output_sample_rate = options.sample_rate, dstar = True, bt = options.bt)
         else:
-            MOD = p25_mod_bf(output_sample_rate = options.sample_rate, generator=transfer_function_dmr)
+            MOD = p25_mod_bf(output_sample_rate = options.sample_rate, generator=generator)
         AMP = blocks.multiply_const_ff(output_gain)
 
         if options.output_file:
