@@ -229,8 +229,6 @@ class p25_mod_bf(gr.hier_block2):
                      gr.file_sink(gr.sizeof_float, "tx_polarity.dat"))
         self.connect(self.filter,
                      gr.file_sink(gr.sizeof_float, "tx_filter.dat"))
-        self.connect(self.shaping_filter,
-                     gr.file_sink(gr.sizeof_float, "tx_shaping_filter.dat"))
         if (self._decimation > 1):
             self.connect(self.decimator,
                      gr.file_sink(gr.sizeof_float, "tx_decimator.dat"))
