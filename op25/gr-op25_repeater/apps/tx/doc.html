@@ -1,0 +1,77 @@
+<hmtl><head><title>OP25 Multiprotocol Digital Voice TX</title></head>
+<body bgcolor="#cccccc">
+<h1>OP25 Multiprotocol Digital Voice TX</h1><br>
+The OP25 project in 2009 released an encoder and software TX for P25 (conventional phase I C4FM/FDMA) based on the fullrate IMBE codec contribution from Pavel Yazev.
+<p>
+With the addition of a software AMBE halfrate encoder the OP25 Group now releases an updated TX with voice encoders for-
+<ul>
+<li>P25</li>
+<li>DMR</li>
+<li>YSF</li>
+<li>DSTAR</li>
+</ul>
+<p>
+This release was tested using a PC soundcard connected to the direct modulator input (i.e., 9,600 data port) of an Icom IC-820H configured for high speed data operation [AMOD/PACT switch set to PACT].  Not all PCs tested successfully so perhaps the choice of sound card isn't irrelevant, or the interface circuit needs more work...  The software TX drives the audio output at optimum (close to full) signal levels, so no output level adjust is needed.
+
+<h3>STARTING THE PROGRAM</h3>
+After installing OP25 cd to the <code>op25/gr-op25_repeater/apps/tx</code> subdirectory (after checking out the "max" branch of the repository).  Here's an example command line:
+<pre>
+python dv_tx.py   -r -f ~/uncompressed.wav -p dstar -c dstar-cfg.dat
+</pre>
+In this example we've selected the dstar protocol with input from a wav file (must be standard rate 8000/S16_LE/mono).  Below is a full list of options.
+<pre>
+Multiprotocol Digital Voice TX (C) Copyright 2017 Max H. Parke KA1RBI
+Usage: dv_tx.py [options]
+
+Options:
+  -h, --help            show this help message and exit
+  -b BT, --bt=BT        specify bt value
+  -c CONFIG_FILE, --config-file=CONFIG_FILE
+                        specify the config file name
+  -f FILE1, --file1=FILE1
+                        specify the input file slot 1
+  -F FILE2, --file2=FILE2
+                        specify the input file slot 2 (DMR)
+  -g GAIN, --gain=GAIN  input gain
+  -I AUDIO_INPUT, --audio-input=AUDIO_INPUT
+                        pcm input device name.  E.g., hw:0,0 or /dev/dsp
+  -O AUDIO_OUTPUT, --audio-output=AUDIO_OUTPUT
+                        pcm output device name.  E.g., hw:0,0 or /dev/dsp
+  -o OUTPUT_FILE, --output-file=OUTPUT_FILE
+                        specify the output file
+  -p PROTOCOL, --protocol=PROTOCOL
+                        specify protocol
+  -r, --repeat          input file repeat
+  -R, --fullrate-mode   ysf fullrate
+  -s SAMPLE_RATE, --sample-rate=SAMPLE_RATE
+                        output sample rate
+  -v VERBOSE, --verbose=VERBOSE
+                        additional output
+</pre>
+<h3>GENERAL</h3>
+Input audio may come either from WAV files (8000/S16_LE/mono) or from the PC microphone / line input connector.  If <code>-f <em>filename</em></code> (or <code>-F <em>filename</em></code> in DMR mode) is selected the input is read from file(s); otherwise the GR audio source is selected.  Likewise output is sent to the soundcard unless <code>-o</code> is given.  When using files the <code>-r</code> option can be specified to replay the input file(s) in a continuous loop.  Without this option the program exits at EOF.  The <code>-p <em>protocol</em></code> option is used to select which of the four DV standards (dmr, dstar, p25 or ysf) is to be used.  The dmr and ysf modes also utilize a configuration file, specified using the <code>-c <em>filename</em></code> parameter.  See the specific section (below) for more details on the configuration file.
+<p>
+There currently appears to be an audio bug that causes the audio to sound "overdriven" or "clipping".  The dstar and to a lesser extent the ysf-halfrate coders are most affected by this; dstar also suffers from an audio level pumping or AVC malady.  The <code>-g <em>gain</em></code> parameter can be used in some cases to lessen the severity of this bug at the expense of lowered dynamic range at the input to the coder.
+<p>
+Note: in general the program currently doesn't currently send "header" or "terminator" packets which typically appear once at the start/end of voice transmissions.  Instead we rely on the ability inherent in all of these protocols to start receiving even for transmissions already in progress.  For two of the four protocols (dstar and ysf in fullrate mode) this means we forfeit an opportunity to transmit the station callsign.  This needs to be fixed in a future release...
+<p>
+<h3>OPERATION</h3>
+Proper FM deviation is set by adjusting the output levels using the 'alsamixer' app while monitoring with an FM deviation meter.  The "Datascope" option in the scope.py OP25 gui app (running on a separate PC) can also be used to view the deviation.  If this method is used scope.py must first be calibrated using a known accurate station.  The test station is then adjusted to have the same deviation as the known station (leaving all receiver parameters unchanged other than perhaps the frequency).
+<p>
+<h3>DMR</h3>
+DMR operates in Base Station (BS) mode and is 2-slot TDMA with both slots operating in Group Voice mode.  [DMR Mobile Station mode utilizes time-slotted channel access and is not directly compatible with the usual FM transmitter hardware without serious modification].  The configuration file parameters that you are most likely to change are the Station Address (sa) and Group Address (ga) parameters [the latter is also known as the talkgroup ID].  See the comments in the sample DMR config file <code>dmr-cfg.dat</code> (supplied).  It is also possible to disable one or both channels if desired.
+<p>
+<h3>DSTAR</h3>
+As of this writing DSTAR mode has an audio clipping bug causing the speech to have a distored, overdriven character.  Given sufficient time this should be quite fixable.  Also the "slow speed data" feature needs to be implemented. Until this is done the config file (if present) is ignored.  As mentioned, the <code>-g <em>gain</em></code> parameter can be used to adjust the input gain, although this doesn't fully cure all dstar quality issues.
+<p>
+<h3>P25</h3>
+The P25 coder was the earliest modulation format supported in OP25.  It operates with a fixed NAC (Network Access Code) of 0x293 and transmits fullrate voice.
+<p>
+<h3>YSF</h3>
+The ysf mode supports both halfrate (default) and fullrate voice, with some clipping distortion noted in the halfrate mode.  Fullrate mode is enabled using the <code>-R</code> option.  The halfrate mode also supports the interspersed callsign and repeater ID data, but this is currently untested.  See the sample ysf config file <code>ysf-cfg.dat</code> (supplied).
+<p>
+<h3>CREDITS</h3>
+Too many to list; thanks to Matt Ames, Pavel Yazev, Jonathan Naylor, unknown author(s) of DSD (DSDAuthor), Mathias Weyland, Sylvain Munaut; undoubtedly others.
+<br><hr>
+&copy;Copyright 2017, Max H. Parke KA1RBI
+</body></html>
