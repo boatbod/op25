@@ -59,6 +59,7 @@ private:
 	Word32 dc_rmv_mem;
 	Cmplx16 fft_buf[FFTLENGTH];
 	Word16 pe_lpf_mem[PE_LPF_ORD];
+	Word32 d_gain_adjust;
 
 	/* member functions */
 	void idct(Word16 *in, Word16 m_lim, Word16 i_lim, Word16 *out);

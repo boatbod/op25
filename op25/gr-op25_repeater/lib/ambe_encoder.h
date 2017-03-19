@@ -35,6 +35,7 @@ private:
 	mbe_parms prev_mp;
 	bool d_49bit_mode;
 	bool d_dstar_mode;
+	float d_gain_adjust;
 };
 
 #endif /* INCLUDED_AMBE_ENCODER_H */

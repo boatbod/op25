@@ -99,7 +99,7 @@ void imbe_vocoder::sa_encode(IMBE_PARAM *imbe_param)
 		if(si_coef == 0)
 		{
 			tmp_word32 = L_mpy_ls(sa_prev2[index], ro_coef);                        // sa_prev2 here is in Q10.22 format 
-			*vec32_ptr++ = L_sub(Log2(*sa_ptr++), tmp_word32);       
+			*vec32_ptr = L_sub(Log2(*sa_ptr++), tmp_word32);       
 			sum = L_add(sum, sa_prev2[index]);                                      // sum in Q10.22 format
 		}
 		else
@@ -112,8 +112,10 @@ void imbe_vocoder::sa_encode(IMBE_PARAM *imbe_param)
 			sum = L_add(sum, tmp_word32); 
 			*vec32_ptr = L_sub(*vec32_ptr, L_mpy_ls(tmp_word32, ro_coef));
 
-			vec32_ptr++;
 		}
+		if (d_gain_adjust)
+			*vec32_ptr = L_sub(*vec32_ptr, d_gain_adjust << 22);	// would be nicer to allow fractional increments...
+		vec32_ptr++;
 
 		k_acc += k_coef;
 	}

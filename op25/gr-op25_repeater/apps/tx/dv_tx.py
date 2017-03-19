@@ -69,6 +69,35 @@ class my_top_block(gr.top_block):
         (options, args) = parser.parse_args()
 
         max_inputs = 1
+
+	output_gains = {
+		'dmr': 5.5,
+		'dstar': 0.95,
+		'p25': 5.5,
+		'ysf': 5.5
+	}
+	generators = {
+		'dmr': transfer_function_dmr,
+		'p25': transfer_function_tx,
+		'ysf': transfer_function_dmr
+	}
+	gain_adjust = {
+		'dmr': 3.0,
+		'dstar': 6.0,
+		'ysf': 5.0
+	}
+	gain_adjust_fullrate = {
+		'p25': 2.0,
+		'ysf': 3.0
+	}
+	output_gain = output_gains[options.protocol]
+	if options.protocol in generators.keys():
+		generator = generators[options.protocol]
+	if options.protocol in gain_adjust.keys():
+            os.environ['GAIN_ADJUST'] = str(gain_adjust[options.protocol])
+	if options.protocol in gain_adjust_fullrate.keys():
+            os.environ['GAIN_ADJUST_FULLRATE'] = str(gain_adjust_fullrate[options.protocol])
+
         if options.protocol == 'dmr':
             max_inputs = 2
             ENCODER  = op25_repeater.ambe_encoder_sb(options.verbose)
@@ -76,11 +105,8 @@ class my_top_block(gr.top_block):
             DMR = op25_repeater.dmr_bs_tx_bb(options.verbose, options.config_file)
             self.connect(ENCODER, (DMR, 0))
             self.connect(ENCODER2, (DMR, 1))
-            output_gain = 5.5
-            generator = transfer_function_dmr	# RRC
         elif options.protocol == 'dstar':
             ENCODER = op25_repeater.dstar_tx_sb(options.verbose, options.config_file)
-            output_gain = 0.95
         elif options.protocol == 'p25':
             ENCODER = op25_repeater.vocoder(True,		# 0=Decode,True=Encode
                                   0,	# Verbose flag
@@ -88,12 +114,8 @@ class my_top_block(gr.top_block):
                                   "",			# udp ip address
                                   0,			# udp port
                                   False) 		# dump raw u vectors
-            output_gain = 5.5
-            generator = transfer_function_tx	# RC+preemphasis
         elif options.protocol == 'ysf':
             ENCODER = op25_repeater.ysf_tx_sb(options.verbose, options.config_file, options.fullrate_mode)
-            output_gain = 5.5
-            generator = transfer_function_dmr	# RRC
 	else:
             print 'protocol [-p] option missing'
             sys.exit(0)

@@ -155,7 +155,7 @@ static inline float make_f0(int b0) {
 	return (powf(2, (-4.311767578125 - (2.1336e-2 * ((float)b0+0.5)))));
 }
 
-static void encode_ambe(const IMBE_PARAM *imbe_param, int b[], mbe_parms*cur_mp, mbe_parms*prev_mp, bool dstar) {
+static void encode_ambe(const IMBE_PARAM *imbe_param, int b[], mbe_parms*cur_mp, mbe_parms*prev_mp, bool dstar, float gain_adjust) {
 	static const float SQRT_2 = sqrtf(2.0);
 	static const int b0_lmax = sizeof(b0_lookup) / sizeof(b0_lookup[0]);
 	// int b[9];
@@ -237,19 +237,19 @@ static void encode_ambe(const IMBE_PARAM *imbe_param, int b[], mbe_parms*cur_mp,
 	float lsa[NUM_HARMS_MAX];
 	float lsa_sum=0.0;
 
-	static const float DIV_F = 1.0/2.0;
-
 	for (int i1 = 0; i1 < imbe_param->num_harms; i1++) {
 		float sa = (float)imbe_param->sa[i1];
 		if (sa < 1) sa = 1.0;
 		if (imbe_param->v_uv_dsn[i1])
-			lsa[i1] = log_l_2 + log2f(DIV_F*sa);
+			lsa[i1] = log_l_2 + log2f(sa);
 		else
-			lsa[i1] = log_l_w0 + log2f(DIV_F*sa);
+			lsa[i1] = log_l_w0 + log2f(sa);
 		lsa_sum += lsa[i1];
 	}
 	float gain = lsa_sum / num_harms_f;
 	float diff_gain = gain - 0.5 * prev_mp->gamma;
+
+	diff_gain -= gain_adjust;
 
 	float error;
 	int error_index;
@@ -283,8 +283,7 @@ static void encode_ambe(const IMBE_PARAM *imbe_param, int b[], mbe_parms*cur_mp,
 		int kl_floor = (int) kl;
 		float kl_frac = kl - kl_floor;
 		T[i1] = lsa[i1] - 0.65 * (1.0 - kl_frac) * prev_mp->log2Ml[kl_floor  +0]	\
-				- 0.65 * kl_frac * prev_mp->log2Ml[kl_floor+1  +0]		\
-				+ (0.65 / num_harms_f) * tmp_s;
+				- 0.65 * kl_frac * prev_mp->log2Ml[kl_floor+1  +0];
 	}
 
 	// DCT
@@ -541,10 +540,20 @@ static void encode_49bit(uint8_t outp[49], const int b[9]) {
 
 ambe_encoder::ambe_encoder(void)
 	: d_49bit_mode(false),
-	d_dstar_mode(false)
+	d_dstar_mode(false),
+	d_gain_adjust(0)
 {
 	mbe_parms enh_mp;
 	mbe_initMbeParms (&cur_mp, &prev_mp, &enh_mp);
+	// this is a hack to cut down on overloading
+	// value is in log2
+	char *gfp = getenv("GAIN_ADJUST");
+	if (gfp) {
+		float gain_adj = 0.0;
+		sscanf(gfp, "%f", &gain_adj);
+		if (!isnan(gain_adj))
+			d_gain_adjust = gain_adj;
+	}
 }
 
 void ambe_encoder::set_dstar_mode(void)
@@ -572,7 +581,7 @@ void ambe_encoder::encode(int16_t samples[], uint8_t codeword[])
 	vocoder.imbe_encode(frame_vector, samples);
 
 	// halfrate audio encoding - output rate is 2450 (49 bits)
-	encode_ambe(vocoder.param(), b, &cur_mp, &prev_mp, d_dstar_mode);
+	encode_ambe(vocoder.param(), b, &cur_mp, &prev_mp, d_dstar_mode, d_gain_adjust);
 
 	if (d_dstar_mode) {
 		interleaver.encode_dstar(codeword, b);
