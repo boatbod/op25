@@ -1102,7 +1102,9 @@ class p25_rx_block (stdgui2.std_top_block):
                 "center-freq": 0,
                 "source-dev": "AUDIO",
                 "source-decim": 1 }
-            self.source = audio.source(capture_rate, audio_input_filename)
+            self.audio_source = audio.source(capture_rate, audio_input_filename)
+            self.source = blocks.multiply_const_ff(gain)
+            self.connect(self.audio_source, self.source)
             self.__set_rx_from_audio(capture_rate)
             self._set_titlebar("Capturing")
             self._set_state("CAPTURING")
