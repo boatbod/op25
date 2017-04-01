@@ -53,18 +53,24 @@ class my_top_block(gr.top_block):
         gr.top_block.__init__(self)
         parser = OptionParser(option_class=eng_option)
 
+        parser.add_option("-a", "--args", type="string", default="", help="device args")
         parser.add_option("-b", "--bt", type="float", default=0.25, help="specify bt value")
         parser.add_option("-c", "--config-file", type="string", default=None, help="specify the config file name")
         parser.add_option("-f", "--file1", type="string", default=None, help="specify the input file slot 1")
         parser.add_option("-F", "--file2", type="string", default=None, help="specify the input file slot 2 (DMR)")
         parser.add_option("-g", "--gain", type="float", default=1.0, help="input gain")
+        parser.add_option("-i", "--if-rate", type="float", default=960000, help="output rate to sdr")
         parser.add_option("-I", "--audio-input", type="string", default="", help="pcm input device name.  E.g., hw:0,0 or /dev/dsp")
+        parser.add_option("-N", "--gains", type="string", default=None, help="gain settings")
         parser.add_option("-O", "--audio-output", type="string", default="default", help="pcm output device name.  E.g., hw:0,0 or /dev/dsp")
         parser.add_option("-o", "--output-file", type="string", default=None, help="specify the output file")
         parser.add_option("-p", "--protocol", type="choice", default=None, choices=('dmr', 'dstar', 'p25', 'ysf'), help="specify protocol")
+        parser.add_option("-q", "--frequency-correction", type="float", default=0.0, help="ppm")
+        parser.add_option("-Q", "--frequency", type="float", default=0.0, help="Hz")
         parser.add_option("-r", "--repeat", action="store_true", default=False, help="input file repeat")
         parser.add_option("-R", "--fullrate-mode", action="store_true", default=False, help="ysf fullrate")
         parser.add_option("-s", "--sample-rate", type="int", default=48000, help="output sample rate")
+        parser.add_option("-t", "--test", type="string", default=None, help="test pattern symbol file")
         parser.add_option("-v", "--verbose", type="int", default=0, help="additional output")
         (options, args) = parser.parse_args()
 
@@ -90,6 +96,17 @@ class my_top_block(gr.top_block):
 		'p25': 2.0,
 		'ysf': 3.0
 	}
+	mod_adjust = {	# rough values
+		'dmr': 0.3,
+		'dstar': 0.075,
+		'p25': 0.25,
+		'ysf': 0.32
+	}
+
+	if options.protocol is None:
+            print 'protocol [-p] option missing'
+            sys.exit(0)
+
 	output_gain = output_gains[options.protocol]
 	if options.protocol in generators.keys():
 		generator = generators[options.protocol]
@@ -98,7 +115,9 @@ class my_top_block(gr.top_block):
 	if options.protocol in gain_adjust_fullrate.keys():
             os.environ['GAIN_ADJUST_FULLRATE'] = str(gain_adjust_fullrate[options.protocol])
 
-        if options.protocol == 'dmr':
+        if options.test:
+            ENCODER = blocks.file_source(gr.sizeof_char, options.test, True)
+        elif options.protocol == 'dmr':
             max_inputs = 2
             ENCODER  = op25_repeater.ambe_encoder_sb(options.verbose)
             ENCODER2 = op25_repeater.ambe_encoder_sb(options.verbose)
@@ -116,16 +135,12 @@ class my_top_block(gr.top_block):
                                   False) 		# dump raw u vectors
         elif options.protocol == 'ysf':
             ENCODER = op25_repeater.ysf_tx_sb(options.verbose, options.config_file, options.fullrate_mode)
-	else:
-            print 'protocol [-p] option missing'
-            sys.exit(0)
-
         nfiles = 0
         if options.file1:
             nfiles += 1
         if options.file2 and options.protocol == 'dmr':
             nfiles += 1
-        if nfiles < max_inputs:
+        if nfiles < max_inputs and not options.test:
             AUDIO = audio.source(options.sample_rate, options.audio_input)
             lpf_taps = filter.firdes.low_pass(1.0, options.sample_rate, 3400.0, 3400 * 0.1, filter.firdes.WIN_HANN)
             audio_rate = 8000
@@ -140,7 +155,7 @@ class my_top_block(gr.top_block):
             AMP1 = blocks.multiply_const_ff(options.gain)
             F2S1 = blocks.float_to_short()
             self.connect(IN1, S2F1, AMP1, F2S1, ENCODER)
-        else:
+        elif not options.test:
             self.connect(AUDIO_F2S, ENCODER)
 
         if options.protocol == 'dmr':
@@ -161,15 +176,45 @@ class my_top_block(gr.top_block):
 
         if options.output_file:
             OUT = blocks.file_sink(gr.sizeof_float, options.output_file)
-        else:
+        elif not options.args:
             OUT = audio.sink(options.sample_rate, options.audio_output)
 
-        if options.protocol == 'dmr':
+        if options.protocol == 'dmr' and not options.test:
             self.connect(DMR, MOD)
         else:
             self.connect(ENCODER, MOD)
 
-        self.connect(MOD, AMP, OUT)
+        if options.args:
+            self.setup_sdr_output(options, mod_adjust[options.protocol])
+            interp = filter.rational_resampler_fff(options.if_rate / options.sample_rate, 1)
+            self.connect(MOD, AMP, interp, self.fm_modulator, self.u)
+        else:
+            self.connect(MOD, AMP, OUT)
+
+    def setup_sdr_output(self, options, adjustment):
+        import osmosdr
+        max_dev = 12.5e3
+        k = 2 * math.pi * max_dev / options.if_rate
+
+        self.fm_modulator = analog.frequency_modulator_fc (k * adjustment)
+
+        self.u = osmosdr.sink (options.args)
+        gain_names = self.u.get_gain_names()
+        for name in gain_names:
+            range = self.u.get_gain_range(name)
+            print "gain: name: %s range: start %d stop %d step %d" % (name, range[0].start(), range[0].stop(), range[0].step())
+        if options.gains:
+            for tuple in options.gains.split(","):
+                name, gain = tuple.split(":")
+                gain = int(gain)
+                print "setting gain %s to %d" % (name, gain)
+                self.u.set_gain(gain, name)
+
+        print 'setting sample rate'
+        self.u.set_sample_rate(options.if_rate)
+        self.u.set_center_freq(options.frequency)
+        self.u.set_freq_corr(options.frequency_correction)
+        #self.u.set_bandwidth(options.if_rate)
 
 if __name__ == "__main__":
     print 'Multiprotocol Digital Voice TX (C) Copyright 2017 Max H. Parke KA1RBI'
