@@ -295,7 +295,7 @@ void ysf_tx_sb_impl::write_fich(uint8_t result[100]) {
 
 static inline void sstring(const char s[], char dest[10]) {
 	memset(dest, ' ', 10);
-	memcpy(dest, s, std::min(strlen(s), 10UL));
+	memcpy(dest, s, std::min(strlen(s), (size_t)10));
         for (int i=0; i<10; i++) {
 		if (dest[i] < ' ')
 			dest [i] = ' ';
