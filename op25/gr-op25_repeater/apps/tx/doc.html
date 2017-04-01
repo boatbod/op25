@@ -49,6 +49,11 @@ After installing OP25 cd to the <code>op25/gr-op25_repeater/apps/tx</code> subdi
 <pre>
 python dv_tx.py   -r -f ~/uncompressed.wav -p dstar -c dstar-cfg.dat
 </pre>
+<p>
+Hackrf Example:
+<pre>
+python dv_tx.py  -p dmr  --args hackrf -q -21 -Q 925187500 -c dmr-cfg.dat -f ~/file1.wav -F ~/file2.wav  -r 
+</pre>
 In this example we've selected the dstar protocol with input from a wav file (must be standard rate 8000/S16_LE/mono).  Below is a full list of options.
 <pre>
 Multiprotocol Digital Voice TX (C) Copyright 2017 Max H. Parke KA1RBI
@@ -56,6 +61,7 @@ Usage: dv_tx.py [options]
 
 Options:
   -h, --help            show this help message and exit
+  -a ARGS, --args=ARGS  device args
   -b BT, --bt=BT        specify bt value
   -c CONFIG_FILE, --config-file=CONFIG_FILE
                         specify the config file name
@@ -64,18 +70,27 @@ Options:
   -F FILE2, --file2=FILE2
                         specify the input file slot 2 (DMR)
   -g GAIN, --gain=GAIN  input gain
+  -i IF_RATE, --if-rate=IF_RATE
+                        output rate to sdr
   -I AUDIO_INPUT, --audio-input=AUDIO_INPUT
                         pcm input device name.  E.g., hw:0,0 or /dev/dsp
+  -N GAINS, --gains=GAINS
+                        gain settings
   -O AUDIO_OUTPUT, --audio-output=AUDIO_OUTPUT
                         pcm output device name.  E.g., hw:0,0 or /dev/dsp
   -o OUTPUT_FILE, --output-file=OUTPUT_FILE
                         specify the output file
   -p PROTOCOL, --protocol=PROTOCOL
                         specify protocol
+  -q FREQUENCY_CORRECTION, --frequency-correction=FREQUENCY_CORRECTION
+                        ppm
+  -Q FREQUENCY, --frequency=FREQUENCY
+                        Hz
   -r, --repeat          input file repeat
   -R, --fullrate-mode   ysf fullrate
   -s SAMPLE_RATE, --sample-rate=SAMPLE_RATE
                         output sample rate
+  -t TEST, --test=TEST  test pattern symbol file
   -v VERBOSE, --verbose=VERBOSE
                         additional output
 </pre>
