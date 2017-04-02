@@ -129,6 +129,7 @@ class p25_rx_block (stdgui2.std_top_block):
         parser.add_option("-O", "--audio-output", type="string", default="default", help="audio output device name")
         parser.add_option("-q", "--freq-corr", type="eng_float", default=0.0, help="frequency correction")
         parser.add_option("-2", "--phase2-tdma", action="store_true", default=False, help="enable phase2 tdma decode")
+        parser.add_option("-Z", "--decim-amt", type="int", default=1, help="spectrum decimation")
         (options, args) = parser.parse_args()
         if len(args) != 0:
             parser.print_help()
@@ -242,7 +243,7 @@ class p25_rx_block (stdgui2.std_top_block):
         global speeds
         global WIRESHARK_PORT
         # tell the scope the source rate
-        self.spectrum.set_sample_rate(capture_rate)
+        self.spectrum.set_sample_rate(capture_rate / self.options.decim_amt)
 
         self.rx_q = gr.msg_queue(100)
         msg_EVT_DATA_EVENT(self.frame, self.msg_data)
@@ -404,8 +405,10 @@ class p25_rx_block (stdgui2.std_top_block):
             self.fft_state = fft
             if fft == 0:
                 self.demod.disconnect_complex()
+                self.disconnect(self.spectrum_decim, self.spectrum)
             else:
-                self.demod.connect_complex('mixer', self.spectrum)
+                self.connect(self.spectrum_decim, self.spectrum)
+                self.demod.connect_complex('mixer', self.spectrum_decim)
 
         if c4fm != self.c4fm_state:
             self.c4fm_state = c4fm
@@ -526,7 +529,9 @@ class p25_rx_block (stdgui2.std_top_block):
         self.vbox.Add(self.notebook, 1, wx.EXPAND)       
         # add spectrum scope
         #self.spectrum = fftsink2.fft_sink_c(self.notebook, sample_rate = self.channel_rate, fft_size=512, fft_rate=2, average=False, peak_hold=False)
-        self.spectrum = fftsink2.fft_sink_c(self.notebook, sample_rate = self.channel_rate, fft_size=1024, fft_rate=10, avg_alpha=0.35, ref_level=0, average=True, peak_hold=False)
+        spectrum_rate = self.channel_rate / self.options.decim_amt
+        self.spectrum_decim = filter.rational_resampler_ccf(1, self.options.decim_amt)
+        self.spectrum = fftsink2.fft_sink_c(self.notebook, sample_rate = spectrum_rate, fft_size=1024, fft_rate=10, avg_alpha=0.35, ref_level=0, average=True, peak_hold=False)
         try:
             self.spectrum_plotter = self.spectrum.win.plotter
         except:
