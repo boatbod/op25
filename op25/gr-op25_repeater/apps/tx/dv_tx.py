@@ -64,7 +64,7 @@ class my_top_block(gr.top_block):
         parser.add_option("-N", "--gains", type="string", default=None, help="gain settings")
         parser.add_option("-O", "--audio-output", type="string", default="default", help="pcm output device name.  E.g., hw:0,0 or /dev/dsp")
         parser.add_option("-o", "--output-file", type="string", default=None, help="specify the output file")
-        parser.add_option("-p", "--protocol", type="choice", default=None, choices=('dmr', 'dstar', 'p25', 'ysf'), help="specify protocol")
+        parser.add_option("-p", "--protocol", type="choice", default=None, choices=('dmr', 'dstar', 'p25', 'ysf'), help="specify protocol: dmr, dstar, p25, ysf")
         parser.add_option("-q", "--frequency-correction", type="float", default=0.0, help="ppm")
         parser.add_option("-Q", "--frequency", type="float", default=0.0, help="Hz")
         parser.add_option("-r", "--repeat", action="store_true", default=False, help="input file repeat")
