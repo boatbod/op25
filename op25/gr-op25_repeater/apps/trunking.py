@@ -22,6 +22,7 @@
 import sys
 import time
 import collections
+import json
 sys.path.append('tdma')
 import lfsr
 
@@ -88,6 +89,26 @@ class trunked_system (object):
             self.cc_list   = config['cclist']
             self.center_frequency = config['center_frequency']
             self.modulation = config['modulation']
+
+    def to_json(self):
+        d = {}
+        d['syid'] = self.rfss_syid
+        d['rfid'] = self.rfss_rfid
+        d['stid'] = self.rfss_stid
+        d['sysid'] = self.ns_syid
+        d['rxchan'] = self.rfss_chan
+        d['txchan'] = self.rfss_txchan
+        d['wacn'] = self.ns_wacn
+        d['secondary'] = self.secondary.keys()
+        d['tsbks'] = self.stats['tsbks']
+        d['frequencies'] = {}
+        d['last_tsbk'] = self.last_tsbk
+        t = time.time()
+        for f in self.voice_frequencies.keys():
+            tgs = '%s %s' % (self.voice_frequencies[f]['tgid'][0], self.voice_frequencies[f]['tgid'][1])
+            d['frequencies'][f] = 'voice frequency %f tgid(s) %s %4.1fs ago count %d' %  (f / 1000000.0, tgs, t - self.voice_frequencies[f]['time'], self.voice_frequencies[f]['counter'])
+
+        return json.dumps(d)
 
     def to_string(self):
         s = []
@@ -264,6 +285,7 @@ class trunked_system (object):
 
     def decode_tsbk(self, tsbk):
         self.cc_timeouts = 0
+        self.last_tsbk = time.time()
         self.stats['tsbks'] += 1
         updated = 0
         #if crc16(tsbk, 12) != 0:
@@ -482,7 +504,7 @@ class trunked_system (object):
         if self.cc_list_index >= len(self.cc_list):
             self.cc_list_index = 0
         self.trunk_cc = self.cc_list[self.cc_list_index]
-        print '%f set trunk_cc to %s' % (curr_time, self.trunk_cc)
+        sys.stderr.write('%f set trunk_cc to %s\n' % (curr_time, self.trunk_cc))
 
 def get_int_dict(s):
     if s[0].isdigit():
@@ -511,6 +533,7 @@ class rx_ctl (object):
         self.TSYS_HOLD_TIME = 3.0	# TODO: make more configurable
         self.wait_until = time.time()
         self.configs = {}
+        self.nacs = []
         self.last_tdma_vf = 0
         self.P2_GRACE_TIME = 1.0	# TODO: make more configurable
         self.logfile_workers = logfile_workers
@@ -603,6 +626,32 @@ class rx_ctl (object):
             configs[nac]['sysname'] = section
         self.setup_config(configs)
 
+    def add_default_config(self, nac, cclist=[], offset=0, whitelist=None, blacklist={}, tgid_map={}, sysname=None, center_frequency=None, modulation='cqpsk'):
+        if nac in self.configs.keys():
+            return
+        if nac not in self.trunked_systems.keys():
+            return
+        tsys = self.trunked_systems[nac]
+        if not tsys.rfss_chan:
+            return
+        if not tsys.ns_chan:
+            return
+        if tsys.ns_wacn < 0:
+            return
+        if tsys.ns_syid < 0:
+            return
+        if not sysname:
+            sysname = 'NAC 0x%x' % nac
+        if not cclist:
+            cclist = [tsys.rfss_chan]
+            cclist.extend(tsys.secondary.keys())
+            tsys.cc_list = cclist
+        self.configs[nac] = {'cclist':cclist, 'offset':offset, 'whitelist':whitelist, 'blacklist':blacklist, 'tgid_map':tgid_map, 'sysname': sysname, 'center_frequency': center_frequency, 'modulation':modulation}
+        self.current_nac = nac
+        self.current_state = self.states.CC
+        if nac not in self.nacs:
+            self.nacs.append(nac)
+
     def setup_config(self, configs):
         for nac in configs:
             self.configs[nac] = {'cclist':[], 'offset':0, 'whitelist':None, 'blacklist':{}, 'tgid_map':{}, 'sysname': configs[nac]['sysname'], 'center_frequency': None}
@@ -636,6 +685,12 @@ class rx_ctl (object):
             self.current_id = 0
         return self.nacs[self.current_id]
 
+    def to_json(self):
+        d = {'json_type': 'trunk_update'}
+        for nac in self.trunked_systems.keys():
+            d[nac] = json.loads(self.trunked_systems[nac].to_json())
+        return json.dumps(d)
+
     def to_string(self):
         s = ''
         for nac in self.trunked_systems:
@@ -654,7 +709,8 @@ class rx_ctl (object):
             self.update_state(cmd, curr_time)
             return
         elif type == -1:	# timeout
-            print "process_data_unit timeout"
+            if self.debug:
+                print "process_data_unit timeout"
             self.update_state('timeout', curr_time)
             if self.logfile_workers:
                 self.logging_scheduler(curr_time)
