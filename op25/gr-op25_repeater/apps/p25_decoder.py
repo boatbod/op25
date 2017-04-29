@@ -76,7 +76,9 @@ class p25_decoder_sink_b(gr.hier_block2):
 
         self.debug = debug
         self.dest = dest
-        do_output = True
+        do_output = False
+        if dest == 'wav':
+            do_output = True
         do_audio_output = True
 
         if msgq is None:
@@ -94,8 +96,6 @@ class p25_decoder_sink_b(gr.hier_block2):
             self.p25_decoders.append(op25_repeater.p25_frame_assembler(wireshark_host, udp_port, debug, do_imbe, do_output, do_msgq, msgq, do_audio_output, True))
             self.p25_decoders[slot].set_slotid(slot)
 
-            self.audio_s2f.append(blocks.short_to_float()) # another ridiculous conversion
-            self.scaler.append(blocks.multiply_const_ff(1 / 32768.0))
             self.xorhash.append('')
 
             if dest == 'wav':
@@ -103,11 +103,12 @@ class p25_decoder_sink_b(gr.hier_block2):
                 n_channels = 1
                 sample_rate = 8000
                 bits_per_sample = 16
+                self.audio_s2f.append(blocks.short_to_float()) # another ridiculous conversion
+                self.scaler.append(blocks.multiply_const_ff(1 / 32768.0))
                 self.audio_sink.append(blocks.wavfile_sink(filename, n_channels, sample_rate, bits_per_sample))
+                self.connect(self, self.p25_decoders[slot], self.audio_s2f[slot], self.scaler[slot], self.audio_sink[slot])
             elif dest == 'audio':
-                self.audio_sink.append(audio.sink(_def_audio_rate, audio_output, True))
-
-            self.connect(self, self.p25_decoders[slot], self.audio_s2f[slot], self.scaler[slot], self.audio_sink[slot])
+                self.connect(self, self.p25_decoders[slot])
 
     def close_file(self, index=0):
         if self.dest != 'wav':

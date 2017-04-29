@@ -314,16 +314,14 @@ p25p1_fdma::rx_sym (const uint8_t *syms, int nsyms)
 				// output one 32-byte msg per 0.020 sec.
 				// also, 32*9 = 288 byte pkts (for use via UDP)
 				sprintf(s, "%03x %03x %03x %03x %03x %03x %03x %03x\n", u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7]);
-				if (d_do_output) {
-					if (d_do_audio_output) {
-						p1voice_decode.rxframe(u);
-					} else {
-						for (size_t j=0; j < strlen(s); j++) {
-							output_queue.push_back(s[j]);
-						}
+				if (d_do_audio_output)
+					p1voice_decode.rxframe(u);
+				if (d_do_output && !d_do_audio_output) {
+					for (size_t j=0; j < strlen(s); j++) {
+						output_queue.push_back(s[j]);
 					}
 				}
-				if (write_sock > 0) {
+				if (d_do_output && write_sock > 0) {
 					memcpy(&write_buf[write_bufp], s, strlen(s));
 					write_bufp += strlen(s);
 					if (write_bufp >= 288) { // 9 * 32 = 288

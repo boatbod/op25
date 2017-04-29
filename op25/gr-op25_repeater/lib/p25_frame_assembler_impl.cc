@@ -83,7 +83,7 @@ static const int MAX_IN = 1;	// maximum number of input streams
     p25_frame_assembler_impl::p25_frame_assembler_impl(const char* udp_host, int port, int debug, bool do_imbe, bool do_output, bool do_msgq, gr::msg_queue::sptr queue, bool do_audio_output, bool do_phase2_tdma)
       : gr::block("p25_frame_assembler",
 		   gr::io_signature::make (MIN_IN, MAX_IN, sizeof (char)),
-		   gr::io_signature::make ((do_output || do_audio_output) ? 1 : 0, (do_output || do_audio_output) ? 1 : 0, (do_audio_output) ? sizeof(int16_t) : ((do_output) ? sizeof(char) : 0 ))),
+		   gr::io_signature::make ((do_output) ? 1 : 0, (do_output) ? 1 : 0, (do_audio_output && do_output) ? sizeof(int16_t) : ((do_output) ? sizeof(char) : 0 ))),
 	d_do_imbe(do_imbe),
 	d_do_output(do_output),
 	output_queue(),
@@ -94,8 +94,6 @@ static const int MAX_IN = 1;	// maximum number of input streams
 	d_do_msgq(do_msgq),
 	d_msg_queue(queue)
 {
-	if (d_do_audio_output && !d_do_output)
-		fprintf(stderr, "p25_frame_assembler: error: do_output must be enabled if do_audio_output is enabled\n");
 	if (d_do_audio_output && !d_do_imbe)
 		fprintf(stderr, "p25_frame_assembler: error: do_imbe must be enabled if do_audio_output is enabled\n");
 	if (d_do_phase2_tdma && !d_do_audio_output)
