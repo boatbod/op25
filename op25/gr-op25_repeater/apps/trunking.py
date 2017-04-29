@@ -526,6 +526,7 @@ class rx_ctl (object):
         self.debug = debug
         self.tgid_hold = None
         self.tgid_hold_until = time.time()
+        self.hold_mode = False
         self.TGID_HOLD_TIME = 2.0	# TODO: make more configurable
         self.TGID_SKIP_TIME = 1.0	# TODO: make more configurable
         self.current_nac = None
@@ -911,16 +912,29 @@ class rx_ctl (object):
                 self.last_tdma_vf = curr_time
         elif command == 'duid7' or command == 'duid12':
             pass
+        elif command == 'hold':
+            if self.hold_mode is False and self.current_tgid:
+                self.tgid_hold = self.current_tgid
+                self.tgid_hold_until = curr_time + 86400 * 10000
+                self.hold_mode = True
+                sys.stderr.write ('set hold until %f tgid %s\n' % (self.tgid_hold_until, self.current_tgid))
+            elif self.hold_mode is True:
+                self.current_tgid = None
+                self.tgid_hold = None
+                self.tgid_hold_until = curr_time
+                self.hold_mode = False
         elif command == 'set_hold':
             if self.current_tgid:
                 self.tgid_hold = self.current_tgid
                 self.tgid_hold_until = curr_time + 86400 * 10000
+                self.hold_mode = True
                 print 'set hold until %f' % self.tgid_hold_until
         elif command == 'unset_hold':
             if self.current_tgid:
                 self.current_tgid = None
                 self.tgid_hold = None
                 self.tgid_hold_until = curr_time
+                self.hold_mode = False
         elif command == 'skip' or command == 'lockout':
             if self.current_tgid:
                 end_time = None
@@ -930,6 +944,7 @@ class rx_ctl (object):
                 self.current_tgid = None
                 self.tgid_hold = None
                 self.tgid_hold_until = curr_time
+                self.hold_mode = False
                 if self.current_state != self.states.CC:
                     new_state = self.states.CC
                     new_frequency = tsys.trunk_cc
