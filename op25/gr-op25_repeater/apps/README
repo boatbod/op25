@@ -1,0 +1,160 @@
+
+April, 2017
+===========
+
+This file contains notes on the new version OP25 receiver (rx.py) which 
+replaces the prior version scope.py.  The primary differences are:
+ * The dependency on WX is completely removed.  By default OP25 runs in
+   a console window in text-only mode.
+ * An optional real-time plot can be selected when launching rx.py:
+   contellation, datascope (eye pattern), or symbol trace.
+ * cqpsk versus fsk4 mode is now selected as a command line parameter.
+ * most rx.py command-line parameters are compatible with scope.py.
+ * reduced CPU consumption, as the frame assembler block now runs as a
+   sink-only GR block.
+ * dependency on 14.04 is completely removed.  Should now run in later
+   ubuntu and fedora versions with only minor changes (not yet tested).
+
+ADDITIONAL REQUIRED PACKAGES
+============================
+sudo apt-get install gnuplot-x11
+
+EXAMPLE COMMAND LINE
+====================
+./rx.py  --args 'rtl' --gains 'lna:49' -f 456.7e6 -T tsys.tsv -q -1  -S 1000000 -P symbol -w 2> stderr.2
+
+Running stderr to a file (e.g., "2> stderr.2") is recommended to avoid 
+screen misprinting.
+
+NOTE: For voice use the "-2" and "-V" options are not used.  Instead the 
+"-w" option is used (see AUDIO SERVER section, below).
+
+TERMINAL OPERATION
+==================
+After starting rx.py if plotting is in use a separate gnuplot window
+should open.  You must click on the terminal window to restore it to
+focus, otherwise all keystrokes are consumed by gnuplot.  Once in the
+terminal window there are several keyboard commands:
+ h - hold
+ l - lockout
+ s - skip
+ q - quit program
+There are also two experimental commands (should not be used in -T mode)
+ f - manually change frequencies
+ t - if currently tuned to a CC, autostart scanning talkgroups
+The "t" command allows trunk tracking without setting up a trunking TSV
+file.  However running with the -T <filename> command line option is
+preferred as that allows use of white/black lists and talkgroup tags files.
+
+If the terminal window freezes there may have been a crash.  Press Ctrl-Z
+to suspend the program and examine stderr.2 for error messages.  If there
+is a traceback please report the full traceback (and the command line) to
+the mail list.
+
+EXTERNAL UDP AUDIO SERVER
+=========================
+Because the GR block no longer outputs audio samples the audio is routed
+via UDP instead.  After starting rx.py in a separate terminal window run
+   nc -kluvw 1 127.0.0.1 23456 | aplay -c1 -f S16_LE -r 8000
+
+Notes: 
+1. Each time rx.py is restarted you must also restart the audio server
+(change to the terminal window where the server is running and hit Ctrl-C,
+then up-arrow, then Enter).
+
+2. When doing audio output it is no longer necessary to specify the "-2"
+or "-V" options in rx.py.  However for now as a hack it's necessary to
+give the "-w" (wireshark) rx.py option.  If/when the hack is removed and
+wireshark is fixed it will no longer be necessary to use "-w".
+
+3. If the use of "aplay" in this manner causes no problems (including
+running in a VM, etc), the command will eventually be rolled into rx.py
+and it will no longer be necessary to run the server manually in this
+way.  Reports are needed from VM users both with and without pulse, and
+Phase II/TDMA users
+
+4. "aplay" is in package "alsa-utils" and "nc" in "netcat-openbsd"
+
+PLOT MODES
+==========
+Three types of plotting are currently implemented, via the -P parameter:
+ * constellation
+ * datascope
+ * symbol
+The symbol mode is allowed both in fsk4 and cqpsk modes.  The datascope
+mode works only with fsk4 demod mode (-D fsk4).  The constellation mode
+only works when the cqpsk demod mode is selected (or defaulted).
+
+A couple of notes specific to plot mode:
+
+1. At program startup time the gnuplot window is given the focus after
+it opens.  Before you can enter terminal commands you need to click on
+the terminal window once to make it the active window.
+
+2. In some cases the gnuplot window is displayed on top of the terminal
+window used by OP25.  If so it may be necessary to move one or the other
+of the two windows.
+
+COMMAND LINE OPTIONS
+====================
+Usage: rx.py [options]
+
+Options:
+  -h, --help            show this help message and exit
+  --args=ARGS           device args
+  --antenna=ANTENNA     select antenna
+  -a, --audio           use direct audio input
+  -A, --audio-if        soundcard IF mode (use --calibration to set IF freq)
+  -I AUDIO_INPUT, --audio-input=AUDIO_INPUT
+                        pcm input device name.  E.g., hw:0,0 or /dev/dsp
+  -i INPUT, --input=INPUT
+                        input file name
+  -b Hz, --excess-bw=Hz
+                        for RRC filter
+  -c Hz, --calibration=Hz
+                        USRP offset or audio IF frequency
+  -C Hz, --costas-alpha=Hz
+                        value of alpha for Costas loop
+  -D DEMOD_TYPE, --demod-type=DEMOD_TYPE
+                        cqpsk | fsk4
+  -P PLOT_MODE, --plot-mode=PLOT_MODE
+                        constellation | symbol | datascope
+  -f Hz, --frequency=Hz
+                        USRP center frequency
+  -F IFILE, --ifile=IFILE
+                        read input from complex capture file
+  -H HAMLIB_MODEL, --hamlib-model=HAMLIB_MODEL
+                        specify model for hamlib
+  -s SEEK, --seek=SEEK  ifile seek in K
+  -L LOGFILE_WORKERS, --logfile-workers=LOGFILE_WORKERS
+                        number of demodulators to instantiate
+  -S SAMPLE_RATE, --sample-rate=SAMPLE_RATE
+                        source samp rate
+  -t, --tone-detect     use experimental tone detect algorithm
+  -T TRUNK_CONF_FILE, --trunk-conf-file=TRUNK_CONF_FILE
+                        trunking config file name
+  -v VERBOSITY, --verbosity=VERBOSITY
+                        message debug level
+  -V, --vocoder         voice codec
+  -o Hz, --offset=Hz    tuning offset frequency [to circumvent DC offset]
+  -p, --pause           block on startup
+  -w, --wireshark       output data to Wireshark
+  -W WIRESHARK_HOST, --wireshark-host=WIRESHARK_HOST
+                        Wireshark host
+  -r RAW_SYMBOLS, --raw-symbols=RAW_SYMBOLS
+                        dump decoded symbols to file
+  -R RX_SUBDEV_SPEC, --rx-subdev-spec=RX_SUBDEV_SPEC
+                        select USRP Rx side A or B (default=A)
+  -g GAIN, --gain=GAIN  set USRP gain in dB (default is midpoint) or set audio
+                        gain
+  -G GAIN_MU, --gain-mu=GAIN_MU
+                        gardner gain
+  -N GAINS, --gains=GAINS
+                        gain settings
+  -O AUDIO_OUTPUT, --audio-output=AUDIO_OUTPUT
+                        audio output device name
+  -q FREQ_CORR, --freq-corr=FREQ_CORR
+                        frequency correction
+  -2, --phase2-tdma     enable phase2 tdma decode
+  -Z DECIM_AMT, --decim-amt=DECIM_AMT
+                        spectrum decimation
