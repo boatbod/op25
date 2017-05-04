@@ -23,6 +23,7 @@
 #include <string>
 #include <iostream>
 #include <assert.h>
+#include <errno.h>
 
 #include "p25p2_duid.h"
 #include "p25p2_sync.h"
@@ -65,7 +66,11 @@ static bool crc12_ok(const uint8_t bits[], unsigned int len) {
 	return (crc == crc12(bits,len));
 }
 
-p25p2_tdma::p25p2_tdma(int slotid, int debug, std::deque<int16_t> &qptr) :	// constructor
+p25p2_tdma::p25p2_tdma(const char* udp_host, int port, int slotid, int debug, std::deque<int16_t> &qptr) :	// constructor
+	write_bufp(0),
+	write_sock(0),
+	d_udp_host(udp_host),
+	d_port(port),
 	tdma_xormask(new uint8_t[SUPERFRAME_SIZE]),
 	symbols_received(0),
 	packets(0),
@@ -75,6 +80,9 @@ p25p2_tdma::p25p2_tdma(int slotid, int debug, std::deque<int16_t> &qptr) :	// co
 	crc_errors(0),
 	p2framer()
 {
+	if (port > 0)
+		init_sock(d_udp_host, d_port);
+
 	assert (slotid == 0 || slotid == 1);
 	mbe_initMbeParms (&cur_mp, &prev_mp, &enh_mp);
 }
@@ -93,6 +101,9 @@ void p25p2_tdma::set_slotid(int slotid)
 
 p25p2_tdma::~p25p2_tdma()	// destructor
 {
+	if (write_sock > 0)
+		close(write_sock);
+
 	delete[](tdma_xormask);
 }
 
@@ -184,6 +195,7 @@ void p25p2_tdma::handle_voice_frame(const uint8_t dibits[])
 	if (rc == 0)
 		software_decoder.decode_tap(cur_mp.L, K, cur_mp.w0, &cur_mp.Vl[1], &cur_mp.Ml[1]);
 	audio_samples *samples = software_decoder.audio();
+	write_bufp = 0;
 	for (int i=0; i < NSAMP_OUTPUT; i++) {
 		if (samples->size() > 0) {
 			snd = (int16_t)(samples->front());
@@ -191,8 +203,19 @@ void p25p2_tdma::handle_voice_frame(const uint8_t dibits[])
 		} else {
 			snd = 0;
 		}
+		write_buf[write_bufp++] = snd & 0xFF ;
+		write_buf[write_bufp++] = snd >> 8;
+#if 0
 		output_queue_decode.push_back(snd);
+#endif
 	}
+	if (write_sock > 0) {
+		if (write_bufp >= 0) { 
+			sendto(write_sock, write_buf, write_bufp, 0, (struct sockaddr *)&write_sock_addr, sizeof(write_sock_addr));
+			write_bufp = 0;
+		}
+	}
+
 	mbe_moveMbeParms (&cur_mp, &prev_mp);
 	mbe_moveMbeParms (&cur_mp, &enh_mp);
 }
@@ -249,3 +272,23 @@ int p25p2_tdma::handle_packet(const uint8_t dibits[])
 	}
 	return rc;
 }
+
+void p25p2_tdma::init_sock(const char* udp_host, int udp_port)
+{
+        memset (&write_sock_addr, 0, sizeof(write_sock_addr));
+        write_sock = socket(PF_INET, SOCK_DGRAM, 17);   // UDP socket
+        if (write_sock < 0) {
+                fprintf(stderr, "op25_ambe_vocoder: socket: %d\n", errno);
+                write_sock = 0;
+		return;
+        }
+        if (!inet_aton(udp_host, &write_sock_addr.sin_addr)) {
+                fprintf(stderr, "op25_ambe_vocoder: inet_aton: bad IP address\n");
+		close(write_sock);
+		write_sock = 0;
+		return;
+	}
+        write_sock_addr.sin_family = AF_INET;
+        write_sock_addr.sin_port = htons(udp_port);
+}
+
