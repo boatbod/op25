@@ -33,6 +33,7 @@ import numpy
 import time
 import re
 import json
+import traceback
 try:
     import Hamlib
 except:
@@ -95,7 +96,7 @@ class p25_rx_block (gr.top_block):
         parser.add_option("-c", "--calibration", type="eng_float", default=0.0, help="USRP offset or audio IF frequency", metavar="Hz")
         parser.add_option("-C", "--costas-alpha", type="eng_float", default=0.04, help="value of alpha for Costas loop", metavar="Hz")
         parser.add_option("-D", "--demod-type", type="choice", default="cqpsk", choices=('cqpsk', 'fsk4'), help="cqpsk | fsk4")
-        parser.add_option("-P", "--plot-mode", type="choice", default=None, choices=(None, 'constellation', 'symbol', 'datascope'), help="constellation | symbol | datascope")
+        parser.add_option("-P", "--plot-mode", type="choice", default=None, choices=(None, 'constellation', 'fft', 'symbol', 'datascope'), help="constellation | fft | symbol | datascope")
         parser.add_option("-f", "--frequency", type="eng_float", default=0.0, help="USRP center frequency", metavar="Hz")
         parser.add_option("-F", "--ifile", type="string", default=None, help="read input from complex capture file")
         parser.add_option("-H", "--hamlib-model", type="int", default=None, help="specify model for hamlib")
@@ -128,6 +129,7 @@ class p25_rx_block (gr.top_block):
         self.baseband_input = False
         self.rtl_found = False
         self.channel_rate = options.sample_rate
+        self.fft_sink = None
 
         self.src = None
         if not options.input:
@@ -202,10 +204,8 @@ class p25_rx_block (gr.top_block):
             print 'Ready for GDB to attach (pid = %d)' % (os.getpid(),)
             raw_input("Press 'Enter' to continue...")
 
-        # attach terminal thread
         self.input_q = gr.msg_queue(10)
         self.output_q = gr.msg_queue(10)
-        self.terminal = curses_terminal(self.input_q, self.output_q)
  
         # configure specified data source
         if options.input:
@@ -220,6 +220,9 @@ class p25_rx_block (gr.top_block):
             self.open_ifile(self.channel_rate, options.gain, options.ifile, options.seek)
         else:
             pass
+
+        # attach terminal thread
+        self.terminal = curses_terminal(self.input_q, self.output_q)
 
     # setup common flow graph elements
     #
@@ -285,6 +288,12 @@ class p25_rx_block (gr.top_block):
             self.symbol_sink = symbol_sink_f()
             self.demod.connect_float(self.symbol_sink)
             self.kill_sink = self.symbol_sink
+        elif self.options.plot_mode == 'fft':
+            self.fft_sink = fft_sink_c()
+            self.spectrum_decim = filter.rational_resampler_ccf(1, self.options.decim_amt)
+            self.connect(self.spectrum_decim, self.fft_sink)
+            self.demod.connect_complex('src', self.spectrum_decim)
+            self.kill_sink = self.fft_sink
         elif self.options.plot_mode == 'datascope':
             assert self.options.demod_type == 'fsk4'  ## datascope requires fsk4 demod-type
             self.eye_sink = eye_sink_f(sps=10)
@@ -441,7 +450,11 @@ class p25_rx_block (gr.top_block):
             return False
         tune_freq = target_freq + self.options.calibration + self.options.offset
         r = self.src.set_center_freq(tune_freq)
-        
+
+        if self.fft_sink:
+            self.fft_sink.set_center_freq(tune_freq)
+            self.fft_sink.set_width(self.options.sample_rate)
+
         if r:
             #self.myform['freq'].set_value(target_freq)     # update displayed va
             #if self.show_debug_info:
@@ -628,8 +641,10 @@ if __name__ == "__main__":
             msg = tb.output_q.delete_head()
             if tb.process_qmsg(msg):
                 break
-    except KeyboardInterrupt:
-        print 'keyboard interrupt'
+    except:
+        sys.stderr.write('main: exception occurred\n')
+        sys.stderr.write('main: exception:\n%s\n' % traceback.format_exc())
+    tb.terminal.end_curses()
     tb.stop()
     if tb.kill_sink:
         tb.kill_sink.kill()

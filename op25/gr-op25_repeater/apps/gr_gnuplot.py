@@ -36,9 +36,11 @@ GNUPLOT = '/usr/bin/gnuplot'
 class wrap_gp(object):
 	def __init__(self, sps=_def_sps):
 		self.sps = sps
+		self.center_freq = None
+		self.width = None
+		self.buf = []
 
 		self.attach_gp()
-		self.buf = []
 
 	def attach_gp(self):
 		args = (GNUPLOT, '-noraise')
@@ -80,28 +82,50 @@ class wrap_gp(object):
 				self.buf = []
 				plots.append('"-" with dots')
 			elif mode == 'fft':
-				ffbuf = np.fft.fft(self.buf)
-				for b in ffbuf:
-					s += '%f\n' % (b.real**2 + b.imag**2)
+				ffbuf = np.fft.fft(self.buf * np.blackman(BUFSZ)) / (0.42 * BUFSZ)
+				ffbuf = np.fft.fftshift(ffbuf)
+				for i in xrange(len(ffbuf)):
+					if self.center_freq and self.width:
+						f = (self.center_freq - self.width / 2.0) / 1e6
+						w = self.width / 1e6
+						s += '%f\t%f\n' % (f + i*(w/BUFSZ), 20 * np.log10(np.abs(ffbuf[i])))
+					else:
+						s += '%f\n' % (20 * np.log10(np.abs(ffbuf[i])))
 				s += 'e\n'
 				self.buf = []
 				plots.append('"-" with lines')
 		self.buf = []
 
 		h= 'set terminal x11 noraise\n'
-		h+= 'set size square\n'
-		h += 'set object 1 rectangle from screen 0,0 to screen 1,1 fillcolor rgb"black"\n'
+		background = 'set object 1 circle from screen 0,0 to screen 1,1 fillcolor rgb"black"\n'
 		h+= 'set key off\n'
 		if mode == 'constellation':
+			h += background
+			h+= 'set size square\n'
 			h+= 'set xrange [-1:1]\n'
 			h+= 'set yrange [-1:1]\n'
 		elif mode == 'eye':
+			h += background
 			h+= 'set yrange [-4:4]\n'
 		elif mode == 'symbol':
+			h += background
 			h+= 'set yrange [-4:4]\n'
+		elif mode == 'fft':
+			h+= 'set yrange [-100:0]\n'
+                        h+= 'set grid\n'
+			if self.center_freq:
+				h += 'set title "%f"\n' % (self.center_freq / 1e6)
 		dat = '%splot %s\n%s' % (h, ','.join(plots), s)
 		self.gp.stdin.write(dat)
 		return consumed
+
+	def set_center_freq(self, f):
+		sys.stderr.write('set_center_freq: %s\n' % f)
+		self.center_freq = f
+
+	def set_width(self, w):
+		sys.stderr.write('set_width: %f\n' % w)
+		self.width = w
 
 class eye_sink_f(gr.sync_block):
     """
@@ -152,14 +176,24 @@ class fft_sink_c(gr.sync_block):
             out_sig=None)
         self.debug = debug
         self.gnuplot = wrap_gp()
+        self.skip = 0
 
     def work(self, input_items, output_items):
-        in0 = input_items[0]
-	self.gnuplot.plot(in0, 512, mode='fft')
+        self.skip += 1
+        if self.skip == 50:
+            self.skip = 0
+            in0 = input_items[0]
+	    self.gnuplot.plot(in0, 512, mode='fft')
         return len(input_items[0])
 
     def kill(self):
         self.gnuplot.kill()
+
+    def set_center_freq(self, f):
+        self.gnuplot.set_center_freq(f)
+
+    def set_width(self, w):
+        self.gnuplot.set_width(w)
 
 class symbol_sink_f(gr.sync_block):
     """

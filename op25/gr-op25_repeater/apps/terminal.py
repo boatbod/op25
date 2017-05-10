@@ -27,6 +27,7 @@ import curses.textpad
 import time
 import json
 import threading
+import traceback
 
 from gnuradio import gr
 
@@ -39,7 +40,6 @@ class curses_terminal(threading.Thread):
         self.keep_running = True
         self.last_update = 0
         self.auto_update = True
-        self.setup_curses()
         self.current_nac = None
         self.start()
 
@@ -57,6 +57,12 @@ class curses_terminal(threading.Thread):
         self.text_win = curses.newwin(1, 70, 23, 10)
 
         self.textpad = curses.textpad.Textbox(self.text_win)
+
+    def end_curses(self):
+        try:
+            curses.endwin()
+        except:
+            pass
 
     def do_auto_update(self):
         UPDATE_INTERVAL = 1	# sec.
@@ -104,6 +110,8 @@ class curses_terminal(threading.Thread):
             if freq:
                 msg = gr.message().make_from_string('set_freq', -2, freq, 0)
                 self.output_q.insert_tail(msg)
+        elif c == ord('x'):
+            assert 1 == 0
         return False
 
     def process_json(self, js):
@@ -163,11 +171,17 @@ class curses_terminal(threading.Thread):
         return False
 
     def run(self):
-        while(self.keep_running):
-            if self.process_terminal_events():
-                break
-            if self.process_q_events():
-                break
-        curses.endwin()
+        try:
+            self.setup_curses()
+            while(self.keep_running):
+                if self.process_terminal_events():
+                    break
+                if self.process_q_events():
+                    break
+        except:
+            sys.stderr.write('terminal: exception occurred\n')
+            sys.stderr.write('terminal: exception:\n%s\n' % traceback.format_exc())
+        finally:
+            self.end_curses()
         msg = gr.message().make_from_string('quit', -2, 0, 0)
         self.output_q.insert_tail(msg)

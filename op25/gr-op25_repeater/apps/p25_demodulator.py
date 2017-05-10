@@ -296,3 +296,6 @@ class p25_demod_cb(p25_demod_base):
         elif src == 'mixer':
             self.connect(self.mixer, sink)
             self.complex_sink = [self.mixer, sink]
+        elif src == 'src':
+            self.connect(self, sink)
+            self.complex_sink = [self, sink]
