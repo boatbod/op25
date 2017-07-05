@@ -21,13 +21,14 @@ sudo apt-get install gnuplot-x11
 
 EXAMPLE COMMAND LINE
 ====================
-./rx.py  --args 'rtl' --gains 'lna:49' -f 456.7e6 -T tsys.tsv -q -1  -S 1000000 -P symbol -w 2> stderr.2
+./rx.py  --args 'rtl' --gains 'lna:49' -f 456.7e6 -T tsys.tsv -q -1  -S 1000000 -P symbol -o 50000 -w 2> stderr.2
 
 Running stderr to a file (e.g., "2> stderr.2") is recommended to avoid 
 screen misprinting.
 
-NOTE: For voice use the "-2" and "-V" options are not used.  Instead the 
-"-w" option is used (see AUDIO SERVER section, below).
+NOTE: For phase1 voice the "-V" option is not used.  Instead the 
+"-w" option is used (see AUDIO SERVER section, below).  For P25 phase 2/TDMA,
+the "-2" option is required in addition to the "-w" option.
 
 TERMINAL OPERATION
 ==================
@@ -62,10 +63,11 @@ Notes:
 (change to the terminal window where the server is running and hit Ctrl-C,
 then up-arrow, then Enter).
 
-2. When doing audio output it is no longer necessary to specify the "-2"
-or "-V" options in rx.py.  However for now as a hack it's necessary to
+2. When doing audio output it is no longer necessary to specify the
+"-V" option in rx.py.  However for now as a hack it's necessary to
 give the "-w" (wireshark) rx.py option.  If/when the hack is removed and
-wireshark is fixed it will no longer be necessary to use "-w".
+wireshark is fixed it will no longer be necessary to use "-w".  The "-2" 
+option is still required when using phase 2/TDMA.
 
 3. If the use of "aplay" in this manner causes no problems (including
 running in a VM, etc), the command will eventually be rolled into rx.py
