@@ -82,6 +82,9 @@ class p25_rx_block (gr.top_block):
     #
     def __init__(self):
 
+        self.trunk_rx = None
+        self.kill_sink = None
+
         gr.top_block.__init__(self)
 
         # command line argument parsing
@@ -278,7 +281,6 @@ class p25_rx_block (gr.top_block):
         # connect it all up
         self.connect(source, self.demod, self.decoder)
 
-        self.kill_sink = None
         if self.options.plot_mode == 'constellation':
             assert self.options.demod_type == 'cqpsk'  ## constellation requires cqpsk demod-type
             self.constellation_sink = constellation_sink_c()
@@ -598,6 +600,8 @@ class p25_rx_block (gr.top_block):
         s = msg.to_string()
         if s == 'quit': return True
         elif s == 'update':
+            if self.trunk_rx is None:
+                return False	## possible race cond - just ignore
             js = self.trunk_rx.to_json()
             msg = gr.message().make_from_string(js, -4, 0, 0)
             self.input_q.insert_tail(msg)
