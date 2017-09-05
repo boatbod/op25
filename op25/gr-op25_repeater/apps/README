@@ -54,28 +54,29 @@ the mail list.
 
 EXTERNAL UDP AUDIO SERVER
 =========================
-Because the GR block no longer outputs audio samples the audio is routed
-via UDP instead.  After starting rx.py in a separate terminal window run
+Starting rx.py with the "-w -W host" options directs udp audio data to
+be sent over the network to the specified remote host.  It can then be
+received and played back with either of the following methods:
+1. Execute ./audio.sh on a remote machine equipped with python2.7,
+   libasound.so.2 and the sockaudio.py file. 
+-or-
+2. Execute the command:
    nc -kluvw 1 127.0.0.1 23456 | aplay -c1 -f S16_LE -r 8000
 
-Notes: 
-1. Each time rx.py is restarted you must also restart the audio server
-(change to the terminal window where the server is running and hit Ctrl-C,
-then up-arrow, then Enter).
+NOTE: audio underruns are to be expected when using nc | aplay as the
+pcm stream is interrupted every time a radio transmission ends.  The
+sockaudio player is designed to handle this more gracefully, and generally
+only underruns due to high cpu utilization or reception/decoding errors.
 
-2. When doing audio output it is no longer necessary to specify the
-"-V" option in rx.py.  However for now as a hack it's necessary to
-give the "-w" (wireshark) rx.py option.  If/when the hack is removed and
-wireshark is fixed it will no longer be necessary to use "-w".  The "-2" 
-option is still required when using phase 2/TDMA.
+INTERNAL AUDIO SERVER
+=====================
+Starting rx.py with the "-U" command line option enables an internal udp
+audio server which will play received audio through the default ALSA
+device.  Optionally you may specify which ALSA device to use by setting
+the "-O audio_out" option along with "-U".
 
-3. If the use of "aplay" in this manner causes no problems (including
-running in a VM, etc), the command will eventually be rolled into rx.py
-and it will no longer be necessary to run the server manually in this
-way.  Reports are needed from VM users both with and without pulse, and
-Phase II/TDMA users
-
-4. "aplay" is in package "alsa-utils" and "nc" in "netcat-openbsd"
+As of this writing (Aug 2017) it is still necessary to specify the "-w"
+(wireshark) option if using either the internal or external audio server.
 
 PLOT MODES
 ==========

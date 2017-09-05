@@ -118,7 +118,13 @@ int p25p2_tdma::process_mac_pdu(const uint8_t byte_buf[], unsigned int len)
 	unsigned int opcode = (byte_buf[0] >> 5) & 0x7;
 	unsigned int offset = (byte_buf[0] >> 2) & 0x7;
 	// maps sacch opcodes into phase I duid values 
-	static const int opcode_map[8] = {3, 5, 3, 3, 5, 3, 3, 3};
+	// 0, 5, 7 - Reserved
+	// 1 - MAC_PTT
+	// 2 - MAC_END_PTT
+	// 3 - MAC_IDLE
+	// 4 - MAC_ACTIVE
+	// 6 - MAC_HANGTIME
+	static const int opcode_map[8] = {3, 5, 15, 15, 5, 3, 3, 3};
 	return opcode_map[opcode];
 	// TODO: decode MAC PDU's
 }
@@ -173,6 +179,11 @@ int p25p2_tdma::handle_acch_frame(const uint8_t dibits[], bool fast)
 		rc = process_mac_pdu(byte_buf, len/8);
 	} else {
 		crc_errors++;
+	}
+	// write a zero audio sample (2 bytes) at end of voice to trigger pcm drain
+	if (((rc == 3) || (rc == 15)) && (write_sock > 0)) {
+		memset(write_buf, 0, 2);
+		sendto(write_sock, write_buf, 2, 0, (struct sockaddr *)&write_sock_addr, sizeof(write_sock_addr));
 	}
 	return rc;
 }

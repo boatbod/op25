@@ -132,6 +132,7 @@ p25_frame_assembler_impl::general_work (int noutput_items,
 			int rc = p2tdma.handle_frame();
 			if (rc > -1)
 				p25p2_queue_msg(rc);
+				p1fdma.reset_timer(); // prevent P1 timeouts due to long TDMA transmissions
 		}
 	}
   }

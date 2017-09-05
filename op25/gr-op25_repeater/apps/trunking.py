@@ -520,7 +520,7 @@ class rx_ctl (object):
             VC = 3
         self.states = _states
 
-        self.state = self.states.CC
+        self.current_state = self.states.CC
         self.trunked_systems = {}
         self.frequency_set = frequency_set
         self.debug = debug
@@ -531,6 +531,8 @@ class rx_ctl (object):
         self.TGID_SKIP_TIME = 1.0	# TODO: make more configurable
         self.current_nac = None
         self.current_id = 0
+        self.current_tgid = None
+        self.current_slot = None
         self.TSYS_HOLD_TIME = 3.0	# TODO: make more configurable
         self.wait_until = time.time()
         self.configs = {}
@@ -728,7 +730,7 @@ class rx_ctl (object):
             return
         s = s[2:]
         if self.debug > 10:
-            print "nac %x type %d at %f state %d len %d" %(nac, type, time.time(), self.state, len(s))
+            print "nac %x type %d at %f state %d len %d" %(nac, type, time.time(), self.current_state, len(s))
         if (type == 7 or type == 12) and nac not in self.trunked_systems:
             if not self.configs:
                 # TODO: allow whitelist/blacklist rather than blind automatic-add
@@ -750,7 +752,7 @@ class rx_ctl (object):
                 mbt_data = (mbt_data << 8) + ord(c)
             opcode = (header >> 16) & 0x3f
             if self.debug > 10:
-                print "type %d at %f state %d len %d/%d opcode %x [%x/%x]" %(type, time.time(), self.state, len(s1), len(s2), opcode, header,mbt_data)
+                print "type %d at %f state %d len %d/%d opcode %x [%x/%x]" %(type, time.time(), self.current_state, len(s1), len(s2), opcode, header,mbt_data)
             updated += self.trunked_systems[nac].decode_mbt_data(opcode, header << 16, mbt_data << 32)
 
         if nac != self.current_nac:
@@ -882,10 +884,14 @@ class rx_ctl (object):
         new_nac = None
         new_slot = None
 
-        if command == 'timeout' or command == 'duid15':
+        if command == 'timeout':
             if self.current_state == self.states.CC:
+                if self.debug > 0:
+                    sys.stderr.write("[%f] control channel timeout\n" % time.time())
                 tsys.cc_timeouts += 1
             elif self.current_state != self.states.CC and curr_time - self.last_tdma_vf > self.P2_GRACE_TIME:
+                if self.debug > 0:
+                    sys.stderr.write("[%f] voice timeout\n" % time.time())
                 new_state = self.states.CC
                 new_frequency = tsys.trunk_cc
         elif command == 'update':
@@ -895,15 +901,23 @@ class rx_ctl (object):
                     desired_tgid = self.tgid_hold
                 new_frequency, new_tgid, tdma_slot = tsys.find_talkgroup(curr_time, tgid=desired_tgid)
                 if new_frequency:
+                    if self.debug > 0:
+                        sys.stderr.write("[%f] voice update: tg(%s), freq(%s), slot(%s)\n" % (time.time(), new_tgid, new_frequency, tdma_slot))
                     new_state = self.states.TO_VC
                     self.current_tgid = new_tgid
                     new_slot = tdma_slot
-        elif command == 'duid3' or command == 'tdma_duid3':
+        elif command == 'tdma_duid3': # tdma termination, no channel release (MAC_HANGTIME)
+            if self.current_state != self.states.CC:
+                self.tgid_hold = self.current_tgid
+                self.tgid_hold_until = max(curr_time + self.TGID_HOLD_TIME, self.tgid_hold_until)
+                self.wait_until = curr_time + self.TSYS_HOLD_TIME
+                self.last_tdma_vf = curr_time
+        elif command == 'duid3' or command == 'duid15' or command == 'tdma_duid15': # fdma/tdma termination with channel release
             if self.current_state != self.states.CC:
                 new_state = self.states.CC
                 new_frequency = tsys.trunk_cc
         elif command == 'duid0' or command == 'duid5' or command == 'duid10' or command == 'tdma_duid5':
-            if self.state == self.states.TO_VC:
+            if self.current_state == self.states.TO_VC:
                 new_state = self.states.VC
             self.tgid_hold = self.current_tgid
             self.tgid_hold_until = max(curr_time + self.TGID_HOLD_TIME, self.tgid_hold_until)
@@ -917,7 +931,8 @@ class rx_ctl (object):
                 self.tgid_hold = self.current_tgid
                 self.tgid_hold_until = curr_time + 86400 * 10000
                 self.hold_mode = True
-                sys.stderr.write ('set hold until %f tgid %s\n' % (self.tgid_hold_until, self.current_tgid))
+                if self.debug > 0:
+                    sys.stderr.write ('set hold until %f tgid %s\n' % (self.tgid_hold_until, self.current_tgid))
             elif self.hold_mode is True:
                 self.current_tgid = None
                 self.tgid_hold = None

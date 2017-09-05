@@ -64,6 +64,7 @@ namespace gr {
         p25p1_voice_decode p1voice_decode;
 
      public:
+	void reset_timer();
 	void rx_sym (const uint8_t *syms, int nsyms);
       p25p1_fdma(const char* udp_host, int port, int debug, bool do_imbe, bool do_output, bool do_msgq, gr::msg_queue::sptr queue, std::deque<int16_t> &output_queue, bool do_audio_output);
       ~p25p1_fdma();

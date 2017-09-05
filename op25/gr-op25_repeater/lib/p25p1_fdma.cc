@@ -239,6 +239,13 @@ p25p1_fdma::process_duid(uint32_t const duid, uint32_t const nac, uint8_t const 
 //	msg.reset();
 }
 
+void
+p25p1_fdma::reset_timer()
+{
+  //update last_qtime with current time
+  gettimeofday(&last_qtime, 0);
+}
+
 void 
 p25p1_fdma::rx_sym (const uint8_t *syms, int nsyms)
 {

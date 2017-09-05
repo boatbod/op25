@@ -33,11 +33,18 @@ _def_sps = 10
 
 GNUPLOT = '/usr/bin/gnuplot'
 
+FFT_AVG  = 0.25
+FFT_BINS = 512
+
 class wrap_gp(object):
 	def __init__(self, sps=_def_sps):
 		self.sps = sps
 		self.center_freq = None
+		self.relative_freq = 0.0
 		self.width = None
+		self.ffts = ()
+		self.freqs = ()
+		self.avg_pwr = np.zeros(FFT_BINS)
 		self.buf = []
 
 		self.attach_gp()
@@ -82,49 +89,57 @@ class wrap_gp(object):
 				self.buf = []
 				plots.append('"-" with dots')
 			elif mode == 'fft':
-				ffbuf = np.fft.fft(self.buf * np.blackman(BUFSZ)) / (0.42 * BUFSZ)
-				ffbuf = np.fft.fftshift(ffbuf)
-				for i in xrange(len(ffbuf)):
-					if self.center_freq and self.width:
-						f = (self.center_freq - self.width / 2.0) / 1e6
-						w = self.width / 1e6
-						s += '%f\t%f\n' % (f + i*(w/BUFSZ), 20 * np.log10(np.abs(ffbuf[i])))
-					else:
-						s += '%f\n' % (20 * np.log10(np.abs(ffbuf[i])))
+				self.ffts = np.fft.fft(self.buf * np.blackman(BUFSZ)) / (0.42 * BUFSZ)
+				self.ffts = np.fft.fftshift(self.ffts)
+				self.freqs = np.fft.fftfreq(len(self.ffts))
+				self.freqs = np.fft.fftshift(self.freqs)
+				if self.center_freq and self.width:
+                                	self.freqs = ((self.freqs * self.width) + self.center_freq) / 1e6
+				for i in xrange(len(self.ffts)):
+					self.avg_pwr[i] = ((1.0 - FFT_AVG) * self.avg_pwr[i]) + (FFT_AVG * np.abs(self.ffts[i]))
+					s += '%f\t%f\n' % (self.freqs[i], 20 * np.log10(self.avg_pwr[i]))
 				s += 'e\n'
 				self.buf = []
 				plots.append('"-" with lines')
 		self.buf = []
 
 		h= 'set terminal x11 noraise\n'
-		background = 'set object 1 circle from screen 0,0 to screen 1,1 fillcolor rgb"black"\n'
+		#background = 'set object 1 circle at screen 0,0 size screen 1 fillcolor rgb"black"\n' #FIXME!
+		background = ''
 		h+= 'set key off\n'
 		if mode == 'constellation':
-			h += background
+			h+= background
 			h+= 'set size square\n'
 			h+= 'set xrange [-1:1]\n'
 			h+= 'set yrange [-1:1]\n'
 		elif mode == 'eye':
-			h += background
+			h+= background
 			h+= 'set yrange [-4:4]\n'
 		elif mode == 'symbol':
-			h += background
+			h+= background
 			h+= 'set yrange [-4:4]\n'
 		elif mode == 'fft':
+			h+= 'unset arrow; unset title\n'
+			h+= 'set xrange [%f:%f]\n' % (self.freqs[0], self.freqs[len(self.freqs)-1])
 			h+= 'set yrange [-100:0]\n'
+                        h+= 'set xlabel "Frequency"\n'
+                        h+= 'set ylabel "Power(dB)"\n'
                         h+= 'set grid\n'
 			if self.center_freq:
-				h += 'set title "%f"\n' % (self.center_freq / 1e6)
+				arrow_pos = (self.center_freq - self.relative_freq) / 1e6
+				h+= 'set arrow from %f, graph 0 to %f, graph 1 nohead\n' % (arrow_pos, arrow_pos)
+				h+= 'set title "Tuned to %f Mhz"\n' % ((self.center_freq - self.relative_freq) / 1e6)
 		dat = '%splot %s\n%s' % (h, ','.join(plots), s)
 		self.gp.stdin.write(dat)
 		return consumed
 
 	def set_center_freq(self, f):
-		sys.stderr.write('set_center_freq: %s\n' % f)
 		self.center_freq = f
 
+	def set_relative_freq(self, f):
+		self.relative_freq = f
+
 	def set_width(self, w):
-		sys.stderr.write('set_width: %f\n' % w)
 		self.width = w
 
 class eye_sink_f(gr.sync_block):
@@ -183,7 +198,7 @@ class fft_sink_c(gr.sync_block):
         if self.skip == 50:
             self.skip = 0
             in0 = input_items[0]
-	    self.gnuplot.plot(in0, 512, mode='fft')
+	    self.gnuplot.plot(in0, FFT_BINS, mode='fft')
         return len(input_items[0])
 
     def kill(self):
@@ -191,6 +206,10 @@ class fft_sink_c(gr.sync_block):
 
     def set_center_freq(self, f):
         self.gnuplot.set_center_freq(f)
+	self.gnuplot.set_relative_freq(0.0)
+
+    def set_relative_freq(self, f):
+        self.gnuplot.set_relative_freq(f)
 
     def set_width(self, w):
         self.gnuplot.set_width(w)

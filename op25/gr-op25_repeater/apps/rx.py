@@ -65,7 +65,8 @@ from gr_gnuplot import fft_sink_c
 from gr_gnuplot import symbol_sink_f
 from gr_gnuplot import eye_sink_f
 
-from terminal import curses_terminal
+from terminal   import curses_terminal
+from sockaudio  import socket_audio
 
 #speeds = [300, 600, 900, 1200, 1440, 1800, 1920, 2400, 2880, 3200, 3600, 3840, 4000, 4800, 6000, 6400, 7200, 8000, 9600, 14400, 19200]
 speeds = [4800, 6000]
@@ -120,7 +121,9 @@ class p25_rx_block (gr.top_block):
         parser.add_option("-G", "--gain-mu", type="eng_float", default=0.025, help="gardner gain")
         parser.add_option("-N", "--gains", type="string", default=None, help="gain settings")
         parser.add_option("-O", "--audio-output", type="string", default="default", help="audio output device name")
+        parser.add_option("-U", "--udp-player", action="store_true", default=False, help="enable built-in udp audio player")
         parser.add_option("-q", "--freq-corr", type="eng_float", default=0.0, help="frequency correction")
+        parser.add_option("-d", "--fine-tune", type="eng_float", default=0.0, help="fine tuning")
         parser.add_option("-2", "--phase2-tdma", action="store_true", default=False, help="enable phase2 tdma decode")
         parser.add_option("-Z", "--decim-amt", type="int", default=1, help="spectrum decimation")
         (options, args) = parser.parse_args()
@@ -227,6 +230,12 @@ class p25_rx_block (gr.top_block):
         # attach terminal thread
         self.terminal = curses_terminal(self.input_q, self.output_q)
 
+        # attach audio thread
+        if self.options.udp_player:
+            self.audio = socket_audio("127.0.0.1", WIRESHARK_PORT, self.options.audio_output)
+        else:
+            self.audio = None
+
     # setup common flow graph elements
     #
     def __build_graph(self, source, capture_rate):
@@ -236,7 +245,8 @@ class p25_rx_block (gr.top_block):
 
         self.rx_q = gr.msg_queue(100)
         udp_port = 0
-        if self.options.wireshark:
+
+        if self.options.udp_player or self.options.wireshark or (self.options.wireshark_host != "127.0.0.1"):
             udp_port = WIRESHARK_PORT
 
         self.tdma_state = False
@@ -256,7 +266,7 @@ class p25_rx_block (gr.top_block):
             self.demod = p25_demodulator.p25_demod_fb(input_rate=capture_rate)
         else:	# complex input
             # local osc
-            self.lo_freq = self.options.offset
+            self.lo_freq = self.options.offset + self.options.fine_tune
             if self.options.audio_if or self.options.ifile or self.options.input:
                 self.lo_freq += self.options.calibration
             self.demod = p25_demodulator.p25_demod_cb( input_rate = capture_rate,
@@ -267,10 +277,6 @@ class p25_rx_block (gr.top_block):
                                                        gain_mu = self.options.gain_mu,
                                                        costas_alpha = self.options.costas_alpha,
                                                        symbol_rate = self.symbol_rate)
-
-        udp_port = 0
-        if self.options.wireshark:
-            udp_port = WIRESHARK_PORT
 
         num_ambe = 0
         if self.options.phase2_tdma:
@@ -377,20 +383,26 @@ class p25_rx_block (gr.top_block):
         freq = params['freq']
         offset = params['offset']
         center_freq = params['center_frequency']
+        fine_tune = self.options.fine_tune
 
         if self.options.hamlib_model:
             self.hamlib.set_freq(freq)
         elif params['center_frequency']:
             relative_freq = center_freq - freq
             if abs(relative_freq + self.options.offset) > self.channel_rate / 2:
-                print '***unable to tune Local Oscillator to offset %d Hz' % (relative_freq + self.options.offset)
-                print '***limit is one half of sample-rate %d = %d' % (self.channel_rate, self.channel_rate / 2)
-                print '***request for frequency %d rejected' % freq
-                
-            self.lo_freq = self.options.offset + relative_freq 
-            self.demod.set_relative_frequency(self.lo_freq)
-            self.set_freq(center_freq + offset)
-            #self.spectrum.set_baseband_freq(center_freq)
+                self.lo_freq = self.options.offset + self.options.fine_tune		# relative tune not possible
+                self.demod.set_relative_frequency(self.lo_freq)				# reset demod relative freq
+                self.set_freq(freq + offset)						# direct tune instead
+            else:    
+                self.lo_freq = self.options.offset + relative_freq + fine_tune 
+                if self.demod.set_relative_frequency(self.lo_freq):			# relative tune successful
+                    self.set_freq(center_freq + offset)
+                    if self.fft_sink:
+                        self.fft_sink.set_relative_freq(self.lo_freq)
+                else:
+                    self.lo_freq = self.options.offset + self.options.fine_tune		# relative tune unsuccessful
+                    self.demod.set_relative_frequency(self.lo_freq)			# reset demod relative freq
+                    self.set_freq(freq + offset)					# direct tune instead
         else:
             self.set_freq(freq + offset)
 
@@ -648,7 +660,10 @@ if __name__ == "__main__":
     except:
         sys.stderr.write('main: exception occurred\n')
         sys.stderr.write('main: exception:\n%s\n' % traceback.format_exc())
-    tb.terminal.end_curses()
+    if tb.terminal:
+        tb.terminal.end_curses()
+    if tb.audio:
+        tb.audio.stop()
     tb.stop()
     if tb.kill_sink:
         tb.kill_sink.kill()
