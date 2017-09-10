@@ -22,9 +22,6 @@
 
 #include <stdint.h>
 #include <deque>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
 #include "mbelib.h"
 #include "imbe_decoder.h"
 #include "software_imbe_decoder.h"
@@ -32,12 +29,13 @@
 #include "p25p2_sync.h"
 #include "p25p2_vf.h"
 #include "p25p2_framer.h"
+#include "op25_udp.h"
 
 class p25p2_tdma;
 class p25p2_tdma
 {
 public:
-	p25p2_tdma(const char* udp_host, int port, int slotid, int debug, std::deque<int16_t> &qptr) ;	// constructor
+	p25p2_tdma(const op25_udp& udp, int slotid, int debug, std::deque<int16_t> &qptr) ;	// constructor
 	int handle_packet(const uint8_t dibits[]) ;
 	void set_slotid(int slotid);
 	uint8_t* tdma_xormask;
@@ -52,17 +50,14 @@ private:
 	p25p2_duid duid;
 	p25p2_vf vf;
 	int write_bufp;
-	int write_sock;
-	struct sockaddr_in write_sock_addr;
 	char write_buf[512];
-	const char* d_udp_host;
-	int d_port;
 	int d_slotid;
 	mbe_parms cur_mp;
 	mbe_parms prev_mp;
 	mbe_parms enh_mp;
 	software_imbe_decoder software_decoder;
 	std::deque<int16_t> &output_queue_decode;
+        const op25_udp& op25udp;
 
 	int d_debug;
 	unsigned long int crc_errors;
@@ -72,6 +67,5 @@ private:
 	int handle_acch_frame(const uint8_t dibits[], bool fast) ;
 	void handle_voice_frame(const uint8_t dibits[]) ;
 	int process_mac_pdu(const uint8_t byte_buf[], unsigned int len) ;
-	void init_sock(const char* udp_host, int udp_port);
 };
 #endif /* INCLUDED_P25P2_TDMA_H */

@@ -75,9 +75,6 @@ audio server which will play received audio through the default ALSA
 device.  Optionally you may specify which ALSA device to use by setting
 the "-O audio_out" option along with "-U".
 
-As of this writing (Aug 2017) it is still necessary to specify the "-w"
-(wireshark) option if using either the internal or external audio server.
-
 PLOT MODES
 ==========
 Three types of plotting are currently implemented, via the -P parameter:
@@ -121,7 +118,7 @@ Options:
   -D DEMOD_TYPE, --demod-type=DEMOD_TYPE
                         cqpsk | fsk4
   -P PLOT_MODE, --plot-mode=PLOT_MODE
-                        constellation | symbol | datascope
+                        constellation | fft | symbol | datascope
   -f Hz, --frequency=Hz
                         USRP center frequency
   -F IFILE, --ifile=IFILE
@@ -144,6 +141,8 @@ Options:
   -w, --wireshark       output data to Wireshark
   -W WIRESHARK_HOST, --wireshark-host=WIRESHARK_HOST
                         Wireshark host
+  --wireshark-port=WIRESHARK_PORT
+                        Wireshark port
   -r RAW_SYMBOLS, --raw-symbols=RAW_SYMBOLS
                         dump decoded symbols to file
   -R RX_SUBDEV_SPEC, --rx-subdev-spec=RX_SUBDEV_SPEC
@@ -156,8 +155,11 @@ Options:
                         gain settings
   -O AUDIO_OUTPUT, --audio-output=AUDIO_OUTPUT
                         audio output device name
+  -U, --udp-player      enable built-in udp audio player
   -q FREQ_CORR, --freq-corr=FREQ_CORR
                         frequency correction
+  -d FINE_TUNE, --fine-tune=FINE_TUNE
+                        fine tuning
   -2, --phase2-tdma     enable phase2 tdma decode
   -Z DECIM_AMT, --decim-amt=DECIM_AMT
                         spectrum decimation

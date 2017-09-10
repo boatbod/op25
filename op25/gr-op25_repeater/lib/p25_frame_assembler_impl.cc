@@ -87,10 +87,11 @@ static const int MAX_IN = 1;	// maximum number of input streams
 	d_do_imbe(do_imbe),
 	d_do_output(do_output),
 	output_queue(),
-	p1fdma(udp_host, port, debug, do_imbe, do_output, do_msgq, queue, output_queue, do_audio_output),
+        op25udp(udp_host, port, debug),
+	p1fdma(op25udp, debug, do_imbe, do_output, do_msgq, queue, output_queue, do_audio_output),
 	d_do_audio_output(do_audio_output),
 	d_do_phase2_tdma(do_phase2_tdma),
-	p2tdma(udp_host, port, 0, debug, output_queue),
+	p2tdma(op25udp, 0, debug, output_queue),
 	d_do_msgq(do_msgq),
 	d_msg_queue(queue)
 {

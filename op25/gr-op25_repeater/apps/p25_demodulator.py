@@ -168,9 +168,9 @@ class p25_demod_cb(p25_demod_base):
         # local osc
         self.lo = analog.sig_source_c (input_rate, analog.GR_SIN_WAVE, 0, 1.0, 0)
         self.mixer = blocks.multiply_cc()
-        lpf_coeffs = filter.firdes.low_pass(1.0, input_rate, 7250, 725, filter.firdes.WIN_HANN)
+        lpf_coeffs = filter.firdes.low_pass(1.0, input_rate, 7250, 1450, filter.firdes.WIN_HANN)
         decimation = int(input_rate / if_rate)
-        self.lpf = filter.fir_filter_ccf(decimation, lpf_coeffs)
+        self.lpf = filter.fft_filter_ccf(decimation, lpf_coeffs)
 
         resampled_rate = float(input_rate) / float(decimation) # rate at output of self.lpf
 

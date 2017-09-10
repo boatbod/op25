@@ -45,8 +45,6 @@ static const int64_t TIMEOUT_THRESHOLD = 1000000;
 
     p25p1_fdma::~p25p1_fdma()
     {
-	if (write_sock > 0)
-		close(write_sock);
 	delete framer;
     }
 
@@ -197,11 +195,9 @@ block_deinterleave(bit_vector& bv, unsigned int start, uint8_t* buf)
 	return -2;	// trellis decode OK, but CRC error occurred
 }
 
-p25p1_fdma::p25p1_fdma(const char* udp_host, int port, int debug, bool do_imbe, bool do_output, bool do_msgq, gr::msg_queue::sptr queue, std::deque<int16_t> &output_queue, bool do_audio_output) :
+p25p1_fdma::p25p1_fdma(const op25_udp& udp, int debug, bool do_imbe, bool do_output, bool do_msgq, gr::msg_queue::sptr queue, std::deque<int16_t> &output_queue, bool do_audio_output) :
+        op25udp(udp),
 	write_bufp(0),
-	write_sock(0),
-	d_udp_host(udp_host),
-	d_port(port),
 	d_debug(debug),
 	d_do_imbe(do_imbe),
 	d_do_output(do_output),
@@ -210,11 +206,9 @@ p25p1_fdma::p25p1_fdma(const char* udp_host, int port, int debug, bool do_imbe, 
 	output_queue(output_queue),
 	framer(new p25_framer()),
 	d_do_audio_output(do_audio_output),
-	p1voice_decode((debug > 0), udp_host, port, output_queue)
+	p1voice_decode((debug > 0), udp, output_queue)
 {
 	gettimeofday(&last_qtime, 0);
-	if (port > 0)
-		init_sock(d_udp_host, d_port);
 }
 
 void 
@@ -328,16 +322,20 @@ p25p1_fdma::rx_sym (const uint8_t *syms, int nsyms)
 						output_queue.push_back(s[j]);
 					}
 				}
-				if (d_do_output && write_sock > 0) {
+				if (d_do_output && op25udp.enabled()) {
 					memcpy(&write_buf[write_bufp], s, strlen(s));
 					write_bufp += strlen(s);
 					if (write_bufp >= 288) { // 9 * 32 = 288
-						sendto(write_sock, write_buf, 288, 0, (struct sockaddr *)&write_sock_addr, sizeof(write_sock_addr));
-						// FIXME check sendto() rc
+						op25udp.send_to(write_buf, 288);
+						// FIXME check op25udp.send_to() rc
 						write_bufp = 0;
 					}
 				}
 			}
+		}
+		if ((d_do_imbe || d_do_audio_output) && (framer->duid == 0x3 || framer->duid == 0xf)) {  // voice termination
+			op25udp.send_audio_flag(op25_udp::DRAIN);
+
 		} // end of imbe/voice
 		if (!d_do_imbe) {
 			// pack the bits into bytes, MSB first
@@ -355,9 +353,8 @@ p25p1_fdma::rx_sym (const uint8_t *syms, int nsyms)
 					(framer->frame_body[i+7]     );
 				obuf[obuf_ct++] = b;
 			}
-			if (write_sock > 0) {
-				sendto(write_sock, obuf, obuf_ct, 0, (struct sockaddr*)&write_sock_addr, sizeof(write_sock_addr));
-			}
+			op25udp.send_to(obuf, obuf_ct);
+
 			if (d_do_output) {
 				for (size_t j=0; j < obuf_ct; j++) {
 					output_queue.push_back(obuf[j]);
@@ -377,30 +374,17 @@ p25p1_fdma::rx_sym (const uint8_t *syms, int nsyms)
     }
     diff_usec += diff_sec * 1000000;
     if (diff_usec >= TIMEOUT_THRESHOLD) {
+      fprintf(stderr, "[%010lu.%06lu] p25p1_fdma::rx_sym() timeout\n", currtime.tv_sec, currtime.tv_usec);
+
+      if (d_do_audio_output) {
+        op25udp.send_audio_flag(op25_udp::DRAIN);
+      }
+
       gettimeofday(&last_qtime, 0);
       gr::message::sptr msg = gr::message::make(-1, 0, 0);
       d_msg_queue->insert_tail(msg);
     }
   }
-}
-
-void p25p1_fdma::init_sock(const char* udp_host, int udp_port)
-{
-        memset (&write_sock_addr, 0, sizeof(write_sock_addr));
-        write_sock = socket(PF_INET, SOCK_DGRAM, 17);   // UDP socket
-        if (write_sock < 0) {
-                fprintf(stderr, "op25_imbe_vocoder: socket: %d\n", errno);
-                write_sock = 0;
-		return;
-        }
-        if (!inet_aton(udp_host, &write_sock_addr.sin_addr)) {
-                fprintf(stderr, "op25_imbe_vocoder: inet_aton: bad IP address\n");
-		close(write_sock);
-		write_sock = 0;
-		return;
-	}
-        write_sock_addr.sin_family = AF_INET;
-        write_sock_addr.sin_port = htons(udp_port);
 }
 
   }  // namespace

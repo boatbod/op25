@@ -73,8 +73,6 @@ speeds = [4800, 6000]
 
 os.environ['IMBE'] = 'soft'
 
-WIRESHARK_PORT = 23456
-
 # The P25 receiver
 #
 class p25_rx_block (gr.top_block):
@@ -115,6 +113,7 @@ class p25_rx_block (gr.top_block):
         parser.add_option("-p", "--pause", action="store_true", default=False, help="block on startup")
         parser.add_option("-w", "--wireshark", action="store_true", default=False, help="output data to Wireshark")
         parser.add_option("-W", "--wireshark-host", type="string", default="127.0.0.1", help="Wireshark host")
+        parser.add_option("--wireshark-port", type="int", default=23456, help="Wireshark port")
         parser.add_option("-r", "--raw-symbols", type="string", default=None, help="dump decoded symbols to file")
         parser.add_option("-R", "--rx-subdev-spec", type="subdev", default=(0, 0), help="select USRP Rx side A or B (default=A)")
         parser.add_option("-g", "--gain", type="eng_float", default=None, help="set USRP gain in dB (default is midpoint) or set audio gain")
@@ -213,6 +212,9 @@ class p25_rx_block (gr.top_block):
         self.input_q = gr.msg_queue(10)
         self.output_q = gr.msg_queue(10)
  
+        # attach terminal thread
+        self.terminal = curses_terminal(self.input_q, self.output_q)
+
         # configure specified data source
         if options.input:
             self.open_file(options.input)
@@ -227,12 +229,9 @@ class p25_rx_block (gr.top_block):
         else:
             pass
 
-        # attach terminal thread
-        self.terminal = curses_terminal(self.input_q, self.output_q)
-
         # attach audio thread
         if self.options.udp_player:
-            self.audio = socket_audio("127.0.0.1", WIRESHARK_PORT, self.options.audio_output)
+            self.audio = socket_audio("127.0.0.1", self.options.wireshark_port, self.options.audio_output)
         else:
             self.audio = None
 
@@ -240,14 +239,17 @@ class p25_rx_block (gr.top_block):
     #
     def __build_graph(self, source, capture_rate):
         global speeds
-        global WIRESHARK_PORT
         # tell the scope the source rate
 
         self.rx_q = gr.msg_queue(100)
         udp_port = 0
 
-        if self.options.udp_player or self.options.wireshark or (self.options.wireshark_host != "127.0.0.1"):
-            udp_port = WIRESHARK_PORT
+        if self.options.udp_player:
+            self.options.wireshark = True
+            self.options.wireshark_host = "127.0.0.1"
+
+        if self.options.wireshark or (self.options.wireshark_host != "127.0.0.1"):
+            udp_port = self.options.wireshark_port
 
         self.tdma_state = False
         self.xor_cache = {}
@@ -408,10 +410,11 @@ class p25_rx_block (gr.top_block):
 
         self.configure_tdma(params)
 
-        params['json_type'] = 'change_freq'
-        js = json.dumps(params)
-        msg = gr.message().make_from_string(js, -4, 0, 0)
-        self.input_q.insert_tail(msg)
+        if self.terminal:
+            params['json_type'] = 'change_freq'
+            js = json.dumps(params)
+            msg = gr.message().make_from_string(js, -4, 0, 0)
+            self.input_q.insert_tail(msg)
 
     def hamlib_attach(self, model):
         Hamlib.rig_set_debug (Hamlib.RIG_DEBUG_NONE)	# RIG_DEBUG_TRACE
@@ -614,9 +617,10 @@ class p25_rx_block (gr.top_block):
         elif s == 'update':
             if self.trunk_rx is None:
                 return False	## possible race cond - just ignore
-            js = self.trunk_rx.to_json()
-            msg = gr.message().make_from_string(js, -4, 0, 0)
-            self.input_q.insert_tail(msg)
+            if self.terminal:
+                js = self.trunk_rx.to_json()
+                msg = gr.message().make_from_string(js, -4, 0, 0)
+                self.input_q.insert_tail(msg)
         elif s == 'set_freq':
             freq = msg.arg1()
             self.set_freq(freq)
@@ -654,9 +658,12 @@ if __name__ == "__main__":
     tb.start()
     try:
         while True:
-            msg = tb.output_q.delete_head()
-            if tb.process_qmsg(msg):
-                break
+            if tb.terminal:
+                msg = tb.output_q.delete_head()
+                if tb.process_qmsg(msg):
+                    break
+            else:
+               time.sleep(1)
     except:
         sys.stderr.write('main: exception occurred\n')
         sys.stderr.write('main: exception:\n%s\n' % traceback.format_exc())

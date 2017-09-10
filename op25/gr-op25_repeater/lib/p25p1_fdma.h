@@ -22,12 +22,10 @@
 #define INCLUDED_OP25_REPEATER_P25P1_FDMA_H
 
 #include <gnuradio/msg_queue.h>
-#include <sys/socket.h>
 #include <sys/time.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
 #include <deque>
 
+#include "op25_udp.h"
 #include "p25_framer.h"
 #include "p25p1_voice_encode.h"
 #include "p25p1_voice_decode.h"
@@ -38,8 +36,6 @@ namespace gr {
     {
      private:
 
-  void init_sock(const char* udp_host, int udp_port);
-
   // internal functions
 	typedef std::vector<bool> bit_vector;
 	bool header_codeword(uint64_t acc, uint32_t& nac, uint32_t& duid);
@@ -47,11 +43,7 @@ namespace gr {
 	void process_duid(uint32_t const duid, uint32_t const nac, uint8_t const buf[], int const len);
   // internal instance variables and state
 	int write_bufp;
-	int write_sock;
-	struct sockaddr_in write_sock_addr;
 	char write_buf[512];
-	const char* d_udp_host;
-	int d_port;
 	int d_debug;
 	bool d_do_imbe;
 	bool d_do_output;
@@ -62,12 +54,13 @@ namespace gr {
 	struct timeval last_qtime;
 	bool d_do_audio_output;
         p25p1_voice_decode p1voice_decode;
+        const op25_udp& op25udp;
 
      public:
 	void reset_timer();
 	void rx_sym (const uint8_t *syms, int nsyms);
-      p25p1_fdma(const char* udp_host, int port, int debug, bool do_imbe, bool do_output, bool do_msgq, gr::msg_queue::sptr queue, std::deque<int16_t> &output_queue, bool do_audio_output);
-      ~p25p1_fdma();
+        p25p1_fdma(const op25_udp& udp, int debug, bool do_imbe, bool do_output, bool do_msgq, gr::msg_queue::sptr queue, std::deque<int16_t> &output_queue, bool do_audio_output);
+       ~p25p1_fdma();
 
       // Where all the action really happens
 

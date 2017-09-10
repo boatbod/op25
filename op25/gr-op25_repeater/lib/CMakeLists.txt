@@ -52,6 +52,7 @@ list(APPEND op25_repeater_sources
     ambe.c
     mbelib.c
     ambe_encoder.cc
+    op25_udp.cc
 )
 
 add_library(gnuradio-op25_repeater SHARED ${op25_repeater_sources})
