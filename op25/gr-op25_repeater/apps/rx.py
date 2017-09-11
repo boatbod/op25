@@ -284,7 +284,7 @@ class p25_rx_block (gr.top_block):
         if self.options.phase2_tdma:
             num_ambe = 1
 
-        self.decoder = p25_decoder.p25_decoder_sink_b(dest='audio', do_imbe=True, num_ambe=num_ambe, wireshark_host=self.options.wireshark_host, udp_port=udp_port, do_msgq = True, msgq=self.rx_q, audio_output=self.options.audio_output, debug=self.options.verbosity)
+        self.decoder = p25_decoder.p25_decoder_sink_b(dest='audio', do_imbe=self.options.vocoder, num_ambe=num_ambe, wireshark_host=self.options.wireshark_host, udp_port=udp_port, do_msgq = True, msgq=self.rx_q, audio_output=self.options.audio_output, debug=self.options.verbosity)
 
         # connect it all up
         self.connect(source, self.demod, self.decoder)

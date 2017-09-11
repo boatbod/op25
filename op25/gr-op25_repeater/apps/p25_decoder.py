@@ -77,9 +77,16 @@ class p25_decoder_sink_b(gr.hier_block2):
         self.debug = debug
         self.dest = dest
         do_output = False
+        do_audio_output = False
+        do_phase2_tdma = False
         if dest == 'wav':
             do_output = True
-        do_audio_output = True
+
+        if do_imbe:
+            do_audio_output = True
+
+        if num_ambe > 0:
+            do_phase2_tdma = True
 
         if msgq is None:
             msgq = gr.msg_queue(1)
@@ -93,7 +100,7 @@ class p25_decoder_sink_b(gr.hier_block2):
         if num_ambe > 1:
            num_decoders += num_ambe - 1
         for slot in xrange(num_decoders):
-            self.p25_decoders.append(op25_repeater.p25_frame_assembler(wireshark_host, udp_port, debug, do_imbe, do_output, do_msgq, msgq, do_audio_output, True))
+            self.p25_decoders.append(op25_repeater.p25_frame_assembler(wireshark_host, udp_port, debug, do_imbe, do_output, do_msgq, msgq, do_audio_output, do_phase2_tdma))
             self.p25_decoders[slot].set_slotid(slot)
 
             self.xorhash.append('')

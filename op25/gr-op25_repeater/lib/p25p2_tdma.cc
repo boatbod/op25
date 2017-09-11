@@ -67,7 +67,7 @@ static bool crc12_ok(const uint8_t bits[], unsigned int len) {
 	return (crc == crc12(bits,len));
 }
 
-p25p2_tdma::p25p2_tdma(const op25_udp& udp, int slotid, int debug, std::deque<int16_t> &qptr) :	// constructor
+p25p2_tdma::p25p2_tdma(const op25_udp& udp, int slotid, int debug, std::deque<int16_t> &qptr, bool do_audio_output) :	// constructor
         op25udp(udp),
 	write_bufp(0),
 	tdma_xormask(new uint8_t[SUPERFRAME_SIZE]),
@@ -76,6 +76,7 @@ p25p2_tdma::p25p2_tdma(const op25_udp& udp, int slotid, int debug, std::deque<in
 	d_slotid(slotid),
 	output_queue_decode(qptr),
 	d_debug(debug),
+	d_do_audio_output(do_audio_output),
 	crc_errors(0),
 	p2framer()
 {
@@ -212,7 +213,7 @@ void p25p2_tdma::handle_voice_frame(const uint8_t dibits[])
 		output_queue_decode.push_back(snd);
 #endif
 	}
-	if (write_bufp >= 0) { 
+	if (d_do_audio_output && (write_bufp >= 0)) { 
 		op25udp.send_audio(write_buf, write_bufp);
 		write_bufp = 0;
 	}

@@ -35,7 +35,7 @@ class p25p2_tdma;
 class p25p2_tdma
 {
 public:
-	p25p2_tdma(const op25_udp& udp, int slotid, int debug, std::deque<int16_t> &qptr) ;	// constructor
+	p25p2_tdma(const op25_udp& udp, int slotid, int debug, std::deque<int16_t> &qptr, bool do_audio_output) ;	// constructor
 	int handle_packet(const uint8_t dibits[]) ;
 	void set_slotid(int slotid);
 	uint8_t* tdma_xormask;
@@ -57,6 +57,7 @@ private:
 	mbe_parms enh_mp;
 	software_imbe_decoder software_decoder;
 	std::deque<int16_t> &output_queue_decode;
+	bool d_do_audio_output;
         const op25_udp& op25udp;
 
 	int d_debug;
