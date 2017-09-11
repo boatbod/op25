@@ -100,6 +100,7 @@ COMMAND LINE OPTIONS
 Usage: rx.py [options]
 
 Options:
+Options:
   -h, --help            show this help message and exit
   --args=ARGS           device args
   --antenna=ANTENNA     select antenna
@@ -141,8 +142,8 @@ Options:
   -w, --wireshark       output data to Wireshark
   -W WIRESHARK_HOST, --wireshark-host=WIRESHARK_HOST
                         Wireshark host
-  --wireshark-port=WIRESHARK_PORT
-                        Wireshark port
+  -u WIRESHARK_PORT, --wireshark-port=WIRESHARK_PORT
+                        Wireshark udp port
   -r RAW_SYMBOLS, --raw-symbols=RAW_SYMBOLS
                         dump decoded symbols to file
   -R RX_SUBDEV_SPEC, --rx-subdev-spec=RX_SUBDEV_SPEC
@@ -163,3 +164,4 @@ Options:
   -2, --phase2-tdma     enable phase2 tdma decode
   -Z DECIM_AMT, --decim-amt=DECIM_AMT
                         spectrum decimation
+
