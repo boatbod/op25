@@ -1,10 +1,15 @@
 Forked from git://git.osmocom.org/op25 "max" branch on 9/10/2017
 
 Many changes:
-- udp python audio server
+- udp python audio server sockaudio.py
 - udp c++ library code updates
 - improved audio buffer handling
 - FFT plot
 - relative tuning fixes
-- command line fine tuning
+- wireshark fixes (experimental)
+
+New command line options:
+  --fine-tune      : sub-ppm tuning adjustment
+  --wireshark-port : facilitates multiple instances of rx.py
+  --udp-player i   : enable built-in audio player
 

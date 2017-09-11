@@ -85,6 +85,7 @@ void op25_udp::open_socket()
     d_audio_sock_addr.sin_family = AF_INET;
     d_audio_sock_addr.sin_port = htons(d_audio_port);
 
+    fprintf(stderr, "op25_udp::open_socket(): enabled udp host(%s), wireshark(%d), audio(%d)\n", d_udp_host, d_write_port, d_audio_port);
     d_udp_enabled = true;
 }
 
@@ -102,33 +103,51 @@ void op25_udp::close_socket()
 // send generic data to destination
 ssize_t op25_udp::send_to(const void *buf, size_t len) const
 {
-    if ( d_udp_enabled && (len > 0) )
+    ssize_t rc = 0;
+    if (d_udp_enabled && (len > 0))
     {
-        return sendto(d_write_sock, buf, len, 0, (struct sockaddr *)&d_write_sock_addr, sizeof(d_write_sock_addr));
+        rc = sendto(d_write_sock, buf, len, 0, (struct sockaddr *)&d_write_sock_addr, sizeof(d_write_sock_addr));
+        if (rc == -1)
+        {
+            fprintf(stderr, "op25_udp::send_to: error(%d): %s\n", errno, strerror(errno));
+            rc = 0;
+        }
     }
-    return 0;
+    return rc;
 }
 
 // send audio data to destination
 ssize_t op25_udp::send_audio(const void *buf, size_t len) const
 {
-    if ( d_udp_enabled && (len > 0) )
+    ssize_t rc = 0;
+    if (d_udp_enabled && (len > 0))
     {
-        return sendto(d_write_sock, buf, len, 0, (struct sockaddr *)&d_audio_sock_addr, sizeof(d_audio_sock_addr));
+        rc = sendto(d_write_sock, buf, len, 0, (struct sockaddr *)&d_audio_sock_addr, sizeof(d_audio_sock_addr));
+        if (rc == -1)
+        {
+            fprintf(stderr, "op25_udp::send_audio: error(%d): %s\n", errno, strerror(errno));
+            rc = 0;
+        }
     }
-    return 0;
+    return rc;
 }
 
 // send flag to audio destination 
 ssize_t op25_udp::send_audio_flag(const op25_udp::udpFlagEnumType udp_flag) const
 {
+    ssize_t rc = 0;
     if ( d_udp_enabled )
     {
         char audio_flag[2];
         // 16 bit little endian encoding
         audio_flag[0] = (udp_flag & 0x00ff);
         audio_flag[1] = ((udp_flag & 0xff00) >> 8);
-        return sendto(d_write_sock, audio_flag, 2, 0, (struct sockaddr *)&d_audio_sock_addr, sizeof(d_audio_sock_addr));
+        rc = sendto(d_write_sock, audio_flag, 2, 0, (struct sockaddr *)&d_audio_sock_addr, sizeof(d_audio_sock_addr));
+        if (rc == -1)
+        {
+            fprintf(stderr, "op25_udp::send_audio_flag: error(%d): %s\n", errno, strerror(errno));
+            rc = 0;
+        }
     }
-    return 0;
+    return rc;
 }
