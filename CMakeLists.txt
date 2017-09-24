@@ -1,7 +1,5 @@
 cmake_minimum_required(VERSION 2.6)
 project(gr-op25 CXX C)
-set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Wno-narrowing")
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -Wno-narrowing")
 
 add_subdirectory(op25/gr-op25)
 add_subdirectory(op25/gr-op25_repeater)
