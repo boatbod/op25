@@ -736,6 +736,15 @@ class rx_ctl (object):
                 # TODO: allow whitelist/blacklist rather than blind automatic-add
                 self.add_trunked_system(nac)
             else:
+                # If trunk.tsv file configured with nac=0, use decoded nac instead
+                if 0 in self.trunked_systems:
+                    sys.stderr.write("[%f] Reconfiguring NAC from 0x000 to 0x%x\n" % (time.time(), nac))
+                    self.trunked_systems[nac] = self.trunked_systems.pop(0)
+                    self.configs[nac] = self.configs.pop(0)
+                    self.nacs = self.configs.keys()
+                    self.current_nac = nac
+                else:
+                    sys.stderr.write("[%f] NAC %x not configured\n" % (time.time(), nac))
                 return
         if type == 7:	# trunk: TSBK
             t = 0
