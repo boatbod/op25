@@ -245,6 +245,7 @@ class p25_rx_block (gr.top_block):
         udp_port = 0
 
         if self.options.udp_player:
+            self.options.vocoder = True
             self.options.wireshark = True
             self.options.wireshark_host = "127.0.0.1"
 
