@@ -249,7 +249,7 @@ int p25p2_tdma::handle_packet(const uint8_t dibits[])
 	for (int i=0; i<BURST_SIZE - 10; i++) {
 		xored_burst[i] = burstp[i] ^ tdma_xormask[sync.tdma_slotid() * BURST_SIZE + i];
 	}
-	if (d_debug) {
+	if (d_debug >= 10) {
 		fprintf(stderr, "p25p2_tdma: burst type %d symbols %u packets %u\n", burst_type, symbols_received, packets);
 	}
 	if (burst_type == 0 || burst_type == 6)	{ // 4v or 2v (voice) ?
