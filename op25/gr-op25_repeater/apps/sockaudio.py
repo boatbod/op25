@@ -202,7 +202,7 @@ class alsasound(object):
 		if (ret < 0):
 			if (ret == -errno.EPIPE): # underrun
 				if (LOG_AUDIO_XRUNS):
-					sys.stderr.write("[%f] PCM underrun\n" % time.time())
+					sys.stderr.write("%f PCM underrun\n" % time.time())
 				ret = self.libasound.snd_pcm_recover(self.c_pcm, ret, 1)
 				if (ret >= 0):
 					ret = self.libasound.snd_pcm_writei(self.c_pcm, cast(c_data, POINTER(c_void_p)), n_frames)
