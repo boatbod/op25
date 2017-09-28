@@ -7,6 +7,7 @@ Many changes:
 - wireshark fixes (experimental)
 - ability to configure NAC 0x000 in trunk.tsv and have system use first NAC decoded
 - fixes for compiling on Debian Stretch
+- integrated N8UR logging changes to trunking.py
 
 New command line options:
   --fine-tune      : sub-ppm tuning adjustment
