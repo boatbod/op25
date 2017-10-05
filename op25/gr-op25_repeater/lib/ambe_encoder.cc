@@ -247,7 +247,11 @@ static void encode_ambe(const IMBE_PARAM *imbe_param, int b[], mbe_parms*cur_mp,
 		lsa_sum += lsa[i1];
 	}
 	float gain = lsa_sum / num_harms_f;
-	float diff_gain = gain - 0.5 * prev_mp->gamma;
+	float diff_gain;
+	if (dstar)
+		diff_gain = gain;
+	else
+		diff_gain = gain - 0.5 * prev_mp->gamma;
 
 	diff_gain -= gain_adjust;
 

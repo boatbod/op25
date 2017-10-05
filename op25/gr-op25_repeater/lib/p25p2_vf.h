@@ -27,6 +27,7 @@ public:
 	void process_vcw(const uint8_t vf[], int* b);
 	void encode_vcw(uint8_t vf[], const int* b);
 	void encode_dstar(uint8_t result[72], const int b[9]);
+	void decode_dstar(const uint8_t codeword[72], int b[9]);
 private:
 	void extract_vcw(const uint8_t _vf[], int& _c0, int& _c1, int& _c2, int& _c3);
 	void interleave_vcw(uint8_t _vf[], int _c0, int _c1, int _c2, int _c3);
