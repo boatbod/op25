@@ -54,7 +54,7 @@ class my_top_block(gr.top_block):
         parser = OptionParser(option_class=eng_option)
 
         parser.add_option("-a", "--args", type="string", default="", help="device args")
-        parser.add_option("-b", "--bt", type="float", default=0.25, help="specify bt value")
+        parser.add_option("-b", "--bt", type="float", default=0.5, help="specify bt value")
         parser.add_option("-c", "--config-file", type="string", default=None, help="specify the config file name")
         parser.add_option("-f", "--file1", type="string", default=None, help="specify the input file slot 1")
         parser.add_option("-F", "--file2", type="string", default=None, help="specify the input file slot 2 (DMR)")
@@ -89,7 +89,7 @@ class my_top_block(gr.top_block):
 	}
 	gain_adjust = {
 		'dmr': 3.0,
-		'dstar': 6.0,
+		'dstar': 8.5,
 		'ysf': 5.0
 	}
 	gain_adjust_fullrate = {

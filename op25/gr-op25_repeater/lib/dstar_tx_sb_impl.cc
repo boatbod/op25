@@ -152,7 +152,6 @@ dstar_tx_sb_impl::general_work (int noutput_items,
         memcpy(out+72, FS, 24);
     else
         memcpy(out+72, FS_DUMMY, 24);
-    d_frame_counter += 1;
     d_frame_counter = (d_frame_counter + 1) % 21;
     in += 160;
     nconsumed += 160;
