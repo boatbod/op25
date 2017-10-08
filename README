@@ -1,4 +1,5 @@
 Forked from git://git.osmocom.org/op25 "max" branch on 9/10/2017
+Pulled and merged "max" branch on 10/08/2017
 
 Many changes:
 - udp python audio server sockaudio.py and remote player audio.py
@@ -8,6 +9,7 @@ Many changes:
 - ability to configure NAC 0x000 in trunk.tsv and have system use first NAC decoded
 - fixes for compiling on Debian Stretch
 - integrated N8UR logging changes to trunking.py
+- FFT peak detection/offset indication
 
 New command line options:
   --fine-tune      : sub-ppm tuning adjustment
