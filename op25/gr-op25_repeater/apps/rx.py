@@ -469,7 +469,7 @@ class p25_rx_block (gr.top_block):
         r = self.src.set_center_freq(tune_freq)
 
         if self.fft_sink:
-            self.fft_sink.set_center_freq(tune_freq)
+            self.fft_sink.set_center_freq(tune_freq + self.options.fine_tune)
             self.fft_sink.set_width(self.options.sample_rate)
 
         if r:
