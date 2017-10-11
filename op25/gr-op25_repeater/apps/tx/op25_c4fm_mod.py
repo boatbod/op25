@@ -153,6 +153,7 @@ class p25_mod_bf(gr.hier_block2):
                  generator=transfer_function_tx,
                  dstar=False,
                  bt=_def_bt,
+                 rc=None,
                  log=_def_log):
         """
 	Hierarchical block for RRC-filtered P25 FM modulation.
@@ -198,9 +199,14 @@ class p25_mod_bf(gr.hier_block2):
 
         self.generator = generator
 
-        if self.dstar:
+        assert rc is None or rc == 'rc' or rc == 'rrc'
+        if rc:
+            coeffs = filter.firdes.root_raised_cosine(1.0, output_sample_rate, input_sample_rate, 0.2, 91)
+        if rc == 'rc':
+            coeffs = np.convolve(coeffs, coeffs)
+        elif self.dstar:
             coeffs = gmsk_taps(sample_rate=output_sample_rate, bt=self.bt).generate()
-        else:
+        elif not rc:
             coeffs = c4fm_taps(sample_rate=output_sample_rate, generator=self.generator).generate()
         self.filter = filter.interp_fir_filter_fff(self._interp_factor, coeffs)
 

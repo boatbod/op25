@@ -124,6 +124,7 @@ class my_top_block(gr.top_block):
             DMR = op25_repeater.dmr_bs_tx_bb(options.verbose, options.config_file)
             self.connect(ENCODER, (DMR, 0))
             self.connect(ENCODER2, (DMR, 1))
+            rc = 'rrc'
         elif options.protocol == 'dstar':
             ENCODER = op25_repeater.dstar_tx_sb(options.verbose, options.config_file)
         elif options.protocol == 'p25':
@@ -133,8 +134,10 @@ class my_top_block(gr.top_block):
                                   "",			# udp ip address
                                   0,			# udp port
                                   False) 		# dump raw u vectors
+            rc = 'rc'
         elif options.protocol == 'ysf':
             ENCODER = op25_repeater.ysf_tx_sb(options.verbose, options.config_file, options.fullrate_mode)
+            rc = 'rrc'
         nfiles = 0
         if options.file1:
             nfiles += 1
@@ -171,7 +174,7 @@ class my_top_block(gr.top_block):
         if options.protocol == 'dstar':
             MOD = p25_mod_bf(output_sample_rate = options.sample_rate, dstar = True, bt = options.bt)
         else:
-            MOD = p25_mod_bf(output_sample_rate = options.sample_rate, generator=generator)
+            MOD = p25_mod_bf(output_sample_rate = options.sample_rate, rc=rc)
         AMP = blocks.multiply_const_ff(output_gain)
 
         if options.output_file:
