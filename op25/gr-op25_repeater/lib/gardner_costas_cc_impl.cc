@@ -268,7 +268,7 @@ gardner_costas_cc_impl::general_work (int noutput_items,
 #else
 		float symbol_error = ((sgn(interp_samp) - sgn(d_last_sample)) * conj(interp_samp_mid)).real();
 #endif
-		if (isnan(symbol_error)) symbol_error = 0.0;
+		if (std::isnan(symbol_error)) symbol_error = 0.0;
 		if (symbol_error < -1.0) symbol_error = -1.0;
 		if (symbol_error >  1.0) symbol_error =  1.0;
 

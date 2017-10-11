@@ -27,7 +27,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
-#include <math.h>
+#include <cmath>
 
 #include "imbe_vocoder/imbe_vocoder.h"
 #include "ambe3600x2250_const.h"
@@ -555,7 +555,7 @@ ambe_encoder::ambe_encoder(void)
 	if (gfp) {
 		float gain_adj = 0.0;
 		sscanf(gfp, "%f", &gain_adj);
-		if (!isnan(gain_adj))
+		if (!std::isnan(gain_adj))
 			d_gain_adjust = gain_adj;
 	}
 }
