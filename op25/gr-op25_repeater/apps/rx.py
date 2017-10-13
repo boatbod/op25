@@ -269,7 +269,7 @@ class p25_rx_block (gr.top_block):
             self.demod = p25_demodulator.p25_demod_fb(input_rate=capture_rate)
         else:	# complex input
             # local osc
-            self.lo_freq = self.options.offset + self.options.fine_tune
+            self.lo_freq = self.options.offset
             if self.options.audio_if or self.options.ifile or self.options.input:
                 self.lo_freq += self.options.calibration
             self.demod = p25_demodulator.p25_demod_cb( input_rate = capture_rate,
@@ -305,6 +305,7 @@ class p25_rx_block (gr.top_block):
             self.connect(self.spectrum_decim, self.fft_sink)
             self.demod.connect_complex('src', self.spectrum_decim)
             self.kill_sink = self.fft_sink
+            self.fft_sink.set_offset(self.options.offset)
         elif self.options.plot_mode == 'datascope':
             assert self.options.demod_type == 'fsk4'  ## datascope requires fsk4 demod-type
             self.eye_sink = eye_sink_f(sps=10)
@@ -386,24 +387,23 @@ class p25_rx_block (gr.top_block):
         freq = params['freq']
         offset = params['offset']
         center_freq = params['center_frequency']
-        fine_tune = self.options.fine_tune
 
         if self.options.hamlib_model:
             self.hamlib.set_freq(freq)
         elif params['center_frequency']:
             relative_freq = center_freq - freq
             if abs(relative_freq + self.options.offset) > self.channel_rate / 2:
-                self.lo_freq = self.options.offset + self.options.fine_tune		# relative tune not possible
+                self.lo_freq = self.options.offset					# relative tune not possible
                 self.demod.set_relative_frequency(self.lo_freq)				# reset demod relative freq
                 self.set_freq(freq + offset)						# direct tune instead
             else:    
-                self.lo_freq = self.options.offset + relative_freq + fine_tune 
+                self.lo_freq = self.options.offset + relative_freq
                 if self.demod.set_relative_frequency(self.lo_freq):			# relative tune successful
                     self.set_freq(center_freq + offset)
                     if self.fft_sink:
-                        self.fft_sink.set_relative_freq(self.lo_freq)
+                        self.fft_sink.set_relative_freq(relative_freq)
                 else:
-                    self.lo_freq = self.options.offset + self.options.fine_tune		# relative tune unsuccessful
+                    self.lo_freq = self.options.offset					# relative tune unsuccessful
                     self.demod.set_relative_frequency(self.lo_freq)			# reset demod relative freq
                     self.set_freq(freq + offset)					# direct tune instead
         else:
@@ -465,11 +465,11 @@ class p25_rx_block (gr.top_block):
         """
         if not self.src:
             return False
-        tune_freq = target_freq + self.options.calibration + self.options.offset
+        tune_freq = target_freq + self.options.calibration + self.options.offset + self.options.fine_tune
         r = self.src.set_center_freq(tune_freq)
 
         if self.fft_sink:
-            self.fft_sink.set_center_freq(tune_freq + self.options.fine_tune)
+            self.fft_sink.set_center_freq(target_freq)
             self.fft_sink.set_width(self.options.sample_rate)
 
         if r:

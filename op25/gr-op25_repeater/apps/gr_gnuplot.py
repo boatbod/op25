@@ -42,6 +42,7 @@ class wrap_gp(object):
 		self.sps = sps
 		self.center_freq = None
 		self.relative_freq = 0.0
+		self.offset_freq = 0.0
 		self.width = None
 		self.ffts = ()
 		self.freqs = ()
@@ -99,7 +100,7 @@ class wrap_gp(object):
 				self.freqs = np.fft.fftshift(self.freqs)
 				tune_freq = (self.center_freq - self.relative_freq) / 1e6
 				if self.center_freq and self.width:
-                                	self.freqs = ((self.freqs * self.width) + self.center_freq) / 1e6
+                                	self.freqs = ((self.freqs * self.width) + self.center_freq + self.offset_freq) / 1e6
 				for i in xrange(len(self.ffts)):
 					self.avg_pwr[i] = ((1.0 - FFT_AVG) * self.avg_pwr[i]) + (FFT_AVG * np.abs(self.ffts[i]))
 					s += '%f\t%f\n' % (self.freqs[i], 20 * np.log10(self.avg_pwr[i]))
@@ -147,6 +148,9 @@ class wrap_gp(object):
 
 	def set_relative_freq(self, f):
 		self.relative_freq = f
+
+	def set_offset(self, f):
+		self.offset_freq = f
 
 	def set_width(self, w):
 		self.width = w
@@ -219,6 +223,9 @@ class fft_sink_c(gr.sync_block):
 
     def set_relative_freq(self, f):
         self.gnuplot.set_relative_freq(f)
+
+    def set_offset(self, f):
+        self.gnuplot.set_offset(f)
 
     def set_width(self, w):
         self.gnuplot.set_width(w)
