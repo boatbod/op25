@@ -40,6 +40,10 @@ terminal window there are several keyboard commands:
  l - lockout
  s - skip
  q - quit program
+ , - decrease fine tune by 100Hz
+ . - increase fine tune by 100Hz
+ < - decrease fine tune by 1200Hz
+ > - increase fine tune by 1200Hz
 There are also two experimental commands (should not be used in -T mode)
  f - manually change frequencies
  t - if currently tuned to a CC, autostart scanning talkgroups

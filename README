@@ -10,6 +10,7 @@ Many changes:
 - fixes for compiling on Debian Stretch
 - integrated N8UR logging changes to trunking.py
 - FFT peak detection/offset indication
+- ability to adjust fine tuning in real time (,./<> keys in terminal) 
 
 New command line options:
   --fine-tune      : sub-ppm tuning adjustment
