@@ -488,7 +488,6 @@ class p25_rx_block (gr.top_block):
         if self.target_freq == 0.0:
             return False
         self.options.fine_tune += tune_incr;
-        sys.stderr.write("fine tune=%d\n" % self.options.fine_tune)
         self.set_freq(self.target_freq)
         return True
 
