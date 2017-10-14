@@ -110,6 +110,18 @@ class curses_terminal(threading.Thread):
             if freq:
                 msg = gr.message().make_from_string('set_freq', -2, freq, 0)
                 self.output_q.insert_tail(msg)
+        elif c == ord(','):
+            msg = gr.message().make_from_string('adj_tune', -2, -100, 0)
+            self.output_q.insert_tail(msg)
+        elif c == ord('.'):
+            msg = gr.message().make_from_string('adj_tune', -2, 100, 0)
+            self.output_q.insert_tail(msg)
+        elif c == ord('<'):
+            msg = gr.message().make_from_string('adj_tune', -2, -1200, 0)
+            self.output_q.insert_tail(msg)
+        elif c == ord('>'):
+            msg = gr.message().make_from_string('adj_tune', -2, 1200, 0)
+            self.output_q.insert_tail(msg)
         elif c == ord('x'):
             assert 1 == 0
         return False
@@ -144,6 +156,8 @@ class curses_terminal(threading.Thread):
             self.stdscr.refresh()
         elif msg['json_type'] == 'change_freq':
             s = 'Frequency %f' % (msg['freq'] / 1000000.0)
+            if msg['fine_tune'] is not None:
+                s +='(%d)' % msg['fine_tune']
             if msg['tgid'] is not None:
                 s += ' Talkgroup ID %s' % (msg['tgid'])
                 if msg['tdma'] is not None:

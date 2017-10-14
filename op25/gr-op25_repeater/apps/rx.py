@@ -135,6 +135,7 @@ class p25_rx_block (gr.top_block):
         self.rtl_found = False
         self.channel_rate = options.sample_rate
         self.fft_sink = None
+        self.target_freq = 0.0
 
         self.src = None
         if not options.input:
@@ -412,6 +413,7 @@ class p25_rx_block (gr.top_block):
         self.configure_tdma(params)
 
         params['json_type'] = 'change_freq'
+        params['fine_tune'] = self.options.fine_tune
         js = json.dumps(params)
         msg = gr.message().make_from_string(js, -4, 0, 0)
         self.input_q.insert_tail(msg)
@@ -465,6 +467,7 @@ class p25_rx_block (gr.top_block):
         """
         if not self.src:
             return False
+        self.target_freq = target_freq
         tune_freq = target_freq + self.options.calibration + self.options.offset + self.options.fine_tune
         r = self.src.set_center_freq(tune_freq)
 
@@ -480,6 +483,15 @@ class p25_rx_block (gr.top_block):
             return True
 
         return False
+
+    def adj_tune(self, tune_incr):
+        if self.target_freq == 0.0:
+            return False
+        self.options.fine_tune += tune_incr;
+        sys.stderr.write("fine tune=%d\n" % self.options.fine_tune)
+        self.set_freq(self.target_freq)
+        return True
+
 
     # read capture file properties (decimation etc.)
     #
@@ -623,6 +635,9 @@ class p25_rx_block (gr.top_block):
         elif s == 'set_freq':
             freq = msg.arg1()
             self.set_freq(freq)
+        elif s == 'adj_tune':
+            freq = msg.arg1()
+            self.adj_tune(freq)
         elif s == 'add_default_config':
             nac = msg.arg1()
             self.trunk_rx.add_default_config(nac)
