@@ -41,22 +41,33 @@ class curses_terminal(threading.Thread):
         self.last_update = 0
         self.auto_update = True
         self.current_nac = None
+        self.maxy = None
+        self.maxy = None
         self.start()
 
     def setup_curses(self):
         self.stdscr = curses.initscr()
+        self.maxy, self.maxx = self.stdscr.getmaxyx()
 
         curses.noecho()
         curses.halfdelay(1)
 
-        self.top_bar = curses.newwin(1, 80, 0, 0)
-        self.freq_list = curses.newwin(20, 80, 1, 0)
-        self.active1 = curses.newwin(1, 80, 21, 0)
-        self.active2 = curses.newwin(1, 80, 22, 0)
-        self.prompt = curses.newwin(1, 10, 23, 0)
-        self.text_win = curses.newwin(1, 70, 23, 10)
+        self.top_bar = curses.newwin(1, self.maxx, 0, 0)
+        self.freq_list = curses.newwin(self.maxy-3, self.maxx, 1, 0)
+        self.active1 = curses.newwin(1, self.maxx, self.maxy-2, 0)
+        self.active2 = curses.newwin(1, self.maxx, self.maxy-1, 0)
+        self.prompt = curses.newwin(1, 10, self.maxy, 0)
+        self.text_win = curses.newwin(1, 70, self.maxy, 10)
 
         self.textpad = curses.textpad.Textbox(self.text_win)
+
+    def resize_curses(self):
+        self.top_bar.resize(1, self.maxx)
+        self.freq_list.resize(self.maxy-3, self.maxx)
+        self.active1.resize(1, self.maxx)
+        self.active1.mvwin(self.maxy-2, 0)
+        self.active2.resize(1, self.maxx)
+        self.active2.mvwin(self.maxy-1, 0)
 
     def end_curses(self):
         try:
@@ -143,14 +154,16 @@ class curses_terminal(threading.Thread):
             s += '/%f' % (msg[current_nac]['txchan']/ 1000000.0)
             s += ' tsbks %d' % (msg[current_nac]['tsbks'])
             freqs = sorted(msg[current_nac]['frequencies'].keys())
-            s = s[:79]
+            s = s[:(self.maxx - 1)]
             self.top_bar.clear()
             self.top_bar.addstr(0, 0, s)
             self.top_bar.refresh()
             self.freq_list.clear()
             for i in xrange(len(freqs)):
+                if i > (self.maxy - 4):
+                    break
                 s=msg[current_nac]['frequencies'][freqs[i]]
-                s = s[:79]
+                s = s[:(self.maxx - 1)]
                 self.freq_list.addstr(i, 0, s)
             self.freq_list.refresh()
             self.stdscr.refresh()
@@ -168,7 +181,7 @@ class curses_terminal(threading.Thread):
             self.active1.refresh()
             if msg['tag']:
                 s = msg['tag']
-                s = s[:79]
+                s = s[:(self.maxx - 1)]
                 self.active2.addstr(0, 0, s)
             self.active2.refresh()
             self.stdscr.refresh()
@@ -188,6 +201,13 @@ class curses_terminal(threading.Thread):
         try:
             self.setup_curses()
             while(self.keep_running):
+                resize = curses.is_term_resized(self.maxy, self.maxx)
+                if resize is True:
+                    self.maxy, self.maxx = self.stdscr.getmaxyx()
+                    self.stdscr.clear()
+                    self.resize_curses()
+                    #curses.resizeterm(y, x)
+                    #screen.refresh()
                 if self.process_terminal_events():
                     break
                 if self.process_q_events():
