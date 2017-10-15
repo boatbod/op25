@@ -48,6 +48,11 @@ class curses_terminal(threading.Thread):
     def setup_curses(self):
         self.stdscr = curses.initscr()
         self.maxy, self.maxx = self.stdscr.getmaxyx()
+        if (self.maxy < 5) or (self.maxx < 70):
+            sys.stderr.write("Terminal window too small! Minimum size [70 x 5], actual [%d x %d]\n" % (self.maxx, self.maxy))
+            print "Terminal window too small! Minimum size [70 x 5], actual [%d x %d]\n" % (self.maxx, self.maxy)
+            self.keep_running = False
+            return
 
         curses.noecho()
         curses.halfdelay(1)
@@ -62,6 +67,13 @@ class curses_terminal(threading.Thread):
         self.textpad = curses.textpad.Textbox(self.text_win)
 
     def resize_curses(self):
+        self.maxy, self.maxx = self.stdscr.getmaxyx()
+ 
+        if (self.maxx < 70) or (self.maxy < 5):	# do not resize if window is now too small
+            return 
+
+        self.stdscr.clear()
+
         self.top_bar.resize(1, self.maxx)
         self.freq_list.resize(self.maxy-3, self.maxx)
         self.active1.resize(1, self.maxx)
@@ -86,6 +98,9 @@ class curses_terminal(threading.Thread):
 
     def process_terminal_events(self):
         # return true signifies end of main event loop
+        if curses.is_term_resized(self.maxy, self.maxx) is True:
+            self.resize_curses()
+
         _ORD_S = ord('s')
         _ORD_L = ord('l')
         _ORD_H = ord('h')
@@ -175,6 +190,7 @@ class curses_terminal(threading.Thread):
                 s += ' Talkgroup ID %s' % (msg['tgid'])
                 if msg['tdma'] is not None:
                     s += ' TDMA Slot %s' % msg['tdma']
+            s = s[:(self.maxx - 1)]
             self.active1.clear()
             self.active2.clear()
             self.active1.addstr(0, 0, s)
@@ -190,6 +206,8 @@ class curses_terminal(threading.Thread):
     def process_q_events(self):
         # return true signifies end of main event loop
         while True:
+            if curses.is_term_resized(self.maxy, self.maxx) is True:
+                self.resize_curses()
             if self.input_q.empty_p():
                 break
             msg = self.input_q.delete_head_nowait()
@@ -201,19 +219,12 @@ class curses_terminal(threading.Thread):
         try:
             self.setup_curses()
             while(self.keep_running):
-                resize = curses.is_term_resized(self.maxy, self.maxx)
-                if resize is True:
-                    self.maxy, self.maxx = self.stdscr.getmaxyx()
-                    self.stdscr.clear()
-                    self.resize_curses()
-                    #curses.resizeterm(y, x)
-                    #screen.refresh()
                 if self.process_terminal_events():
                     break
                 if self.process_q_events():
                     break
         except:
-            sys.stderr.write('terminal: exception occurred\n')
+            sys.stderr.write('terminal: exception occurred (%d, %d)\n' % (self.maxx, self.maxy))
             sys.stderr.write('terminal: exception:\n%s\n' % traceback.format_exc())
         finally:
             self.end_curses()
