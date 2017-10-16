@@ -40,7 +40,7 @@ PEAK_WIDTH = 0.050
 class wrap_gp(object):
 	def __init__(self, sps=_def_sps):
 		self.sps = sps
-		self.center_freq = None
+		self.center_freq = 0.0
 		self.relative_freq = 0.0
 		self.offset_freq = 0.0
 		self.width = None

@@ -604,6 +604,7 @@ class p25_rx_block (gr.top_block):
                 "source-dev": "USRP",
                 "source-decim": 1 }
             self.__set_rx_from_osmosdr()
+            self.set_freq(self.options.frequency)
         # except Exception, x:
         #     wx.MessageBox("Cannot open USRP: " + x.message, "USRP Error", wx.CANCEL | wx.ICON_EXCLAMATION)
 
