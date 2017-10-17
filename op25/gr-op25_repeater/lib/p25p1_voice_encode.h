@@ -45,7 +45,7 @@ namespace gr {
       p25p1_voice_encode(bool verbose_flag, int stretch_amt, char* udp_host, int udp_port, bool raw_vectors_flag, std::deque<uint8_t> &_output_queue);
       ~p25p1_voice_encode();
 	void compress_samp(const int16_t * samp, int len);
-
+      void set_gain_adjust(float gain_adjust);
   private:
 	static const int RXBUF_MAX = 80;
 

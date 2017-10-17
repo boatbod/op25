@@ -164,5 +164,10 @@ vocoder_impl::general_work (int noutput_items,
 		return general_work_decode(noutput_items, ninput_items, input_items, output_items);
 }
 
+void
+vocoder_impl::set_gain_adjust(float gain_adjust) {
+	p1voice_encode.set_gain_adjust(gain_adjust);
+}
+
   } /* namespace op25_repeater */
 } /* namespace gr */

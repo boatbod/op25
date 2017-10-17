@@ -549,15 +549,6 @@ ambe_encoder::ambe_encoder(void)
 {
 	mbe_parms enh_mp;
 	mbe_initMbeParms (&cur_mp, &prev_mp, &enh_mp);
-	// this is a hack to cut down on overloading
-	// value is in log2
-	char *gfp = getenv("GAIN_ADJUST");
-	if (gfp) {
-		float gain_adj = 0.0;
-		sscanf(gfp, "%f", &gain_adj);
-		if (!std::isnan(gain_adj))
-			d_gain_adjust = gain_adj;
-	}
 }
 
 void ambe_encoder::set_dstar_mode(void)

@@ -28,6 +28,7 @@ public:
 	ambe_encoder(void);
 	void set_49bit_mode(void);
 	void set_dstar_mode(void);
+	void set_gain_adjust(float gain_adjust) {d_gain_adjust = gain_adjust;}
 private:
 	imbe_vocoder vocoder;
 	p25p2_vf interleaver;
