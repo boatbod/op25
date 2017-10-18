@@ -35,7 +35,31 @@ import op25_repeater
 
 from math import pi
 
-from op25_c4fm_mod import c4fm_taps, transfer_function_dmr, transfer_function_tx, p25_mod_bf
+from op25_c4fm_mod import p25_mod_bf
+
+RC_FILTER = {'dmr': 'rrc', 'p25': 'rc', 'ysf': 'rrc', 'dstar': None}
+
+output_gains = {
+	'dmr': 5.5,
+	'dstar': 0.95,
+	'p25': 5.0,
+	'ysf': 5.5
+}
+gain_adjust = {
+	'dmr': 3.0,
+	'dstar': 7.5,
+	'ysf': 5.0
+}
+gain_adjust_fullrate = {
+	'p25': 2.0,
+	'ysf': 3.0
+}
+mod_adjust = {	# rough values
+	'dmr': 0.35,
+	'dstar': 0.075,
+	'p25': 0.33,
+	'ysf': 0.42
+}
 
 class my_top_block(gr.top_block):
 
@@ -50,6 +74,7 @@ class my_top_block(gr.top_block):
     """
 
     def __init__(self):
+        global output_gains, gain_adjust, gain_adjust_fullrate, mod_adjust
         gr.top_block.__init__(self)
         parser = OptionParser(option_class=eng_option)
 
@@ -76,55 +101,25 @@ class my_top_block(gr.top_block):
 
         max_inputs = 1
 
-	output_gains = {
-		'dmr': 5.5,
-		'dstar': 0.95,
-		'p25': 5.5,
-		'ysf': 5.5
-	}
-	generators = {
-		'dmr': transfer_function_dmr,
-		'p25': transfer_function_tx,
-		'ysf': transfer_function_dmr
-	}
-	gain_adjust = {
-		'dmr': 3.0,
-		'dstar': 8.5,
-		'ysf': 5.0
-	}
-	gain_adjust_fullrate = {
-		'p25': 2.0,
-		'ysf': 3.0
-	}
-	mod_adjust = {	# rough values
-		'dmr': 0.3,
-		'dstar': 0.075,
-		'p25': 0.25,
-		'ysf': 0.32
-	}
-
 	if options.protocol is None:
             print 'protocol [-p] option missing'
             sys.exit(0)
 
-	output_gain = output_gains[options.protocol]
-	if options.protocol in generators.keys():
-		generator = generators[options.protocol]
-	if options.protocol in gain_adjust.keys():
-            os.environ['GAIN_ADJUST'] = str(gain_adjust[options.protocol])
-	if options.protocol in gain_adjust_fullrate.keys():
-            os.environ['GAIN_ADJUST_FULLRATE'] = str(gain_adjust_fullrate[options.protocol])
+        if options.protocol == 'ysf' or options.protocol == 'dmr':
+            assert options.config_file # dmr and ysf require config file ("-c FILENAME" option)
 
-        if options.test:
+	output_gain = output_gains[options.protocol]
+
+        if options.test: # input file is in symbols of size=char
             ENCODER = blocks.file_source(gr.sizeof_char, options.test, True)
         elif options.protocol == 'dmr':
             max_inputs = 2
             ENCODER  = op25_repeater.ambe_encoder_sb(options.verbose)
             ENCODER2 = op25_repeater.ambe_encoder_sb(options.verbose)
+            ENCODER2.set_gain_adjust(gain_adjust['dmr'])
             DMR = op25_repeater.dmr_bs_tx_bb(options.verbose, options.config_file)
             self.connect(ENCODER, (DMR, 0))
             self.connect(ENCODER2, (DMR, 1))
-            rc = 'rrc'
         elif options.protocol == 'dstar':
             ENCODER = op25_repeater.dstar_tx_sb(options.verbose, options.config_file)
         elif options.protocol == 'p25':
@@ -134,10 +129,16 @@ class my_top_block(gr.top_block):
                                   "",			# udp ip address
                                   0,			# udp port
                                   False) 		# dump raw u vectors
-            rc = 'rc'
         elif options.protocol == 'ysf':
             ENCODER = op25_repeater.ysf_tx_sb(options.verbose, options.config_file, options.fullrate_mode)
-            rc = 'rrc'
+            if options.fullrate_mode:
+                ENCODER.set_gain_adjust(gain_adjust_fullrate['ysf'])
+            else:
+                ENCODER.set_gain_adjust(gain_adjust['ysf'])
+        if options.protocol == 'p25':
+            ENCODER.set_gain_adjust(gain_adjust_fullrate[options.protocol])
+        elif not options.test and not options.protocol == 'ysf':
+            ENCODER.set_gain_adjust(gain_adjust[options.protocol])
         nfiles = 0
         if options.file1:
             nfiles += 1
@@ -171,10 +172,7 @@ class my_top_block(gr.top_block):
             else:
                 self.connect(AUDIO_F2S, ENCODER2)
 
-        if options.protocol == 'dstar':
-            MOD = p25_mod_bf(output_sample_rate = options.sample_rate, dstar = True, bt = options.bt)
-        else:
-            MOD = p25_mod_bf(output_sample_rate = options.sample_rate, rc=rc)
+        MOD = p25_mod_bf(output_sample_rate = options.sample_rate, dstar = (options.protocol == 'dstar'), bt = options.bt, rc = RC_FILTER[options.protocol])
         AMP = blocks.multiply_const_ff(output_gain)
 
         if options.output_file:
@@ -190,7 +188,8 @@ class my_top_block(gr.top_block):
         if options.args:
             self.setup_sdr_output(options, mod_adjust[options.protocol])
             interp = filter.rational_resampler_fff(options.if_rate / options.sample_rate, 1)
-            self.connect(MOD, AMP, interp, self.fm_modulator, self.u)
+            self.attn = blocks.multiply_const_cc(0.25)
+            self.connect(MOD, AMP, interp, self.fm_modulator, self.attn, self.u)
         else:
             self.connect(MOD, AMP, OUT)
 
