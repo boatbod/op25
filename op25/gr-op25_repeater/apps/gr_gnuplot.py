@@ -35,7 +35,6 @@ GNUPLOT = '/usr/bin/gnuplot'
 
 FFT_AVG  = 0.25
 FFT_BINS = 512
-PEAK_WIDTH = 0.050
 
 class wrap_gp(object):
 	def __init__(self, sps=_def_sps):
@@ -47,8 +46,6 @@ class wrap_gp(object):
 		self.freqs = ()
 		self.avg_pwr = np.zeros(FFT_BINS)
 		self.buf = []
-		self.peak_freq = None
-		self.peak_pwr = 0.0
 
 		self.attach_gp()
 
@@ -92,20 +89,15 @@ class wrap_gp(object):
 				self.buf = []
 				plots.append('"-" with dots')
 			elif mode == 'fft':
-				self.peak_pwr = 0.0
 				self.ffts = np.fft.fft(self.buf * np.blackman(BUFSZ)) / (0.42 * BUFSZ)
 				self.ffts = np.fft.fftshift(self.ffts)
 				self.freqs = np.fft.fftfreq(len(self.ffts))
 				self.freqs = np.fft.fftshift(self.freqs)
-				tune_freq = (self.center_freq - self.relative_freq) / 1e6
 				if self.center_freq and self.width:
                                 	self.freqs = ((self.freqs * self.width) + self.center_freq) / 1e6
 				for i in xrange(len(self.ffts)):
 					self.avg_pwr[i] = ((1.0 - FFT_AVG) * self.avg_pwr[i]) + (FFT_AVG * np.abs(self.ffts[i]))
 					s += '%f\t%f\n' % (self.freqs[i], 20 * np.log10(self.avg_pwr[i]))
-					if (self.freqs[i] >= (tune_freq - PEAK_WIDTH)) and (self.freqs[i] <= (tune_freq + PEAK_WIDTH)) and (self.avg_pwr[i] > self.peak_pwr):
-						self.peak_pwr = self.avg_pwr[i]
-						self.peak_freq = self.freqs[i]
 				s += 'e\n'
 				self.buf = []
 				plots.append('"-" with lines')
@@ -136,14 +128,13 @@ class wrap_gp(object):
 			if self.center_freq:
 				arrow_pos = (self.center_freq - self.relative_freq) / 1e6
 				h+= 'set arrow from %f, graph 0 to %f, graph 1 nohead\n' % (arrow_pos, arrow_pos)
-				h+= 'set title "Tuned to %f Mhz, peak signal offset %f"\n' % (arrow_pos, (self.peak_freq - arrow_pos))
+				h+= 'set title "Tuned to %f Mhz"\n' % ((self.center_freq - self.relative_freq) / 1e6)
 		dat = '%splot %s\n%s' % (h, ','.join(plots), s)
 		self.gp.stdin.write(dat)
 		return consumed
 
 	def set_center_freq(self, f):
 		self.center_freq = f
-		self.peak_freq = f
 
 	def set_relative_freq(self, f):
 		self.relative_freq = f
