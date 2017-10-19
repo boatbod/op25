@@ -12,6 +12,7 @@ Many changes:
 - FFT peak detection/offset indication
 - ability to adjust fine tuning in real time (,./<> keys in terminal) 
 - ability to dynamically resize the curses terminal
+- ability to dunamically turn plots on and off from the terminal (keys 1-4)
 
 New command line options:
   --fine-tune      : sub-ppm tuning adjustment
