@@ -12,7 +12,7 @@ fi
 
 sudo apt-get update
 sudo apt-get build-dep gnuradio
-sudo apt-get install gnuradio gnuradio-dev gr-osmosdr librtlsdr-dev libuhd-dev  libhackrf-dev libitpp-dev libpcap-dev git
+sudo apt-get install gnuradio gnuradio-dev gr-osmosdr librtlsdr-dev libuhd-dev  libhackrf-dev libitpp-dev libpcap-dev git swig gnuplot-x11
 
 mkdir build
 cd build
