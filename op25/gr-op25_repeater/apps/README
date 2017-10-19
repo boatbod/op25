@@ -44,9 +44,14 @@ terminal window there are several keyboard commands:
  . - increase fine tune by 100Hz
  < - decrease fine tune by 1200Hz
  > - increase fine tune by 1200Hz
+ 1 - toggle fft plot
+ 2 - toggle constellation plot (cqpsk)
+ 3 - toggle symbol plot
+ 4 - toggle datascope plot (fsk4)
 There are also two experimental commands (should not be used in -T mode)
  f - manually change frequencies
  t - if currently tuned to a CC, autostart scanning talkgroups
+
 The "t" command allows trunk tracking without setting up a trunking TSV
 file.  However running with the -T <filename> command line option is
 preferred as that allows use of white/black lists and talkgroup tags files.
@@ -81,7 +86,8 @@ the "-O audio_out" option along with "-U".
 
 PLOT MODES
 ==========
-Three types of plotting are currently implemented, via the -P parameter:
+Four types of plotting are currently implemented, via the -P parameter:
+ * fft
  * constellation
  * datascope
  * symbol

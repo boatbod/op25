@@ -259,16 +259,6 @@ class p25_rx_block (gr.top_block):
         self.tdma_state = False
         self.xor_cache = {}
 
-        self.fft_state  = False
-        self.c4fm_state = False
-        self.fscope_state = False
-        self.corr_state = False
-        self.fac_state = False
-        self.fsk4_demod_connected = False
-        self.psk_demod_connected = False
-        self.fsk4_demod_mode = False
-        self.corr_i_chan = False
-
         if self.baseband_input:
             self.demod = p25_demodulator.p25_demod_fb(input_rate=capture_rate)
         else:	# complex input

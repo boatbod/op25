@@ -146,7 +146,9 @@ class wrap_gp(object):
 				h+= 'set arrow from %f, graph 0 to %f, graph 1 nohead\n' % (arrow_pos, arrow_pos)
 				h+= 'set title "Tuned to %f Mhz, peak signal offset %f"\n' % (arrow_pos, (self.peak_freq - arrow_pos))
 		dat = '%splot %s\n%s' % (h, ','.join(plots), s)
-		self.gp.stdin.write(dat)
+		self.gp.poll()
+		if self.gp.returncode is None:	# make sure gnuplot is still running 
+			self.gp.stdin.write(dat)
 		return consumed
 
 	def set_center_freq(self, f):
