@@ -169,5 +169,9 @@ dstar_tx_sb_impl::general_work (int noutput_items,
   return (nframes * 96);
 }
 
+void
+dstar_tx_sb_impl::set_gain_adjust(float gain_adjust) {
+	d_encoder.set_gain_adjust(gain_adjust);
+}
   } /* namespace op25_repeater */
 } /* namespace gr */

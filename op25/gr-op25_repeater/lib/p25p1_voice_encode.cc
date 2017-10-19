@@ -316,5 +316,10 @@ void p25p1_voice_encode::compress_samp(const int16_t * samp, int len)
 	}
 }
 
+void
+p25p1_voice_encode::set_gain_adjust(float gain_adjust) {
+	vocoder.set_gain_adjust(gain_adjust);
+}
+
   } /* namespace op25_repeater */
 } /* namespace gr */

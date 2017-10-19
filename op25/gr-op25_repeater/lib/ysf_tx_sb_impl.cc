@@ -452,5 +452,13 @@ ysf_tx_sb_impl::general_work (int noutput_items,
   return (nframes * 480);
 }
 
+void
+ysf_tx_sb_impl::set_gain_adjust(float gain_adjust) {
+	if (d_fullrate_mode)
+		d_fullrate_encoder.set_gain_adjust(gain_adjust);
+	else
+		d_halfrate_encoder.set_gain_adjust(gain_adjust);
+}
+
   } /* namespace op25_repeater */
 } /* namespace gr */

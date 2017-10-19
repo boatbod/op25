@@ -48,6 +48,7 @@ class wrap_gp(object):
 		self.freqs = ()
 		self.avg_pwr = np.zeros(FFT_BINS)
 		self.buf = []
+		self.plot_count = 0
 		self.peak_freq = None
 		self.peak_pwr = 0.0
 
@@ -69,6 +70,12 @@ class wrap_gp(object):
 			self.buf.extend(buf[:consumed])
 		if len(self.buf) < BUFSZ:
 			return consumed
+
+		self.plot_count += 1
+		if mode == 'eye' and self.plot_count % 20 != 0:
+			self.buf = []
+			return consumed
+
 		plots = []
 		s = ''
 		while(len(self.buf)):
