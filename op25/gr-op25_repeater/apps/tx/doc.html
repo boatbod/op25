@@ -11,41 +11,28 @@ With the addition of a software AMBE halfrate encoder the OP25 Group now release
 <li>DSTAR</li>
 </ul>
 <p>
-This release was tested using a PC soundcard connected to the direct modulator input (i.e., 9,600 data port) of an Icom IC-820H configured for high speed data operation [AMOD/PACT switch set to PACT].  Not all PCs tested successfully so perhaps the choice of sound card isn't irrelevant, or the interface circuit needs more work...  The software TX drives the audio output at optimum (close to full) signal levels, so no output level adjust is needed.
+This release was tested using a PC soundcard connected to the direct modulator input (i.e., 9,600 data port) of an Icom IC-820H configured for high speed data operation [AMOD/PACT switch set to PACT].  Not all PCs tested successfully so perhaps the choice of sound card isn't irrelevant, or the interface circuit needs more work...  The software TX drives the audio output at optimum (close to full) signal levels; no output level adjust is provided within the app.  Soundcard gain/loss must be carefully adjusted using a Linux sound mixer app so that the proper FM deviation is achieved (see below).
+<p>
+This release has also been tested with the <a href="https://greatscottgadgets.com/hackrf/">HackRF</a> SDR; other SDR devices supported by <a href="https://osmocom.org/projects/sdr/wiki/GrOsmoSDR">gr-osmosdr</a> should work as well.
 
 <h3>INSTALLATION</h3>
-After cloning the repo change to the top level directory and check out the <em>max</em> branch of the repo:
+After cloning the repo change to the top level directory:
 <br>
 <pre>
 git clone https://git.osmocom.org/op25
 cd op25
-git checkout max
 </pre>
 <br>
 
-Next install the required prerequisites [tested for Ubuntu 14.04 LTS]:
+Next install OP25:
 <br>
 <pre>
-sudo apt-get update
-sudo apt-get build-dep gnuradio
-sudo apt-get install gnuradio gnuradio-dev gr-osmosdr librtlsdr-dev libuhd-dev  libhackrf-dev libitpp-dev libpcap-dev git
+./install.sh
 </pre>
-<br>
-
-Then build OP25 using the standard build sequence:
-<br>
-<pre>
-mkdir build
-cd build
-cmake ../
-make
-sudo make install
-sudo ldconfig
-</pre>
-<br>
+You may be asked for your password for permission to install the OP25 files in the system libraries. <br>
 
 <h3>STARTING THE PROGRAM</h3>
-After installing OP25 cd to the <code>op25/gr-op25_repeater/apps/tx</code> subdirectory (after checking out the "max" branch of the repository).  Here's an example command line:
+After installing OP25 cd to the <code>op25/gr-op25_repeater/apps/tx</code> subdirectory.  Here's an example command line:
 <pre>
 python dv_tx.py   -r -f ~/uncompressed.wav -p dstar -c dstar-cfg.dat
 </pre>
@@ -94,6 +81,12 @@ Options:
   -v VERBOSE, --verbose=VERBOSE
                         additional output
 </pre>
+<h3>MULTI-CHANNEL TRANSMITTER</h3>
+The <tt>multi_tx.py</tt> demonstration app transmits four RF channels, one for each of the supported protocols.  It requires SDR hardware (such as the HackRF); any device supported by the gr-osmosdr driver and libraries should work.  Example command line:<p>
+<tt>python multi_tx.py  --args hackrf --gains rf:0,if:0 -q -19.5 -Q 442187500   -f ~/rand3.wav -R</tt><p>
+The "-Q" (frequency) option gives the frequency of the first of the four channels; the remaining channel frequencies appear at regular intervals (default spacing is 100 KHz).  The channels are, starting at the lowest frequency: dmr, p25, dstar, and ysf.  The ysf channel format may be set to "wide", using "-R" (default=narrow).  The "-q" option is needed for PPM correction (unless a time base such as GPSDO is used).
+
+The input file ("-f" option) requires WAV format, 8000 samples/sec, S16_LE. Audio from the WAV file is transmitted on all frequencies. However if the "-A" option is given, program content for the second DMR time slot is instead taken live from the sound card audio input port ("-I" option).
 <h3>GENERAL</h3>
 Input audio may come either from WAV files (8000/S16_LE/mono) or from the PC microphone / line input connector.  If <code>-f <em>filename</em></code> (or <code>-F <em>filename</em></code> in DMR mode) is selected the input is read from file(s); otherwise the GR audio source is selected.  Likewise output is sent to the soundcard unless <code>-o</code> is given.  When using files the <code>-r</code> option can be specified to replay the input file(s) in a continuous loop.  Without this option the program exits at EOF.  The <code>-p <em>protocol</em></code> option is used to select which of the four DV standards (dmr, dstar, p25 or ysf) is to be used.  The dmr and ysf modes also utilize a configuration file, specified using the <code>-c <em>filename</em></code> parameter.  See the specific section (below) for more details on the configuration file.
 <p>
@@ -103,7 +96,7 @@ There currently appears to be an audio bug that causes the audio to sound "overd
 Note: in general the program currently doesn't currently send "header" or "terminator" packets which typically appear once at the start/end of voice transmissions.  Instead we rely on the ability inherent in all of these protocols to start receiving even for transmissions already in progress.  For two of the four protocols (dstar and ysf in fullrate mode) this means we forfeit an opportunity to transmit the station callsign.  This needs to be fixed in a future release...
 <p>
 <h3>OPERATION</h3>
-Proper FM deviation is set by adjusting the output levels using the 'alsamixer' app while monitoring with an FM deviation meter.  The "Datascope" option in the scope.py OP25 gui app (running on a separate PC) can also be used to view the deviation.  If this method is used scope.py must first be calibrated using a known accurate station.  The test station is then adjusted to have the same deviation as the known station (leaving all receiver parameters unchanged other than perhaps the frequency).
+Proper FM deviation is set by adjusting the output levels using the 'alsamixer' app while monitoring with an FM deviation meter.  The "Datascope" option in the scope.py OP25 gui app (running on a separate PC) can also be used to view the deviation.  If this method is used scope.py must first be calibrated using a known accurate station.  The test station is then adjusted to have the same deviation as the known station (leaving all receiver parameters unchanged other than perhaps the frequency).  Note: if the sound interface has multiple audio bands (e.g., bass, treble, etc.) all such settings should be set to midrange; a flat response is required.
 <p>
 <h3>DMR</h3>
 DMR operates in Base Station (BS) mode and is 2-slot TDMA with both slots operating in Group Voice mode.  [DMR Mobile Station mode utilizes time-slotted channel access and is not directly compatible with the usual FM transmitter hardware without serious modification].  The configuration file parameters that you are most likely to change are the Station Address (sa) and Group Address (ga) parameters [the latter is also known as the talkgroup ID].  See the comments in the sample DMR config file <code>dmr-cfg.dat</code> (supplied).  It is also possible to disable one or both channels if desired.
