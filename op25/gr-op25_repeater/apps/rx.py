@@ -135,6 +135,9 @@ class p25_rx_block (gr.top_block):
         self.rtl_found = False
         self.channel_rate = options.sample_rate
         self.fft_sink = None
+        self.constellation_sink = None
+        self.symbol_sink = None
+        self.eye_sink = None
         self.target_freq = 0.0
 
         self.src = None
@@ -292,26 +295,15 @@ class p25_rx_block (gr.top_block):
         self.connect(source, self.demod, self.decoder)
 
         if self.options.plot_mode == 'constellation':
-            assert self.options.demod_type == 'cqpsk'  ## constellation requires cqpsk demod-type
-            self.constellation_sink = constellation_sink_c()
-            self.demod.connect_complex('diffdec', self.constellation_sink)
-            self.kill_sink = self.constellation_sink
+            self.toggle_constellation()
         elif self.options.plot_mode == 'symbol':
             self.symbol_sink = symbol_sink_f()
             self.demod.connect_float(self.symbol_sink)
             self.kill_sink = self.symbol_sink
         elif self.options.plot_mode == 'fft':
-            self.fft_sink = fft_sink_c()
-            self.spectrum_decim = filter.rational_resampler_ccf(1, self.options.decim_amt)
-            self.connect(self.spectrum_decim, self.fft_sink)
-            self.demod.connect_complex('src', self.spectrum_decim)
-            self.kill_sink = self.fft_sink
-            self.fft_sink.set_offset(self.options.offset)
+            self.toggle_fft()
         elif self.options.plot_mode == 'datascope':
-            assert self.options.demod_type == 'fsk4'  ## datascope requires fsk4 demod-type
-            self.eye_sink = eye_sink_f(sps=10)
-            self.demod.connect_bb('symbol_filter', self.eye_sink)
-            self.kill_sink = self.eye_sink
+            self.toggle_eye()
 
         if self.options.raw_symbols:
             self.sink_sf = blocks.file_sink(gr.sizeof_char, self.options.raw_symbols)
@@ -491,6 +483,96 @@ class p25_rx_block (gr.top_block):
         self.set_freq(self.target_freq)
         return True
 
+    def toggle_plot(self, plot_type):
+        if plot_type == 1:	# fft
+            self.toggle_fft()
+        elif plot_type == 2:	# constellation
+            self.toggle_constellation()
+        elif plot_type == 3:	# symbol
+            self.toggle_symbol()
+        elif plot_type == 4:	# datascope
+            self.toggle_eye()
+
+    def toggle_fft(self):
+        if (self.fft_sink is None) and (self.kill_sink is None):
+            self.lock()
+            self.fft_sink = fft_sink_c()
+            self.spectrum_decim = filter.rational_resampler_ccf(1, self.options.decim_amt)
+            self.connect(self.spectrum_decim, self.fft_sink)
+            self.demod.connect_complex('src', self.spectrum_decim)
+            self.kill_sink = self.fft_sink
+            self.fft_sink.set_offset(self.options.offset)
+            self.fft_sink.set_center_freq(self.target_freq)
+            self.fft_sink.set_width(self.options.sample_rate)
+            self.unlock()
+        elif (self.fft_sink is not None):
+            self.lock()
+            self.disconnect(self.spectrum_decim, self.fft_sink)
+            self.demod.disconnect_complex()
+            self.fft_sink.kill()
+            self.spectrum_decim = None
+            self.fft_sink = None
+            self.kill_sink = None
+            self.unlock()
+        else:
+            sys.stderr.write("Only one Plot can be active at a time\n")
+
+    def toggle_constellation(self):
+        if (self.constellation_sink is None) and (self.kill_sink is None):
+            if self.options.demod_type != 'cqpsk':
+                sys.stderr.write("Constellation Plot requires 'cqpsk' modulation\n")
+                return
+            self.lock()
+            self.constellation_sink = constellation_sink_c()
+            self.demod.connect_complex('diffdec', self.constellation_sink)
+            self.kill_sink = self.constellation_sink
+            self.unlock()
+        elif (self.constellation_sink is not None):
+            self.lock()
+            self.demod.disconnect_complex()
+            self.constellation_sink.kill()
+            self.constellation_sink = None
+            self.kill_sink = None
+            self.unlock()
+        else:
+            sys.stderr.write("Only one Plot can be active at a time\n")
+ 
+    def toggle_symbol(self):
+        if (self.symbol_sink is None) and (self.kill_sink is None):
+            self.lock()
+            self.symbol_sink = symbol_sink_f()
+            self.demod.connect_float(self.symbol_sink)
+            self.kill_sink = self.symbol_sink
+            self.unlock()
+        elif (self.symbol_sink is not None):
+            self.lock()
+            self.demod.disconnect_float()
+            self.symbol_sink.kill()
+            self.symbol_sink = None
+            self.kill_sink = None
+            self.unlock()
+        else:
+            sys.stderr.write("Only one Plot can be active at a time\n")
+
+    def toggle_eye(self):
+        if (self.eye_sink is None) and (self.kill_sink is None):
+            if self.options.demod_type == 'cqpsk':
+                sys.stderr.write("Datascope Plot cannot be used with 'cqpsk' modulation\n")
+                return
+            self.lock()
+            self.eye_sink = eye_sink_f(sps=10)
+            self.demod.connect_bb('symbol_filter', self.eye_sink)
+            self.kill_sink = self.eye_sink
+            self.unlock()
+        elif (self.eye_sink is not None):
+            self.lock()
+            self.demod.disconnect_bb()
+            self.eye_sink.kill()
+            self.eye_sink = None
+            self.kill_sink = None
+            self.unlock()
+        else:
+            sys.stderr.write("Only one Plot can be active at a time\n")
 
     # read capture file properties (decimation etc.)
     #
@@ -638,6 +720,9 @@ class p25_rx_block (gr.top_block):
         elif s == 'adj_tune':
             freq = msg.arg1()
             self.adj_tune(freq)
+        elif s == 'toggle_plot':
+            plot_type = msg.arg1()
+            self.toggle_plot(plot_type)
         elif s == 'add_default_config':
             nac = msg.arg1()
             self.trunk_rx.add_default_config(nac)

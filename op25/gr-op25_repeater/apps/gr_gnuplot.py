@@ -59,7 +59,7 @@ class wrap_gp(object):
 		self.gp = subprocess.Popen(args, executable=exe, stdin=subprocess.PIPE)
 
 	def kill(self):
-		self.gp.kill()
+		self.gp.stdin.write("quit\n")
 		self.gp.wait()
 
 	def plot(self, buf, bufsz, mode='eye'):
