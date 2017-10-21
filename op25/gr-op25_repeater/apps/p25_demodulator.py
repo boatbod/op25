@@ -246,6 +246,7 @@ class p25_demod_cb(p25_demod_base):
 
     # assumes lock held or init
     def connect_chain(self, demod_type):
+        sys.stderr.write("p25_demodulator::connect_chain() demod_type=%s\n" % demod_type ) 
         if self.connect_state == demod_type:
             return	# already in desired state
         self.disconnect_chain()
