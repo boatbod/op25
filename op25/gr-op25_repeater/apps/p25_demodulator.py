@@ -227,11 +227,9 @@ class p25_demod_cb(p25_demod_base):
 
     def set_relative_frequency(self, freq):
         if abs(freq) > self.input_rate/2:
-            #print 'set_relative_frequency: error, relative frequency %d exceeds limit %d' % (freq, self.input_rate/2)
             return False
         if freq == self.lo_freq:
             return True
-        #print 'set_relative_frequency', freq
         self.lo_freq = freq
         self.lo.set_frequency(self.lo_freq)
         return True
@@ -303,3 +301,6 @@ class p25_demod_cb(p25_demod_base):
         elif src == 'src':
             self.connect(self, sink)
             self.complex_sink = [self, sink]
+        elif src == 'resampler':
+            self.connect(self.arb_resampler, sink)
+            self.complex_sink = [self.arb_resampler, sink]

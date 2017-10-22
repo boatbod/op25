@@ -64,6 +64,7 @@ from gr_gnuplot import constellation_sink_c
 from gr_gnuplot import fft_sink_c
 from gr_gnuplot import symbol_sink_f
 from gr_gnuplot import eye_sink_f
+from gr_gnuplot import mixer_sink_c
 
 from terminal   import curses_terminal
 from sockaudio  import socket_audio
@@ -98,7 +99,7 @@ class p25_rx_block (gr.top_block):
         parser.add_option("-c", "--calibration", type="eng_float", default=0.0, help="USRP offset or audio IF frequency", metavar="Hz")
         parser.add_option("-C", "--costas-alpha", type="eng_float", default=0.04, help="value of alpha for Costas loop", metavar="Hz")
         parser.add_option("-D", "--demod-type", type="choice", default="cqpsk", choices=('cqpsk', 'fsk4'), help="cqpsk | fsk4")
-        parser.add_option("-P", "--plot-mode", type="choice", default=None, choices=(None, 'constellation', 'fft', 'symbol', 'datascope'), help="constellation | fft | symbol | datascope")
+        parser.add_option("-P", "--plot-mode", type="choice", default=None, choices=(None, 'constellation', 'fft', 'symbol', 'datascope', 'mixer'), help="constellation | fft | symbol | datascope | mixer")
         parser.add_option("-f", "--frequency", type="eng_float", default=0.0, help="USRP center frequency", metavar="Hz")
         parser.add_option("-F", "--ifile", type="string", default=None, help="read input from complex capture file")
         parser.add_option("-H", "--hamlib-model", type="int", default=None, help="specify model for hamlib")
@@ -138,6 +139,7 @@ class p25_rx_block (gr.top_block):
         self.constellation_sink = None
         self.symbol_sink = None
         self.eye_sink = None
+        self.mixer_sink = None
         self.target_freq = 0.0
 
         self.src = None
@@ -294,6 +296,8 @@ class p25_rx_block (gr.top_block):
             self.toggle_fft()
         elif self.options.plot_mode == 'datascope':
             self.toggle_eye()
+        elif self.options.plot_mode == 'mixer':
+            self.toggle_mixer()
 
         if self.options.raw_symbols:
             self.sink_sf = blocks.file_sink(gr.sizeof_char, self.options.raw_symbols)
@@ -482,6 +486,27 @@ class p25_rx_block (gr.top_block):
             self.toggle_symbol()
         elif plot_type == 4:	# datascope
             self.toggle_eye()
+        elif plot_type == 5:	# mixer output
+            self.toggle_mixer()
+
+    def toggle_mixer(self):
+        if (self.mixer_sink is None) and (self.kill_sink is None):
+            self.lock()
+            self.mixer_sink = mixer_sink_c()
+            self.demod.connect_complex('resampler', self.mixer_sink)
+            self.kill_sink = self.mixer_sink
+            self.unlock()
+        elif (self.mixer_sink is not None):
+            self.lock()
+            self.demod.disconnect_complex()
+            self.mixer_sink.kill()
+            self.mixer_sink = None
+            self.kill_sink = None
+            self.unlock()
+        else:
+            sys.stderr.write("Only one Plot can be active at a time\n")
+
+
 
     def toggle_fft(self):
         if (self.fft_sink is None) and (self.kill_sink is None):

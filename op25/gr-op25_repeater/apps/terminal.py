@@ -148,7 +148,7 @@ class curses_terminal(threading.Thread):
         elif c == ord('>'):
             msg = gr.message().make_from_string('adj_tune', -2, 1200, 0)
             self.output_q.insert_tail(msg)
-        elif (c >= ord('1') ) and (c <= ord('4')):
+        elif (c >= ord('1') ) and (c <= ord('5')):
             msg = gr.message().make_from_string('toggle_plot', -2, (c - ord('0')), 0)
             self.output_q.insert_tail(msg)
         elif c == ord('x'):

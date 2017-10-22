@@ -239,6 +239,25 @@ class fft_sink_c(gr.sync_block):
     def set_width(self, w):
         self.gnuplot.set_width(w)
 
+class mixer_sink_c(gr.sync_block):
+    """
+    """
+    def __init__(self, debug = _def_debug):
+        gr.sync_block.__init__(self,
+            name="mixer_sink_c",
+            in_sig=[np.complex64],
+            out_sig=None)
+        self.debug = debug
+        self.gnuplot = wrap_gp()
+
+    def work(self, input_items, output_items):
+        in0 = input_items[0]
+	self.gnuplot.plot(in0, FFT_BINS, mode='fft')
+        return len(input_items[0])
+
+    def kill(self):
+        self.gnuplot.kill()
+
 class symbol_sink_f(gr.sync_block):
     """
     """
