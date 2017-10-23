@@ -202,9 +202,8 @@ gardner_costas_cc_impl::phase_error_tracking(gr_complex sample)
   d_freq = gr::branchless_clip(d_freq, d_max_freq);
   
 #if VERBOSE_COSTAS
-  printf("cl: phase_error: %f  phase: %f  freq: %f  sample: %f+j%f  constellation: %f+j%f\n",
-	 phase_error, d_phase, d_freq, sample.real(), sample.imag(), 
-	 d_constellation[d_current_const_point].real(), d_constellation[d_current_const_point].imag());
+  fprintf(stderr, "cl: phase_error: %f  phase: %f  freq: %f  sample: %f+j%f\n",
+	  phase_error, d_phase, d_freq, sample.real(), sample.imag());
 #endif
 }
 
@@ -275,7 +274,7 @@ gardner_costas_cc_impl::general_work (int noutput_items,
 		d_omega = d_omega + d_gain_omega * symbol_error * abs(interp_samp);  // update omega based on loop error
 		d_omega = d_omega_mid + gr::branchless_clip(d_omega-d_omega_mid, d_omega_rel);   // make sure we don't walk away
 #if VERBOSE_GARDNER
-		printf("%f\t%f\t%f\t%f\t%f\n", symbol_error, d_mu, d_omega, error_real, error_imag);
+		fprintf(stderr, "%f\t%f\t%f\t%f\t%f\n", symbol_error, d_mu, d_omega, error_real, error_imag);
 #endif
 		d_mu += d_omega + d_gain_mu * symbol_error;   // update mu based on loop error
 
