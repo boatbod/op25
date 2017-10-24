@@ -475,6 +475,7 @@ class p25_rx_block (gr.top_block):
             return False
         self.options.fine_tune += tune_incr;
         self.set_freq(self.target_freq)
+        self.demod.reset()      # reset gardner-costas loop
         return True
 
     def toggle_plot(self, plot_type):

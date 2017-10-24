@@ -93,6 +93,9 @@ class p25_demod_base(gr.hier_block2):
             self.connect(self.baseband_amp, sink)
             self.bb_sink = [self.baseband_amp, sink]
 
+    def reset(self):
+        pass
+
 class p25_demod_fb(p25_demod_base):
 
     def __init__(self,
@@ -224,6 +227,10 @@ class p25_demod_cb(p25_demod_base):
         self.sps = sps
         print 'set_omega %d %f' % (omega, sps)
         self.clock.set_omega(self.sps)
+
+    def reset(self):
+        if self.connect_state == 'cqpsk':
+            self.clock.reset()
 
     def set_relative_frequency(self, freq):
         if abs(freq) > self.input_rate/2:
