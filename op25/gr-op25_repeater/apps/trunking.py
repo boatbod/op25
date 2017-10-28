@@ -699,6 +699,8 @@ class rx_ctl (object):
         self.current_id += 1
         if self.current_id >= len(self.nacs):
             self.current_id = 0
+        if self.debug > 1:
+            sys.stderr.write("%f find_next_tsys() NAC 0x%x\n" % (time.time(), self.nacs[self.current_id]))
         return self.nacs[self.current_id]
 
     def to_json(self):
@@ -936,6 +938,9 @@ class rx_ctl (object):
                 self.last_tdma_vf = curr_time
         elif command == 'duid3' or command == 'duid15' or command == 'tdma_duid15': # fdma/tdma termination with channel release
             if self.current_state != self.states.CC:
+                self.tgid_hold = self.current_tgid
+                self.tgid_hold_until = max(curr_time + self.TGID_HOLD_TIME, self.tgid_hold_until)
+                self.wait_until = curr_time + self.TSYS_HOLD_TIME
                 new_state = self.states.CC
                 new_frequency = tsys.trunk_cc
         elif command == 'duid0' or command == 'duid5' or command == 'duid10' or command == 'tdma_duid5':
