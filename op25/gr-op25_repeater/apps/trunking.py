@@ -540,7 +540,7 @@ class rx_ctl (object):
         self.tgid_hold = None
         self.tgid_hold_until = time.time()
         self.hold_mode = False
-        self.TGID_HOLD_TIME = 2.0	# TODO: make more configurable
+        self.TGID_HOLD_TIME = 1.0	# TODO: make more configurable
         self.TGID_SKIP_TIME = 1.0	# TODO: make more configurable
         self.current_nac = None
         self.current_id = 0
@@ -550,8 +550,6 @@ class rx_ctl (object):
         self.wait_until = time.time()
         self.configs = {}
         self.nacs = []
-        self.last_tdma_vf = 0
-        self.P2_GRACE_TIME = 1.0	# TODO: make more configurable
         self.logfile_workers = logfile_workers
         self.active_talkgroups = {}
         self.working_frequencies = {}
@@ -699,8 +697,6 @@ class rx_ctl (object):
         self.current_id += 1
         if self.current_id >= len(self.nacs):
             self.current_id = 0
-        if self.debug > 1:
-            sys.stderr.write("%f find_next_tsys() NAC 0x%x\n" % (time.time(), self.nacs[self.current_id]))
         return self.nacs[self.current_id]
 
     def to_json(self):
@@ -913,9 +909,12 @@ class rx_ctl (object):
                 if self.debug > 0:
                     sys.stderr.write("%f control channel timeout\n" % time.time())
                 tsys.cc_timeouts += 1
-            elif self.current_state != self.states.CC and curr_time - self.last_tdma_vf > self.P2_GRACE_TIME:
-                if self.debug > 0:
+            elif self.current_state != self.states.CC:
+                if self.debug > 1:
                     sys.stderr.write("%f voice timeout\n" % time.time())
+                if self.hold_mode is False:
+                    self.current_tgid = None
+                    self.tgid_hold = None
                 new_state = self.states.CC
                 new_frequency = tsys.trunk_cc
         elif command == 'update':
@@ -929,17 +928,22 @@ class rx_ctl (object):
                         sys.stderr.write("%f voice update: tg(%s), freq(%s), slot(%s)\n" % (time.time(), new_tgid, new_frequency, tdma_slot))
                     new_state = self.states.TO_VC
                     self.current_tgid = new_tgid
+                    self.tgid_hold = new_tgid
+                    self.tgid_hold_until = max(curr_time + self.TGID_HOLD_TIME, self.tgid_hold_until)
+                    self.wait_until = curr_time + self.TSYS_HOLD_TIME
                     new_slot = tdma_slot
-        elif command == 'tdma_duid3': # tdma termination, no channel release (MAC_HANGTIME)
+        elif command == 'duid3' or command == 'tdma_duid3': # termination, no channel release
             if self.current_state != self.states.CC:
-                self.tgid_hold = self.current_tgid
-                self.tgid_hold_until = max(curr_time + self.TGID_HOLD_TIME, self.tgid_hold_until)
+                if self.debug > 1:
+                    sys.stderr.write("%f %s, tg(%d)\n" % (time.time(), command, self.current_tgid))
                 self.wait_until = curr_time + self.TSYS_HOLD_TIME
-                self.last_tdma_vf = curr_time
-        elif command == 'duid3' or command == 'duid15' or command == 'tdma_duid15': # fdma/tdma termination with channel release
+        elif command == 'duid15' or command == 'tdma_duid15': # termination with channel release
             if self.current_state != self.states.CC:
-                self.tgid_hold = self.current_tgid
-                self.tgid_hold_until = max(curr_time + self.TGID_HOLD_TIME, self.tgid_hold_until)
+                if self.debug > 1:
+                    sys.stderr.write("%f %s, tg(%d)\n" % (time.time(), command, self.current_tgid))
+                if self.hold_mode is False:
+                    self.current_tgid = None
+                    self.tgid_hold = None
                 self.wait_until = curr_time + self.TSYS_HOLD_TIME
                 new_state = self.states.CC
                 new_frequency = tsys.trunk_cc
@@ -949,8 +953,6 @@ class rx_ctl (object):
             self.tgid_hold = self.current_tgid
             self.tgid_hold_until = max(curr_time + self.TGID_HOLD_TIME, self.tgid_hold_until)
             self.wait_until = curr_time + self.TSYS_HOLD_TIME
-            if command == 'tdma_duid5':
-                self.last_tdma_vf = curr_time
         elif command == 'duid7' or command == 'duid12':
             pass
         elif command == 'hold':
@@ -959,20 +961,10 @@ class rx_ctl (object):
                 self.tgid_hold_until = curr_time + 86400 * 10000
                 self.hold_mode = True
                 if self.debug > 0:
-                    sys.stderr.write ('set hold until %f tgid %s\n' % (self.tgid_hold_until, self.current_tgid))
+                    sys.stderr.write ('%f set hold tg(%s) until %f\n' % (time.time(), self.current_tgid, self.tgid_hold_until))
             elif self.hold_mode is True:
-                self.current_tgid = None
-                self.tgid_hold = None
-                self.tgid_hold_until = curr_time
-                self.hold_mode = False
-        elif command == 'set_hold':
-            if self.current_tgid:
-                self.tgid_hold = self.current_tgid
-                self.tgid_hold_until = curr_time + 86400 * 10000
-                self.hold_mode = True
-                sys.stderr.write('set hold until %f\n' % self.tgid_hold_until)
-        elif command == 'unset_hold':
-            if self.current_tgid:
+                if self.debug > 0:
+                    sys.stderr.write ('%f clear hold tg(%s)\n' % (time.time(), self.tgid_hold))
                 self.current_tgid = None
                 self.tgid_hold = None
                 self.tgid_hold_until = curr_time
@@ -996,7 +988,14 @@ class rx_ctl (object):
 
         tsys.hunt_cc(curr_time)
 
-        if self.wait_until <= curr_time and self.tgid_hold_until <= curr_time and new_state is None:
+        if self.current_state != self.states.CC and self.tgid_hold_until <= curr_time and self.hold_mode is False and new_state is None:
+            if self.debug > 1:
+                sys.stderr.write("%f release tg(%s)\n" % (time.time(), self.current_tgid))
+            self.tgid_hold = None
+            self.current_tgid = None
+            new_state = self.states.CC
+            new_frequency = tsys.trunk_cc
+        elif self.wait_until <= curr_time and self.tgid_hold_until <= curr_time and self.hold_mode is False and new_state is None:
             self.wait_until = curr_time + self.TSYS_HOLD_TIME
             new_nac = self.find_next_tsys()
             new_state = self.states.CC
