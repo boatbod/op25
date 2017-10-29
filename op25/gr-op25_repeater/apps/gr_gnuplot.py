@@ -99,7 +99,7 @@ class wrap_gp(object):
 				s += 'e\n'
 				self.buf = []
 				plots.append('"-" with dots')
-			elif mode == 'fft':
+			elif mode == 'fft' or mode == 'mixer':
 				self.peak_pwr = 0.0
 				self.ffts = np.fft.fft(self.buf * np.blackman(BUFSZ)) / (0.42 * BUFSZ)
 				self.ffts = np.fft.fftshift(self.ffts)
@@ -128,23 +128,30 @@ class wrap_gp(object):
 			h+= 'set size square\n'
 			h+= 'set xrange [-1:1]\n'
 			h+= 'set yrange [-1:1]\n'
+                        h+= 'set title "Constellation"\n'
 		elif mode == 'eye':
 			h+= background
 			h+= 'set yrange [-4:4]\n'
+                        h+= 'set title "Datascope"\n'
 		elif mode == 'symbol':
 			h+= background
 			h+= 'set yrange [-4:4]\n'
-		elif mode == 'fft':
+                        h+= 'set title "Symbol"\n'
+		elif mode == 'fft' or mode == 'mixer':
 			h+= 'unset arrow; unset title\n'
 			h+= 'set xrange [%f:%f]\n' % (self.freqs[0], self.freqs[len(self.freqs)-1])
-			h+= 'set yrange [-100:0]\n'
                         h+= 'set xlabel "Frequency"\n'
                         h+= 'set ylabel "Power(dB)"\n'
                         h+= 'set grid\n'
-			if self.center_freq:
-				arrow_pos = (self.center_freq - self.relative_freq) / 1e6
-				h+= 'set arrow from %f, graph 0 to %f, graph 1 nohead\n' % (arrow_pos, arrow_pos)
-				h+= 'set title "Tuned to %f Mhz, peak signal offset %f"\n' % (arrow_pos, (self.peak_freq - arrow_pos))
+			h+= 'set yrange [-100:0]\n'
+			if mode == 'mixer':	# mixer
+                                h+= 'set title "Mixer"\n'
+			else:			# fft
+                                h+= 'set title "Spectrum"\n'
+				if self.center_freq:
+					arrow_pos = (self.center_freq - self.relative_freq) / 1e6
+					h+= 'set arrow from %f, graph 0 to %f, graph 1 nohead\n' % (arrow_pos, arrow_pos)
+					h+= 'set title "Spectrum: tuned to %f Mhz, peak signal offset %f"\n' % (arrow_pos, (self.peak_freq - arrow_pos))
 		dat = '%splot %s\n%s' % (h, ','.join(plots), s)
 		self.gp.poll()
 		if self.gp.returncode is None:	# make sure gnuplot is still running 
@@ -252,7 +259,7 @@ class mixer_sink_c(gr.sync_block):
 
     def work(self, input_items, output_items):
         in0 = input_items[0]
-	self.gnuplot.plot(in0, FFT_BINS, mode='fft')
+	self.gnuplot.plot(in0, FFT_BINS, mode='mixer')
         return len(input_items[0])
 
     def kill(self):
