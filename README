@@ -9,7 +9,6 @@ Many changes:
 - ability to configure NAC 0x000 in trunk.tsv and have system use first NAC decoded
 - fixes for compiling on Debian Stretch
 - integrated N8UR logging changes to trunking.py
-- FFT peak detection/offset indication
 - ability to adjust fine tuning in real time (,./<> keys in terminal) 
 - ability to dynamically resize the curses terminal
 - ability to dunamically turn plots on and off from the terminal (keys 1-5)
