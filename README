@@ -1,5 +1,5 @@
 Forked from git://git.osmocom.org/op25 "max" branch on 9/10/2017
-Pulled and merged "max" branch on 10/08/2017
+Up to date with "max" branch as of 10/29/2017
 
 Many changes:
 - udp python audio server sockaudio.py and remote player audio.py
@@ -14,6 +14,7 @@ Many changes:
 - ability to dynamically resize the curses terminal
 - ability to dunamically turn plots on and off from the terminal (keys 1-5)
 - new 'mixer' output plot (terminal key 5) to assist with fine tuning
+- reworked trunking hold/release logic that improves Phase 1 audio on some systems
 
 New command line options:
   --fine-tune      : sub-ppm tuning adjustment
