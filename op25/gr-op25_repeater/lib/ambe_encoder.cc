@@ -545,6 +545,7 @@ static void encode_49bit(uint8_t outp[49], const int b[9]) {
 ambe_encoder::ambe_encoder(void)
 	: d_49bit_mode(false),
 	d_dstar_mode(false),
+	d_alt_dstar_interleave(false),
 	d_gain_adjust(0)
 {
 	mbe_parms enh_mp;
@@ -579,7 +580,7 @@ void ambe_encoder::encode(int16_t samples[], uint8_t codeword[])
 	encode_ambe(vocoder.param(), b, &cur_mp, &prev_mp, d_dstar_mode, d_gain_adjust);
 
 	if (d_dstar_mode) {
-		interleaver.encode_dstar(codeword, b);
+		interleaver.encode_dstar(codeword, b, d_alt_dstar_interleave);
 	} else if (d_49bit_mode) {
 		encode_49bit(codeword, b);
 	} else {

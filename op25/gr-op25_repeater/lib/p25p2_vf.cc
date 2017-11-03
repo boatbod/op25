@@ -817,9 +817,11 @@ static const int m_list[] = {0, 1, 2, 3, 4, 5, 11, 12, 13, 14, 17, 18, 19, 20, 2
 
 static const int d_list[] = {7, 1, 11, 21, 31, 25, 35, 45, 55, 49, 59, 69, 6, 0, 10, 20, 30, 24, 34, 44, 54, 48, 58, 68, 5, 15, 9, 19, 29, 39, 33, 43, 53, 63, 57, 67, 4, 14, 8, 18, 28, 38, 32, 42, 52, 62, 56, 66, 3, 13, 23, 17, 27, 37, 47, 41, 51, 61, 71, 65, 2, 12, 22, 16, 26, 36, 46, 40, 50, 60, 70, 64};
 
+static const int alt_d_list[] = {0, 12, 24, 36, 48, 60, 1, 13, 25, 37, 49, 61, 2, 14, 26, 38, 50, 62, 3, 15, 27, 39, 51, 63, 4, 16, 28, 40, 52, 64, 5, 17, 29, 41, 53, 65, 6, 18, 30, 42, 54, 66, 7, 19, 31, 43, 55, 67, 8, 20, 32, 44, 56, 68, 9, 21, 33, 45, 57, 69, 10, 22, 34, 46, 58, 70, 11, 23, 35, 47, 59, 71};
+
 static const int b_lengths[] = {7,4,6,9,7,4,4,4,3};
 
-void p25p2_vf::encode_dstar(uint8_t result[72], const int b[9]) {
+void p25p2_vf::encode_dstar(uint8_t result[72], const int b[9], bool alt_dstar_interleave) {
 	uint8_t pbuf[48];
 	uint8_t tbuf[48];
 
@@ -842,15 +844,21 @@ void p25p2_vf::encode_dstar(uint8_t result[72], const int b[9]) {
 	store_reg(c1, pre_buf+24, 24);
 	memcpy(pre_buf+48, pbuf+24, 24);
 	for (int i=0; i < 72; i++)
-		result[d_list[i]] = pre_buf[i];
+		if (alt_dstar_interleave)
+			result[i] = pre_buf[alt_d_list[i]];
+		else
+			result[d_list[i]] = pre_buf[i];
 }
 
-void p25p2_vf::decode_dstar(const uint8_t codeword[72], int b[9]) {
+void p25p2_vf::decode_dstar(const uint8_t codeword[72], int b[9], bool alt_dstar_interleave) {
 	uint8_t pre_buf[72];
 	uint8_t post_buf[48];
 	uint8_t tbuf[48];
 	for (int i=0; i < 72; i++)
-		pre_buf[i] = codeword[d_list[i]];
+		if (alt_dstar_interleave)
+			pre_buf[alt_d_list[i]] = codeword[i];
+		else
+			pre_buf[i] = codeword[d_list[i]];
 
 	uint32_t c0 = load_reg(pre_buf, 24);
 	uint32_t c1 = load_reg(pre_buf+24, 24);
