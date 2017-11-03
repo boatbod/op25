@@ -140,7 +140,7 @@ mbe_dequantizeAmbeParms (mbe_parms * cur_mp, mbe_parms * prev_mp, const int *b, 
 #endif
   if (dstar) {
     deltaGamma = AmbePlusDg[b2];
-    cur_mp->gamma = deltaGamma + ((float) 1.0 * prev_mp->gamma);
+    cur_mp->gamma = deltaGamma + ((float) 0.5 * prev_mp->gamma);
   } else {
     deltaGamma = AmbeDg[b2];
     cur_mp->gamma = deltaGamma + ((float) 0.5 * prev_mp->gamma);
