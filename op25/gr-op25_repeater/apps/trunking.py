@@ -26,6 +26,9 @@ import json
 sys.path.append('tdma')
 import lfsr
 
+def utf_ascii(ustr):
+    return (ustr.decode("utf-8")).encode("ascii", "ignore")
+
 def crc16(dat,len):	# slow version
     poly = (1<<12) + (1<<5) + (1<<0)
     crc = 0
@@ -686,7 +689,7 @@ class rx_ctl (object):
                     sreader = csv.reader(csvfile, delimiter='\t', quotechar='"', quoting=csv.QUOTE_ALL)
                     for row in sreader:
                         tgid = int(row[0])
-                        txt = row[1]
+                        txt = utf_ascii(row[1])
                         self.configs[nac]['tgid_map'][tgid] = txt
             if 'center_frequency' in configs[nac]:
                 self.configs[nac]['center_frequency'] = get_frequency(configs[nac]['center_frequency'])
