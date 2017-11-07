@@ -97,4 +97,21 @@ target_link_libraries(
 
 GR_ADD_TEST(test_op25_repeater test-op25_repeater)
 
+########################################################################
+# d2460
+########################################################################
+list(APPEND d2460_sources
+    ${CMAKE_CURRENT_SOURCE_DIR}/d2460.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/ambe.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/mbelib.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/ambe_encoder.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/software_imbe_decoder.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/imbe_decoder.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/p25p2_vf.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/rs.cc
+)
+
+add_executable(op25-d2460 ${d2460_sources})
+target_link_libraries(op25-d2460 imbe_vocoder)
+
 add_subdirectory(imbe_vocoder)
