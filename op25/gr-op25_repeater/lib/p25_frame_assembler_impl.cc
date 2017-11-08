@@ -39,7 +39,7 @@ namespace gr {
 
     void p25_frame_assembler_impl::p25p2_queue_msg(int duid)
     {
-	static const char wbuf[2] = {0xff, 0xff}; // dummy NAC
+	static const char wbuf[2] = {(char)0xff, (char)0xff}; // dummy NAC
 	if (!d_do_msgq)
 		return;
 	if (d_msg_queue->full_p())
