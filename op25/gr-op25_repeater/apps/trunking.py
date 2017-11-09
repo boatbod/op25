@@ -543,7 +543,7 @@ class rx_ctl (object):
         self.tgid_hold = None
         self.tgid_hold_until = time.time()
         self.hold_mode = False
-        self.TGID_HOLD_TIME = 1.0	# TODO: make more configurable
+        self.TGID_HOLD_TIME = 2.0	# TODO: make more configurable
         self.TGID_SKIP_TIME = 1.0	# TODO: make more configurable
         self.current_nac = None
         self.current_id = 0
