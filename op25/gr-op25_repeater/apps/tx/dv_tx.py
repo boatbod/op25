@@ -42,7 +42,7 @@ RC_FILTER = {'dmr': 'rrc', 'p25': 'rc', 'ysf': 'rrc', 'dstar': None}
 output_gains = {
 	'dmr': 5.5,
 	'dstar': 0.95,
-	'p25': 5.0,
+	'p25': 4.5,
 	'ysf': 5.5
 }
 gain_adjust = {

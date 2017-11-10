@@ -203,7 +203,7 @@ class p25_mod_bf(gr.hier_block2):
         if rc:
             coeffs = filter.firdes.root_raised_cosine(1.0, output_sample_rate, input_sample_rate, 0.2, 91)
         if rc == 'rc':
-            coeffs = np.convolve(coeffs, coeffs)
+            coeffs = c4fm_taps(sample_rate=output_sample_rate).generate()
         elif self.dstar:
             coeffs = gmsk_taps(sample_rate=output_sample_rate, bt=self.bt).generate()
         elif not rc:
