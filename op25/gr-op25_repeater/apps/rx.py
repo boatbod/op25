@@ -138,7 +138,7 @@ class p25_rx_block (gr.top_block):
         self.fft_sink = None
 
         self.src = None
-        if not options.input:
+        if (not options.input) and (not options.audio) and (not options.audio_if):
             # check if osmocom is accessible
             try:
                 import osmosdr
