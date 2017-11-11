@@ -124,7 +124,7 @@ class my_top_block(gr.top_block):
             ENCODER = op25_repeater.dstar_tx_sb(options.verbose, options.config_file)
         elif options.protocol == 'p25':
             ENCODER = op25_repeater.vocoder(True,		# 0=Decode,True=Encode
-                                  0,	# Verbose flag
+                                  False,	# Verbose flag
                                   0,	# flex amount
                                   "",			# udp ip address
                                   0,			# udp port
