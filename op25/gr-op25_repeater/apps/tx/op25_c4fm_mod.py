@@ -180,9 +180,8 @@ class p25_mod_bf(gr.hier_block2):
 				gr.io_signature(1, 1, gr.sizeof_float)) # Output signature
 
         input_sample_rate = 4800   # P25 baseband symbol rate
-        lcm = gru.lcm(input_sample_rate, output_sample_rate)
-        self._interp_factor = int(lcm // input_sample_rate)
-        self._decimation = int(lcm // output_sample_rate)
+        intermediate_rate = 48000
+        self._interp_factor = intermediate_rate / input_sample_rate
 
         self.dstar = dstar
         self.bt = bt
@@ -201,13 +200,13 @@ class p25_mod_bf(gr.hier_block2):
 
         assert rc is None or rc == 'rc' or rc == 'rrc'
         if rc:
-            coeffs = filter.firdes.root_raised_cosine(1.0, output_sample_rate, input_sample_rate, 0.2, 91)
+            coeffs = filter.firdes.root_raised_cosine(1.0, intermediate_rate, input_sample_rate, 0.2, 91)
         if rc == 'rc':
-            coeffs = c4fm_taps(sample_rate=output_sample_rate).generate()
+            coeffs = c4fm_taps(sample_rate=intermediate_rate).generate()
         elif self.dstar:
-            coeffs = gmsk_taps(sample_rate=output_sample_rate, bt=self.bt).generate()
+            coeffs = gmsk_taps(sample_rate=intermediate_rate, bt=self.bt).generate()
         elif not rc:
-            coeffs = c4fm_taps(sample_rate=output_sample_rate, generator=self.generator).generate()
+            coeffs = c4fm_taps(sample_rate=intermediate_rate, generator=self.generator).generate()
         self.filter = filter.interp_fir_filter_fff(self._interp_factor, coeffs)
 
         if verbose:
@@ -217,9 +216,9 @@ class p25_mod_bf(gr.hier_block2):
             self._setup_logging()
 
         self.connect(self, self.C2S, self.polarity, self.filter)
-        if (self._decimation > 1):
-            self.decimator = filter.rational_resampler_fff(1, self._decimation)
-            self.connect(self.filter, self.decimator, self)
+        if intermediate_rate != output_sample_rate:
+            self.arb_resamp = filter.pfb.arb_resampler_fff(float(output_sample_rate)/intermediate_rate)
+            self.connect(self.filter, self.arb_resamp, self)
         else:
             self.connect(self.filter, self)
 
