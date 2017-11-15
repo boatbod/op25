@@ -195,7 +195,7 @@ block_deinterleave(bit_vector& bv, unsigned int start, uint8_t* buf)
 	return -2;	// trellis decode OK, but CRC error occurred
 }
 
-p25p1_fdma::p25p1_fdma(const op25_udp& udp, int debug, bool do_imbe, bool do_output, bool do_msgq, gr::msg_queue::sptr queue, std::deque<int16_t> &output_queue, bool do_audio_output) :
+p25p1_fdma::p25p1_fdma(const op25_udp& udp, int debug, bool do_imbe, bool do_output, bool do_msgq, gr::msg_queue::sptr queue, std::deque<int16_t> &output_queue, bool do_audio_output, bool do_nocrypt) :
         op25udp(udp),
 	write_bufp(0),
 	d_debug(debug),
@@ -205,7 +205,11 @@ p25p1_fdma::p25p1_fdma(const op25_udp& udp, int debug, bool do_imbe, bool do_out
 	d_msg_queue(queue),
 	output_queue(output_queue),
 	framer(new p25_framer()),
+        d_do_nocrypt(do_nocrypt),
 	d_do_audio_output(do_audio_output),
+        ess_algid(0),
+        ess_keyid(0),
+	vf_tgid(0),
 	p1voice_decode((debug > 0), udp, output_queue)
 {
 	gettimeofday(&last_qtime, 0);
@@ -230,7 +234,127 @@ p25p1_fdma::process_duid(uint32_t const duid, uint32_t const nac, uint8_t const 
 	gr::message::sptr msg = gr::message::make_from_string(std::string(wbuf, p), duid, 0, 0);
 	d_msg_queue->insert_tail(msg);
 	gettimeofday(&last_qtime, 0);
-//	msg.reset();
+}
+
+void
+p25p1_fdma::process_HDU(const bit_vector A)
+{
+        uint32_t MFID;
+	int i, j, k, ec;
+	std::vector<uint8_t> HB(63,0); // hexbit vector
+
+	k = 0;
+	for (i = 0; i < 36; i ++) {
+		uint32_t CW = 0;
+		for (j = 0; j < 18; j++) {  // 18 bits / cw
+			CW = (CW << 1) + A [ hdu_codeword_bits[k++] ];
+ 		}
+		HB[27 + i] = gly24128Dec(CW) & 63;
+	}
+
+	ec = rs16.decode(HB); // Reed Solomon (36,20,17) error correction
+
+	j = 27;												// 72 bit MI
+	for (i = 0; i < 9;) {
+		ess_mi[i++] = (uint8_t)  (HB[j  ]         << 2) + (HB[j+1] >> 4);
+		ess_mi[i++] = (uint8_t) ((HB[j+1] & 0x0f) << 4) + (HB[j+2] >> 2);
+		ess_mi[i++] = (uint8_t) ((HB[j+2] & 0x03) << 6) +  HB[j+3];
+		j += 4;
+	}
+	MFID      =  (HB[j  ]         <<  2) + (HB[j+1] >> 4);						// 8 bit MfrId
+	ess_algid = ((HB[j+1] & 0x0f) <<  4) + (HB[j+2] >> 2);						// 8 bit AlgId
+	ess_keyid = ((HB[j+2] & 0x03) << 14) + (HB[j+3] << 8) + (HB[j+4] << 2) + (HB[j+5] >> 4);	// 16 bit KeyId
+	vf_tgid   = ((HB[j+5] & 0x0f) << 12) + (HB[j+6] << 6) +  HB[j+7];				// 16 bit TGID
+
+	if (d_debug >= 10) {
+		fprintf (stderr, "HDU: rc=%d, tgid=%d, mfid=%x, algid=%x, keyid=%x, mi=", ec, vf_tgid, MFID, ess_algid, ess_keyid);
+		for (i = 0; i < 9; i++) {
+			fprintf(stderr, "%02x ", ess_mi[i]);
+		}
+ 		fprintf(stderr, "\n");
+	}
+}
+
+void
+p25p1_fdma::process_LLDU(const bit_vector A, std::vector<uint8_t>& HB)
+{
+	int i, j, k;
+	k = 0;
+	for (i = 0; i < 24; i ++) { // 24 10-bit codewords
+		uint32_t CW = 0;
+		for (j = 0; j < 10; j++) {  // 10 bits / cw
+			CW = (CW << 1) + A[ imbe_ldu_ls_data_bits[k++] ];
+		}
+		HB[39 + i] = hmg1063Dec( CW >> 4, CW & 0x0f );
+	}
+}
+
+void
+p25p1_fdma::process_LDU1(const bit_vector A)
+{
+	std::vector<uint8_t> HB(63,0); // hexbit vector
+
+	process_LLDU(A, HB);
+	process_LC(HB);
+}
+
+void
+p25p1_fdma::process_LDU2(const bit_vector A)
+{
+        int i, j, ec;
+	std::vector<uint8_t> HB(63,0); // hexbit vector
+
+	process_LLDU(A, HB);
+	ec = rs8.decode(HB); // Reed Solomon (24,16,9) error correction
+
+	j = 39;												// 72 bit MI
+	for (i = 0; i < 9;) {
+		ess_mi[i++] = (uint8_t)  (HB[j  ]         << 2) + (HB[j+1] >> 4);
+		ess_mi[i++] = (uint8_t) ((HB[j+1] & 0x0f) << 4) + (HB[j+2] >> 2);
+		ess_mi[i++] = (uint8_t) ((HB[j+2] & 0x03) << 6) +  HB[j+3];
+		j += 4;
+	}
+	ess_algid =  (HB[j  ]         <<  2) + (HB[j+1] >> 4);						// 8 bit AlgId
+	ess_keyid = ((HB[j+1] & 0x0f) << 12) + (HB[j+2] << 6) + HB[j+3];				// 16 bit KeyId
+
+	if (d_debug >= 10) {
+		fprintf(stderr, "LDU2: rs=%d, algid=%x, keyid=%x, mi=", ec, ess_algid, ess_keyid);
+		for (int i = 0; i < 9; i++) {
+			fprintf(stderr, "%02x ", ess_mi[i]);
+		}
+ 		fprintf(stderr, "\n");
+	}
+}
+
+void
+p25p1_fdma::process_TDU(const bit_vector A)
+{
+	int i, j, k;
+	std::vector<uint8_t> HB(63,0); // hexbit vector
+
+	k = 0;
+	for (i = 0; i <= 22; i += 2) {
+		uint32_t CW = 0;
+		for (j = 0; j < 12; j++) {   // 12 24-bit codewords
+			CW = (CW << 1) + A [ hdu_codeword_bits[k++] ];
+			CW = (CW << 1) + A [ hdu_codeword_bits[k++] ];
+		}
+		uint32_t D = gly24128Dec(CW);
+		HB[39 + i] = D >> 6;
+		HB[40 + i] = D & 63;
+	}
+	process_LC(HB);
+}
+
+void
+p25p1_fdma::process_LC(std::vector<uint8_t>& HB) {
+	int ec = rs12.decode(HB); // Reed Solomon (24,12,13) error correction
+	int pb =   (HB[39] >> 5);
+	int sf =  ((HB[39] & 0x10) >> 4);
+	int lco = ((HB[39] & 0x0f) << 2) + (HB[40] >> 4);
+	if (d_debug >= 10) {
+		fprintf(stderr, "LC: rs=%d, pb=%d, sf=%d, lco=%d", ec, pb, sf, lco);
+	}
 }
 
 void
@@ -245,9 +369,14 @@ p25p1_fdma::rx_sym (const uint8_t *syms, int nsyms)
 {
   struct timeval currtime;
   for (int i1 = 0; i1 < nsyms; i1++){
-    if(framer->rx_sym(syms[i1])) {   // complete frame was detected
+  	if(framer->rx_sym(syms[i1])) {   // complete frame was detected
+
+		if (framer->nac == 0) {  // discard frame if NAC is invalid
+			return;
+		}
+
 		if (d_debug >= 10) {
-			fprintf (stderr, "NAC 0x%X DUID 0x%X len %u errs %u ", framer->nac, framer->duid, framer->frame_size >> 1, framer->bch_errors);
+			fprintf (stderr, "NAC 0x%X DUID 0x%X len %u errs %u\n", framer->nac, framer->duid, framer->frame_size >> 1, framer->bch_errors);
 		}
 		if ((framer->duid == 0x03) ||
 		 (framer->duid == 0x05) ||
@@ -292,17 +421,22 @@ p25p1_fdma::rx_sym (const uint8_t *syms, int nsyms)
 				process_duid(framer->duid, framer->nac, mbt_block, sizeof(mbt_block));
 			}
 		}
-		if (d_debug >= 10 && framer->duid == 0x00) {
-			ProcHDU(framer->frame_body);
-		} else if (d_debug > 10 && framer->duid == 0x05) {
-			ProcLDU1(framer->frame_body);
-		} else if (d_debug >= 10 && framer->duid == 0x0a) {
-			ProcLDU2(framer->frame_body);
-		} else if (d_debug > 10 && framer->duid == 0x0f) {
-			ProcTDU(framer->frame_body);
+
+		switch(framer->duid) {
+			case 0x00:
+				process_HDU(framer->frame_body);
+				break;
+			case 0x05:
+				process_LDU1(framer->frame_body);
+				break;
+			case 0x0a:
+				process_LDU2(framer->frame_body);
+				break;
+			case 0x0f:
+				process_TDU(framer->frame_body);
+				break;
 		}
-		if (d_debug >= 10)
-			fprintf(stderr, "\n");
+
 		if ((d_do_imbe || d_do_audio_output) && (framer->duid == 0x5 || framer->duid == 0xa)) {  // if voice - ldu1 or ldu2
 			for(size_t i = 0; i < nof_voice_codewords; ++i) {
 				voice_codeword cw(voice_codeword_sz);
@@ -315,7 +449,7 @@ p25p1_fdma::rx_sym (const uint8_t *syms, int nsyms)
 				// output one 32-byte msg per 0.020 sec.
 				// also, 32*9 = 288 byte pkts (for use via UDP)
 				sprintf(s, "%03x %03x %03x %03x %03x %03x %03x %03x\n", u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7]);
-				if (d_do_audio_output)
+				if ((d_do_audio_output) && (!d_do_nocrypt || !encrypted()))
 					p1voice_decode.rxframe(u);
 				if (d_do_output && !d_do_audio_output) {
 					for (size_t j=0; j < strlen(s); j++) {
@@ -361,7 +495,7 @@ p25p1_fdma::rx_sym (const uint8_t *syms, int nsyms)
 				}
 			}
 		}
-    }  // end of complete frame
+  	}  // end of complete frame
   }
   if (d_do_msgq && !d_msg_queue->full_p()) {
     // check for timeout

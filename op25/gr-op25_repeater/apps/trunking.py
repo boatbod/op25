@@ -937,7 +937,7 @@ class rx_ctl (object):
                     new_slot = tdma_slot
         elif command == 'duid3' or command == 'tdma_duid3': # termination, no channel release
             if self.current_state != self.states.CC:
-                if self.debug > 1:
+                if self.debug > 2:
                     sys.stderr.write("%f %s, tg(%d)\n" % (time.time(), command, self.current_tgid))
                 self.wait_until = curr_time + self.TSYS_HOLD_TIME
         elif command == 'duid15' or command == 'tdma_duid15': # termination with channel release
