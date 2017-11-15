@@ -237,7 +237,7 @@ p25p1_fdma::process_duid(uint32_t const duid, uint32_t const nac, uint8_t const 
 }
 
 void
-p25p1_fdma::process_HDU(const bit_vector A)
+p25p1_fdma::process_HDU(const bit_vector& A)
 {
         uint32_t MFID;
 	int i, j, k, ec;
@@ -271,12 +271,11 @@ p25p1_fdma::process_HDU(const bit_vector A)
 		for (i = 0; i < 9; i++) {
 			fprintf(stderr, "%02x ", ess_mi[i]);
 		}
- 		fprintf(stderr, "\n");
 	}
 }
 
 void
-p25p1_fdma::process_LLDU(const bit_vector A, std::vector<uint8_t>& HB)
+p25p1_fdma::process_LLDU(const bit_vector& A, std::vector<uint8_t>& HB)
 {
 	int i, j, k;
 	k = 0;
@@ -290,16 +289,20 @@ p25p1_fdma::process_LLDU(const bit_vector A, std::vector<uint8_t>& HB)
 }
 
 void
-p25p1_fdma::process_LDU1(const bit_vector A)
+p25p1_fdma::process_LDU1(const bit_vector& A)
 {
 	std::vector<uint8_t> HB(63,0); // hexbit vector
 
 	process_LLDU(A, HB);
+	if (d_debug >= 10) {
+		fprintf (stderr, "LDU1: ");
+	}
 	process_LC(HB);
+	process_voice(A);
 }
 
 void
-p25p1_fdma::process_LDU2(const bit_vector A)
+p25p1_fdma::process_LDU2(const bit_vector& A)
 {
         int i, j, ec;
 	std::vector<uint8_t> HB(63,0); // hexbit vector
@@ -322,13 +325,27 @@ p25p1_fdma::process_LDU2(const bit_vector A)
 		for (int i = 0; i < 9; i++) {
 			fprintf(stderr, "%02x ", ess_mi[i]);
 		}
- 		fprintf(stderr, "\n");
+	}
+	process_voice(A);
+}
+
+void
+p25p1_fdma::process_TDU()
+{
+	if (d_debug >= 10) {
+		fprintf (stderr, "TDU: ");
+	}
+
+	if ((d_do_imbe || d_do_audio_output) && (framer->duid == 0x3 || framer->duid == 0xf)) {  // voice termination
+		op25udp.send_audio_flag(op25_udp::DRAIN);
 	}
 }
 
 void
-p25p1_fdma::process_TDU(const bit_vector A)
+p25p1_fdma::process_TDU(const bit_vector& A)
 {
+	process_TDU();
+
 	int i, j, k;
 	std::vector<uint8_t> HB(63,0); // hexbit vector
 
@@ -358,6 +375,41 @@ p25p1_fdma::process_LC(std::vector<uint8_t>& HB) {
 }
 
 void
+p25p1_fdma::process_voice(const bit_vector& A)
+{
+	if (d_do_imbe || d_do_audio_output) {
+		for(size_t i = 0; i < nof_voice_codewords; ++i) {
+			voice_codeword cw(voice_codeword_sz);
+			uint32_t E0, ET;
+			uint32_t u[8];
+			char s[128];
+			imbe_deinterleave(A, cw, i);
+			// recover 88-bit IMBE voice code word
+			imbe_header_decode(cw, u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7], E0, ET);
+			// output one 32-byte msg per 0.020 sec.
+			// also, 32*9 = 288 byte pkts (for use via UDP)
+			sprintf(s, "%03x %03x %03x %03x %03x %03x %03x %03x\n", u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7]);
+			if ((d_do_audio_output) && (!d_do_nocrypt || !encrypted()))
+				p1voice_decode.rxframe(u);
+			if (d_do_output && !d_do_audio_output) {
+				for (size_t j=0; j < strlen(s); j++) {
+					output_queue.push_back(s[j]);
+				}
+			}
+			if (d_do_output && op25udp.enabled()) {
+				memcpy(&write_buf[write_bufp], s, strlen(s));
+				write_bufp += strlen(s);
+				if (write_bufp >= 288) { // 9 * 32 = 288
+					op25udp.send_to(write_buf, 288);
+					// FIXME check op25udp.send_to() rc
+					write_bufp = 0;
+				}
+			}
+		}
+	}
+}
+
+void
 p25p1_fdma::reset_timer()
 {
   //update last_qtime with current time
@@ -376,7 +428,7 @@ p25p1_fdma::rx_sym (const uint8_t *syms, int nsyms)
 		}
 
 		if (d_debug >= 10) {
-			fprintf (stderr, "NAC 0x%X DUID 0x%X len %u errs %u\n", framer->nac, framer->duid, framer->frame_size >> 1, framer->bch_errors);
+			fprintf (stderr, "NAC 0x%X DUID=0x%x, len=%u, errs=%u ", framer->nac, framer->duid, framer->frame_size >> 1, framer->bch_errors);
 		}
 		if ((framer->duid == 0x03) ||
 		 (framer->duid == 0x05) ||
@@ -422,9 +474,13 @@ p25p1_fdma::rx_sym (const uint8_t *syms, int nsyms)
 			}
 		}
 
+		// extract additional signalling information and voice codewords
 		switch(framer->duid) {
 			case 0x00:
 				process_HDU(framer->frame_body);
+				break;
+			case 0x03:
+				process_TDU();
 				break;
 			case 0x05:
 				process_LDU1(framer->frame_body);
@@ -436,41 +492,10 @@ p25p1_fdma::rx_sym (const uint8_t *syms, int nsyms)
 				process_TDU(framer->frame_body);
 				break;
 		}
-
-		if ((d_do_imbe || d_do_audio_output) && (framer->duid == 0x5 || framer->duid == 0xa)) {  // if voice - ldu1 or ldu2
-			for(size_t i = 0; i < nof_voice_codewords; ++i) {
-				voice_codeword cw(voice_codeword_sz);
-				uint32_t E0, ET;
-				uint32_t u[8];
-				char s[128];
-				imbe_deinterleave(framer->frame_body, cw, i);
-				// recover 88-bit IMBE voice code word
-				imbe_header_decode(cw, u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7], E0, ET);
-				// output one 32-byte msg per 0.020 sec.
-				// also, 32*9 = 288 byte pkts (for use via UDP)
-				sprintf(s, "%03x %03x %03x %03x %03x %03x %03x %03x\n", u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7]);
-				if ((d_do_audio_output) && (!d_do_nocrypt || !encrypted()))
-					p1voice_decode.rxframe(u);
-				if (d_do_output && !d_do_audio_output) {
-					for (size_t j=0; j < strlen(s); j++) {
-						output_queue.push_back(s[j]);
-					}
-				}
-				if (d_do_output && op25udp.enabled()) {
-					memcpy(&write_buf[write_bufp], s, strlen(s));
-					write_bufp += strlen(s);
-					if (write_bufp >= 288) { // 9 * 32 = 288
-						op25udp.send_to(write_buf, 288);
-						// FIXME check op25udp.send_to() rc
-						write_bufp = 0;
-					}
-				}
-			}
+		if (d_debug >= 10) {
+			fprintf(stderr,"\n");
 		}
-		if ((d_do_imbe || d_do_audio_output) && (framer->duid == 0x3 || framer->duid == 0xf)) {  // voice termination
-			op25udp.send_audio_flag(op25_udp::DRAIN);
 
-		} // end of imbe/voice
 		if (!d_do_imbe) {
 			// pack the bits into bytes, MSB first
 			size_t obuf_ct = 0;

@@ -41,14 +41,15 @@ namespace gr {
 
   // internal functions
 	bool header_codeword(uint64_t acc, uint32_t& nac, uint32_t& duid);
-	void proc_voice_unit(bit_vector& frame_body) ;
 	void process_duid(uint32_t const duid, uint32_t const nac, uint8_t const buf[], int const len);
         void process_LC(std::vector<uint8_t>& HB);
-        void process_HDU(const bit_vector A);
-        void process_TDU(const bit_vector A);
-        void process_LLDU(const bit_vector A, std::vector<uint8_t>& HB);
-        void process_LDU1(const bit_vector A);
-        void process_LDU2(const bit_vector A);
+        void process_HDU(const bit_vector& A);
+        void process_TDU(const bit_vector& A);
+        void process_TDU();
+        void process_LLDU(const bit_vector& A, std::vector<uint8_t>& HB);
+        void process_LDU1(const bit_vector& A);
+        void process_LDU2(const bit_vector& A);
+	void process_voice(const bit_vector& A);
         inline bool encrypted() { return (ess_algid != 0x80); }
 
   // internal instance variables and state
