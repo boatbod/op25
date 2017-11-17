@@ -242,7 +242,6 @@ p25p1_fdma::process_HDU(const bit_vector& A)
         uint32_t MFID;
 	int i, j, k, ec;
 	std::vector<uint8_t> HB(63,0); // hexbit vector
-
 	k = 0;
 	for (i = 0; i < 36; i ++) {
 		uint32_t CW = 0;
@@ -251,9 +250,7 @@ p25p1_fdma::process_HDU(const bit_vector& A)
  		}
 		HB[27 + i] = gly24128Dec(CW) & 63;
 	}
-
 	ec = rs16.decode(HB); // Reed Solomon (36,20,17) error correction
-
 	j = 27;												// 72 bit MI
 	for (i = 0; i < 9;) {
 		ess_mi[i++] = (uint8_t)  (HB[j  ]         << 2) + (HB[j+1] >> 4);
@@ -267,7 +264,7 @@ p25p1_fdma::process_HDU(const bit_vector& A)
 	vf_tgid   = ((HB[j+5] & 0x0f) << 12) + (HB[j+6] << 6) +  HB[j+7];				// 16 bit TGID
 
 	if (d_debug >= 10) {
-		fprintf (stderr, "HDU: rc=%d, tgid=%d, mfid=%x, algid=%x, keyid=%x, mi=", ec, vf_tgid, MFID, ess_algid, ess_keyid);
+		fprintf (stderr, "HDU:  ESS: rs=%d, tgid=%d, mfid=%x, algid=%x, keyid=%x, mi=", ec, vf_tgid, MFID, ess_algid, ess_keyid);
 		for (i = 0; i < 9; i++) {
 			fprintf(stderr, "%02x ", ess_mi[i]);
 		}
@@ -292,24 +289,24 @@ void
 p25p1_fdma::process_LDU1(const bit_vector& A)
 {
 	std::vector<uint8_t> HB(63,0); // hexbit vector
-
 	process_LLDU(A, HB);
+
 	if (d_debug >= 10) {
 		fprintf (stderr, "LDU1: ");
 	}
-	process_LC(HB);
+
+	process_LCF(HB);
 	process_voice(A);
 }
 
 void
 p25p1_fdma::process_LDU2(const bit_vector& A)
 {
-        int i, j, ec;
 	std::vector<uint8_t> HB(63,0); // hexbit vector
-
 	process_LLDU(A, HB);
-	ec = rs8.decode(HB); // Reed Solomon (24,16,9) error correction
 
+        int i, j, ec;
+	ec = rs8.decode(HB); // Reed Solomon (24,16,9) error correction
 	j = 39;												// 72 bit MI
 	for (i = 0; i < 9;) {
 		ess_mi[i++] = (uint8_t)  (HB[j  ]         << 2) + (HB[j+1] >> 4);
@@ -321,11 +318,12 @@ p25p1_fdma::process_LDU2(const bit_vector& A)
 	ess_keyid = ((HB[j+1] & 0x0f) << 12) + (HB[j+2] << 6) + HB[j+3];				// 16 bit KeyId
 
 	if (d_debug >= 10) {
-		fprintf(stderr, "LDU2: rs=%d, algid=%x, keyid=%x, mi=", ec, ess_algid, ess_keyid);
+		fprintf(stderr, "LDU2: ESS: rs=%d, algid=%x, keyid=%x, mi=", ec, ess_algid, ess_keyid);
 		for (int i = 0; i < 9; i++) {
 			fprintf(stderr, "%02x ", ess_mi[i]);
 		}
 	}
+
 	process_voice(A);
 }
 
@@ -333,7 +331,7 @@ void
 p25p1_fdma::process_TDU()
 {
 	if (d_debug >= 10) {
-		fprintf (stderr, "TDU: ");
+		fprintf (stderr, "TDU:  ");
 	}
 
 	if ((d_do_imbe || d_do_audio_output) && (framer->duid == 0x3 || framer->duid == 0xf)) {  // voice termination
@@ -348,7 +346,6 @@ p25p1_fdma::process_TDU(const bit_vector& A)
 
 	int i, j, k;
 	std::vector<uint8_t> HB(63,0); // hexbit vector
-
 	k = 0;
 	for (i = 0; i <= 22; i += 2) {
 		uint32_t CW = 0;
@@ -360,17 +357,17 @@ p25p1_fdma::process_TDU(const bit_vector& A)
 		HB[39 + i] = D >> 6;
 		HB[40 + i] = D & 63;
 	}
-	process_LC(HB);
+	process_LCF(HB);
 }
 
 void
-p25p1_fdma::process_LC(std::vector<uint8_t>& HB) {
+p25p1_fdma::process_LCF(std::vector<uint8_t>& HB) {
 	int ec = rs12.decode(HB); // Reed Solomon (24,12,13) error correction
 	int pb =   (HB[39] >> 5);
 	int sf =  ((HB[39] & 0x10) >> 4);
 	int lco = ((HB[39] & 0x0f) << 2) + (HB[40] >> 4);
 	if (d_debug >= 10) {
-		fprintf(stderr, "LC: rs=%d, pb=%d, sf=%d, lco=%d", ec, pb, sf, lco);
+		fprintf(stderr, "LCF: rs=%d, pb=%d, sf=%d, lco=%d", ec, pb, sf, lco);
 	}
 }
 
@@ -391,11 +388,14 @@ p25p1_fdma::process_voice(const bit_vector& A)
 			sprintf(s, "%03x %03x %03x %03x %03x %03x %03x %03x\n", u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7]);
 			if ((d_do_audio_output) && (!d_do_nocrypt || !encrypted()))
 				p1voice_decode.rxframe(u);
+
 			if (d_do_output && !d_do_audio_output) {
 				for (size_t j=0; j < strlen(s); j++) {
 					output_queue.push_back(s[j]);
 				}
 			}
+
+			// TODO: move wireshark up the hierachy so it sends all frames
 			if (d_do_output && op25udp.enabled()) {
 				memcpy(&write_buf[write_bufp], s, strlen(s));
 				write_bufp += strlen(s);
@@ -405,6 +405,7 @@ p25p1_fdma::process_voice(const bit_vector& A)
 					write_bufp = 0;
 				}
 			}
+			// END TODO:
 		}
 	}
 }
