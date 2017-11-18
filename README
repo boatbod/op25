@@ -14,9 +14,13 @@ Many changes:
 - ability to dunamically turn plots on and off from the terminal (keys 1-5)
 - new 'mixer' output plot (terminal key 5) to assist with fine tuning
 - reworked trunking hold/release logic that improves Phase 1 audio on some systems
+- decoding and logging of encryption sync info ("ESS") at log level 10 (-v 10)
+- ability to silence the playing of encrypted audio
 
 New command line options:
   --fine-tune      : sub-ppm tuning adjustment
   --wireshark-port : facilitates multiple instances of rx.py
   --udp-player     : enable built-in audio player
+  --nocrypt        : silence encrypted audio
 
+NOTE: using the --nocrypt command line option will silence encrypted audio, but the trunking logic will cause the application to remain on the active tgid until the transmission ends.  It is generally preferable to blacklist tgids that are always encrypted rather than simply silence them.  Use the --nocrypt functionality to silence occasional encrypted transmissions on mixed use tgids.
