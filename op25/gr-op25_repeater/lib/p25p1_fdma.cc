@@ -295,7 +295,7 @@ p25p1_fdma::process_LDU1(const bit_vector& A)
 		fprintf (stderr, "LDU1: ");
 	}
 
-	process_LCF(HB);
+	process_LCW(HB);
 	process_voice(A);
 }
 
@@ -357,17 +357,17 @@ p25p1_fdma::process_TDU(const bit_vector& A)
 		HB[39 + i] = D >> 6;
 		HB[40 + i] = D & 63;
 	}
-	process_LCF(HB);
+	process_LCW(HB);
 }
 
 void
-p25p1_fdma::process_LCF(std::vector<uint8_t>& HB) {
+p25p1_fdma::process_LCW(std::vector<uint8_t>& HB) {
 	int ec = rs12.decode(HB); // Reed Solomon (24,12,13) error correction
 	int pb =   (HB[39] >> 5);
 	int sf =  ((HB[39] & 0x10) >> 4);
 	int lco = ((HB[39] & 0x0f) << 2) + (HB[40] >> 4);
 	if (d_debug >= 10) {
-		fprintf(stderr, "LCF: rs=%d, pb=%d, sf=%d, lco=%d", ec, pb, sf, lco);
+		fprintf(stderr, "LCW: rs=%d, pb=%d, sf=%d, lco=%d", ec, pb, sf, lco);
 	}
 }
 
@@ -395,17 +395,6 @@ p25p1_fdma::process_voice(const bit_vector& A)
 				}
 			}
 
-			// TODO: move wireshark up the hierachy so it sends all frames
-			if (d_do_output && op25udp.enabled()) {
-				memcpy(&write_buf[write_bufp], s, strlen(s));
-				write_bufp += strlen(s);
-				if (write_bufp >= 288) { // 9 * 32 = 288
-					op25udp.send_to(write_buf, 288);
-					// FIXME check op25udp.send_to() rc
-					write_bufp = 0;
-				}
-			}
-			// END TODO:
 		}
 	}
 }
