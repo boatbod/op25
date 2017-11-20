@@ -6,7 +6,7 @@ STEP 1 (prerequisites):
 -----------------------
 sudo apt-get update
 sudo apt-get build-dep gnuradio
-sudo apt-get install gnuradio gnuradio-dev gr-osmosdr librtlsdr-dev libuhd-dev  libhackrf-dev libitpp-dev libpcap-dev swig git
+sudo apt-get install gnuradio gnuradio-dev gr-osmosdr librtlsdr-dev libuhd-dev  libhackrf-dev libitpp-dev libpcap-dev swig gnuplot-x11 git
 
 
 STEP 2 (obtain op25 sourcecode):
