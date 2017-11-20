@@ -143,7 +143,7 @@ class p25_rx_block (gr.top_block):
         self.target_freq = 0.0
 
         self.src = None
-        if not options.input:
+        if (not options.input) and (not options.audio) and (not options.audio_if):
             # check if osmocom is accessible
             try:
                 import osmosdr

@@ -107,7 +107,7 @@ class my_top_block(gr.top_block):
         parser.add_option("-b", "--bt", type="float", default=0.5, help="specify bt value")
         parser.add_option("-f", "--file", type="string", default=None, help="specify the input file (mono 8000 sps S16_LE)")
         parser.add_option("-g", "--gain", type="float", default=1.0, help="input gain")
-        parser.add_option("-i", "--if-rate", type="float", default=960000, help="output rate to sdr")
+        parser.add_option("-i", "--if-rate", type="int", default=960000, help="output rate to sdr")
         parser.add_option("-I", "--audio-input", type="string", default="", help="pcm input device name.  E.g., hw:0,0 or /dev/dsp")
         parser.add_option("-N", "--gains", type="string", default=None, help="gain settings")
         parser.add_option("-o", "--if-offset", type="float", default=100000, help="channel spacing (Hz)")
@@ -115,21 +115,36 @@ class my_top_block(gr.top_block):
         parser.add_option("-Q", "--frequency", type="float", default=0.0, help="Hz")
         parser.add_option("-r", "--repeat", action="store_true", default=False, help="input file repeat")
         parser.add_option("-R", "--fullrate-mode", action="store_true", default=False, help="ysf fullrate")
-        parser.add_option("-s", "--sample-rate", type="int", default=48000, help="output sample rate")
+        parser.add_option("-s", "--modulator-rate", type="int", default=48000, help="must be submultiple of IF rate")
+        parser.add_option("-S", "--alsa-rate", type="int", default=48000, help="sound source/sink sample rate")
         parser.add_option("-v", "--verbose", type="int", default=0, help="additional output")
         (options, args) = parser.parse_args()
 
         assert options.file # input file name (-f filename) required
+
+        f1 = float(options.if_rate) / options.modulator_rate
+        i1 = int(options.if_rate / options.modulator_rate)
+        if f1 - i1 > 1e-3:
+            print '*** Error, sdr rate %d not an integer multiple of modulator rate %d - ratio=%f' % (options.if_rate, options.modulator_rate, f1)
+            sys.exit(1)
+
+        protocols = 'dmr p25 dstar ysf'.split()
+        bw = options.if_offset * len(protocols) + 50000
+        if bw > options.if_rate:
+            print '*** Error, a %d Hz band is required for %d channels and guardband.' % (bw, len(protocols))
+            print '*** Either reduce channel spacing using -o (current value is %d Hz),' % (options.if_offset) 
+            print '*** or increase SDR output sample rate using -i (current rate is %d Hz)' % (options.if_rate) 
+            sys.exit(1)
 
         max_inputs = 1
 
         from dv_tx import output_gains, gain_adjust, gain_adjust_fullrate, mod_adjust
 
         if options.do_audio:
-            AUDIO = audio.source(options.sample_rate, options.audio_input)
-            lpf_taps = filter.firdes.low_pass(1.0, options.sample_rate, 3400.0, 3400 * 0.1, filter.firdes.WIN_HANN)
+            AUDIO = audio.source(options.alsa_rate, options.audio_input)
+            lpf_taps = filter.firdes.low_pass(1.0, options.alsa_rate, 3400.0, 3400 * 0.1, filter.firdes.WIN_HANN)
             audio_rate = 8000
-            AUDIO_DECIM = filter.fir_filter_fff (int(options.sample_rate / audio_rate), lpf_taps)
+            AUDIO_DECIM = filter.fir_filter_fff (int(options.alsa_rate / audio_rate), lpf_taps)
             AUDIO_SCALE = blocks.multiply_const_ff(32767.0 * options.gain)
             AUDIO_F2S = blocks.float_to_short()
             self.connect(AUDIO, AUDIO_DECIM, AUDIO_SCALE, AUDIO_F2S)
@@ -138,7 +153,6 @@ class my_top_block(gr.top_block):
             alt_input = None
 
         SUM = blocks.add_cc()
-        protocols = 'dmr p25 dstar ysf'.split()
         input_repeat = True
         for i in xrange(len(protocols)):
             SOURCE = blocks.file_source(gr.sizeof_short, options.file, input_repeat)
@@ -159,9 +173,9 @@ class my_top_block(gr.top_block):
                 output_gain = output_gains[protocols[i]],
                 gain_adjust = gain_adj,
                 mod_adjust = mod_adjust[protocols[i]],
-                if_freq = i * options.if_offset,
+                if_freq = (i - len(protocols)/2) * options.if_offset,
                 if_rate = options.if_rate,
-                sample_rate = options.sample_rate,
+                sample_rate = options.modulator_rate,
                 bt = options.bt,
                 fullrate_mode = options.fullrate_mode,
                 alt_input = alt_input,
