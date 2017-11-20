@@ -274,6 +274,8 @@ p25p1_fdma::process_HDU(const bit_vector& A)
 void
 p25p1_fdma::process_LLDU(const bit_vector& A, std::vector<uint8_t>& HB)
 {
+	process_duid(framer->duid, framer->nac, NULL, 0);
+
 	int i, j, k;
 	k = 0;
 	for (i = 0; i < 24; i ++) { // 24 10-bit codewords
@@ -330,6 +332,8 @@ p25p1_fdma::process_LDU2(const bit_vector& A)
 void
 p25p1_fdma::process_TDU()
 {
+	process_duid(framer->duid, framer->nac, NULL, 0);
+
 	if (d_debug >= 10) {
 		fprintf (stderr, "TDU:  ");
 	}
@@ -361,7 +365,8 @@ p25p1_fdma::process_TDU(const bit_vector& A)
 }
 
 void
-p25p1_fdma::process_LCW(std::vector<uint8_t>& HB) {
+p25p1_fdma::process_LCW(std::vector<uint8_t>& HB)
+{
 	int ec = rs12.decode(HB); // Reed Solomon (24,12,13) error correction
 	int pb =   (HB[39] >> 5);
 	int sf =  ((HB[39] & 0x10) >> 4);
@@ -369,6 +374,79 @@ p25p1_fdma::process_LCW(std::vector<uint8_t>& HB) {
 	if (d_debug >= 10) {
 		fprintf(stderr, "LCW: rs=%d, pb=%d, sf=%d, lco=%d", ec, pb, sf, lco);
 	}
+}
+
+void
+p25p1_fdma::process_TSBK(const bit_vector& fr, uint32_t fr_len)
+{
+	if (d_debug >= 10) {
+		fprintf (stderr, "TSBK: ");
+	}
+
+	uint8_t deinterleave_buf[3][12];
+	if (process_blocks(fr, fr_len, deinterleave_buf) == 0) {
+		process_duid(framer->duid, framer->nac, deinterleave_buf[0], 10);
+	}
+
+	if (d_debug >= 10) {
+		for (int i = 0; i < 10; i++) {
+			fprintf(stderr, "%02x ", deinterleave_buf[0][i]);
+		}
+	}
+}
+
+void
+p25p1_fdma::process_PDU(const bit_vector& fr, uint32_t fr_len)
+{
+	if (d_debug >= 10) {
+		fprintf (stderr, "PDU:  ");
+	}
+
+	int rc;
+	uint8_t deinterleave_buf[3][12];
+	rc = process_blocks(fr, fr_len, deinterleave_buf);
+
+	if ((rc == 0) && (fr_len == 576)) {
+		// two-block mbt is the only format currently supported
+		// we copy first 10 bytes from first and 
+		// first 8 from second (removes CRC's)
+		uint8_t mbt_block[18];
+		memcpy(&mbt_block[ 0], deinterleave_buf[0], 10);
+		memcpy(&mbt_block[10], deinterleave_buf[1], 8);
+		process_duid(framer->duid, framer->nac, mbt_block, sizeof(mbt_block));
+
+		if (d_debug >= 10) {
+			for (int i = 0; i < 18; i++) {
+				fprintf(stderr, "%02x ", mbt_block[i]);
+			}
+		}
+	}
+}
+
+int
+p25p1_fdma::process_blocks(const bit_vector& fr, uint32_t& fr_len, uint8_t (&dbuf)[3][12])
+{
+	unsigned int d, b;
+	int rc = 0;
+	int sizes[3] = {360, 576, 720};
+	bit_vector bv(720);
+	
+	if (fr_len > 720) {
+		fprintf(stderr, "warning trunk frame size %u exceeds maximum\n", fr_len);
+		fr_len = 720;
+	}
+	for (d=0, b=0; d < fr_len >> 1; d++) {	// eliminate status bits from frame
+		if ((d+1) % 36 == 0)
+			continue;
+		bv[b++] = fr[d*2];
+		bv[b++] = fr[d*2+1];
+	}
+	for(int sz=0; sz < 3; sz++) {		// deinterleave blocks
+		if (fr_len >= sizes[sz]) {
+			rc += block_deinterleave(bv, 48+64+sz*196, dbuf[sz]);
+		}
+	}
+	return rc;
 }
 
 void
@@ -386,15 +464,19 @@ p25p1_fdma::process_voice(const bit_vector& A)
 			// output one 32-byte msg per 0.020 sec.
 			// also, 32*9 = 288 byte pkts (for use via UDP)
 			sprintf(s, "%03x %03x %03x %03x %03x %03x %03x %03x\n", u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7]);
-			if ((d_do_audio_output) && (!d_do_nocrypt || !encrypted()))
-				p1voice_decode.rxframe(u);
+			if (d_do_audio_output) {
+				if (!d_do_nocrypt || !encrypted()) {
+					p1voice_decode.rxframe(u);
+				} else if (d_debug > 1) {
+					fprintf(stderr, "p25p1_fdma: encrypted audio algid(%0x)\n", ess_algid);
+				}
+			}
 
 			if (d_do_output && !d_do_audio_output) {
 				for (size_t j=0; j < strlen(s); j++) {
 					output_queue.push_back(s[j]);
 				}
 			}
-
 		}
 	}
 }
@@ -418,50 +500,10 @@ p25p1_fdma::rx_sym (const uint8_t *syms, int nsyms)
 		}
 
 		if (d_debug >= 10) {
-			fprintf (stderr, "NAC 0x%X DUID=0x%x, len=%u, errs=%u ", framer->nac, framer->duid, framer->frame_size >> 1, framer->bch_errors);
+			fprintf (stderr, "NAC 0x%x DUID=0x%x, len=%u, errs=%u ", framer->nac, framer->duid, framer->frame_size >> 1, framer->bch_errors);
 		}
-		if ((framer->duid == 0x03) ||
-		 (framer->duid == 0x05) ||
-		 (framer->duid == 0x0A) ||
-		 (framer->duid == 0x0F)) {
-			process_duid(framer->duid, framer->nac, NULL, 0);
-		}
+
 		if ((framer->duid == 0x07 || framer->duid == 0x0c)) {
-			unsigned int d, b;
-			int rc[3];
-			bit_vector bv1(720);
-			int sizes[3] = {360, 576, 720};
-			uint8_t deinterleave_buf[3][12];
-			
-			if (framer->frame_size > 720) {
-				fprintf(stderr, "warning trunk frame size %u exceeds maximum\n", framer->frame_size);
-				framer->frame_size = 720;
-			}
-			for (d=0, b=0; d < framer->frame_size >> 1; d++) {
-				if ((d+1) % 36 == 0)
-					continue;	// skip SS
-				bv1[b++] = framer->frame_body[d*2];
-				bv1[b++] = framer->frame_body[d*2+1];
-			}
-			for(int sz=0; sz < 3; sz++) {
-				if (framer->frame_size >= sizes[sz]) {
-					rc[sz] = block_deinterleave(bv1,48+64+sz*196  , deinterleave_buf[sz]);
-					if (framer->duid == 0x07 && rc[sz] == 0)
-						process_duid(framer->duid, framer->nac, deinterleave_buf[sz], 10);
-				}
-			}
-			// two-block mbt is the only format currently supported
-			if (framer->duid == 0x0c
-			&& framer->frame_size == 576
-			&& rc[0] == 0
-			&& rc[1] == 0) {
-				// we copy first 10 bytes from first and 
-				// first 8 from second (removes CRC's)
-				uint8_t mbt_block[18];
-				memcpy(mbt_block, deinterleave_buf[0], 10);
-				memcpy(&mbt_block[10], deinterleave_buf[1], 8);
-				process_duid(framer->duid, framer->nac, mbt_block, sizeof(mbt_block));
-			}
 		}
 
 		// extract additional signalling information and voice codewords
@@ -475,8 +517,14 @@ p25p1_fdma::rx_sym (const uint8_t *syms, int nsyms)
 			case 0x05:
 				process_LDU1(framer->frame_body);
 				break;
+			case 0x07:
+				process_TSBK(framer->frame_body, framer->frame_size);
+				break;
 			case 0x0a:
 				process_LDU2(framer->frame_body);
+				break;
+			case 0x0c:
+				process_PDU(framer->frame_body, framer->frame_size);
 				break;
 			case 0x0f:
 				process_TDU(framer->frame_body);
@@ -486,7 +534,7 @@ p25p1_fdma::rx_sym (const uint8_t *syms, int nsyms)
 			fprintf(stderr,"\n");
 		}
 
-		if (!d_do_imbe) {
+		if (!d_do_imbe) { // send raw frame to wireshark
 			// pack the bits into bytes, MSB first
 			size_t obuf_ct = 0;
 			uint8_t obuf[P25_VOICE_FRAME_SIZE/2];
