@@ -155,7 +155,7 @@ void p25p2_tdma::handle_mac_ptt(const uint8_t byte_buf[], unsigned int len)
                 ess_algid = byte_buf[10];
                 ess_keyid = (byte_buf[11] << 8) + byte_buf[12];
                 if (d_debug >= 10) {
-                        fprintf(stderr, "MAC_PTT: algid=%u, keyid=%u, mi=", ess_algid, ess_keyid);
+                        fprintf(stderr, "MAC_PTT: algid=%x, keyid=%x, mi=", ess_algid, ess_keyid);
                         for (int i = 0; i < 9; i++) {
                                 fprintf(stderr,"%02x ", ess_mi[i]);
                         }
