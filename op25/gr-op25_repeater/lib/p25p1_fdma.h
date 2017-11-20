@@ -25,6 +25,8 @@
 #include <sys/time.h>
 #include <deque>
 
+#include "ezpwd/rs"
+
 #include "op25_udp.h"
 #include "p25_framer.h"
 #include "p25p1_voice_encode.h"
@@ -35,12 +37,24 @@ namespace gr {
     class p25p1_fdma
     {
      private:
+	typedef std::vector<bool> bit_vector;
 
   // internal functions
-	typedef std::vector<bool> bit_vector;
 	bool header_codeword(uint64_t acc, uint32_t& nac, uint32_t& duid);
-	void proc_voice_unit(bit_vector& frame_body) ;
 	void process_duid(uint32_t const duid, uint32_t const nac, uint8_t const buf[], int const len);
+        void process_HDU(const bit_vector& A);
+        void process_LCW(std::vector<uint8_t>& HB);
+        void process_LLDU(const bit_vector& A, std::vector<uint8_t>& HB);
+        void process_LDU1(const bit_vector& A);
+        void process_LDU2(const bit_vector& A);
+        void process_TDU(const bit_vector& A);
+        void process_TDU();
+	void process_TSBK(const bit_vector& fr, uint32_t fr_len);
+	void process_PDU(const bit_vector& fr, uint32_t fr_len);
+	void process_voice(const bit_vector& A);
+	int  process_blocks(const bit_vector& fr, uint32_t& fr_len, uint8_t (&dbuf)[3][12]);
+        inline bool encrypted() { return (ess_algid != 0x80); }
+
   // internal instance variables and state
 	int write_bufp;
 	char write_buf[512];
@@ -48,18 +62,28 @@ namespace gr {
 	bool d_do_imbe;
 	bool d_do_output;
 	bool d_do_msgq;
+	bool d_do_audio_output;
+        bool d_do_nocrypt;
 	gr::msg_queue::sptr d_msg_queue;
 	std::deque<int16_t> &output_queue;
 	p25_framer* framer;
 	struct timeval last_qtime;
-	bool d_do_audio_output;
         p25p1_voice_decode p1voice_decode;
         const op25_udp& op25udp;
+
+        ezpwd::RS<63,55> rs8;  // Reed-Solomon decoders for 8, 12 and 16 bit parity
+        ezpwd::RS<63,51> rs12;
+        ezpwd::RS<63,47> rs16;
+
+        uint8_t  ess_keyid;
+        uint16_t ess_algid;
+	uint8_t  ess_mi[9] = {0};
+	uint16_t vf_tgid;
 
      public:
 	void reset_timer();
 	void rx_sym (const uint8_t *syms, int nsyms);
-        p25p1_fdma(const op25_udp& udp, int debug, bool do_imbe, bool do_output, bool do_msgq, gr::msg_queue::sptr queue, std::deque<int16_t> &output_queue, bool do_audio_output);
+        p25p1_fdma(const op25_udp& udp, int debug, bool do_imbe, bool do_output, bool do_msgq, gr::msg_queue::sptr queue, std::deque<int16_t> &output_queue, bool do_audio_output, bool do_nocrypt);
        ~p25p1_fdma();
 
       // Where all the action really happens

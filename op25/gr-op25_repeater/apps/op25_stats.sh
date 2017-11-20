@@ -41,7 +41,7 @@ join -1 2 -2 1 -a 1 -o 1.1,1.2,2.2,2.3,2.4,2.5,2.6,2.7,2.8,2.9,2.10,2.11,2.12,2.
 
 # histogram of unknown TGIDs
 echo "Talkgroups without tags" > op25-tgids-tagless.txt
-echo "# PCT   Count   TGID" >> op25-tgidis-tagless.txt
+echo "# PCT   Count   TGID" >> op25-tgids-tagless.txt
 grep 'Talkgroup' $1 | sort -k1 | uniq -c \
      | sort -nr \
      | sed 's/ /\t/' | sed 's/ /\t/' \

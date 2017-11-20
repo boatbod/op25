@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 2.6)
 project(gr-op25 CXX C)
 
-set(CMAKE_BUILD_TYPE Debug)
+set(CMAKE_CXX_FLAGS "-std=c++11")
 
 add_subdirectory(op25/gr-op25)
 add_subdirectory(op25/gr-op25_repeater)

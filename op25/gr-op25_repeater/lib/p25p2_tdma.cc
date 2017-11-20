@@ -67,7 +67,7 @@ static bool crc12_ok(const uint8_t bits[], unsigned int len) {
 	return (crc == crc12(bits,len));
 }
 
-p25p2_tdma::p25p2_tdma(const op25_udp& udp, int slotid, int debug, std::deque<int16_t> &qptr, bool do_audio_output) :	// constructor
+p25p2_tdma::p25p2_tdma(const op25_udp& udp, int slotid, int debug, std::deque<int16_t> &qptr, bool do_audio_output, bool do_nocrypt) :	// constructor
         op25udp(udp),
 	write_bufp(0),
 	tdma_xormask(new uint8_t[SUPERFRAME_SIZE]),
@@ -77,7 +77,13 @@ p25p2_tdma::p25p2_tdma(const op25_udp& udp, int slotid, int debug, std::deque<in
 	output_queue_decode(qptr),
 	d_debug(debug),
 	d_do_audio_output(do_audio_output),
+        d_do_nocrypt(do_nocrypt),
 	crc_errors(0),
+        burst_id(-1),
+        ESS_A(28,0),
+        ESS_B(16,0),
+        ess_algid(0x80),
+        ess_keyid(0),
 	p2framer()
 {
 	assert (slotid == 0 || slotid == 1);
@@ -111,16 +117,56 @@ int p25p2_tdma::process_mac_pdu(const uint8_t byte_buf[], unsigned int len)
 {
 	unsigned int opcode = (byte_buf[0] >> 5) & 0x7;
 	unsigned int offset = (byte_buf[0] >> 2) & 0x7;
+
+	// TODO: decode MAC PDU's more thoroughly
+        switch (opcode)
+        {
+                case 1: // MAC_PTT
+                        handle_mac_ptt(byte_buf, len);
+                        reset_vb();
+                        break;
+
+                case 2: // MAC_END_PTT
+                        op25udp.send_audio_flag(op25_udp::DRAIN);
+                        break;
+
+                case 3: // MAC_IDLE
+                        op25udp.send_audio_flag(op25_udp::DRAIN);
+                        break;
+
+                case 4: // MAC_ACTIVE
+                        break;
+
+                case 6: // MAC_HANGTIME
+                        op25udp.send_audio_flag(op25_udp::DRAIN);
+                        break;
+        }
 	// maps sacch opcodes into phase I duid values 
-	// 0, 5, 7 - Reserved
-	// 1 - MAC_PTT
-	// 2 - MAC_END_PTT
-	// 3 - MAC_IDLE
-	// 4 - MAC_ACTIVE
-	// 6 - MAC_HANGTIME
 	static const int opcode_map[8] = {3, 5, 15, 15, 5, 3, 3, 3};
 	return opcode_map[opcode];
-	// TODO: decode MAC PDU's
+}
+
+void p25p2_tdma::handle_mac_ptt(const uint8_t byte_buf[], unsigned int len) 
+{
+        if (d_do_nocrypt) {
+                for (int i = 0; i < 9; i++) {
+                        ess_mi[i] = byte_buf[i+1];
+                }
+                ess_algid = byte_buf[10];
+                ess_keyid = (byte_buf[11] << 8) + byte_buf[12];
+                if (d_debug >= 10) {
+                        fprintf(stderr, "MAC_PTT: algid=%x, keyid=%x, mi=", ess_algid, ess_keyid);
+                        for (int i = 0; i < 9; i++) {
+                                fprintf(stderr,"%02x ", ess_mi[i]);
+                        }
+                        fprintf(stderr,"\n");
+                }
+        }
+        if (d_debug >= 10) {
+                uint32_t srcaddr = (byte_buf[13] << 16) + (byte_buf[14] << 8) + byte_buf[15];
+                uint16_t grpaddr = (byte_buf[16] << 8) + byte_buf[17];
+                fprintf(stderr, "MAC_PTT: srcaddr=%u, grpaddr=%u\n", srcaddr, grpaddr);
+        }
 }
 
 int p25p2_tdma::handle_acch_frame(const uint8_t dibits[], bool fast) 
@@ -173,10 +219,6 @@ int p25p2_tdma::handle_acch_frame(const uint8_t dibits[], bool fast)
 		rc = process_mac_pdu(byte_buf, len/8);
 	} else {
 		crc_errors++;
-	}
-	// at end of voice send a pcm drain
-	if ((rc == 3) || (rc == 15)) {
-                op25udp.send_audio_flag(op25_udp::DRAIN);
 	}
 	return rc;
 }
@@ -252,26 +294,75 @@ int p25p2_tdma::handle_packet(const uint8_t dibits[])
 	if (d_debug >= 10) {
 		fprintf(stderr, "p25p2_tdma: burst type %d symbols %u packets %u\n", burst_type, symbols_received, packets);
 	}
-	if (burst_type == 0 || burst_type == 6)	{ // 4v or 2v (voice) ?
-		handle_voice_frame(&xored_burst[11]);
-		handle_voice_frame(&xored_burst[48]);
-		if (burst_type == 0) { // 4v ?
-			handle_voice_frame(&xored_burst[96]);
-			handle_voice_frame(&xored_burst[133]);
-		}
+	if (burst_type == 0 || burst_type == 6)	{       // 4V or 2V burst
+                track_vb(burst_type);
+                handle_4V2V_ess(&xored_burst[84]);
+                if ( !d_do_nocrypt || !encrypted() ) {
+                        handle_voice_frame(&xored_burst[11]);
+                        handle_voice_frame(&xored_burst[48]);
+                        if (burst_type == 0) {
+                                handle_voice_frame(&xored_burst[96]);
+                                handle_voice_frame(&xored_burst[133]);
+                        }
+                } else if (d_debug > 1) {
+                        fprintf(stderr, "p25p2_tdma: encrypted audio algid(%0x)\n", ess_algid);
+                }
 		return -1;
-	} else if (burst_type == 3) { // scrambled sacch
+	} else if (burst_type == 3) {                   // scrambled sacch
 		rc = handle_acch_frame(xored_burst, 0);
-	} else if (burst_type == 9) { // scrambled facch
+	} else if (burst_type == 9) {                   // scrambled facch
 		rc = handle_acch_frame(xored_burst, 1);
-	} else if (burst_type == 12) { // unscrambled sacch
+	} else if (burst_type == 12) {                  // unscrambled sacch
 		rc = handle_acch_frame(burstp, 0);
-	} else if (burst_type == 15) { // unscrambled facch
+	} else if (burst_type == 15) {                  // unscrambled facch
 		rc = handle_acch_frame(burstp, 1);
 	} else {
 		// unsupported type duid
 		return -1;
 	}
 	return rc;
+}
+
+void p25p2_tdma::handle_4V2V_ess(const uint8_t dibits[])
+{
+        if ( !d_do_nocrypt )
+                return;
+
+        if (burst_id < 4) {
+                for (int i=0; i < 12; i += 3) { // ESS-B is 4 hexbits / 12 dibits
+                        ESS_B[(4 * burst_id) + (i / 3)] = (uint8_t) ((dibits[i] << 4) + (dibits[i+1] << 2) + dibits[i+2]);
+                }
+                return; // nothing further to do until the 2V burst arrives
+        }
+        else {
+                int i, j, k;
+
+                j = 0;
+                for (i = 0; i < 28; i++) { // ESS-A is 28 hexbits / 84 dibits
+                        ESS_A[i] = (uint8_t) ((dibits[j] << 4) + (dibits[j+1] << 2) + dibits[j+2]);
+                        j = (i == 15) ? (j + 4) : (j + 3);  // skip dibit containing DUID#3
+                }
+
+                rs28.decode(ESS_B, ESS_A);
+
+                ess_algid = (ESS_B[0] << 2) + (ESS_B[1] >> 4);
+                ess_keyid = ((ESS_B[1] & 15) << 12) + (ESS_B[2] << 6) + ESS_B[3]; 
+
+                j = 0;
+                for (i = 0; i < 9;) {
+                         ess_mi[i++] = (uint8_t)  (ESS_B[j+4]         << 2) + (ESS_B[j+5] >> 4);
+                         ess_mi[i++] = (uint8_t) ((ESS_B[j+5] & 0x0f) << 4) + (ESS_B[j+6] >> 2);
+                         ess_mi[i++] = (uint8_t) ((ESS_B[j+6] & 0x03) << 6) +  ESS_B[j+7];
+                         j += 4;
+                }
+
+                if (d_debug >= 10) {
+                        fprintf(stderr, "2V/4V ESS: algid=%x, keyid=%x, mi=", ess_algid, ess_keyid);        
+                        for (i = 0; i < 9; i++) {
+                                fprintf(stderr,"%02x ", ess_mi[i]);
+                        }
+                        fprintf(stderr,"\n");
+                }
+        }     
 }
 

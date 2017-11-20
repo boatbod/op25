@@ -26,6 +26,9 @@ import json
 sys.path.append('tdma')
 import lfsr
 
+def utf_ascii(ustr):
+    return (ustr.decode("utf-8")).encode("ascii", "ignore")
+
 def crc16(dat,len):	# slow version
     poly = (1<<12) + (1<<5) + (1<<0)
     crc = 0
@@ -540,7 +543,7 @@ class rx_ctl (object):
         self.tgid_hold = None
         self.tgid_hold_until = time.time()
         self.hold_mode = False
-        self.TGID_HOLD_TIME = 1.0	# TODO: make more configurable
+        self.TGID_HOLD_TIME = 2.0	# TODO: make more configurable
         self.TGID_SKIP_TIME = 1.0	# TODO: make more configurable
         self.current_nac = None
         self.current_id = 0
@@ -686,7 +689,7 @@ class rx_ctl (object):
                     sreader = csv.reader(csvfile, delimiter='\t', quotechar='"', quoting=csv.QUOTE_ALL)
                     for row in sreader:
                         tgid = int(row[0])
-                        txt = row[1]
+                        txt = utf_ascii(row[1])
                         self.configs[nac]['tgid_map'][tgid] = txt
             if 'center_frequency' in configs[nac]:
                 self.configs[nac]['center_frequency'] = get_frequency(configs[nac]['center_frequency'])
@@ -934,7 +937,7 @@ class rx_ctl (object):
                     new_slot = tdma_slot
         elif command == 'duid3' or command == 'tdma_duid3': # termination, no channel release
             if self.current_state != self.states.CC:
-                if self.debug > 1:
+                if self.debug > 2:
                     sys.stderr.write("%f %s, tg(%d)\n" % (time.time(), command, self.current_tgid))
                 self.wait_until = curr_time + self.TSYS_HOLD_TIME
         elif command == 'duid15' or command == 'tdma_duid15': # termination with channel release

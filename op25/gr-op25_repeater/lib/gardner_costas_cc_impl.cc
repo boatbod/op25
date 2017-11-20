@@ -59,7 +59,7 @@ static inline std::complex<float> sgn(std::complex<float>c) {
 uint8_t gardner_costas_cc_impl::slicer(float sym) {
     uint8_t dibit = 0;
     static const float PI_4 = M_PI / 4.0;
-    static const float d_slice_levels[4] = {-2.0*PI_4, 0.0*PI_4, 2.0*PI_4, 4.0*PI_4};
+    static const float d_slice_levels[4] = {(float)-2.0*PI_4, (float)0.0*PI_4, (float)2.0*PI_4, (float)4.0*PI_4};
     if (d_slice_levels[3] < 0) {
       dibit = 1;
       if (d_slice_levels[3] <= sym && sym < d_slice_levels[0])

@@ -111,7 +111,6 @@ COMMAND LINE OPTIONS
 Usage: rx.py [options]
 
 Options:
-Options:
   -h, --help            show this help message and exit
   --args=ARGS           device args
   --antenna=ANTENNA     select antenna
@@ -130,7 +129,7 @@ Options:
   -D DEMOD_TYPE, --demod-type=DEMOD_TYPE
                         cqpsk | fsk4
   -P PLOT_MODE, --plot-mode=PLOT_MODE
-                        constellation | fft | symbol | datascope
+                        constellation | fft | symbol | datascope | mixer
   -f Hz, --frequency=Hz
                         USRP center frequency
   -F IFILE, --ifile=IFILE
@@ -148,6 +147,7 @@ Options:
   -v VERBOSITY, --verbosity=VERBOSITY
                         message debug level
   -V, --vocoder         voice codec
+  -n, --nocrypt         silence encrypted traffic
   -o Hz, --offset=Hz    tuning offset frequency [to circumvent DC offset]
   -p, --pause           block on startup
   -w, --wireshark       output data to Wireshark

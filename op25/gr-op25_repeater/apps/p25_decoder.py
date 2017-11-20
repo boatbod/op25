@@ -43,6 +43,7 @@ _def_dest = 'wav'
 _def_audio_rate = 8000
 _def_audio_output = 'plughw:0,0'
 _def_max_tdma_timeslots = 2
+_def_nocrypt = False
 
 # /////////////////////////////////////////////////////////////////////////////
 #                           decoder
@@ -59,7 +60,8 @@ class p25_decoder_sink_b(gr.hier_block2):
                  do_msgq	= False,
                  msgq		= None,
                  audio_output	= _def_audio_output,
-                 debug		= _def_debug):
+                 debug		= _def_debug,
+                 nocrypt        = _def_nocrypt ):
         """
 	Hierarchical block for P25 decoding.
 
@@ -79,6 +81,7 @@ class p25_decoder_sink_b(gr.hier_block2):
         do_output = False
         do_audio_output = False
         do_phase2_tdma = False
+        do_nocrypt = nocrypt
         if dest == 'wav':
             do_output = True
 
@@ -100,7 +103,7 @@ class p25_decoder_sink_b(gr.hier_block2):
         if num_ambe > 1:
            num_decoders += num_ambe - 1
         for slot in xrange(num_decoders):
-            self.p25_decoders.append(op25_repeater.p25_frame_assembler(wireshark_host, udp_port, debug, do_imbe, do_output, do_msgq, msgq, do_audio_output, do_phase2_tdma))
+            self.p25_decoders.append(op25_repeater.p25_frame_assembler(wireshark_host, udp_port, debug, do_imbe, do_output, do_msgq, msgq, do_audio_output, do_phase2_tdma, do_nocrypt))
             self.p25_decoders[slot].set_slotid(slot)
 
             self.xorhash.append('')
