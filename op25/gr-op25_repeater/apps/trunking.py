@@ -523,9 +523,25 @@ class trunked_system (object):
                 self.last_trunk_cc = self.trunk_cc
 
 def get_int_dict(s):
+    # test below looks like it was meant to read a csv list from the config
+    # file directly, rather than from a separate file.  Not sure if this is
+    # actually used anymore, and could break if whitelist/blacklist file
+    # path begins with a digit.
+
     if s[0].isdigit():
         return dict.fromkeys([int(d) for d in s.split(',')])
-    return dict.fromkeys([int(d) for d in open(s).readlines()])
+
+    # create dict by reading from file
+    d = {}                     # this is the dict
+    with open(s,"r") as f:
+        for v in f:
+            v = v.split("\t",1) # split on tab
+            v = int(v[0])       # keep first field, and convert to int
+            if v not in d:      # is this a new tg?
+                d[v] = []       # if so, add to dict (key only, value null)
+                sys.stderr.write('added talkgroup %d from %s\n' % (v,s))
+    f.close()
+    return dict.fromkeys(d)
 
 class rx_ctl (object):
     def __init__(self, debug=0, frequency_set=None, conf_file=None, logfile_workers=None):
