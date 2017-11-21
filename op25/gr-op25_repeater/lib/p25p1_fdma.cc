@@ -402,34 +402,46 @@ p25p1_fdma::process_PDU(const bit_vector& fr, uint32_t fr_len)
 		fprintf (stderr, "PDU:  ");
 	}
 
-	int rc;
+	uint8_t fmt, blks, op;
 	uint8_t deinterleave_buf[3][12];
-	rc = process_blocks(fr, fr_len, deinterleave_buf);
+	int rc = process_blocks(fr, fr_len, deinterleave_buf);
+	fmt =  deinterleave_buf[0][0] & 0x1f;
+	blks = deinterleave_buf[0][6] & 0x7f;
+	op =   deinterleave_buf[0][7] & 0x3f;
 
-	if ((rc == 0) && (fr_len == 576)) {
-		// two-block mbt is the only format currently supported
-		// we copy first 10 bytes from first and 
-		// first 8 from second (removes CRC's)
-		uint8_t mbt_block[18];
-		memcpy(&mbt_block[ 0], deinterleave_buf[0], 10);
-		memcpy(&mbt_block[10], deinterleave_buf[1], 8);
-		process_duid(framer->duid, framer->nac, mbt_block, sizeof(mbt_block));
-
-		if (d_debug >= 10) {
-			for (int i = 0; i < 18; i++) {
-				fprintf(stderr, "%02x ", mbt_block[i]);
+	if (d_debug >= 10) {
+		fprintf (stderr, "rc=%d, fmt=%02x, blks=%d, opcode=%02x : \n", rc, fmt, blks+1, op);
+		for (int j = 0; j < blks+1; j++) {
+			for (int i = 0; i < 12; i++) {
+				fprintf(stderr, "%02x ", deinterleave_buf[j][i]);
 			}
 		}
+	}
+
+	if ((rc == 0) && (fmt == 0x17)) {
+		// Alternate Multi Block Trunking (MBT) message
+		// we copy first 10 bytes header block and 
+		// first 8 from last block (removes 2 byte and 4-byte CRC's)
+		int blksz = (blks < 1) ? 10 : (((blks+1) * 12) - 6);
+		uint8_t mbt_block[blksz];
+		memcpy(&mbt_block[ 0], deinterleave_buf[0], 10);
+		if (blks == 1) {
+			memcpy(&mbt_block[10], deinterleave_buf[1], 8);
+		} else if (blks == 2) {
+			memcpy(&mbt_block[10], deinterleave_buf[1], 12);
+			memcpy(&mbt_block[22], deinterleave_buf[2], 8);
+		}
+		process_duid(framer->duid, framer->nac, mbt_block, blksz);
 	}
 }
 
 int
 p25p1_fdma::process_blocks(const bit_vector& fr, uint32_t& fr_len, uint8_t (&dbuf)[3][12])
 {
+	int rc, blk_status = 0;
 	unsigned int d, b;
-	int rc = 0;
 	int sizes[3] = {360, 576, 720};
-	bit_vector bv(720);
+	bit_vector bv(720,0);
 	
 	if (fr_len > 720) {
 		fprintf(stderr, "warning trunk frame size %u exceeds maximum\n", fr_len);
@@ -441,12 +453,16 @@ p25p1_fdma::process_blocks(const bit_vector& fr, uint32_t& fr_len, uint8_t (&dbu
 		bv[b++] = fr[d*2];
 		bv[b++] = fr[d*2+1];
 	}
-	for(int sz=0; sz < 3; sz++) {		// deinterleave blocks
+	for(int sz=0; sz < 3; sz++) {
 		if (fr_len >= sizes[sz]) {
-			rc += block_deinterleave(bv, 48+64+sz*196, dbuf[sz]);
+			// deinterleave,  decode trellis1_2
+			rc = block_deinterleave(bv, 48+64+sz*196, dbuf[sz]);
+			if (rc == -1) { 
+				blk_status = -1;
+			}
 		}
 	}
-	return rc;
+	return blk_status;
 }
 
 void
