@@ -1,0 +1,42 @@
+Installation instructions, based on "new recipe" posted by Max Parke to the op25-dev Yahoo Groups mailing list on July 1, 2016.
+
+* * * * * * 
+
+STEP 1 (prerequisites):
+-----------------------
+sudo apt-get update
+sudo apt-get build-dep gnuradio
+sudo apt-get install gnuradio gnuradio-dev gr-osmosdr librtlsdr-dev libuhd-dev  libhackrf-dev libitpp-dev libpcap-dev swig gnuplot-x11 git
+
+
+STEP 2 (obtain op25 sourcecode):
+--------------------------------
+cd ~
+git clone git://github.com/boatbod/op25
+
+
+NOTE: if you prefer to use Max's repository it can be found in the following location.  The boatbod version (above) generally has all of Max's features plus new additions so it's normally preferable to use that unless there is a reason not to do so.
+
+git clone git://op25.osmocom.org/op25.git
+git checkout max
+
+
+STEP 3 (build and install code):
+--------------------------------
+cd op25
+mkdir build
+cd build
+cmake ../
+make
+sudo make install
+sudo ldconfig
+
+
+Finally you may need to use the command
+
+sudo rmmod dvb_usb_rtl28xxu
+
+to remove the DVB kernel module that conflicts with the RTL USB SDR.  You may also need to edit the system udev rules for the RTL -both are common issues and you can search for the needed resources if the RTL isn't getting recognized...  Once this is all done go to the ~/op25/op25/gr-op25_repeater/apps directory, set up the configuration files and invoke rx.py,  which is the principal OP25 app. As a pre-check, you can also run the osmocom_fft application (which should install as part of the pre-reqs) to test basic RTL connectivity and rule out related problems before invoking rx.py.
+
+
+
