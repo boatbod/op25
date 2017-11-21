@@ -626,6 +626,8 @@ class rx_ctl (object):
         with open(tsv_filename, 'rb') as csvfile:
             sreader = csv.reader(csvfile, delimiter='\t', quotechar='"', quoting=csv.QUOTE_ALL)
             for row in sreader:
+                if row[0].startswith('#'):
+                    continue 
                 if not hdrmap:
                     # process first line of tsv file - header line
                     for hdr in row:
