@@ -148,6 +148,11 @@ int p25p2_tdma::process_mac_pdu(const uint8_t byte_buf[], unsigned int len)
 
 void p25p2_tdma::handle_mac_ptt(const uint8_t byte_buf[], unsigned int len) 
 {
+        if (d_debug >= 10) {
+                uint32_t srcaddr = (byte_buf[13] << 16) + (byte_buf[14] << 8) + byte_buf[15];
+                uint16_t grpaddr = (byte_buf[16] << 8) + byte_buf[17];
+                fprintf(stderr, "MAC_PTT: srcaddr=%u, grpaddr=%u", srcaddr, grpaddr);
+        }
         if (d_do_nocrypt) {
                 for (int i = 0; i < 9; i++) {
                         ess_mi[i] = byte_buf[i+1];
@@ -155,17 +160,14 @@ void p25p2_tdma::handle_mac_ptt(const uint8_t byte_buf[], unsigned int len)
                 ess_algid = byte_buf[10];
                 ess_keyid = (byte_buf[11] << 8) + byte_buf[12];
                 if (d_debug >= 10) {
-                        fprintf(stderr, "MAC_PTT: algid=%x, keyid=%x, mi=", ess_algid, ess_keyid);
+                        fprintf(stderr, ", algid=%x, keyid=%x, mi=", ess_algid, ess_keyid);
                         for (int i = 0; i < 9; i++) {
                                 fprintf(stderr,"%02x ", ess_mi[i]);
                         }
-                        fprintf(stderr,"\n");
                 }
         }
         if (d_debug >= 10) {
-                uint32_t srcaddr = (byte_buf[13] << 16) + (byte_buf[14] << 8) + byte_buf[15];
-                uint16_t grpaddr = (byte_buf[16] << 8) + byte_buf[17];
-                fprintf(stderr, "MAC_PTT: srcaddr=%u, grpaddr=%u\n", srcaddr, grpaddr);
+                fprintf(stderr, "\n");
         }
 }
 
