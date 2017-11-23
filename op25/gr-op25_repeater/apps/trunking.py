@@ -428,7 +428,7 @@ class trunked_system (object):
                 if toff_sign == 0:
                     toff = 0 - toff
                 f1   = (tsbk >> 16) & 0xffffffff
-                slots_per_carrier = [1,1,1,2,4,2]
+                slots_per_carrier = [1,1,1,2,4,2,2,2,2,2,2,2,2,2,2,2] # values above 5 are reserved and not valid
                 self.freq_table[iden] = {}
                 self.freq_table[iden]['offset'] = toff * spac * 125
                 self.freq_table[iden]['step'] = spac * 125
