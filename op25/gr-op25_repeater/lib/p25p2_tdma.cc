@@ -113,7 +113,7 @@ p25p2_tdma::set_xormask(const char*p) {
 		tdma_xormask[i] = p[i] & 3;
 }
 
-int p25p2_tdma::process_mac_pdu(const uint8_t byte_buf[], unsigned int len) 
+int p25p2_tdma::process_mac_pdu(const uint8_t byte_buf[], const unsigned int len) 
 {
 	unsigned int opcode = (byte_buf[0] >> 5) & 0x7;
 	unsigned int offset = (byte_buf[0] >> 2) & 0x7;
@@ -123,21 +123,22 @@ int p25p2_tdma::process_mac_pdu(const uint8_t byte_buf[], unsigned int len)
         {
                 case 1: // MAC_PTT
                         handle_mac_ptt(byte_buf, len);
-                        reset_vb();
                         break;
 
                 case 2: // MAC_END_PTT
-                        op25udp.send_audio_flag(op25_udp::DRAIN);
+                        handle_mac_end_ptt(byte_buf, len);
                         break;
 
                 case 3: // MAC_IDLE
-                        op25udp.send_audio_flag(op25_udp::DRAIN);
+                        handle_mac_idle(byte_buf, len);
                         break;
 
                 case 4: // MAC_ACTIVE
+                        handle_mac_active(byte_buf, len);
                         break;
 
                 case 6: // MAC_HANGTIME
+                        handle_mac_hangtime(byte_buf, len);
                         op25udp.send_audio_flag(op25_udp::DRAIN);
                         break;
         }
@@ -146,7 +147,7 @@ int p25p2_tdma::process_mac_pdu(const uint8_t byte_buf[], unsigned int len)
 	return opcode_map[opcode];
 }
 
-void p25p2_tdma::handle_mac_ptt(const uint8_t byte_buf[], unsigned int len) 
+void p25p2_tdma::handle_mac_ptt(const uint8_t byte_buf[], const unsigned int len) 
 {
         if (d_debug >= 10) {
                 uint32_t srcaddr = (byte_buf[13] << 16) + (byte_buf[14] << 8) + byte_buf[15];
@@ -168,6 +169,96 @@ void p25p2_tdma::handle_mac_ptt(const uint8_t byte_buf[], unsigned int len)
         }
         if (d_debug >= 10) {
                 fprintf(stderr, "\n");
+        }
+
+        reset_vb();
+}
+
+void p25p2_tdma::handle_mac_end_ptt(const uint8_t byte_buf[], const unsigned int len) 
+{
+        if (d_debug >= 10) {
+                uint16_t colorcd = ((byte_buf[1] & 0x0f) << 8) + byte_buf[2];
+                uint32_t srcaddr = (byte_buf[13] << 16) + (byte_buf[14] << 8) + byte_buf[15];
+                uint16_t grpaddr = (byte_buf[16] << 8) + byte_buf[17];
+                fprintf(stderr, "MAC_END_PTT: colorcd=0x%03x, srcaddr=%u, grpaddr=%u\n", colorcd, srcaddr, grpaddr);
+        }
+
+        op25udp.send_audio_flag(op25_udp::DRAIN);
+}
+
+void p25p2_tdma::handle_mac_idle(const uint8_t byte_buf[], const unsigned int len) 
+{
+        if (d_debug >= 10) {
+                fprintf(stderr, "MAC_IDLE: ");
+                decode_mac_msg(byte_buf, len);
+                fprintf(stderr, "\n");
+        }
+
+        op25udp.send_audio_flag(op25_udp::DRAIN);
+}
+
+void p25p2_tdma::handle_mac_active(const uint8_t byte_buf[], const unsigned int len) 
+{
+        if (d_debug >= 10) {
+                fprintf(stderr, "MAC_ACTIVE: ");
+                decode_mac_msg(byte_buf, len);
+                fprintf(stderr, "\n");
+        }
+}
+
+void p25p2_tdma::handle_mac_hangtime(const uint8_t byte_buf[], const unsigned int len) 
+{
+        if (d_debug >= 10) {
+                fprintf(stderr, "MAC_HANGTIME: ");
+                decode_mac_msg(byte_buf, len);
+                fprintf(stderr, "\n");
+        }
+
+        op25udp.send_audio_flag(op25_udp::DRAIN);
+}
+
+
+void p25p2_tdma::decode_mac_msg(const uint8_t byte_buf[], const unsigned int len) 
+{
+        if (d_debug >= 10) {
+                uint16_t grpaddr, ch_t, ch_r;
+                uint32_t srcaddr;
+                uint8_t b1b2 = byte_buf[1] >> 6;
+                uint8_t mco  = byte_buf[1] & 0x3f;
+                fprintf(stderr, "b1b2=%x, mco=%02x", b1b2, mco);
+
+		switch(mco)
+                {
+                        case 0x00: // Group Voice Channel Grant or Null Information Message
+                                switch(b1b2)
+                                {
+                                        case 0x0: // Null
+                                                break;
+                                        case 0x1:
+                                                ch_t = (byte_buf[3] << 8) + byte_buf[4];
+                                                grpaddr = (byte_buf[5] << 8) + byte_buf[6];
+                                                srcaddr = (byte_buf[7] << 16) + (byte_buf[8] << 8) + byte_buf[9];
+                                                fprintf(stderr, ", srcaddr=%u, grpaddr=%u, ch=%u", srcaddr, grpaddr, ch_t);
+                                                break;
+                                        case 0x2:
+                                                fprintf(stderr, ", len=%d", len);
+                                                break;
+                                        case 0x3:
+                                                ch_t = (byte_buf[3] << 8) + byte_buf[4];
+                                                ch_r = (byte_buf[5] << 8) + byte_buf[6];
+                                                grpaddr = (byte_buf[7] << 8) + byte_buf[8];
+                                                srcaddr = (byte_buf[9] << 16) + (byte_buf[10] << 8) + byte_buf[11];
+                                                fprintf(stderr, ", srcaddr=%u, grpaddr=%u, ch_t=%u, ch_r=%u", srcaddr, grpaddr, ch_t, ch_r);
+                                                break;
+                                }
+                                break;
+
+                        case 0x01: // Group Voice Channel User Message
+                                grpaddr = (byte_buf[3] << 8) + byte_buf[4];
+                                srcaddr = (byte_buf[5] << 16) + (byte_buf[6] << 8) + byte_buf[7];
+                                fprintf(stderr, ", srcaddr=%u, grpaddr=%u", srcaddr, grpaddr);
+                                break;
+                }
         }
 }
 
@@ -293,9 +384,9 @@ int p25p2_tdma::handle_packet(const uint8_t dibits[])
 	for (int i=0; i<BURST_SIZE - 10; i++) {
 		xored_burst[i] = burstp[i] ^ tdma_xormask[sync.tdma_slotid() * BURST_SIZE + i];
 	}
-	if (d_debug >= 10) {
-		fprintf(stderr, "p25p2_tdma: burst type %d symbols %u packets %u\n", burst_type, symbols_received, packets);
-	}
+	//if (d_debug >= 10) {
+	//	fprintf(stderr, "p25p2_tdma: burst type %d symbols %u packets %u\n", burst_type, symbols_received, packets);
+	//}
 	if (burst_type == 0 || burst_type == 6)	{       // 4V or 2V burst
                 track_vb(burst_type);
                 handle_4V2V_ess(&xored_burst[84]);
@@ -327,17 +418,24 @@ int p25p2_tdma::handle_packet(const uint8_t dibits[])
 
 void p25p2_tdma::handle_4V2V_ess(const uint8_t dibits[])
 {
-        if ( !d_do_nocrypt )
+        if (d_debug >= 10) {
+		fprintf(stderr, "%s_BURST ", (burst_id < 4) ? "4V" : "2V");
+	}
+
+        if ( !d_do_nocrypt ) {
+                if (d_debug >= 10) {
+	                fprintf(stderr, "\n");
+                }
                 return;
+        }
 
         if (burst_id < 4) {
                 for (int i=0; i < 12; i += 3) { // ESS-B is 4 hexbits / 12 dibits
                         ESS_B[(4 * burst_id) + (i / 3)] = (uint8_t) ((dibits[i] << 4) + (dibits[i+1] << 2) + dibits[i+2]);
                 }
-                return; // nothing further to do until the 2V burst arrives
         }
         else {
-                int i, j, k;
+                int i, j, k, ec;
 
                 j = 0;
                 for (i = 0; i < 28; i++) { // ESS-A is 28 hexbits / 84 dibits
@@ -345,26 +443,28 @@ void p25p2_tdma::handle_4V2V_ess(const uint8_t dibits[])
                         j = (i == 15) ? (j + 4) : (j + 3);  // skip dibit containing DUID#3
                 }
 
-                rs28.decode(ESS_B, ESS_A);
+                ec = rs28.decode(ESS_B, ESS_A);
 
-                ess_algid = (ESS_B[0] << 2) + (ESS_B[1] >> 4);
-                ess_keyid = ((ESS_B[1] & 15) << 12) + (ESS_B[2] << 6) + ESS_B[3]; 
+                if (ec >= 0) { // save info if good decode
+                        ess_algid = (ESS_B[0] << 2) + (ESS_B[1] >> 4);
+                        ess_keyid = ((ESS_B[1] & 15) << 12) + (ESS_B[2] << 6) + ESS_B[3]; 
 
-                j = 0;
-                for (i = 0; i < 9;) {
-                         ess_mi[i++] = (uint8_t)  (ESS_B[j+4]         << 2) + (ESS_B[j+5] >> 4);
-                         ess_mi[i++] = (uint8_t) ((ESS_B[j+5] & 0x0f) << 4) + (ESS_B[j+6] >> 2);
-                         ess_mi[i++] = (uint8_t) ((ESS_B[j+6] & 0x03) << 6) +  ESS_B[j+7];
-                         j += 4;
-                }
-
-                if (d_debug >= 10) {
-                        fprintf(stderr, "2V/4V ESS: algid=%x, keyid=%x, mi=", ess_algid, ess_keyid);        
-                        for (i = 0; i < 9; i++) {
-                                fprintf(stderr,"%02x ", ess_mi[i]);
+                        j = 0;
+                        for (i = 0; i < 9;) {
+                                 ess_mi[i++] = (uint8_t)  (ESS_B[j+4]         << 2) + (ESS_B[j+5] >> 4);
+                                 ess_mi[i++] = (uint8_t) ((ESS_B[j+5] & 0x0f) << 4) + (ESS_B[j+6] >> 2);
+                                 ess_mi[i++] = (uint8_t) ((ESS_B[j+6] & 0x03) << 6) +  ESS_B[j+7];
+                                 j += 4;
                         }
-                        fprintf(stderr,"\n");
                 }
         }     
+
+        if (d_debug >= 10) {
+                fprintf(stderr, "ESS: algid=%x, keyid=%x, mi=", ess_algid, ess_keyid);        
+                for (int i = 0; i < 9; i++) {
+                        fprintf(stderr,"%02x ", ess_mi[i]);
+                }
+		fprintf(stderr, "\n");
+        }
 }
 
