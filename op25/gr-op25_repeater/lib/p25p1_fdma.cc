@@ -251,6 +251,10 @@ p25p1_fdma::process_HDU(const bit_vector& A)
 		HB[27 + i] = gly24128Dec(CW) & 63;
 	}
 	ec = rs16.decode(HB); // Reed Solomon (36,20,17) error correction
+
+	if (ec < 0)
+		return; // discard info if uncorrectable errors
+
 	j = 27;												// 72 bit MI
 	for (i = 0; i < 9;) {
 		ess_mi[i++] = (uint8_t)  (HB[j  ]         << 2) + (HB[j+1] >> 4);
@@ -316,8 +320,11 @@ p25p1_fdma::process_LDU2(const bit_vector& A)
 		ess_mi[i++] = (uint8_t) ((HB[j+2] & 0x03) << 6) +  HB[j+3];
 		j += 4;
 	}
-	ess_algid =  (HB[j  ]         <<  2) + (HB[j+1] >> 4);						// 8 bit AlgId
-	ess_keyid = ((HB[j+1] & 0x0f) << 12) + (HB[j+2] << 6) + HB[j+3];				// 16 bit KeyId
+
+	if (ec >= 0) {	// save info if good decode
+		ess_algid =  (HB[j  ]         <<  2) + (HB[j+1] >> 4);					// 8 bit AlgId
+		ess_keyid = ((HB[j+1] & 0x0f) << 12) + (HB[j+2] << 6) + HB[j+3];			// 16 bit KeyId
+	}
 
 	if (d_debug >= 10) {
 		fprintf(stderr, "LDU2: ESS: rs=%d, algid=%x, keyid=%x, mi=", ec, ess_algid, ess_keyid);
@@ -384,13 +391,15 @@ p25p1_fdma::process_TSBK(const bit_vector& fr, uint32_t fr_len)
 	}
 
 	uint8_t deinterleave_buf[3][12];
-	if (process_blocks(fr, fr_len, deinterleave_buf) == 0) {
+	if (process_blocks(fr, fr_len, deinterleave_buf) != -1) {
+		uint8_t op = deinterleave_buf[0][0] & 0x3f;
 		process_duid(framer->duid, framer->nac, deinterleave_buf[0], 10);
-	}
 
-	if (d_debug >= 10) {
-		for (int i = 0; i < 10; i++) {
-			fprintf(stderr, "%02x ", deinterleave_buf[0][i]);
+		if (d_debug >= 10) {
+			fprintf (stderr, "op=%02x : ", op);
+			for (int i = 0; i < 10; i++) {
+				fprintf(stderr, "%02x ", deinterleave_buf[0][i]);
+			}
 		}
 	}
 }
@@ -410,7 +419,7 @@ p25p1_fdma::process_PDU(const bit_vector& fr, uint32_t fr_len)
 	op =   deinterleave_buf[0][7] & 0x3f;
 
 	if (d_debug >= 10) {
-		fprintf (stderr, "rc=%d, fmt=%02x, blks=%d, opcode=%02x : \n", rc, fmt, blks+1, op);
+		fprintf (stderr, "rc=%d, fmt=%02x, blks=%d, op=%02x : \n", rc, fmt, blks+1, op);
 		for (int j = 0; j < blks+1; j++) {
 			for (int i = 0; i < 12; i++) {
 				fprintf(stderr, "%02x ", deinterleave_buf[j][i]);
@@ -516,10 +525,7 @@ p25p1_fdma::rx_sym (const uint8_t *syms, int nsyms)
 		}
 
 		if (d_debug >= 10) {
-			fprintf (stderr, "NAC 0x%x DUID=0x%x, len=%u, errs=%u ", framer->nac, framer->duid, framer->frame_size >> 1, framer->bch_errors);
-		}
-
-		if ((framer->duid == 0x07 || framer->duid == 0x0c)) {
+			fprintf (stderr, "NAC 0x%x, errs=%2u, ", framer->nac, framer->bch_errors);
 		}
 
 		// extract additional signalling information and voice codewords
