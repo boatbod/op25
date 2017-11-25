@@ -394,7 +394,7 @@ p25p1_fdma::process_TSBK(const bit_vector& fr, uint32_t fr_len)
 	uint8_t op, lb = 0;
 	uint8_t deinterleave_buf[3][12]; // TODO: support arbitrary number of blocks rather than just 3
 	int rc = process_blocks(fr, fr_len, deinterleave_buf);
-	if ( rc != -1) {
+	if ( rc == 0 ) {
 		for (int j = 0; (j < 3) && (lb == 0); j++) {
 			lb = deinterleave_buf[j][0] >> 7; // last block flag
 			op = deinterleave_buf[j][0] & 0x3f;
@@ -478,7 +478,7 @@ p25p1_fdma::process_blocks(const bit_vector& fr, uint32_t& fr_len, uint8_t (&dbu
 		if (fr_len >= sizes[sz]) {
 			// deinterleave,  decode trellis1_2
 			rc = block_deinterleave(bv, 48+64+sz*196, dbuf[sz]);
-			if (rc == -1) { 
+			if (rc < 0) { 
 				blk_status = -1;
 			}
 		}
