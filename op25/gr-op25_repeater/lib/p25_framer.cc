@@ -16,7 +16,7 @@
 
 static const int max_frame_lengths[16] = {
 // lengths are in bits, not symbols
-	792,	// 0 - pdu
+	792,	// 0 - hdu
 	0, 0,	// 1, 2 - undef
 	144,	// 3 - tdu
 	0, 	// 4 - undef
@@ -27,7 +27,7 @@ static const int max_frame_lengths[16] = {
 	0,	// 9 - VSELP "voice PDU"
 	P25_VOICE_FRAME_SIZE,	// a - ldu2
 	0,	// b - undef
-	720,	// c - VSELP "voice PDU"
+	P25_VOICE_FRAME_SIZE,	// c - pdu
 	0, 0,	// d, e - undef
 	432	// f - tdu
 };

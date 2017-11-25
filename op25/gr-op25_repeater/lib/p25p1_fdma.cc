@@ -185,6 +185,7 @@ block_deinterleave(bit_vector& bv, unsigned int start, uint8_t* buf)
 			buf[d >> 2] |= state << (6 - ((d%4) * 2));
 		}
 	}
+	//TODO separate deinterleaving from crc checks because TSBK & PDU block structure is not consistent
 	crc = crc16(buf, 12);
 	if (crc == 0)
 		return 0;	// return OK code
@@ -390,15 +391,23 @@ p25p1_fdma::process_TSBK(const bit_vector& fr, uint32_t fr_len)
 		fprintf (stderr, "TSBK: ");
 	}
 
-	uint8_t deinterleave_buf[3][12];
-	if (process_blocks(fr, fr_len, deinterleave_buf) != -1) {
-		uint8_t op = deinterleave_buf[0][0] & 0x3f;
-		process_duid(framer->duid, framer->nac, deinterleave_buf[0], 10);
+	uint8_t op, lb = 0;
+	uint8_t deinterleave_buf[3][12]; // TODO: support arbitrary number of blocks rather than just 3
+	int rc = process_blocks(fr, fr_len, deinterleave_buf);
+	if ( rc != -1) {
+		for (int j = 0; (j < 3) && (lb == 0); j++) {
+			lb = deinterleave_buf[j][0] >> 7; // last block flag
+			op = deinterleave_buf[j][0] & 0x3f;
+			process_duid(framer->duid, framer->nac, deinterleave_buf[j], 10);
 
-		if (d_debug >= 10) {
-			fprintf (stderr, "op=%02x : ", op);
-			for (int i = 0; i < 10; i++) {
-				fprintf(stderr, "%02x ", deinterleave_buf[0][i]);
+			if (d_debug >= 10) {
+				fprintf (stderr, "fr_len=%u, lb=%u, op=%02x : ", fr_len, lb, op);
+				for (int i = 0; i < 12; i++) {
+					fprintf(stderr, "%02x ", deinterleave_buf[j][i]);
+				}
+				if (lb == 0) {
+					fprintf(stderr, "\n                    TSBK: ");
+				}
 			}
 		}
 	}
@@ -411,23 +420,24 @@ p25p1_fdma::process_PDU(const bit_vector& fr, uint32_t fr_len)
 		fprintf (stderr, "PDU:  ");
 	}
 
-	uint8_t fmt, blks, op;
+	uint8_t fmt, sap, blks, op;
 	uint8_t deinterleave_buf[3][12];
 	int rc = process_blocks(fr, fr_len, deinterleave_buf);
 	fmt =  deinterleave_buf[0][0] & 0x1f;
+	sap =  deinterleave_buf[0][1] & 0x3f;
 	blks = deinterleave_buf[0][6] & 0x7f;
 	op =   deinterleave_buf[0][7] & 0x3f;
 
 	if (d_debug >= 10) {
-		fprintf (stderr, "rc=%d, fmt=%02x, blks=%d, op=%02x : \n", rc, fmt, blks+1, op);
-		for (int j = 0; j < blks+1; j++) {
+		fprintf (stderr, "rc=%d, fmt=%02x, sap=%d, blks=%d, op=0x%02x : ", rc, fmt, sap, blks+1, op);
+		for (int j = 0; (j < blks+1) && (j < 3); j++) {
 			for (int i = 0; i < 12; i++) {
 				fprintf(stderr, "%02x ", deinterleave_buf[j][i]);
 			}
 		}
 	}
 
-	if ((rc == 0) && (fmt == 0x17)) {
+	if ((rc == 0) && (sap == 61) && (fmt == 0x17) && (blks <= 2)) { //TODO: make work for arbitrary num blks
 		// Alternate Multi Block Trunking (MBT) message
 		// we copy first 10 bytes header block and 
 		// first 8 from last block (removes 2 byte and 4-byte CRC's)
@@ -452,6 +462,8 @@ p25p1_fdma::process_blocks(const bit_vector& fr, uint32_t& fr_len, uint8_t (&dbu
 	int sizes[3] = {360, 576, 720};
 	bit_vector bv(720,0);
 	
+	// TODO: data packets should not be constrained to 720 bits. Length is arbitrary up to
+	//       system's maximum fragment length. 
 	if (fr_len > 720) {
 		fprintf(stderr, "warning trunk frame size %u exceeds maximum\n", fr_len);
 		fr_len = 720;
