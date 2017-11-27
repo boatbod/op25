@@ -1,10 +1,8 @@
 Forked from git://git.osmocom.org/op25 "max" branch on 9/10/2017
-Up to date with "max" branch as of 11/19/2017
+Up to date with "max" branch as of 11/26/2017
 
 Many changes:
 - udp python audio server sockaudio.py and remote player audio.py
-- udp c++ library code updates op25_udp.h, op25_udp.cc
-- improved audio buffer handling in sockaudio.py
 - wireshark fixes (experimental)
 - ability to configure NAC 0x000 in trunk.tsv and have system use first NAC decoded
 - fixes for compiling on Debian Stretch
