@@ -39,6 +39,7 @@ static software_imbe_decoder software_decoder;
 static p25p2_vf interleaver;
 static mbe_parms cur_mp;
 static mbe_parms prev_mp;
+static mbe_parms enh_mp;
 
 static const Uns DV3K_START_BYTE = 0x61;
 enum
@@ -142,6 +143,7 @@ static void vocoder_setup(void) {
 	encoder.set_dstar_mode();
 	encoder.set_gain_adjust(GAIN_ADJUST);
 	encoder.set_alt_dstar_interleave(true);
+	mbe_initMbeParms (&cur_mp, &prev_mp, &enh_mp);
 }
 
 static void dump(unsigned char *p, ssize_t n)
