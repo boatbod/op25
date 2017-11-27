@@ -57,14 +57,18 @@ class curses_terminal(threading.Thread):
         curses.noecho()
         curses.halfdelay(1)
 
-        self.top_bar = curses.newwin(1, self.maxx, 0, 0)
-        self.freq_list = curses.newwin(self.maxy-3, self.maxx, 1, 0)
-        self.active1 = curses.newwin(1, self.maxx, self.maxy-2, 0)
-        self.active2 = curses.newwin(1, self.maxx, self.maxy-1, 0)
-        self.prompt = curses.newwin(1, 10, self.maxy, 0)
-        self.text_win = curses.newwin(1, 70, self.maxy, 10)
-
+        self.title_bar = curses.newwin(1, self.maxx, 0, 0)
+        self.help_bar = curses.newwin(1, self.maxx, self.maxy-1, 0)
+        self.top_bar = curses.newwin(1, self.maxx, 1, 0)
+        self.freq_list = curses.newwin(self.maxy-5, self.maxx, 2, 0)
+        self.active1 = curses.newwin(1, self.maxx, self.maxy-3, 0)
+        self.active2 = curses.newwin(1, self.maxx, self.maxy-2, 0)
+        self.prompt = curses.newwin(1, 10, self.maxy-1, 0)
+        self.text_win = curses.newwin(1, 70, self.maxy-1, 10)
         self.textpad = curses.textpad.Textbox(self.text_win)
+        self.stdscr.refresh()
+
+        self.title_help()
 
     def resize_curses(self):
         self.maxy, self.maxx = self.stdscr.getmaxyx()
@@ -74,18 +78,36 @@ class curses_terminal(threading.Thread):
 
         self.stdscr.clear()
 
+        self.title_bar.resize(1, self.maxx)
+        self.help_bar.resize(1, self.maxx)
+        self.help_bar.mvwin(self.maxy-1, 0)
         self.top_bar.resize(1, self.maxx)
-        self.freq_list.resize(self.maxy-3, self.maxx)
+        self.freq_list.resize(self.maxy-5, self.maxx)
         self.active1.resize(1, self.maxx)
-        self.active1.mvwin(self.maxy-2, 0)
+        self.active1.mvwin(self.maxy-3, 0)
         self.active2.resize(1, self.maxx)
-        self.active2.mvwin(self.maxy-1, 0)
+        self.active2.mvwin(self.maxy-2, 0)
+        self.stdscr.refresh()
+
+        self.title_help()
 
     def end_curses(self):
         try:
             curses.endwin()
         except:
             pass
+
+    def title_help(self):
+        title_str = "OP25"
+        help_str = "(f)req (h)old (s)kip (l)ock (q)uit (1-4)plot (,.<>)tune"
+        self.title_bar.clear()
+        self.help_bar.clear()
+        self.title_bar.addstr(0, 0, title_str.center(self.maxx-1, " "), curses.A_REVERSE)
+        self.help_bar.addstr(0, 0, help_str.center(self.maxx-1, " "), curses.A_REVERSE)
+        self.title_bar.refresh()
+        self.help_bar.refresh()
+        self.stdscr.move(1,0)
+        self.stdscr.refresh()
 
     def do_auto_update(self):
         UPDATE_INTERVAL = 1	# sec.
@@ -127,6 +149,7 @@ class curses_terminal(threading.Thread):
             self.prompt.refresh()
             self.text_win.clear()
             self.text_win.refresh()
+            self.title_help()
             try:
                 freq = float(response)
                 if freq < 10000:
@@ -221,6 +244,7 @@ class curses_terminal(threading.Thread):
     def run(self):
         try:
             self.setup_curses()
+
             while(self.keep_running):
                 if self.process_terminal_events():
                     break
