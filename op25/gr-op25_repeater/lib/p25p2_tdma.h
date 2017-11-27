@@ -30,7 +30,7 @@
 #include "p25p2_sync.h"
 #include "p25p2_vf.h"
 #include "p25p2_framer.h"
-#include "op25_udp.h"
+#include "op25_audio.h"
 
 #include "ezpwd/rs"
 
@@ -38,7 +38,7 @@ class p25p2_tdma;
 class p25p2_tdma
 {
 public:
-	p25p2_tdma(const op25_udp& udp, int slotid, int debug, std::deque<int16_t> &qptr, bool do_audio_output, bool do_nocrypt) ;	// constructor
+	p25p2_tdma(const op25_audio& udp, int slotid, int debug, std::deque<int16_t> &qptr, bool do_audio_output, bool do_nocrypt) ;	// constructor
 	int handle_packet(const uint8_t dibits[]) ;
 	void set_slotid(int slotid);
 	uint8_t* tdma_xormask;
@@ -62,7 +62,7 @@ private:
 	std::deque<int16_t> &output_queue_decode;
 	bool d_do_audio_output;
         bool d_do_nocrypt;
-        const op25_udp& op25udp;
+        const op25_audio& op25audio;
 
 	int d_debug;
 	unsigned long int crc_errors;

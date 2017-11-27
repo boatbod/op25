@@ -67,8 +67,8 @@ static bool crc12_ok(const uint8_t bits[], unsigned int len) {
 	return (crc == crc12(bits,len));
 }
 
-p25p2_tdma::p25p2_tdma(const op25_udp& udp, int slotid, int debug, std::deque<int16_t> &qptr, bool do_audio_output, bool do_nocrypt) :	// constructor
-        op25udp(udp),
+p25p2_tdma::p25p2_tdma(const op25_audio& udp, int slotid, int debug, std::deque<int16_t> &qptr, bool do_audio_output, bool do_nocrypt) :	// constructor
+        op25audio(udp),
 	write_bufp(0),
 	tdma_xormask(new uint8_t[SUPERFRAME_SIZE]),
 	symbols_received(0),
@@ -139,7 +139,7 @@ int p25p2_tdma::process_mac_pdu(const uint8_t byte_buf[], const unsigned int len
 
                 case 6: // MAC_HANGTIME
                         handle_mac_hangtime(byte_buf, len);
-                        op25udp.send_audio_flag(op25_udp::DRAIN);
+                        op25audio.send_audio_flag(op25_audio::DRAIN);
                         break;
         }
 	// maps sacch opcodes into phase I duid values 
@@ -183,7 +183,7 @@ void p25p2_tdma::handle_mac_end_ptt(const uint8_t byte_buf[], const unsigned int
                 fprintf(stderr, "MAC_END_PTT: colorcd=0x%03x, srcaddr=%u, grpaddr=%u\n", colorcd, srcaddr, grpaddr);
         }
 
-        op25udp.send_audio_flag(op25_udp::DRAIN);
+        op25audio.send_audio_flag(op25_audio::DRAIN);
 }
 
 void p25p2_tdma::handle_mac_idle(const uint8_t byte_buf[], const unsigned int len) 
@@ -194,7 +194,7 @@ void p25p2_tdma::handle_mac_idle(const uint8_t byte_buf[], const unsigned int le
                 fprintf(stderr, "\n");
         }
 
-        op25udp.send_audio_flag(op25_udp::DRAIN);
+        op25audio.send_audio_flag(op25_audio::DRAIN);
 }
 
 void p25p2_tdma::handle_mac_active(const uint8_t byte_buf[], const unsigned int len) 
@@ -214,7 +214,7 @@ void p25p2_tdma::handle_mac_hangtime(const uint8_t byte_buf[], const unsigned in
                 fprintf(stderr, "\n");
         }
 
-        op25udp.send_audio_flag(op25_udp::DRAIN);
+        op25audio.send_audio_flag(op25_audio::DRAIN);
 }
 
 
@@ -349,7 +349,7 @@ void p25p2_tdma::handle_voice_frame(const uint8_t dibits[])
 #endif
 	}
 	if (d_do_audio_output && (write_bufp >= 0)) { 
-		op25udp.send_audio(write_buf, write_bufp);
+		op25audio.send_audio(write_buf, write_bufp);
 		write_bufp = 0;
 	}
 

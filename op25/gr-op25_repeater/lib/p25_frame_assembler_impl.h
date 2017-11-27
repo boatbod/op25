@@ -32,7 +32,7 @@
 
 #include "p25p1_fdma.h"
 #include "p25p2_tdma.h"
-#include "op25_udp.h"
+#include "op25_audio.h"
 
 typedef std::deque<uint8_t> dibit_queue;
 
@@ -68,7 +68,7 @@ namespace gr {
       p25_frame_assembler_impl(const char* udp_host, int port, int debug, bool do_imbe, bool do_output, bool do_msgq, gr::msg_queue::sptr queue, bool do_audio_output, bool do_phase2_tdma, bool do_nocrypt);
       ~p25_frame_assembler_impl();
 
-      op25_udp op25udp;
+      op25_audio op25audio;
 
       // Where all the action really happens
 

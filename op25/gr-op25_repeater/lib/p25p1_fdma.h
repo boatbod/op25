@@ -27,7 +27,7 @@
 
 #include "ezpwd/rs"
 
-#include "op25_udp.h"
+#include "op25_audio.h"
 #include "p25_framer.h"
 #include "p25p1_voice_encode.h"
 #include "p25p1_voice_decode.h"
@@ -69,7 +69,7 @@ namespace gr {
 	p25_framer* framer;
 	struct timeval last_qtime;
         p25p1_voice_decode p1voice_decode;
-        const op25_udp& op25udp;
+        const op25_audio& op25audio;
 
         ezpwd::RS<63,55> rs8;  // Reed-Solomon decoders for 8, 12 and 16 bit parity
         ezpwd::RS<63,51> rs12;
@@ -83,7 +83,7 @@ namespace gr {
      public:
 	void reset_timer();
 	void rx_sym (const uint8_t *syms, int nsyms);
-        p25p1_fdma(const op25_udp& udp, int debug, bool do_imbe, bool do_output, bool do_msgq, gr::msg_queue::sptr queue, std::deque<int16_t> &output_queue, bool do_audio_output, bool do_nocrypt);
+        p25p1_fdma(const op25_audio& udp, int debug, bool do_imbe, bool do_output, bool do_msgq, gr::msg_queue::sptr queue, std::deque<int16_t> &output_queue, bool do_audio_output, bool do_nocrypt);
        ~p25p1_fdma();
 
       // Where all the action really happens

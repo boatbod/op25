@@ -150,8 +150,8 @@ static void clear_bits(bit_vector& v) {
 	}
 }
 
-p25p1_voice_encode::p25p1_voice_encode(bool verbose_flag, int stretch_amt, const op25_udp& udp, bool raw_vectors_flag, std::deque<uint8_t> &_output_queue) :
-        op25udp(udp),
+p25p1_voice_encode::p25p1_voice_encode(bool verbose_flag, int stretch_amt, const op25_audio& udp, bool raw_vectors_flag, std::deque<uint8_t> &_output_queue) :
+        op25audio(udp),
 	frame_cnt(0),
 	write_bufp(0),
 	peak_amplitude(0),
@@ -208,7 +208,7 @@ void p25p1_voice_encode::append_imbe_codeword(bit_vector& frame_body, int16_t fr
 			frame_body[i] = frame_body[i] | ldu_preset[i];
 		}
 		// finally, output the frame
-		if (op25udp.enabled()) {
+		if (op25audio.enabled()) {
 			// pack the bits into bytes, MSB first
 			size_t obuf_ct = 0;
 			for (uint32_t i = 0; i < P25_VOICE_FRAME_SIZE; i += 8) {
@@ -223,7 +223,7 @@ void p25p1_voice_encode::append_imbe_codeword(bit_vector& frame_body, int16_t fr
 					(frame_body[i+7]     );
 				obuf[obuf_ct++] = b;
 			}
-			op25udp.send_to(obuf, obuf_ct);
+			op25audio.send_to(obuf, obuf_ct);
 		} else {
 			for (uint32_t i = 0; i < P25_VOICE_FRAME_SIZE; i += 2) {
 				uint8_t dibit = 
@@ -266,7 +266,7 @@ void p25p1_voice_encode::compress_frame(int16_t snd[])
 		memcpy(&write_buf[write_bufp], s, strlen(s));
 		write_bufp += strlen(s);
 		if (write_bufp >= 288) {
-			op25udp.send_to(write_buf, 288);
+			op25audio.send_to(write_buf, 288);
 			write_bufp = 0;
 		}
 		return;

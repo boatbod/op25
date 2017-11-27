@@ -70,9 +70,9 @@ namespace gr {
     output_queue_decode(),
     opt_udp_port(udp_port),
     opt_encode_flag(encode_flag),
-    op25udp(udp_host, udp_port, 0),
-    p1voice_encode(verbose_flag, stretch_amt, op25udp, raw_vectors_flag, output_queue),
-    p1voice_decode(verbose_flag, op25udp, output_queue_decode)
+    op25audio(udp_host, udp_port, 0),
+    p1voice_encode(verbose_flag, stretch_amt, op25audio, raw_vectors_flag, output_queue),
+    p1voice_decode(verbose_flag, op25audio, output_queue_decode)
     {
     }
 
@@ -140,7 +140,7 @@ vocoder_impl::general_work_encode (int noutput_items,
 
   consume_each (ninput_items[0]);
 
-  if (op25udp.enabled())		// in udp option, we are a gr sink only
+  if (op25audio.enabled())		// in udp option, we are a gr sink only
     return 0;
 
   uint8_t *out = reinterpret_cast<uint8_t*>(output_items[0]);

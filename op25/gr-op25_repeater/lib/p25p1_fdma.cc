@@ -196,8 +196,8 @@ block_deinterleave(bit_vector& bv, unsigned int start, uint8_t* buf)
 	return -2;	// trellis decode OK, but CRC error occurred
 }
 
-p25p1_fdma::p25p1_fdma(const op25_udp& udp, int debug, bool do_imbe, bool do_output, bool do_msgq, gr::msg_queue::sptr queue, std::deque<int16_t> &output_queue, bool do_audio_output, bool do_nocrypt) :
-        op25udp(udp),
+p25p1_fdma::p25p1_fdma(const op25_audio& udp, int debug, bool do_imbe, bool do_output, bool do_msgq, gr::msg_queue::sptr queue, std::deque<int16_t> &output_queue, bool do_audio_output, bool do_nocrypt) :
+        op25audio(udp),
 	write_bufp(0),
 	d_debug(debug),
 	d_do_imbe(do_imbe),
@@ -347,7 +347,7 @@ p25p1_fdma::process_TDU()
 	}
 
 	if ((d_do_imbe || d_do_audio_output) && (framer->duid == 0x3 || framer->duid == 0xf)) {  // voice termination
-		op25udp.send_audio_flag(op25_udp::DRAIN);
+		op25audio.send_audio_flag(op25_audio::DRAIN);
 	}
 }
 
@@ -584,7 +584,7 @@ p25p1_fdma::rx_sym (const uint8_t *syms, int nsyms)
 					(framer->frame_body[i+7]     );
 				obuf[obuf_ct++] = b;
 			}
-			op25udp.send_to(obuf, obuf_ct);
+			op25audio.send_to(obuf, obuf_ct);
 
 			if (d_do_output) {
 				for (size_t j=0; j < obuf_ct; j++) {
@@ -609,7 +609,7 @@ p25p1_fdma::rx_sym (const uint8_t *syms, int nsyms)
         fprintf(stderr, "%010lu.%06lu p25p1_fdma::rx_sym() timeout\n", currtime.tv_sec, currtime.tv_usec);
 
       if (d_do_audio_output) {
-        op25udp.send_audio_flag(op25_udp::DRAIN);
+        op25audio.send_audio_flag(op25_audio::DRAIN);
       }
 
       gettimeofday(&last_qtime, 0);

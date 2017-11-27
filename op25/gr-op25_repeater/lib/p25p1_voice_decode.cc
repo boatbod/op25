@@ -50,8 +50,8 @@ static void clear_bits(bit_vector& v) {
 	}
 }
 
-p25p1_voice_decode::p25p1_voice_decode(bool verbose_flag, const op25_udp& udp, std::deque<int16_t> &_output_queue) :
-        op25udp(udp),
+p25p1_voice_decode::p25p1_voice_decode(bool verbose_flag, const op25_audio& udp, std::deque<int16_t> &_output_queue) :
+        op25audio(udp),
 	write_bufp(0),
 	rxbufp(0),
 	output_queue(_output_queue),
@@ -96,8 +96,8 @@ void p25p1_voice_decode::rxframe(const uint32_t u[])
 /* TEST*/	frame_vector[7] >>= 1;
 		vocoder.imbe_decode(frame_vector, snd);
 	}
-	if (op25udp.enabled()) {
-		op25udp.send_audio(snd, FRAME * sizeof(int16_t));
+	if (op25audio.enabled()) {
+		op25audio.send_audio(snd, FRAME * sizeof(int16_t));
 	} else {
 		// add generated samples to output queue
 		for (int i = 0; i < FRAME; i++) {

@@ -26,7 +26,7 @@
 #include <vector>
 #include <deque>
 
-#include "op25_udp.h"
+#include "op25_audio.h"
 #include "imbe_vocoder/imbe_vocoder.h"
 
 #include "imbe_decoder.h"
@@ -42,7 +42,7 @@ namespace gr {
       // Nothing to declare in this block.
 
      public:
-      p25p1_voice_encode(bool verbose_flag, int stretch_amt, const op25_udp& udp, bool raw_vectors_flag, std::deque<uint8_t> &_output_queue);
+      p25p1_voice_encode(bool verbose_flag, int stretch_amt, const op25_audio& udp, bool raw_vectors_flag, std::deque<uint8_t> &_output_queue);
       ~p25p1_voice_encode();
 	void compress_samp(const int16_t * samp, int len);
       void set_gain_adjust(float gain_adjust);
@@ -66,7 +66,7 @@ namespace gr {
 	int stretch_count ;
 	bit_vector f_body;
 	imbe_vocoder vocoder;
-        const op25_udp& op25udp;
+        const op25_audio& op25audio;
 
 	std::deque<uint8_t> &output_queue;
 
