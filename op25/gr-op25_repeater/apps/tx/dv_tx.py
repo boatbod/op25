@@ -48,7 +48,7 @@ output_gains = {
 gain_adjust = {
 	'dmr': 3.0,
 	'dstar': 7.5,
-	'ysf': 5.0
+	'ysf': 4.0
 }
 gain_adjust_fullrate = {
 	'p25': 2.0,
@@ -84,8 +84,9 @@ class my_top_block(gr.top_block):
         parser.add_option("-f", "--file1", type="string", default=None, help="specify the input file slot 1")
         parser.add_option("-F", "--file2", type="string", default=None, help="specify the input file slot 2 (DMR)")
         parser.add_option("-g", "--gain", type="float", default=1.0, help="input gain")
-        parser.add_option("-i", "--if-rate", type="int", default=960000, help="output rate to sdr")
+        parser.add_option("-i", "--if-rate", type="int", default=480000, help="output rate to sdr")
         parser.add_option("-I", "--audio-input", type="string", default="", help="pcm input device name.  E.g., hw:0,0 or /dev/dsp")
+        parser.add_option("-k", "--symbol-sink", type="string", default=None, help="write symbols to file (optional)")
         parser.add_option("-N", "--gains", type="string", default=None, help="gain settings")
         parser.add_option("-O", "--audio-output", type="string", default="default", help="pcm output device name.  E.g., hw:0,0 or /dev/dsp")
         parser.add_option("-o", "--output-file", type="string", default=None, help="specify the output file")
@@ -136,7 +137,7 @@ class my_top_block(gr.top_block):
                 ENCODER.set_gain_adjust(gain_adjust_fullrate['ysf'])
             else:
                 ENCODER.set_gain_adjust(gain_adjust['ysf'])
-        if options.protocol == 'p25':
+        if options.protocol == 'p25' and not options.test:
             ENCODER.set_gain_adjust(gain_adjust_fullrate[options.protocol])
         elif not options.test and not options.protocol == 'ysf':
             ENCODER.set_gain_adjust(gain_adjust[options.protocol])
@@ -181,10 +182,16 @@ class my_top_block(gr.top_block):
         elif not options.args:
             OUT = audio.sink(options.alsa_rate, options.audio_output)
 
+        if options.symbol_sink:
+            SYMBOL_SINK = blocks.file_sink(gr.sizeof_char, options.symbol_sink)
         if options.protocol == 'dmr' and not options.test:
             self.connect(DMR, MOD)
+            if options.symbol_sink:
+                self.connect(DMR, SYMBOL_SINK)
         else:
             self.connect(ENCODER, MOD)
+            if options.symbol_sink:
+                self.connect(ENCODER, SYMBOL_SINK)
 
         if options.args:
             f1 = float(options.if_rate) / options.modulator_rate
