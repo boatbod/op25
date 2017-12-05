@@ -67,6 +67,24 @@ static bool crc12_ok(const uint8_t bits[], unsigned int len) {
 	return (crc == crc12(bits,len));
 }
 
+static const uint8_t mac_msg_len[256] = {
+	 0,  7,  8,  7,  0, 16,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 
+	 0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 
+	 0, 14, 15,  0,  0, 15,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 
+	 5,  7,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 
+	 9,  7,  9,  0,  9,  8,  9,  0,  0,  0,  9,  0,  0,  0,  0,  0, 
+	 0,  0,  0,  0,  9,  7,  0,  0,  0,  0,  7,  0,  0,  8, 14,  7, 
+	 9,  9,  0,  0,  9,  0,  0,  9,  0,  0,  7,  0,  0,  7,  0,  0, 
+	 0,  0,  0,  9,  9,  9,  0,  0,  9,  9,  9, 11,  9,  9,  0,  0, 
+	 0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 
+	 0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 
+	 0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 
+	 0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 
+	11,  0,  0,  8, 15, 12, 15,  0,  0,  0,  0,  0,  0,  0,  0,  0, 
+	 0,  0,  0,  0,  0,  0,  9,  0,  0,  0, 11,  0,  0,  0,  0, 11, 
+	 0,  0,  0,  0,  0,  0,  0,  0,  0,  8, 11,  0,  0,  0,  0,  0, 
+	 0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 11, 13, 11,  0,  0,  0 };
+
 p25p2_tdma::p25p2_tdma(const op25_audio& udp, int slotid, int debug, std::deque<int16_t> &qptr, bool do_audio_output, bool do_nocrypt) :	// constructor
         op25audio(udp),
 	write_bufp(0),
@@ -220,45 +238,69 @@ void p25p2_tdma::handle_mac_hangtime(const uint8_t byte_buf[], const unsigned in
 
 void p25p2_tdma::decode_mac_msg(const uint8_t byte_buf[], const unsigned int len) 
 {
-        if (d_debug >= 10) {
-                uint16_t grpaddr, ch_t, ch_r;
+        if (d_debug >= 10)
+	{
+		uint8_t b1b2, mco, msg_ptr, msg_len;
+                uint16_t grpaddr, ch_t, ch_r, colorcd;
                 uint32_t srcaddr;
-                uint8_t b1b2 = byte_buf[1] >> 6;
-                uint8_t mco  = byte_buf[1] & 0x3f;
-                fprintf(stderr, "b1b2=%x, mco=%02x", b1b2, mco);
 
-		switch(mco)
-                {
-                        case 0x00: // Group Voice Channel Grant or Null Information Message
-                                switch(b1b2)
-                                {
-                                        case 0x0: // Null
-                                                break;
-                                        case 0x1:
-                                                ch_t = (byte_buf[3] << 8) + byte_buf[4];
-                                                grpaddr = (byte_buf[5] << 8) + byte_buf[6];
-                                                srcaddr = (byte_buf[7] << 16) + (byte_buf[8] << 8) + byte_buf[9];
-                                                fprintf(stderr, ", srcaddr=%u, grpaddr=%u, ch=%u", srcaddr, grpaddr, ch_t);
-                                                break;
-                                        case 0x2:
-                                                fprintf(stderr, ", len=%d", len);
-                                                break;
-                                        case 0x3:
-                                                ch_t = (byte_buf[3] << 8) + byte_buf[4];
-                                                ch_r = (byte_buf[5] << 8) + byte_buf[6];
-                                                grpaddr = (byte_buf[7] << 8) + byte_buf[8];
-                                                srcaddr = (byte_buf[9] << 16) + (byte_buf[10] << 8) + byte_buf[11];
-                                                fprintf(stderr, ", srcaddr=%u, grpaddr=%u, ch_t=%u, ch_r=%u", srcaddr, grpaddr, ch_t, ch_r);
-                                                break;
-                                }
-                                break;
+		for (msg_ptr = 1; msg_ptr < len; )
+		{
+                	b1b2 = byte_buf[msg_ptr] >> 6;
+                	mco  = byte_buf[msg_ptr] & 0x3f;
+			msg_len = mac_msg_len[(b1b2 << 6) + mco];
+                	fprintf(stderr, "mco=%01x/%02x", b1b2, mco);
 
-                        case 0x01: // Group Voice Channel User Message
-                                grpaddr = (byte_buf[3] << 8) + byte_buf[4];
-                                srcaddr = (byte_buf[5] << 16) + (byte_buf[6] << 8) + byte_buf[7];
-                                fprintf(stderr, ", srcaddr=%u, grpaddr=%u", srcaddr, grpaddr);
-                                break;
-                }
+			switch(mco)
+                        {
+                                case 0x00: // Group Voice Channel Grant or Null Information Message
+                                        switch(b1b2)
+                                        {
+                                                case 0x0: // Null
+                                                        break;
+                                                case 0x1:
+                                                        ch_t = (byte_buf[msg_ptr+2] << 8) + byte_buf[msg_ptr+3];
+                                                        grpaddr = (byte_buf[msg_ptr+4] << 8) + byte_buf[msg_ptr+5];
+                                                        srcaddr = (byte_buf[msg_ptr+6] << 16) + (byte_buf[msg_ptr+7] << 8) + byte_buf[msg_ptr+8];
+                                                        fprintf(stderr, ", srcaddr=%u, grpaddr=%u, ch=%u", srcaddr, grpaddr, ch_t);
+                                                        break;
+                                                case 0x2:
+                                                        break; // mfr specific msg
+                                                case 0x3:
+                                                        ch_t = (byte_buf[msg_ptr+2] << 8) + byte_buf[msg_ptr+3];
+                                                        ch_r = (byte_buf[msg_ptr+4] << 8) + byte_buf[msg_ptr+5];
+                                                        grpaddr = (byte_buf[msg_ptr+6] << 8) + byte_buf[msg_ptr+7];
+                                                        srcaddr = (byte_buf[msg_ptr+8] << 16) + (byte_buf[msg_ptr+9] << 8) + byte_buf[msg_ptr+10];
+                                                        fprintf(stderr, ", srcaddr=%u, grpaddr=%u, ch_t=%u, ch_r=%u", srcaddr, grpaddr, ch_t, ch_r);
+                                                        break;
+                                        }
+                                        break;
+
+                                case 0x01: // Group Voice Channel User Message
+                                        grpaddr = (byte_buf[msg_ptr+2] << 8) + byte_buf[msg_ptr+3];
+                                        srcaddr = (byte_buf[msg_ptr+4] << 16) + (byte_buf[msg_ptr+5] << 8) + byte_buf[msg_ptr+6];
+                                        fprintf(stderr, ", srcaddr=%u, grpaddr=%u", srcaddr, grpaddr);
+                                        break;
+
+				case 0x3b: // Network Status Broadcast Message
+					switch(b1b2)
+					{
+						case 0x1: // Abbreviated
+                					colorcd = ((byte_buf[msg_ptr+9] & 0x0f) << 8) + byte_buf[msg_ptr+10];
+                                        	        fprintf(stderr, ", colorcd=%03x", colorcd);
+							break;
+
+						case 0x3: // Extended
+        	        				colorcd = ((byte_buf[msg_ptr+11] & 0x0f) << 8) + byte_buf[msg_ptr+12];
+                	                                fprintf(stderr, ", colorcd=%03x", colorcd);
+							break;
+					}
+					break;
+                	}
+			msg_ptr = (msg_len == 0) ? len : (msg_ptr + msg_len); // TODO: handle variable length messages
+			if (msg_ptr < len)
+				fprintf(stderr,", ");
+		}
         }
 }
 
@@ -344,9 +386,6 @@ void p25p2_tdma::handle_voice_frame(const uint8_t dibits[])
 		}
 		write_buf[write_bufp++] = snd & 0xFF ;
 		write_buf[write_bufp++] = snd >> 8;
-#if 0
-		output_queue_decode.push_back(snd);
-#endif
 	}
 	if (d_do_audio_output && (write_bufp >= 0)) { 
 		op25audio.send_audio(write_buf, write_bufp);

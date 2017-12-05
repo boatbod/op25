@@ -784,13 +784,19 @@ class rx_ctl (object):
                 t = (t << 8) + ord(c)
             updated += self.trunked_systems[nac].decode_tsbk(t)
         elif type == 12:	# trunk: MBT
-            s1 = s[:10]
-            s2 = s[10:]
+            s1 = s[:10]		# header without crc
+            s2 = s[12:]
             header = mbt_data = 0
             for c in s1:
                 header = (header << 8) + ord(c)
             for c in s2:
                 mbt_data = (mbt_data << 8) + ord(c)
+
+            fmt = (header >> 72) & 0x1f
+            sap = (header >> 64) & 0x3f
+            if fmt != 0x17: # only Extended Format MBT presently supported
+                return
+
             opcode = (header >> 16) & 0x3f
             if self.debug > 10:
                 sys.stderr.write('type %d at %f state %d len %d/%d opcode %x [%x/%x]\n' %(type, time.time(), self.state, len(s1), len(s2), opcode, header,mbt_data))

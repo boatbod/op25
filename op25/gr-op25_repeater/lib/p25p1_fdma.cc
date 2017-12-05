@@ -1,6 +1,7 @@
 /* -*- c++ -*- */
 /* 
  * Copyright 2010, 2011, 2012, 2013, 2014 Max H. Parke KA1RBI 
+ * Copyright 2017 Graham J. Norbury (modularization rewrite)
  * 
  * This is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -144,8 +145,6 @@ block_deinterleave(bit_vector& bv, unsigned int start, uint8_t* buf)
 	int state = 0;
 	uint8_t codeword;
 	uint16_t crc;
-	uint32_t crc1;
-	uint32_t crc2;
 
 	static const uint8_t next_words[4][4] = {
 		{0x2, 0xC, 0x1, 0xF},
@@ -185,15 +184,7 @@ block_deinterleave(bit_vector& bv, unsigned int start, uint8_t* buf)
 			buf[d >> 2] |= state << (6 - ((d%4) * 2));
 		}
 	}
-	//TODO separate deinterleaving from crc checks because TSBK & PDU block structure is not consistent
-	crc = crc16(buf, 12);
-	if (crc == 0)
-		return 0;	// return OK code
-	crc1 = crc32(buf, 8*8);	// try crc32
-	crc2 = (buf[8] << 24) + (buf[9] << 16) + (buf[10] << 8) + buf[11];
-	if (crc1 == crc2)
-		return 0;	// return OK code
-	return -2;	// trellis decode OK, but CRC error occurred
+	return 0;
 }
 
 p25p1_fdma::p25p1_fdma(const op25_audio& udp, int debug, bool do_imbe, bool do_output, bool do_msgq, gr::msg_queue::sptr queue, std::deque<int16_t> &output_queue, bool do_audio_output, bool do_nocrypt) :
@@ -217,7 +208,7 @@ p25p1_fdma::p25p1_fdma(const op25_audio& udp, int debug, bool do_imbe, bool do_o
 }
 
 void 
-p25p1_fdma::process_duid(uint32_t const duid, uint32_t const nac, uint8_t const buf[], int const len)
+p25p1_fdma::process_duid(uint32_t const duid, uint32_t const nac, const uint8_t* buf, const int len)
 {
 	char wbuf[256];
 	int p = 0;
@@ -240,6 +231,10 @@ p25p1_fdma::process_duid(uint32_t const duid, uint32_t const nac, uint8_t const 
 void
 p25p1_fdma::process_HDU(const bit_vector& A)
 {
+	if (d_debug >= 10) {
+		fprintf (stderr, "NAC 0x%03x HDU:  ", framer->nac);
+	}
+
         uint32_t MFID;
 	int i, j, k, ec;
 	std::vector<uint8_t> HB(63,0); // hexbit vector
@@ -253,26 +248,29 @@ p25p1_fdma::process_HDU(const bit_vector& A)
 	}
 	ec = rs16.decode(HB); // Reed Solomon (36,20,17) error correction
 
-	if (ec < 0)
-		return; // discard info if uncorrectable errors
+	if (ec >= 0) {
+		j = 27;												// 72 bit MI
+		for (i = 0; i < 9;) {
+			ess_mi[i++] = (uint8_t)  (HB[j  ]         << 2) + (HB[j+1] >> 4);
+			ess_mi[i++] = (uint8_t) ((HB[j+1] & 0x0f) << 4) + (HB[j+2] >> 2);
+			ess_mi[i++] = (uint8_t) ((HB[j+2] & 0x03) << 6) +  HB[j+3];
+			j += 4;
+		}
+		MFID      =  (HB[j  ]         <<  2) + (HB[j+1] >> 4);						// 8 bit MfrId
+		ess_algid = ((HB[j+1] & 0x0f) <<  4) + (HB[j+2] >> 2);						// 8 bit AlgId
+		ess_keyid = ((HB[j+2] & 0x03) << 14) + (HB[j+3] << 8) + (HB[j+4] << 2) + (HB[j+5] >> 4);	// 16 bit KeyId
+		vf_tgid   = ((HB[j+5] & 0x0f) << 12) + (HB[j+6] << 6) +  HB[j+7];				// 16 bit TGID
 
-	j = 27;												// 72 bit MI
-	for (i = 0; i < 9;) {
-		ess_mi[i++] = (uint8_t)  (HB[j  ]         << 2) + (HB[j+1] >> 4);
-		ess_mi[i++] = (uint8_t) ((HB[j+1] & 0x0f) << 4) + (HB[j+2] >> 2);
-		ess_mi[i++] = (uint8_t) ((HB[j+2] & 0x03) << 6) +  HB[j+3];
-		j += 4;
+		if (d_debug >= 10) {
+			fprintf (stderr, "ESS: tgid=%d, mfid=%x, algid=%x, keyid=%x, mi=", vf_tgid, MFID, ess_algid, ess_keyid);
+			for (i = 0; i < 9; i++) {
+				fprintf(stderr, "%02x ", ess_mi[i]);
+			}
+		}
 	}
-	MFID      =  (HB[j  ]         <<  2) + (HB[j+1] >> 4);						// 8 bit MfrId
-	ess_algid = ((HB[j+1] & 0x0f) <<  4) + (HB[j+2] >> 2);						// 8 bit AlgId
-	ess_keyid = ((HB[j+2] & 0x03) << 14) + (HB[j+3] << 8) + (HB[j+4] << 2) + (HB[j+5] >> 4);	// 16 bit KeyId
-	vf_tgid   = ((HB[j+5] & 0x0f) << 12) + (HB[j+6] << 6) +  HB[j+7];				// 16 bit TGID
 
 	if (d_debug >= 10) {
-		fprintf (stderr, "HDU:  ESS: rs=%d, tgid=%d, mfid=%x, algid=%x, keyid=%x, mi=", ec, vf_tgid, MFID, ess_algid, ess_keyid);
-		for (i = 0; i < 9; i++) {
-			fprintf(stderr, "%02x ", ess_mi[i]);
-		}
+		fprintf (stderr, "\n");
 	}
 }
 
@@ -295,20 +293,27 @@ p25p1_fdma::process_LLDU(const bit_vector& A, std::vector<uint8_t>& HB)
 void
 p25p1_fdma::process_LDU1(const bit_vector& A)
 {
-	std::vector<uint8_t> HB(63,0); // hexbit vector
-	process_LLDU(A, HB);
-
 	if (d_debug >= 10) {
-		fprintf (stderr, "LDU1: ");
+		fprintf (stderr, "NAC 0x%03x LDU1: ", framer->nac);
 	}
 
+	std::vector<uint8_t> HB(63,0); // hexbit vector
+	process_LLDU(A, HB);
 	process_LCW(HB);
 	process_voice(A);
+
+	if (d_debug >= 10) {
+		fprintf (stderr, "\n");
+	}
 }
 
 void
 p25p1_fdma::process_LDU2(const bit_vector& A)
 {
+	if (d_debug >= 10) {
+		fprintf (stderr, "NAC 0x%03x LDU2: ", framer->nac);
+	}
+
 	std::vector<uint8_t> HB(63,0); // hexbit vector
 	process_LLDU(A, HB);
 
@@ -325,26 +330,26 @@ p25p1_fdma::process_LDU2(const bit_vector& A)
 	if (ec >= 0) {	// save info if good decode
 		ess_algid =  (HB[j  ]         <<  2) + (HB[j+1] >> 4);					// 8 bit AlgId
 		ess_keyid = ((HB[j+1] & 0x0f) << 12) + (HB[j+2] << 6) + HB[j+3];			// 16 bit KeyId
-	}
 
-	if (d_debug >= 10) {
-		fprintf(stderr, "LDU2: ESS: rs=%d, algid=%x, keyid=%x, mi=", ec, ess_algid, ess_keyid);
-		for (int i = 0; i < 9; i++) {
-			fprintf(stderr, "%02x ", ess_mi[i]);
+		if (d_debug >= 10) {
+			fprintf(stderr, "ESS: algid=%x, keyid=%x, mi=", ess_algid, ess_keyid);
+			for (int i = 0; i < 9; i++) {
+				fprintf(stderr, "%02x ", ess_mi[i]);
+			}
 		}
 	}
 
 	process_voice(A);
+
+	if (d_debug >= 10) {
+		fprintf (stderr, "\n");
+	}
 }
 
 void
-p25p1_fdma::process_TDU()
+p25p1_fdma::process_TTDU()
 {
 	process_duid(framer->duid, framer->nac, NULL, 0);
-
-	if (d_debug >= 10) {
-		fprintf (stderr, "TDU:  ");
-	}
 
 	if ((d_do_imbe || d_do_audio_output) && (framer->duid == 0x3 || framer->duid == 0xf)) {  // voice termination
 		op25audio.send_audio_flag(op25_audio::DRAIN);
@@ -352,9 +357,27 @@ p25p1_fdma::process_TDU()
 }
 
 void
+p25p1_fdma::process_TDU()
+{
+	if (d_debug >= 10) {
+		fprintf (stderr, "NAC 0x%03x TDU:  ", framer->nac);
+	}
+
+	process_TTDU();
+
+	if (d_debug >= 10) {
+		fprintf (stderr, "\n");
+	}
+}
+
+void
 p25p1_fdma::process_TDU(const bit_vector& A)
 {
-	process_TDU();
+	if (d_debug >= 10) {
+		fprintf (stderr, "NAC 0x%03x TDU:  ", framer->nac);
+	}
+
+	process_TTDU();
 
 	int i, j, k;
 	std::vector<uint8_t> HB(63,0); // hexbit vector
@@ -370,6 +393,10 @@ p25p1_fdma::process_TDU(const bit_vector& A)
 		HB[40 + i] = D & 63;
 	}
 	process_LCW(HB);
+
+	if (d_debug >= 10) {
+		fprintf (stderr, "\n");
+	}
 }
 
 void
@@ -379,35 +406,31 @@ p25p1_fdma::process_LCW(std::vector<uint8_t>& HB)
 	int pb =   (HB[39] >> 5);
 	int sf =  ((HB[39] & 0x10) >> 4);
 	int lco = ((HB[39] & 0x0f) << 2) + (HB[40] >> 4);
-	if (d_debug >= 10) {
-		fprintf(stderr, "LCW: rs=%d, pb=%d, sf=%d, lco=%d", ec, pb, sf, lco);
+	if ((ec >= 0) && (d_debug >= 10)) {
+		fprintf(stderr, "LCW: pb=%d, sf=%d, lco=%d", pb, sf, lco);
 	}
 }
 
 void
 p25p1_fdma::process_TSBK(const bit_vector& fr, uint32_t fr_len)
 {
-	if (d_debug >= 10) {
-		fprintf (stderr, "TSBK: ");
-	}
-
 	uint8_t op, lb = 0;
-	uint8_t deinterleave_buf[3][12]; // TODO: support arbitrary number of blocks rather than just 3
-	int rc = process_blocks(fr, fr_len, deinterleave_buf);
-	if ( rc == 0 ) {
-		for (int j = 0; (j < 3) && (lb == 0); j++) {
-			lb = deinterleave_buf[j][0] >> 7; // last block flag
-			op = deinterleave_buf[j][0] & 0x3f;
-			process_duid(framer->duid, framer->nac, deinterleave_buf[j], 10);
+	block_vector deinterleave_buf;
+	if (process_blocks(fr, fr_len, deinterleave_buf) == 0) {
+		for (int j = 0; (j < deinterleave_buf.size()) && (lb == 0); j++) {
+			if (crc16(deinterleave_buf[j].data(), 12) != 0) // validate CRC
+				return;
+
+			lb = deinterleave_buf[j][0] >> 7;	// last block flag
+			op = deinterleave_buf[j][0] & 0x3f;	// opcode
+			process_duid(framer->duid, framer->nac, deinterleave_buf[j].data(), 10);
 
 			if (d_debug >= 10) {
-				fprintf (stderr, "fr_len=%u, lb=%u, op=%02x : ", fr_len, lb, op);
+				fprintf (stderr, "NAC 0x%03x TSBK: op=%02x : ", framer->nac, op);
 				for (int i = 0; i < 12; i++) {
 					fprintf(stderr, "%02x ", deinterleave_buf[j][i]);
 				}
-				if (lb == 0) {
-					fprintf(stderr, "\n                    TSBK: ");
-				}
+				fprintf(stderr, "\n");
 			}
 		}
 	}
@@ -416,74 +439,73 @@ p25p1_fdma::process_TSBK(const bit_vector& fr, uint32_t fr_len)
 void
 p25p1_fdma::process_PDU(const bit_vector& fr, uint32_t fr_len)
 {
-	if (d_debug >= 10) {
-		fprintf (stderr, "PDU:  ");
-	}
+	uint8_t fmt, sap, blks, op = 0;
+	block_vector deinterleave_buf;
+	if (process_blocks(fr, fr_len, deinterleave_buf) == 0) { // extract blocks comprising PDU
+		if (crc16(deinterleave_buf[0].data(), 12) != 0)  // validate header CRC
+			return;
 
-	uint8_t fmt, sap, blks, op;
-	uint8_t deinterleave_buf[3][12];
-	int rc = process_blocks(fr, fr_len, deinterleave_buf);
-	fmt =  deinterleave_buf[0][0] & 0x1f;
-	sap =  deinterleave_buf[0][1] & 0x3f;
-	blks = deinterleave_buf[0][6] & 0x7f;
-	op =   deinterleave_buf[0][7] & 0x3f;
+		fmt =  deinterleave_buf[0][0] & 0x1f;
+		sap =  deinterleave_buf[0][1] & 0x3f;
+		blks = deinterleave_buf[0][6] & 0x7f;
 
-	if (d_debug >= 10) {
-		fprintf (stderr, "rc=%d, fmt=%02x, sap=%d, blks=%d, op=0x%02x : ", rc, fmt, sap, blks+1, op);
-		for (int j = 0; (j < blks+1) && (j < 3); j++) {
-			for (int i = 0; i < 12; i++) {
-				fprintf(stderr, "%02x ", deinterleave_buf[j][i]);
+		if ((sap == 61) && ((fmt == 0x17) || (fmt == 0x15))) { // Multi Block Trunking messages
+			if (blks > deinterleave_buf.size())
+				return; // insufficient blocks available
+
+			uint32_t crc1 = crc32(deinterleave_buf[1].data(), ((blks * 12) - 4) * 8);
+			uint32_t crc2 = (deinterleave_buf[blks][8] << 24) + (deinterleave_buf[blks][9] << 16) +
+					(deinterleave_buf[blks][10] << 8) + deinterleave_buf[blks][11];
+
+			if (crc1 != crc2)
+				return; // payload crc check failed
+
+			process_duid(framer->duid, framer->nac, deinterleave_buf[0].data(), ((blks + 1) * 12) - 4);
+
+			if (d_debug >= 10) {
+				if (fmt == 0x15) {
+					op =   deinterleave_buf[1][0] & 0x3f; // Unconfirmed MBT format
+				} else if (fmt == 0x17) {
+					op =   deinterleave_buf[0][7] & 0x3f; // Alternate MBT format
+				}
+
+				fprintf (stderr, "NAC 0x%03x PDU:  fmt=%02x, op=0x%02x : ", framer->nac, fmt, op);
+				for (int j = 0; (j < blks+1) && (j < 3); j++) {
+					for (int i = 0; i < 12; i++) {
+						fprintf(stderr, "%02x ", deinterleave_buf[j][i]);
+					}
+				}
+				fprintf(stderr, "\n");
 			}
+		} else if (d_debug >= 10) {
+			fprintf(stderr, "NAC 0x%03x PDU:  non-MBT message ignored", framer->nac);
 		}
-	}
 
-	if ((rc == 0) && (sap == 61) && (fmt == 0x17) && (blks <= 2)) { //TODO: make work for arbitrary num blks
-		// Alternate Multi Block Trunking (MBT) message
-		// we copy first 10 bytes header block and 
-		// first 8 from last block (removes 2 byte and 4-byte CRC's)
-		int blksz = (blks < 1) ? 10 : (((blks+1) * 12) - 6);
-		uint8_t mbt_block[blksz];
-		memcpy(&mbt_block[ 0], deinterleave_buf[0], 10);
-		if (blks == 1) {
-			memcpy(&mbt_block[10], deinterleave_buf[1], 8);
-		} else if (blks == 2) {
-			memcpy(&mbt_block[10], deinterleave_buf[1], 12);
-			memcpy(&mbt_block[22], deinterleave_buf[2], 8);
-		}
-		process_duid(framer->duid, framer->nac, mbt_block, blksz);
 	}
 }
 
 int
-p25p1_fdma::process_blocks(const bit_vector& fr, uint32_t& fr_len, uint8_t (&dbuf)[3][12])
+p25p1_fdma::process_blocks(const bit_vector& fr, uint32_t& fr_len, block_vector& dbuf)
 {
-	int rc, blk_status = 0;
-	unsigned int d, b;
-	int sizes[3] = {360, 576, 720};
-	bit_vector bv(720,0);
-	
-	// TODO: data packets should not be constrained to 720 bits. Length is arbitrary up to
-	//       system's maximum fragment length. 
-	if (fr_len > 720) {
-		fprintf(stderr, "warning trunk frame size %u exceeds maximum\n", fr_len);
-		fr_len = 720;
-	}
-	for (d=0, b=0; d < fr_len >> 1; d++) {	// eliminate status bits from frame
+	bit_vector bv;
+	bv.reserve(fr_len >> 1);
+	for (unsigned int d=0; d < fr_len >> 1; d++) {	  // eliminate status bits from frame
 		if ((d+1) % 36 == 0)
 			continue;
-		bv[b++] = fr[d*2];
-		bv[b++] = fr[d*2+1];
+		bv.push_back(fr[d*2]);
+		bv.push_back(fr[d*2+1]);
 	}
-	for(int sz=0; sz < 3; sz++) {
-		if (fr_len >= sizes[sz]) {
-			// deinterleave,  decode trellis1_2
-			rc = block_deinterleave(bv, 48+64+sz*196, dbuf[sz]);
-			if (rc < 0) { 
-				blk_status = -1;
-			}
+
+	int bl_cnt = 0;
+	int bl_len = (bv.size() - (48+64)) / 196;
+	for (int bl_cnt = 0; bl_cnt < bl_len; bl_cnt++) { // deinterleave,  decode trellis1_2, save 12 byte block
+		dbuf.push_back({0,0,0,0,0,0,0,0,0,0,0,0});
+		if(block_deinterleave(bv, 48+64+bl_cnt*196, dbuf[bl_cnt].data()) != 0) {
+			dbuf.pop_back();
+			return -1;
 		}
 	}
-	return blk_status;
+	return 0;
 }
 
 void
@@ -505,7 +527,7 @@ p25p1_fdma::process_voice(const bit_vector& A)
 				if (!d_do_nocrypt || !encrypted()) {
 					p1voice_decode.rxframe(u);
 				} else if (d_debug > 1) {
-					fprintf(stderr, "p25p1_fdma: encrypted audio algid(%0x)\n", ess_algid);
+					fprintf(stderr, "encrypted audio algid(%0x)\n", ess_algid);
 				}
 			}
 
@@ -521,8 +543,8 @@ p25p1_fdma::process_voice(const bit_vector& A)
 void
 p25p1_fdma::reset_timer()
 {
-  //update last_qtime with current time
-  gettimeofday(&last_qtime, 0);
+	//update last_qtime with current time
+	gettimeofday(&last_qtime, 0);
 }
 
 void 
@@ -534,10 +556,6 @@ p25p1_fdma::rx_sym (const uint8_t *syms, int nsyms)
 
 		if (framer->nac == 0) {  // discard frame if NAC is invalid
 			return;
-		}
-
-		if (d_debug >= 10) {
-			fprintf (stderr, "NAC 0x%x, errs=%2u, ", framer->nac, framer->bch_errors);
 		}
 
 		// extract additional signalling information and voice codewords
@@ -563,9 +581,6 @@ p25p1_fdma::rx_sym (const uint8_t *syms, int nsyms)
 			case 0x0f:
 				process_TDU(framer->frame_body);
 				break;
-		}
-		if (d_debug >= 10) {
-			fprintf(stderr,"\n");
 		}
 
 		if (!d_do_imbe) { // send raw frame to wireshark
