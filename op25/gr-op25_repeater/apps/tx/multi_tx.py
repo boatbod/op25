@@ -107,7 +107,7 @@ class my_top_block(gr.top_block):
         parser.add_option("-b", "--bt", type="float", default=0.5, help="specify bt value")
         parser.add_option("-f", "--file", type="string", default=None, help="specify the input file (mono 8000 sps S16_LE)")
         parser.add_option("-g", "--gain", type="float", default=1.0, help="input gain")
-        parser.add_option("-i", "--if-rate", type="int", default=960000, help="output rate to sdr")
+        parser.add_option("-i", "--if-rate", type="int", default=480000, help="output rate to sdr")
         parser.add_option("-I", "--audio-input", type="string", default="", help="pcm input device name.  E.g., hw:0,0 or /dev/dsp")
         parser.add_option("-N", "--gains", type="string", default=None, help="gain settings")
         parser.add_option("-o", "--if-offset", type="float", default=100000, help="channel spacing (Hz)")
