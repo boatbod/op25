@@ -201,8 +201,7 @@ class my_top_block(gr.top_block):
                 sys.exit(1)
             self.setup_sdr_output(options, mod_adjust[options.protocol])
             interp = filter.rational_resampler_fff(options.if_rate / options.modulator_rate, 1)
-            self.attn = blocks.multiply_const_cc(0.25)
-            self.connect(MOD, AMP, interp, self.fm_modulator, self.attn, self.u)
+            self.connect(MOD, AMP, interp, self.fm_modulator, self.u)
         else:
             self.connect(MOD, AMP, OUT)
 
