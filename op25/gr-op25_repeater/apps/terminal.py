@@ -222,10 +222,11 @@ class curses_terminal(threading.Thread):
                     self.status1.addstr(0, (14-len(s)), s)
             self.status1.refresh()
             self.status2.clear()
-            encrypted = msg[current_nac]['encrypted']
-            if encrypted != 0:
-                s = 'ENCRYPTED'
-                self.status2.addstr(0, (14-len(s)), s, curses.A_REVERSE)
+            if 'encrypted' in msg[current_nac]:
+                encrypted = msg[current_nac]['encrypted']
+                if encrypted != 0:
+                    s = 'ENCRYPTED'
+                    self.status2.addstr(0, (14-len(s)), s, curses.A_REVERSE)
             self.status2.refresh()
             self.stdscr.refresh()
         elif msg['json_type'] == 'change_freq':
