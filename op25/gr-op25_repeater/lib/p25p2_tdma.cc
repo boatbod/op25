@@ -444,14 +444,18 @@ int p25p2_tdma::handle_packet(const uint8_t dibits[])
                 track_vb(burst_type);
                 handle_4V2V_ess(&xored_burst[84]);
                 if ( !d_do_nocrypt || !encrypted() ) {
+                        std::string s = "{\"encrypted\" : " + std::to_string(0) + "}";
                         handle_voice_frame(&xored_burst[11]);
                         handle_voice_frame(&xored_burst[48]);
                         if (burst_type == 0) {
                                 handle_voice_frame(&xored_burst[96]);
                                 handle_voice_frame(&xored_burst[133]);
                         }
-                } else if (d_debug > 1) {
-                        fprintf(stderr, "p25p2_tdma: encrypted audio algid(%0x)\n", ess_algid);
+                } else {
+                        std::string s = "{\"encrypted\" : " + std::to_string(1) + "}";
+                        send_msg(s, -3);
+			if (d_debug > 1)
+                                fprintf(stderr, "p25p2_tdma: encrypted audio algid(%0x)\n", ess_algid);
                 }
 		return -1;
 	} else if (burst_type == 3) {                   // scrambled sacch

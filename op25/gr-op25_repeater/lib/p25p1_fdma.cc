@@ -569,9 +569,14 @@ p25p1_fdma::process_voice(const bit_vector& A)
 			sprintf(s, "%03x %03x %03x %03x %03x %03x %03x %03x\n", u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7]);
 			if (d_do_audio_output) {
 				if (!d_do_nocrypt || !encrypted()) {
+					std::string s = "{\"encrypted\" : " + std::to_string(0) + "}";
+					send_msg(s, -3);
 					p1voice_decode.rxframe(u);
-				} else if (d_debug > 1) {
-					fprintf(stderr, "encrypted audio algid(%0x)\n", ess_algid);
+				} else {
+					std::string s = "{\"encrypted\" : " + std::to_string(1) + "}";
+					send_msg(s, -3);
+					if (d_debug > 1)
+						fprintf(stderr, "encrypted audio algid(%0x)\n", ess_algid);
 				}
 			}
 

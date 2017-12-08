@@ -742,8 +742,10 @@ class rx_ctl (object):
         curr_time = time.time()
         if type == -3:		# P25 call signalling data
             js = json.loads(msg.to_string())
-            if js['srcaddr'] is not None:
+            if 'srcaddr' in js:
                 self.current_srcaddr = js['srcaddr']
+            if 'encrypted' in js:
+                self.current_encrypted = js['encrypted']
         elif type == -2:	# request from gui
             cmd = msg.to_string()
             if self.debug > 10:
@@ -950,6 +952,7 @@ class rx_ctl (object):
                     self.current_tgid = None
                     self.tgid_hold = None
                 self.current_srcaddr = 0
+                self.current_encrypted = 0
                 new_state = self.states.CC
                 new_frequency = tsys.trunk_cc
         elif command == 'update':
@@ -978,6 +981,7 @@ class rx_ctl (object):
                     self.current_tgid = None
                     self.tgid_hold = None
                 self.current_srcaddr = 0
+                self.current_encrypted = 0
                 self.wait_until = curr_time + self.TSYS_HOLD_TIME
                 new_state = self.states.CC
                 new_frequency = tsys.trunk_cc
@@ -1028,6 +1032,7 @@ class rx_ctl (object):
             self.tgid_hold = None
             self.current_tgid = None
             self.current_srcaddr = 0
+            self.current_encrypted = 0
             new_state = self.states.CC
             new_frequency = tsys.trunk_cc
         elif self.wait_until <= curr_time and self.tgid_hold_until <= curr_time and self.hold_mode is False and new_state is None:
@@ -1040,6 +1045,7 @@ class rx_ctl (object):
             tsys = self.trunked_systems[nac]
             new_frequency = tsys.trunk_cc
             self.current_srcaddr = 0
+            self.current_encrypted = 0
             self.current_tgid = None
 
         if new_frequency:
