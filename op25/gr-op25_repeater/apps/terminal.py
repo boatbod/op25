@@ -214,11 +214,12 @@ class curses_terminal(threading.Thread):
                 self.freq_list.addstr(i, 0, s)
             self.freq_list.refresh()
             self.status1.clear()
-            srcaddr = msg[current_nac]['srcaddr']
-            if srcaddr != 0:
-                s = '%d' % (srcaddr)
-                s = s[:14]
-                self.status1.addstr(0, (14-len(s)), s)
+            if 'srcaddr' in msg[current_nac]:
+                srcaddr = msg[current_nac]['srcaddr']
+                if srcaddr != 0:
+                    s = '%d' % (srcaddr)
+                    s = s[:14]
+                    self.status1.addstr(0, (14-len(s)), s)
             self.status1.refresh()
             self.status2.clear()
             encrypted = msg[current_nac]['encrypted']
