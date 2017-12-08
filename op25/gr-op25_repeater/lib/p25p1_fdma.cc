@@ -300,11 +300,12 @@ p25p1_fdma::process_LDU1(const bit_vector& A)
 	std::vector<uint8_t> HB(63,0); // hexbit vector
 	process_LLDU(A, HB);
 	process_LCW(HB);
-	process_voice(A);
 
 	if (d_debug >= 10) {
 		fprintf (stderr, "\n");
 	}
+
+	process_voice(A);
 }
 
 void
@@ -339,11 +340,11 @@ p25p1_fdma::process_LDU2(const bit_vector& A)
 		}
 	}
 
-	process_voice(A);
-
 	if (d_debug >= 10) {
 		fprintf (stderr, "\n");
 	}
+
+	process_voice(A);
 }
 
 void
@@ -393,7 +394,7 @@ p25p1_fdma::process_TDU(const bit_vector& A)
 		HB[40 + i] = D & 63;
 	}
 	process_LCW(HB);
-
+ 
 	if (d_debug >= 10) {
 		fprintf (stderr, "\n");
 	}
@@ -403,11 +404,54 @@ void
 p25p1_fdma::process_LCW(std::vector<uint8_t>& HB)
 {
 	int ec = rs12.decode(HB); // Reed Solomon (24,12,13) error correction
-	int pb =   (HB[39] >> 5);
-	int sf =  ((HB[39] & 0x10) >> 4);
-	int lco = ((HB[39] & 0x0f) << 2) + (HB[40] >> 4);
-	if ((ec >= 0) && (d_debug >= 10)) {
+	if (ec < 0)
+		return; // failed CRC
+
+	int i, j;
+	std::vector<uint8_t> lcw(9,0); // Convert hexbits to bytes
+	j = 0;
+	for (i = 0; i < 9;) {
+		lcw[i++] = (uint8_t)  (HB[j+39]         << 2) + (HB[j+40] >> 4);
+		lcw[i++] = (uint8_t) ((HB[j+40] & 0x0f) << 4) + (HB[j+41] >> 2);
+		lcw[i++] = (uint8_t) ((HB[j+41] & 0x03) << 6) +  HB[j+42];
+		j += 4;
+	}
+
+	int pb =   (lcw[0] >> 7);
+	int sf =  ((lcw[0] & 0x40) >> 6);
+	int lco =   lcw[0] & 0x3f;
+	std::string s = "";
+
+	if (d_debug >= 10)
 		fprintf(stderr, "LCW: pb=%d, sf=%d, lco=%d", pb, sf, lco);
+
+	if (pb == 0) { // only decode if unencrypted
+		if ((sf == 0) && ((lcw[1] == 0x00) || (lcw[1] == 0x01))) {	// explicit MFID, standard format
+			switch (lco) {
+				case 0x00: { // Group Voice Channel User
+					uint16_t grpaddr = (lcw[4] << 8) + lcw[5];
+					uint32_t srcaddr = (lcw[6] << 16) + (lcw[7] << 8) + lcw[8];
+					s = "{\"srcaddr\" : " + std::to_string(srcaddr) + ", \"grpaddr\": " + std::to_string(grpaddr) + "}";
+					send_msg(s, -3);
+					if (d_debug >= 10)
+						fprintf(stderr, ", srcaddr=%d, grpaddr=%d", srcaddr, grpaddr);
+					break;
+				}
+			}
+		} else {							// implicit MFID
+			switch (lco) {
+				case 0x02: { // Group Voice Channel Update
+					uint16_t ch_A  = (lcw[1] << 8) + lcw[2];
+					uint16_t grp_A = (lcw[3] << 8) + lcw[4];
+					uint16_t ch_B  = (lcw[5] << 8) + lcw[6];
+					uint16_t grp_B = (lcw[7] << 8) + lcw[8];
+					if (d_debug >= 10)
+						fprintf(stderr, ", ch_A=%d, grp_A=%d, ch_B=%d, grp_B=%d", ch_A, grp_A, ch_B, grp_B);
+					break;
+				}
+
+			}
+		}
 	}
 }
 
@@ -545,6 +589,15 @@ p25p1_fdma::reset_timer()
 {
 	//update last_qtime with current time
 	gettimeofday(&last_qtime, 0);
+}
+
+void p25p1_fdma::send_msg(const std::string msg_str, long msg_type)
+{
+	if (!d_do_msgq || d_msg_queue->full_p())
+		return;
+
+	gr::message::sptr msg = gr::message::make_from_string(msg_str, msg_type, 0, 0);
+	d_msg_queue->insert_tail(msg);
 }
 
 void 

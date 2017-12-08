@@ -61,8 +61,10 @@ class curses_terminal(threading.Thread):
         self.help_bar = curses.newwin(1, self.maxx, self.maxy-1, 0)
         self.top_bar = curses.newwin(1, self.maxx, 1, 0)
         self.freq_list = curses.newwin(self.maxy-5, self.maxx, 2, 0)
-        self.active1 = curses.newwin(1, self.maxx, self.maxy-3, 0)
-        self.active2 = curses.newwin(1, self.maxx, self.maxy-2, 0)
+        self.active1 = curses.newwin(1, self.maxx-10, self.maxy-3, 0)
+        self.active2 = curses.newwin(1, self.maxx-10, self.maxy-2, 0)
+        self.status1 = curses.newwin(1, 15, self.maxy-3, self.maxx-15)
+        self.status2 = curses.newwin(1, 15, self.maxy-2, self.maxx-15)
         self.prompt = curses.newwin(1, 10, self.maxy-1, 0)
         self.text_win = curses.newwin(1, 70, self.maxy-1, 10)
         self.textpad = curses.textpad.Textbox(self.text_win)
@@ -83,10 +85,14 @@ class curses_terminal(threading.Thread):
         self.help_bar.mvwin(self.maxy-1, 0)
         self.top_bar.resize(1, self.maxx)
         self.freq_list.resize(self.maxy-5, self.maxx)
-        self.active1.resize(1, self.maxx)
+        self.active1.resize(1, self.maxx-15)
         self.active1.mvwin(self.maxy-3, 0)
-        self.active2.resize(1, self.maxx)
+        self.active2.resize(1, self.maxx-15)
         self.active2.mvwin(self.maxy-2, 0)
+        self.status1.resize(1, 15)
+        self.status1.mvwin(self.maxy-3, self.maxx-15)
+        self.status2.resize(1, 15)
+        self.status2.mvwin(self.maxy-2, self.maxx-15)
         self.stdscr.refresh()
 
         self.title_help()
@@ -110,7 +116,7 @@ class curses_terminal(threading.Thread):
         self.stdscr.refresh()
 
     def do_auto_update(self):
-        UPDATE_INTERVAL = 1	# sec.
+        UPDATE_INTERVAL = 0.5	# sec.
         if not self.auto_update:
             return False
         if self.last_update + UPDATE_INTERVAL > time.time():
@@ -207,6 +213,13 @@ class curses_terminal(threading.Thread):
                 s = s[:(self.maxx - 1)]
                 self.freq_list.addstr(i, 0, s)
             self.freq_list.refresh()
+            self.status1.clear()
+            srcaddr = msg[current_nac]['srcaddr']
+            if srcaddr != 0:
+                s = '%d' % (srcaddr)
+                s = s[:14]
+                self.status1.addstr(0, (14-len(s)), s)
+            self.status1.refresh()
             self.stdscr.refresh()
         elif msg['json_type'] == 'change_freq':
             s = 'Frequency %f' % (msg['freq'] / 1000000.0)

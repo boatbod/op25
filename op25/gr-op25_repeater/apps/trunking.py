@@ -81,7 +81,6 @@ class trunked_system (object):
         self.center_frequency = 0
         self.last_tsbk = 0
         self.cc_timeouts = 0
-
         self.talkgroups = {}
         if config:
             self.blacklist = config['blacklist']
@@ -564,6 +563,8 @@ class rx_ctl (object):
         self.current_nac = None
         self.current_id = 0
         self.current_tgid = None
+        self.current_srcaddr = 0
+        self.current_encrypted = 0
         self.current_slot = None
         self.TSYS_HOLD_TIME = 3.0	# TODO: make more configurable
         self.wait_until = time.time()
@@ -724,6 +725,8 @@ class rx_ctl (object):
         d = {'json_type': 'trunk_update'}
         for nac in self.trunked_systems.keys():
             d[nac] = json.loads(self.trunked_systems[nac].to_json())
+        d[self.current_nac]['srcaddr'] = self.current_srcaddr
+        d[self.current_nac]['encrypted'] = self.current_encrypted
         return json.dumps(d)
 
     def to_string(self):
@@ -737,7 +740,11 @@ class rx_ctl (object):
         type = msg.type()
         updated = 0
         curr_time = time.time()
-        if type == -2:	# request from gui
+        if type == -3:		# P25 call signalling data
+            js = json.loads(msg.to_string())
+            if js['srcaddr'] is not None:
+                self.current_srcaddr = js['srcaddr']
+        elif type == -2:	# request from gui
             cmd = msg.to_string()
             if self.debug > 10:
                 sys.stderr.write('process_qmsg: command: %s\n' % cmd)
@@ -942,6 +949,7 @@ class rx_ctl (object):
                 if self.hold_mode is False:
                     self.current_tgid = None
                     self.tgid_hold = None
+                self.current_srcaddr = 0
                 new_state = self.states.CC
                 new_frequency = tsys.trunk_cc
         elif command == 'update':
@@ -969,6 +977,7 @@ class rx_ctl (object):
                 if self.hold_mode is False:
                     self.current_tgid = None
                     self.tgid_hold = None
+                self.current_srcaddr = 0
                 self.wait_until = curr_time + self.TSYS_HOLD_TIME
                 new_state = self.states.CC
                 new_frequency = tsys.trunk_cc
@@ -1018,6 +1027,7 @@ class rx_ctl (object):
                 sys.stderr.write("%f release tg(%s)\n" % (time.time(), self.current_tgid))
             self.tgid_hold = None
             self.current_tgid = None
+            self.current_srcaddr = 0
             new_state = self.states.CC
             new_frequency = tsys.trunk_cc
         elif self.wait_until <= curr_time and self.tgid_hold_until <= curr_time and self.hold_mode is False and new_state is None:
@@ -1029,6 +1039,7 @@ class rx_ctl (object):
             nac = self.current_nac = new_nac
             tsys = self.trunked_systems[nac]
             new_frequency = tsys.trunk_cc
+            self.current_srcaddr = 0
             self.current_tgid = None
 
         if new_frequency:

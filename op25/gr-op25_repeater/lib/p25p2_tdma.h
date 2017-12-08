@@ -23,6 +23,7 @@
 #include <stdint.h>
 #include <deque>
 #include <vector>
+#include <gnuradio/msg_queue.h>
 #include "mbelib.h"
 #include "imbe_decoder.h"
 #include "software_imbe_decoder.h"
@@ -38,7 +39,7 @@ class p25p2_tdma;
 class p25p2_tdma
 {
 public:
-	p25p2_tdma(const op25_audio& udp, int slotid, int debug, std::deque<int16_t> &qptr, bool do_audio_output, bool do_nocrypt) ;	// constructor
+	p25p2_tdma(const op25_audio& udp, int slotid, int debug, bool do_msgq, gr::msg_queue::sptr queue, std::deque<int16_t> &qptr, bool do_audio_output, bool do_nocrypt) ;	// constructor
 	int handle_packet(const uint8_t dibits[]) ;
 	void set_slotid(int slotid);
 	uint8_t* tdma_xormask;
@@ -59,7 +60,9 @@ private:
 	mbe_parms prev_mp;
 	mbe_parms enh_mp;
 	software_imbe_decoder software_decoder;
+	gr::msg_queue::sptr d_msg_queue;
 	std::deque<int16_t> &output_queue_decode;
+	bool d_do_msgq;
 	bool d_do_audio_output;
         bool d_do_nocrypt;
         const op25_audio& op25audio;
@@ -92,5 +95,7 @@ private:
         void decode_mac_msg(const uint8_t byte_buf[], const unsigned int len) ;
         void handle_4V2V_ess(const uint8_t dibits[]);
         inline bool encrypted() { return (ess_algid != 0x80); }
+
+	void send_msg(const std::string msg_str, long msg_type);
 };
 #endif /* INCLUDED_P25P2_TDMA_H */

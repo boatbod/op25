@@ -92,7 +92,7 @@ static const int MAX_IN = 1;	// maximum number of input streams
 	d_do_audio_output(do_audio_output),
 	d_do_phase2_tdma(do_phase2_tdma),
 	d_do_nocrypt(do_nocrypt),
-	p2tdma(op25audio, 0, debug, output_queue, do_audio_output, do_nocrypt),
+	p2tdma(op25audio, 0, debug, do_msgq, queue, output_queue, do_audio_output, do_nocrypt),
 	d_do_msgq(do_msgq),
 	d_msg_queue(queue)
 {

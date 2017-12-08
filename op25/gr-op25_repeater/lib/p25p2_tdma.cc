@@ -85,13 +85,15 @@ static const uint8_t mac_msg_len[256] = {
 	 0,  0,  0,  0,  0,  0,  0,  0,  0,  8, 11,  0,  0,  0,  0,  0, 
 	 0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 11, 13, 11,  0,  0,  0 };
 
-p25p2_tdma::p25p2_tdma(const op25_audio& udp, int slotid, int debug, std::deque<int16_t> &qptr, bool do_audio_output, bool do_nocrypt) :	// constructor
+p25p2_tdma::p25p2_tdma(const op25_audio& udp, int slotid, int debug, bool do_msgq, gr::msg_queue::sptr queue, std::deque<int16_t> &qptr, bool do_audio_output, bool do_nocrypt) :	// constructor
         op25audio(udp),
 	write_bufp(0),
 	tdma_xormask(new uint8_t[SUPERFRAME_SIZE]),
 	symbols_received(0),
 	packets(0),
 	d_slotid(slotid),
+	d_do_msgq(do_msgq),
+	d_msg_queue(queue),
 	output_queue_decode(qptr),
 	d_debug(debug),
 	d_do_audio_output(do_audio_output),
@@ -167,9 +169,12 @@ int p25p2_tdma::process_mac_pdu(const uint8_t byte_buf[], const unsigned int len
 
 void p25p2_tdma::handle_mac_ptt(const uint8_t byte_buf[], const unsigned int len) 
 {
+        uint32_t srcaddr = (byte_buf[13] << 16) + (byte_buf[14] << 8) + byte_buf[15];
+        uint16_t grpaddr = (byte_buf[16] << 8) + byte_buf[17];
+        std::string s = "{\"srcaddr\" : " + std::to_string(srcaddr) + ", \"grpaddr\": " + std::to_string(grpaddr) + "}";
+        send_msg(s, -3);
+
         if (d_debug >= 10) {
-                uint32_t srcaddr = (byte_buf[13] << 16) + (byte_buf[14] << 8) + byte_buf[15];
-                uint16_t grpaddr = (byte_buf[16] << 8) + byte_buf[17];
                 fprintf(stderr, "MAC_PTT: srcaddr=%u, grpaddr=%u", srcaddr, grpaddr);
         }
         if (d_do_nocrypt) {
@@ -194,114 +199,126 @@ void p25p2_tdma::handle_mac_ptt(const uint8_t byte_buf[], const unsigned int len
 
 void p25p2_tdma::handle_mac_end_ptt(const uint8_t byte_buf[], const unsigned int len) 
 {
-        if (d_debug >= 10) {
-                uint16_t colorcd = ((byte_buf[1] & 0x0f) << 8) + byte_buf[2];
-                uint32_t srcaddr = (byte_buf[13] << 16) + (byte_buf[14] << 8) + byte_buf[15];
-                uint16_t grpaddr = (byte_buf[16] << 8) + byte_buf[17];
-                fprintf(stderr, "MAC_END_PTT: colorcd=0x%03x, srcaddr=%u, grpaddr=%u\n", colorcd, srcaddr, grpaddr);
-        }
+        uint16_t colorcd = ((byte_buf[1] & 0x0f) << 8) + byte_buf[2];
+        uint32_t srcaddr = (byte_buf[13] << 16) + (byte_buf[14] << 8) + byte_buf[15];
+        uint16_t grpaddr = (byte_buf[16] << 8) + byte_buf[17];
 
+        if (d_debug >= 10)
+                fprintf(stderr, "MAC_END_PTT: colorcd=0x%03x, srcaddr=%u, grpaddr=%u\n", colorcd, srcaddr, grpaddr);
+
+        std::string s = "{\"srcaddr\" : " + std::to_string(srcaddr) + ", \"grpaddr\": " + std::to_string(grpaddr) + "}";
+        send_msg(s, -3);
         op25audio.send_audio_flag(op25_audio::DRAIN);
 }
 
 void p25p2_tdma::handle_mac_idle(const uint8_t byte_buf[], const unsigned int len) 
 {
-        if (d_debug >= 10) {
+        if (d_debug >= 10)
                 fprintf(stderr, "MAC_IDLE: ");
-                decode_mac_msg(byte_buf, len);
-                fprintf(stderr, "\n");
-        }
 
+        decode_mac_msg(byte_buf, len);
         op25audio.send_audio_flag(op25_audio::DRAIN);
+
+        if (d_debug >= 10)
+                fprintf(stderr, "\n");
 }
 
 void p25p2_tdma::handle_mac_active(const uint8_t byte_buf[], const unsigned int len) 
 {
-        if (d_debug >= 10) {
+        if (d_debug >= 10)
                 fprintf(stderr, "MAC_ACTIVE: ");
-                decode_mac_msg(byte_buf, len);
+
+        decode_mac_msg(byte_buf, len);
+
+        if (d_debug >= 10)
                 fprintf(stderr, "\n");
-        }
 }
 
 void p25p2_tdma::handle_mac_hangtime(const uint8_t byte_buf[], const unsigned int len) 
 {
-        if (d_debug >= 10) {
+        if (d_debug >= 10)
                 fprintf(stderr, "MAC_HANGTIME: ");
-                decode_mac_msg(byte_buf, len);
-                fprintf(stderr, "\n");
-        }
 
+        decode_mac_msg(byte_buf, len);
         op25audio.send_audio_flag(op25_audio::DRAIN);
+
+        if (d_debug >= 10)
+                fprintf(stderr, "\n");
 }
 
 
 void p25p2_tdma::decode_mac_msg(const uint8_t byte_buf[], const unsigned int len) 
 {
-        if (d_debug >= 10)
+	std::string s;
+	uint8_t b1b2, mco, msg_ptr, msg_len;
+        uint16_t grpaddr, ch_t, ch_r, colorcd;
+        uint32_t srcaddr;
+
+	for (msg_ptr = 1; msg_ptr < len; )
 	{
-		uint8_t b1b2, mco, msg_ptr, msg_len;
-                uint16_t grpaddr, ch_t, ch_r, colorcd;
-                uint32_t srcaddr;
+               	b1b2 = byte_buf[msg_ptr] >> 6;
+               	mco  = byte_buf[msg_ptr] & 0x3f;
+		msg_len = mac_msg_len[(b1b2 << 6) + mco];
+		if (d_debug >= 10)
+               		fprintf(stderr, "mco=%01x/%02x", b1b2, mco);
 
-		for (msg_ptr = 1; msg_ptr < len; )
-		{
-                	b1b2 = byte_buf[msg_ptr] >> 6;
-                	mco  = byte_buf[msg_ptr] & 0x3f;
-			msg_len = mac_msg_len[(b1b2 << 6) + mco];
-                	fprintf(stderr, "mco=%01x/%02x", b1b2, mco);
+		switch(mco)
+                {
+                        case 0x00: // Group Voice Channel Grant or Null Information Message
+                                switch(b1b2)
+                                {
+                                        case 0x0: // Null
+                                                break;
+                                        case 0x1:
+                                                ch_t = (byte_buf[msg_ptr+2] << 8) + byte_buf[msg_ptr+3];
+                                                grpaddr = (byte_buf[msg_ptr+4] << 8) + byte_buf[msg_ptr+5];
+                                                srcaddr = (byte_buf[msg_ptr+6] << 16) + (byte_buf[msg_ptr+7] << 8) + byte_buf[msg_ptr+8];
+						if (d_debug >= 10)
+                                                	fprintf(stderr, ", srcaddr=%u, grpaddr=%u, ch=%u", srcaddr, grpaddr, ch_t);
+                                                break;
+                                        case 0x2:
+                                                break; // mfr specific msg
+                                        case 0x3:
+                                                ch_t = (byte_buf[msg_ptr+2] << 8) + byte_buf[msg_ptr+3];
+                                                ch_r = (byte_buf[msg_ptr+4] << 8) + byte_buf[msg_ptr+5];
+                                                grpaddr = (byte_buf[msg_ptr+6] << 8) + byte_buf[msg_ptr+7];
+                                                srcaddr = (byte_buf[msg_ptr+8] << 16) + (byte_buf[msg_ptr+9] << 8) + byte_buf[msg_ptr+10];
+						if (d_debug >= 10)
+                                                	fprintf(stderr, ", srcaddr=%u, grpaddr=%u, ch_t=%u, ch_r=%u", srcaddr, grpaddr, ch_t, ch_r);
+                                                break;
+                                }
+                                break;
 
-			switch(mco)
-                        {
-                                case 0x00: // Group Voice Channel Grant or Null Information Message
-                                        switch(b1b2)
-                                        {
-                                                case 0x0: // Null
-                                                        break;
-                                                case 0x1:
-                                                        ch_t = (byte_buf[msg_ptr+2] << 8) + byte_buf[msg_ptr+3];
-                                                        grpaddr = (byte_buf[msg_ptr+4] << 8) + byte_buf[msg_ptr+5];
-                                                        srcaddr = (byte_buf[msg_ptr+6] << 16) + (byte_buf[msg_ptr+7] << 8) + byte_buf[msg_ptr+8];
-                                                        fprintf(stderr, ", srcaddr=%u, grpaddr=%u, ch=%u", srcaddr, grpaddr, ch_t);
-                                                        break;
-                                                case 0x2:
-                                                        break; // mfr specific msg
-                                                case 0x3:
-                                                        ch_t = (byte_buf[msg_ptr+2] << 8) + byte_buf[msg_ptr+3];
-                                                        ch_r = (byte_buf[msg_ptr+4] << 8) + byte_buf[msg_ptr+5];
-                                                        grpaddr = (byte_buf[msg_ptr+6] << 8) + byte_buf[msg_ptr+7];
-                                                        srcaddr = (byte_buf[msg_ptr+8] << 16) + (byte_buf[msg_ptr+9] << 8) + byte_buf[msg_ptr+10];
-                                                        fprintf(stderr, ", srcaddr=%u, grpaddr=%u, ch_t=%u, ch_r=%u", srcaddr, grpaddr, ch_t, ch_r);
-                                                        break;
-                                        }
-                                        break;
+                        case 0x01: // Group Voice Channel User Message
+                                grpaddr = (byte_buf[msg_ptr+2] << 8) + byte_buf[msg_ptr+3];
+                                srcaddr = (byte_buf[msg_ptr+4] << 16) + (byte_buf[msg_ptr+5] << 8) + byte_buf[msg_ptr+6];
+                                if (d_debug >= 10)
+                              	        fprintf(stderr, ", srcaddr=%u, grpaddr=%u", srcaddr, grpaddr);
+                                s = "{\"srcaddr\" : " + std::to_string(srcaddr) + ", \"grpaddr\": " + std::to_string(grpaddr) + "}";
+				send_msg(s, -3);
+                                break;
 
-                                case 0x01: // Group Voice Channel User Message
-                                        grpaddr = (byte_buf[msg_ptr+2] << 8) + byte_buf[msg_ptr+3];
-                                        srcaddr = (byte_buf[msg_ptr+4] << 16) + (byte_buf[msg_ptr+5] << 8) + byte_buf[msg_ptr+6];
-                                        fprintf(stderr, ", srcaddr=%u, grpaddr=%u", srcaddr, grpaddr);
-                                        break;
+			case 0x3b: // Network Status Broadcast Message
+				switch(b1b2)
+				{
+					case 0x1: // Abbreviated
+                				colorcd = ((byte_buf[msg_ptr+9] & 0x0f) << 8) + byte_buf[msg_ptr+10];
+                                                if (d_debug >= 10)
+                                       	                fprintf(stderr, ", colorcd=%03x", colorcd);
+						break;
 
-				case 0x3b: // Network Status Broadcast Message
-					switch(b1b2)
-					{
-						case 0x1: // Abbreviated
-                					colorcd = ((byte_buf[msg_ptr+9] & 0x0f) << 8) + byte_buf[msg_ptr+10];
-                                        	        fprintf(stderr, ", colorcd=%03x", colorcd);
-							break;
-
-						case 0x3: // Extended
-        	        				colorcd = ((byte_buf[msg_ptr+11] & 0x0f) << 8) + byte_buf[msg_ptr+12];
-                	                                fprintf(stderr, ", colorcd=%03x", colorcd);
-							break;
-					}
-					break;
-                	}
-			msg_ptr = (msg_len == 0) ? len : (msg_ptr + msg_len); // TODO: handle variable length messages
-			if (msg_ptr < len)
-				fprintf(stderr,", ");
-		}
-        }
+					case 0x3: // Extended
+        	       				colorcd = ((byte_buf[msg_ptr+11] & 0x0f) << 8) + byte_buf[msg_ptr+12];
+                                                if (d_debug >= 10)
+                                                        fprintf(stderr, ", colorcd=%03x", colorcd);
+						break;
+				}
+				break;
+               	}
+		msg_ptr = (msg_len == 0) ? len : (msg_ptr + msg_len); // TODO: handle variable length messages
+		if ((d_debug >= 10) && (msg_ptr < len))
+			fprintf(stderr,", ");
+	}
 }
 
 int p25p2_tdma::handle_acch_frame(const uint8_t dibits[], bool fast) 
@@ -504,3 +521,11 @@ void p25p2_tdma::handle_4V2V_ess(const uint8_t dibits[])
         }
 }
 
+void p25p2_tdma::send_msg(const std::string msg_str, long msg_type)
+{
+	if (!d_do_msgq || d_msg_queue->full_p())
+		return;
+
+	gr::message::sptr msg = gr::message::make_from_string(msg_str, msg_type, 0, 0);
+	d_msg_queue->insert_tail(msg);
+}
