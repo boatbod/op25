@@ -48,9 +48,9 @@ class curses_terminal(threading.Thread):
     def setup_curses(self):
         self.stdscr = curses.initscr()
         self.maxy, self.maxx = self.stdscr.getmaxyx()
-        if (self.maxy < 5) or (self.maxx < 70):
-            sys.stderr.write("Terminal window too small! Minimum size [70 x 5], actual [%d x %d]\n" % (self.maxx, self.maxy))
-            print "Terminal window too small! Minimum size [70 x 5], actual [%d x %d]\n" % (self.maxx, self.maxy)
+        if (self.maxy < 6) or (self.maxx < 70):
+            sys.stderr.write("Terminal window too small! Minimum size [70 x 6], actual [%d x %d]\n" % (self.maxx, self.maxy))
+            print "Terminal window too small! Minimum size [70 x 6], actual [%d x %d]\n" % (self.maxx, self.maxy)
             self.keep_running = False
             return
 
@@ -75,7 +75,7 @@ class curses_terminal(threading.Thread):
     def resize_curses(self):
         self.maxy, self.maxx = self.stdscr.getmaxyx()
  
-        if (self.maxx < 70) or (self.maxy < 5):	# do not resize if window is now too small
+        if (self.maxx < 70) or (self.maxy < 6):	# do not resize if window is now too small
             return 
 
         self.stdscr.clear()
@@ -207,7 +207,7 @@ class curses_terminal(threading.Thread):
             self.top_bar.refresh()
             self.freq_list.clear()
             for i in xrange(len(freqs)):
-                if i > (self.maxy - 4):
+                if i > (self.maxy - 5):
                     break
                 s=msg[current_nac]['frequencies'][freqs[i]]
                 s = s[:(self.maxx - 1)]
