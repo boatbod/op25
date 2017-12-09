@@ -742,7 +742,7 @@ class rx_ctl (object):
         curr_time = time.time()
         if type == -3:		# P25 call signalling data
             js = json.loads(msg.to_string())
-            if 'srcaddr' in js:
+            if ('srcaddr' in js) and (js['srcaddr'] != 0):
                 self.current_srcaddr = js['srcaddr']
             if 'encrypted' in js:
                 self.current_encrypted = js['encrypted']
@@ -1037,6 +1037,8 @@ class rx_ctl (object):
             new_frequency = tsys.trunk_cc
         elif self.wait_until <= curr_time and self.tgid_hold_until <= curr_time and self.hold_mode is False and new_state is None:
             self.wait_until = curr_time + self.TSYS_HOLD_TIME
+            self.current_srcaddr = 0
+            self.current_encrypted = 0
             new_nac = self.find_next_tsys()
             new_state = self.states.CC
 
