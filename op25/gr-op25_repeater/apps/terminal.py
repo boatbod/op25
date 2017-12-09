@@ -207,7 +207,7 @@ class curses_terminal(threading.Thread):
             self.top_bar.refresh()
             self.freq_list.clear()
             for i in xrange(len(freqs)):
-                if i > (self.maxy - 5):
+                if i > (self.maxy - 6):
                     break
                 s=msg[current_nac]['frequencies'][freqs[i]]
                 s = s[:(self.maxx - 1)]
