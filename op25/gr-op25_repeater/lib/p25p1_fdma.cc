@@ -487,8 +487,9 @@ p25p1_fdma::process_PDU(const bit_vector& fr, uint32_t fr_len)
 {
 	uint8_t fmt, sap, blks, op = 0;
 	block_vector deinterleave_buf;
-	if (process_blocks(fr, fr_len, deinterleave_buf) == 0) { // extract blocks comprising PDU
-		if (crc16(deinterleave_buf[0].data(), 12) != 0)  // validate header CRC
+	if ((process_blocks(fr, fr_len, deinterleave_buf) == 0) &&
+	    (deinterleave_buf.size() > 0)) {			// extract all blocks associated with this PDU
+		if (crc16(deinterleave_buf[0].data(), 12) != 0) // validate PDU header
 			return;
 
 		fmt =  deinterleave_buf[0][0] & 0x1f;
