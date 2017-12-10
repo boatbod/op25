@@ -216,7 +216,7 @@ class curses_terminal(threading.Thread):
             self.status1.clear()
             if 'srcaddr' in msg[current_nac]:
                 srcaddr = msg[current_nac]['srcaddr']
-                if srcaddr != 0:
+                if (srcaddr != 0) and (srcaddr != 0xffffff):
                     s = '%d' % (srcaddr)
                     s = s[:14]
                     self.status1.addstr(0, (14-len(s)), s)
