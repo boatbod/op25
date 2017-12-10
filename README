@@ -14,6 +14,8 @@ Many changes:
 - reworked trunking hold/release logic that improves Phase 1 audio on some systems
 - decoding and logging of encryption sync info ("ESS") at log level 10 (-v 10)
 - ability to silence the playing of encrypted audio
+- encrypted audio flag shown on terminal screen
+- source radio id displayed on terminal screen (if available)
 
 New command line options:
   --fine-tune      : sub-ppm tuning adjustment
