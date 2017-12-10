@@ -167,7 +167,7 @@ class trunked_system (object):
             return "Talkgroup ID %d [0x%x]" % (tgid, tgid)
         return self.tgid_map[tgid]
 
-    def update_talkgroup(self, frequency, tgid, tdma_slot):
+    def update_talkgroup(self, frequency, tgid, tdma_slot, srcaddr):
         if self.debug >= 5:
             sys.stderr.write('%f set tgid: %s\n' % (time.time(), tgid))
         
@@ -179,11 +179,12 @@ class trunked_system (object):
         self.talkgroups[tgid]['time'] = time.time()
         self.talkgroups[tgid]['frequency'] = frequency
         self.talkgroups[tgid]['tdma_slot'] = tdma_slot
+        self.talkgroups[tgid]['srcaddr'] = srcaddr
 
-    def update_voice_frequency(self, frequency, tgid=None, tdma_slot=None):
+    def update_voice_frequency(self, frequency, tgid=None, tdma_slot=None, srcaddr=0):
         if not frequency:	# e.g., channel identifier not yet known
             return
-        self.update_talkgroup(frequency, tgid, tdma_slot)
+        self.update_talkgroup(frequency, tgid, tdma_slot, srcaddr)
         if frequency not in self.voice_frequencies:
             self.voice_frequencies[frequency] = {'counter':0}
             sorted_freqs = collections.OrderedDict(sorted(self.voice_frequencies.items()))
@@ -215,7 +216,7 @@ class trunked_system (object):
     def find_talkgroup(self, start_time, tgid=None):
         self.blacklist_update(start_time)
         if tgid is not None and tgid in self.talkgroups and self.talkgroups[tgid]['time'] >= start_time:
-            return self.talkgroups[tgid]['frequency'], tgid, self.talkgroups[tgid]['tdma_slot']
+            return self.talkgroups[tgid]['frequency'], tgid, self.talkgroups[tgid]['tdma_slot'], self.talkgroups[tgid]['srcaddr']
         for active_tgid in self.talkgroups:
             if self.talkgroups[active_tgid]['time'] < start_time:
                 continue
@@ -226,15 +227,15 @@ class trunked_system (object):
             if self.talkgroups[active_tgid]['tdma_slot'] is not None and (self.ns_syid < 0 or self.ns_wacn < 0):
                 continue
             if tgid is None:
-                return self.talkgroups[active_tgid]['frequency'], active_tgid, self.talkgroups[active_tgid]['tdma_slot']
-        return None, None, None
+                return self.talkgroups[active_tgid]['frequency'], active_tgid, self.talkgroups[active_tgid]['tdma_slot'], self.talkgroups[active_tgid]['srcaddr']
+        return None, None, None, None
 
     def add_blacklist(self, tgid, end_time=None):
         if not tgid:
             return
         self.blacklist[tgid] = end_time
 
-    def decode_mbt_data(self, opcode, header, mbt_data):
+    def decode_mbt_data(self, opcode, src, header, mbt_data):
         self.cc_timeouts = 0
         self.last_tsbk = time.time()
         updated = 0
@@ -245,7 +246,7 @@ class trunked_system (object):
             ch2  = (mbt_data >> 48) & 0xffff
             ga   = (mbt_data >> 32) & 0xffff
             f = self.channel_id_to_frequency(ch1)
-            self.update_voice_frequency(f, tgid=ga, tdma_slot=self.get_tdma_slot(ch1))
+            self.update_voice_frequency(f, tgid=ga, tdma_slot=self.get_tdma_slot(ch1), srcaddr=src)
             if f:
                 updated += 1
             if self.debug > 10:
@@ -300,9 +301,6 @@ class trunked_system (object):
         self.last_tsbk = time.time()
         self.stats['tsbks'] += 1
         updated = 0
-        #if crc16(tsbk, 12) != 0:
-        #    self.stats['crc'] += 1
-        #    return	# crc check failed
         tsbk = tsbk << 16	# for missing crc
         opcode = (tsbk >> 88) & 0x3f
         if self.debug > 10:
@@ -322,7 +320,7 @@ class trunked_system (object):
                 ga   = (tsbk >> 40) & 0xffff
                 sa   = (tsbk >> 16) & 0xffffff
                 f = self.channel_id_to_frequency(ch)
-                self.update_voice_frequency(f, tgid=ga, tdma_slot=self.get_tdma_slot(ch))
+                self.update_voice_frequency(f, tgid=ga, tdma_slot=self.get_tdma_slot(ch), srcaddr=sa)
                 if f:
                     updated += 1
                 if self.debug > 10:
@@ -343,7 +341,7 @@ class trunked_system (object):
                 sg  = (tsbk >> 40) & 0xffff
                 sa  = (tsbk >> 16) & 0xffffff
                 f = self.channel_id_to_frequency(ch)
-                self.update_voice_frequency(f, tgid=sg, tdma_slot=self.get_tdma_slot(ch))
+                self.update_voice_frequency(f, tgid=sg, tdma_slot=self.get_tdma_slot(ch), srcaddr=sa)
                 if f:
                     updated += 1
                 if self.debug > 10:
@@ -803,13 +801,14 @@ class rx_ctl (object):
 
             fmt = (header >> 72) & 0x1f
             sap = (header >> 64) & 0x3f
+            src = (header >> 48) & 0xffffff
             if fmt != 0x17: # only Extended Format MBT presently supported
                 return
 
             opcode = (header >> 16) & 0x3f
             if self.debug > 10:
                 sys.stderr.write('type %d at %f state %d len %d/%d opcode %x [%x/%x]\n' %(type, time.time(), self.state, len(s1), len(s2), opcode, header,mbt_data))
-            updated += self.trunked_systems[nac].decode_mbt_data(opcode, header << 16, mbt_data << 32)
+            updated += self.trunked_systems[nac].decode_mbt_data(opcode, src, header << 16, mbt_data << 32)
 
         if nac != self.current_nac:
             return
@@ -960,12 +959,13 @@ class rx_ctl (object):
                 desired_tgid = None
                 if self.tgid_hold_until > curr_time:
                     desired_tgid = self.tgid_hold
-                new_frequency, new_tgid, tdma_slot = tsys.find_talkgroup(curr_time, tgid=desired_tgid)
+                new_frequency, new_tgid, tdma_slot, srcaddr = tsys.find_talkgroup(curr_time, tgid=desired_tgid)
                 if new_frequency:
                     if self.debug > 0:
                         sys.stderr.write("%f voice update: tg(%s), freq(%s), slot(%s)\n" % (time.time(), new_tgid, new_frequency, tdma_slot))
                     new_state = self.states.TO_VC
                     self.current_tgid = new_tgid
+                    self.current_srcaddr = srcaddr
                     self.tgid_hold = new_tgid
                     self.tgid_hold_until = max(curr_time + self.TGID_HOLD_TIME, self.tgid_hold_until)
                     self.wait_until = curr_time + self.TSYS_HOLD_TIME
