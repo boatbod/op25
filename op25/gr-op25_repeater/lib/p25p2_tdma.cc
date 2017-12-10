@@ -454,8 +454,6 @@ int p25p2_tdma::handle_packet(const uint8_t dibits[])
                 } else {
                         std::string s = "{\"encrypted\" : " + std::to_string(1) + "}";
                         send_msg(s, -3);
-			if (d_debug > 1)
-                                fprintf(stderr, "p25p2_tdma: encrypted audio algid(%0x)\n", ess_algid);
                 }
 		return -1;
 	} else if (burst_type == 3) {                   // scrambled sacch
