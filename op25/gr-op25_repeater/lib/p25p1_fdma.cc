@@ -50,6 +50,8 @@ static const int64_t TIMEOUT_THRESHOLD = 1000000;
     }
 
 static uint16_t crc16(uint8_t buf[], int len) {
+        if (buf == 0)
+                return -1;
         uint32_t poly = (1<<12) + (1<<5) + (1<<0);
         uint32_t crc = 0;
         for(int i=0; i<len; i++) {
@@ -542,14 +544,14 @@ p25p1_fdma::process_blocks(const bit_vector& fr, uint32_t& fr_len, block_vector&
 
 	int bl_cnt = 0;
 	int bl_len = (bv.size() - (48+64)) / 196;
-	for (int bl_cnt = 0; bl_cnt < bl_len; bl_cnt++) { // deinterleave,  decode trellis1_2, save 12 byte block
+	for (bl_cnt = 0; bl_cnt < bl_len; bl_cnt++) { // deinterleave,  decode trellis1_2, save 12 byte block
 		dbuf.push_back({0,0,0,0,0,0,0,0,0,0,0,0});
 		if(block_deinterleave(bv, 48+64+bl_cnt*196, dbuf[bl_cnt].data()) != 0) {
 			dbuf.pop_back();
 			return -1;
 		}
 	}
-	return 0;
+	return (bl_cnt > 0) ? 0 : -1;
 }
 
 void
