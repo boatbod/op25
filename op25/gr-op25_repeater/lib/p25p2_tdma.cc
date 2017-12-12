@@ -98,7 +98,6 @@ p25p2_tdma::p25p2_tdma(const op25_audio& udp, int slotid, int debug, bool do_msg
 	d_debug(debug),
 	d_do_audio_output(do_audio_output),
         d_do_nocrypt(do_nocrypt),
-	crc_errors(0),
         burst_id(-1),
         ESS_A(28,0),
         ESS_B(16,0),
@@ -138,7 +137,6 @@ int p25p2_tdma::process_mac_pdu(const uint8_t byte_buf[], const unsigned int len
 	unsigned int opcode = (byte_buf[0] >> 5) & 0x7;
 	unsigned int offset = (byte_buf[0] >> 2) & 0x7;
 
-	// TODO: decode MAC PDU's more thoroughly
         switch (opcode)
         {
                 case 1: // MAC_PTT
@@ -323,54 +321,89 @@ void p25p2_tdma::decode_mac_msg(const uint8_t byte_buf[], const unsigned int len
 
 int p25p2_tdma::handle_acch_frame(const uint8_t dibits[], bool fast) 
 {
-	int rc = -1;
+	int i, j, rc;
 	uint8_t bits[512];
+	std::vector<uint8_t> HB(63,0);
+	std::vector<int> Erasures;
 	uint8_t byte_buf[32];
 	unsigned int bufl=0;
 	unsigned int len=0;
 	if (fast) {
-		for (int i=11; i < 11+36; i++) {
+		for (i=11; i < 11+36; i++) {
 			bits[bufl++] = (dibits[i] >> 1) & 1;
 			bits[bufl++] = dibits[i] & 1;
 		}
-		for (int i=48; i < 48+31; i++) {
+		for (i=48; i < 48+31; i++) {
 			bits[bufl++] = (dibits[i] >> 1) & 1;
 			bits[bufl++] = dibits[i] & 1;
 		}
-		for (int i=100; i < 100+32; i++) {
+		for (i=100; i < 100+32; i++) {
 			bits[bufl++] = (dibits[i] >> 1) & 1;
 			bits[bufl++] = dibits[i] & 1;
 		}
-		for (int i=133; i < 133+36; i++) {
+		for (i=133; i < 133+36; i++) {
 			bits[bufl++] = (dibits[i] >> 1) & 1;
 			bits[bufl++] = dibits[i] & 1;
 		}
 	} else {
-		for (int i=11; i < 11+36; i++) {
+		for (i=11; i < 11+36; i++) {
 			bits[bufl++] = (dibits[i] >> 1) & 1;
 			bits[bufl++] = dibits[i] & 1;
 		}
-		for (int i=48; i < 48+84; i++) {
+		for (i=48; i < 48+84; i++) {
 			bits[bufl++] = (dibits[i] >> 1) & 1;
 			bits[bufl++] = dibits[i] & 1;
 		}
-		for (int i=133; i < 133+36; i++) {
+		for (i=133; i < 133+36; i++) {
 			bits[bufl++] = (dibits[i] >> 1) & 1;
 			bits[bufl++] = dibits[i] & 1;
 		}
 	}
-	// FIXME: TODO: add RS decode
-	if (fast)
+
+	// Reed-Solomon
+	if (fast) {
+		j = 9;
+		len = 270;
+		Erasures = {0,1,2,3,4,5,6,7,8,54,55,56,57,58,59,60,61,62};
+	}
+	else {
+		j = 5;
+		len = 312;
+		Erasures = {0,1,2,3,4,57,58,59,60,61,62};
+	}
+
+	for (i = 0; i < len; i += 6) { // convert bits to hexbits
+		HB[j] = (bits[i] << 5) + (bits[i+1] << 4) + (bits[i+2] << 3) + (bits[i+3] << 2) + (bits[i+4] << 1) + bits[i+5];
+		j++;
+	}
+	rc = rs28.decode(HB, Erasures);
+	if (rc < 0)
+		return -1;
+
+	if (fast) {
+		j = 9;
 		len = 144;
-	else
+	}
+	else {
+		j = 5;
 		len = 168;
-	if (crc12_ok(bits, len)) {
+	}
+	for (i = 0; i < len; i += 6) { // convert hexbits back to bits
+		bits[i]   = (HB[j] & 0x20) >> 5;
+		bits[i+1] = (HB[j] & 0x10) >> 4;
+		bits[i+2] = (HB[j] & 0x08) >> 3;
+		bits[i+3] = (HB[j] & 0x04) >> 2;
+		bits[i+4] = (HB[j] & 0x02) >> 1;
+		bits[i+5] = (HB[j] & 0x01);
+		j++;
+	}
+
+	rc = -1;
+	if (crc12_ok(bits, len)) { // TODO: rewrite crc12 so we don't have to do so much bit manipulation
 		for (int i=0; i<len/8; i++) {
 			byte_buf[i] = (bits[i*8 + 0] << 7) + (bits[i*8 + 1] << 6) + (bits[i*8 + 2] << 5) + (bits[i*8 + 3] << 4) + (bits[i*8 + 4] << 3) + (bits[i*8 + 5] << 2) + (bits[i*8 + 6] << 1) + (bits[i*8 + 7] << 0);
 		}
 		rc = process_mac_pdu(byte_buf, len/8);
-	} else {
-		crc_errors++;
 	}
 	return rc;
 }
@@ -445,6 +478,7 @@ int p25p2_tdma::handle_packet(const uint8_t dibits[])
                 handle_4V2V_ess(&xored_burst[84]);
                 if ( !d_do_nocrypt || !encrypted() ) {
                         std::string s = "{\"encrypted\" : " + std::to_string(0) + "}";
+                        send_msg(s, -3);
                         handle_voice_frame(&xored_burst[11]);
                         handle_voice_frame(&xored_burst[48]);
                         if (burst_type == 0) {

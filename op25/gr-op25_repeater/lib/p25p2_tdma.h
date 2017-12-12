@@ -68,7 +68,6 @@ private:
         const op25_audio& op25audio;
 
 	int d_debug;
-	unsigned long int crc_errors;
 
         int burst_id;
         inline int track_vb(int burst_type) { return burst_id = (burst_type == 0) ? (++burst_id % 5) : 4; }
