@@ -16,6 +16,7 @@ Many changes:
 - ability to silence the playing of encrypted audio
 - encrypted audio flag shown on terminal screen
 - source radio id displayed on terminal screen (if available)
+- supports IP addresses or host names for --wireshark-host (-W) parameter
 
 New command line options:
   --fine-tune      : sub-ppm tuning adjustment
