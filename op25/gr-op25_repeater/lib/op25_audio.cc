@@ -31,6 +31,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <netdb.h>
 
 #include "op25_audio.h"
 
@@ -43,10 +44,14 @@ op25_audio::op25_audio(const char* udp_host, int port, int debug) :
     d_write_sock(0),
     d_file_enabled(false)
 {
-    strncpy(d_udp_host, udp_host, sizeof(d_udp_host));
-    d_udp_host[sizeof(d_udp_host)-1] = 0;
-    if ( port )
-        open_socket();
+    char ip[20];
+    if (hostname_to_ip(udp_host, ip) == 0)
+    {
+        strncpy(d_udp_host, ip, sizeof(d_udp_host));
+        d_udp_host[sizeof(d_udp_host)-1] = 0;
+        if ( port )
+            open_socket();
+    }
 }
 
 // destructor
@@ -96,6 +101,40 @@ op25_audio::op25_audio(const char* destination, int debug) :
         }
         d_file_enabled = true;
     }
+}
+
+// convert hostname to ip address
+int op25_audio::hostname_to_ip(const char *hostname , char *ip)
+{
+    int sockfd;  
+    struct addrinfo hints, *servinfo, *p;
+    struct sockaddr_in *h;
+    int rv;
+ 
+    memset(&hints, 0, sizeof hints);
+    hints.ai_family = AF_UNSPEC; // use AF_INET6 to force IPv6
+    hints.ai_socktype = SOCK_DGRAM;
+ 
+    if ( (rv = getaddrinfo( hostname , NULL , &hints , &servinfo)) != 0) 
+    {
+        fprintf(stderr, "op25_audio::hostname_to_ip() getaddrinfo: %s\n", gai_strerror(rv));
+        return -1;
+    }
+ 
+    // loop through all the results and connect to the first we can
+    for(p = servinfo; p != NULL; p = p->ai_next) 
+    {
+        h = (struct sockaddr_in *) p->ai_addr;
+        if (h->sin_addr.s_addr != 0)
+        {
+            strcpy(ip , inet_ntoa( h->sin_addr ) );
+            break;
+        }
+    }
+     
+    freeaddrinfo(servinfo); // all done with this structure
+    return 0;
+
 }
 
 // open socket and set up data structures
