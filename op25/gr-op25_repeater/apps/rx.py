@@ -480,15 +480,32 @@ class p25_rx_block (gr.top_block):
         return True
 
     def toggle_plot(self, plot_type):
-        if plot_type == 1:	# fft
+        plot_off = 0;
+        if (self.fft_sink is not None):
             self.toggle_fft()
-        elif plot_type == 2:	# constellation
+            plot_off = 1
+        elif (self.constellation_sink is not None):
             self.toggle_constellation()
-        elif plot_type == 3:	# symbol
+            plot_off = 2
+        elif (self.symbol_sink is not None):
             self.toggle_symbol()
-        elif plot_type == 4:	# datascope
+            plot_off = 3
+        elif (self.eye_sink is not None):
             self.toggle_eye()
-        elif plot_type == 5:	# mixer output
+            plot_off = 4
+        elif (self.mixer_sink is not None):
+            self.toggle_mixer()
+            plot_off = 5
+
+        if (plot_type == 1) and (plot_off != 1):	# fft
+            self.toggle_fft()
+        elif (plot_type == 2) and (plot_off != 2):	# constellation
+            self.toggle_constellation()
+        elif (plot_type == 3) and (plot_off != 3):	# symbol
+            self.toggle_symbol()
+        elif (plot_type == 4) and (plot_off != 4):	# datascope
+            self.toggle_eye()
+        elif (plot_type == 5) and (plot_off != 5):	# mixer output
             self.toggle_mixer()
 
     def toggle_mixer(self):
