@@ -723,8 +723,9 @@ class rx_ctl (object):
         d = {'json_type': 'trunk_update'}
         for nac in self.trunked_systems.keys():
             d[nac] = json.loads(self.trunked_systems[nac].to_json())
-        d[self.current_nac]['srcaddr'] = self.current_srcaddr
-        d[self.current_nac]['encrypted'] = self.current_encrypted
+        if self.current_nac is not None:
+            d[self.current_nac]['srcaddr'] = self.current_srcaddr
+            d[self.current_nac]['encrypted'] = self.current_encrypted
         return json.dumps(d)
 
     def to_string(self):
