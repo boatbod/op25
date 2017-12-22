@@ -139,13 +139,14 @@ vocoder_impl::general_work_encode (int noutput_items,
   const int fragments_available = output_queue.size() / FRAGMENT_SIZE;
   const int nsamples_consume = std::min(ninput_items[0], std::max(0,(noutput_fragments - fragments_available) * 9 * 160));
 
-  if (nsamples_consume > 0)
+  if (nsamples_consume > 0) {
     p1voice_encode.compress_samp(in, nsamples_consume);
 
-  // Tell runtime system how many input items we consumed on
-  // each input stream.
+    // Tell runtime system how many input items we consumed on
+    // each input stream.
 
-  consume_each (nsamples_consume);
+    consume_each (nsamples_consume);
+  }
 
   if (opt_udp_port > 0)		// in udp option, we are a gr sink only
     return 0;
