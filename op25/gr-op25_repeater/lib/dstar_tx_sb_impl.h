@@ -60,6 +60,7 @@ namespace gr {
 	const char * d_config_file;
         ambe_encoder d_encoder;
 	int d_frame_counter;
+	uint8_t d_dstar_header_data[480];
     };
 
   } // namespace op25_repeater
