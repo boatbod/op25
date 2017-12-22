@@ -146,6 +146,9 @@ void gardner_costas_cc_impl::set_omega (float omega) {
     memset(d_dl, 0, NUM_COMPLEX * sizeof(gr_complex));
 }
 
+float gardner_costas_cc_impl::get_freq_error (void) {
+	return (d_freq);
+}
 
 void
 gardner_costas_cc_impl::forecast(int noutput_items, gr_vector_int &ninput_items_required)
@@ -261,7 +264,7 @@ gardner_costas_cc_impl::general_work (int noutput_items,
 		float error_real = (d_last_sample.real() - interp_samp.real()) * interp_samp_mid.real();
 		float error_imag = (d_last_sample.imag() - interp_samp.imag()) * interp_samp_mid.imag();
 		gr_complex diffdec = interp_samp * conj(d_last_sample);
-		(void)slicer(std::arg(diffdec));
+		// cpu reduction (void)slicer(std::arg(diffdec));
 		d_last_sample = interp_samp;	// save for next time
 #if 1
 		float symbol_error = error_real + error_imag; // Gardner loop error
