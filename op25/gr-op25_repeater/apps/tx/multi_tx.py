@@ -165,6 +165,8 @@ class my_top_block(gr.top_block):
                 cfg = 'dmr-cfg.dat'
             elif protocols[i] == 'ysf':
                 cfg = 'ysf-cfg.dat'
+            elif protocols[i] == 'dstar':
+                cfg = 'dstar-cfg.dat'
             else:
                 cfg = None
 
