@@ -107,8 +107,8 @@ class my_top_block(gr.top_block):
             print 'protocol [-p] option missing'
             sys.exit(0)
 
-        if options.protocol == 'ysf' or options.protocol == 'dmr':
-            assert options.config_file # dmr and ysf require config file ("-c FILENAME" option)
+        if options.protocol == 'ysf' or options.protocol == 'dmr' or options.protocol == 'dstar':
+            assert options.config_file # dstar, dmr and ysf require config file ("-c FILENAME" option)
 
 	output_gain = output_gains[options.protocol]
 
