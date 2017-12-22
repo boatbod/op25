@@ -28,11 +28,28 @@ import time
 import json
 import threading
 import traceback
+import socket
 
 from gnuradio import gr
 
+KEEPALIVE_TIME = 3.0   # no data received in (seconds)
+
+class q_watcher(threading.Thread):
+    def __init__(self, msgq,  callback, **kwds):
+        threading.Thread.__init__ (self, **kwds)
+        self.setDaemon(1)
+        self.msgq = msgq
+        self.callback = callback
+        self.keep_running = True
+        self.start()
+
+    def run(self):
+        while(self.keep_running):
+            msg = self.msgq.delete_head()
+            self.callback(msg)
+
 class curses_terminal(threading.Thread):
-    def __init__(self, input_q,  output_q, **kwds):
+    def __init__(self, input_q,  output_q, sock=None, **kwds):
         threading.Thread.__init__ (self, **kwds)
         self.setDaemon(1)
         self.input_q = input_q
@@ -41,6 +58,7 @@ class curses_terminal(threading.Thread):
         self.last_update = 0
         self.auto_update = True
         self.current_nac = None
+        self.sock = sock
         self.start()
 
     def setup_curses(self):
@@ -58,7 +76,7 @@ class curses_terminal(threading.Thread):
 
         self.textpad = curses.textpad.Textbox(self.text_win)
 
-    def end_curses(self):
+    def end_terminal(self):
         try:
             curses.endwin()
         except:
@@ -81,17 +99,14 @@ class curses_terminal(threading.Thread):
         COMMANDS = {_ORD_S: 'skip', _ORD_L: 'lockout', _ORD_H: 'hold'}
         c = self.stdscr.getch()
         if c == ord('u') or self.do_auto_update():
-            msg = gr.message().make_from_string('update', -2, 0, 0)
-            self.output_q.insert_tail(msg)
+            self.send_command('update', 0)
         if c in COMMANDS.keys():
-            msg = gr.message().make_from_string(COMMANDS[c], -2, 0, 0)
-            self.output_q.insert_tail(msg)
+            self.send_command(COMMANDS[c], 0)
         elif c == ord('q'):
 		return True
         elif c == ord('t'):
             if self.current_nac:
-                msg = gr.message().make_from_string('add_default_config', -2, int(self.current_nac), 0)
-                self.output_q.insert_tail(msg)
+                self.send_command('add_default_config', int(self.current_nac))
         elif c == ord('f'):
             self.prompt.addstr(0, 0, 'Frequency')
             self.prompt.refresh()
@@ -108,8 +123,7 @@ class curses_terminal(threading.Thread):
             except:
                 freq = None
             if freq:
-                msg = gr.message().make_from_string('set_freq', -2, freq, 0)
-                self.output_q.insert_tail(msg)
+                self.send_command('set_freq', freq)
         elif c == ord('x'):
             assert 1 == 0
         return False
@@ -170,6 +184,13 @@ class curses_terminal(threading.Thread):
                 return self.process_json(msg.to_string())
         return False
 
+    def send_command(self, command, data):
+        if self.sock:
+            self.sock.send(json.dumps({'command': command, 'data': data}))
+        else:
+            msg = gr.message().make_from_string(command, -2, data, 0)
+            self.output_q.insert_tail(msg)
+
     def run(self):
         try:
             self.setup_curses()
@@ -182,6 +203,99 @@ class curses_terminal(threading.Thread):
             sys.stderr.write('terminal: exception occurred\n')
             sys.stderr.write('terminal: exception:\n%s\n' % traceback.format_exc())
         finally:
-            self.end_curses()
-        msg = gr.message().make_from_string('quit', -2, 0, 0)
-        self.output_q.insert_tail(msg)
+            self.end_terminal()
+            self.keep_running = False
+        self.send_command('quit', 0)
+
+class udp_terminal(threading.Thread):
+    def __init__(self, input_q,  output_q, port, **kwds):
+        threading.Thread.__init__ (self, **kwds)
+        self.setDaemon(1)
+        self.input_q = input_q
+        self.output_q = output_q
+        self.keep_running = True
+        self.port = port
+        self.remote_ip = '127.0.0.1'
+        self.remote_port = 0
+        self.keepalive_until = 0
+
+        self.setup_socket(port)
+        self.q_handler = q_watcher(self.input_q, self.process_qmsg)
+        self.start()
+
+    def setup_socket(self, port):
+        self.sock =  socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.sock.bind(('0.0.0.0', port))
+
+    def process_qmsg(self, msg):
+        if time.time() >= self.keepalive_until:
+            return
+        s = msg.to_string()
+        if msg.type() == -4 and self.remote_port > 0:
+            self.sock.sendto(s, (self.remote_ip, self.remote_port))
+
+    def end_terminal(self):
+        self.keep_running = False
+
+    def run(self):
+        while self.keep_running:
+            data, addr = self.sock.recvfrom(2048)
+            data = json.loads(data)
+            if data['command'] == 'quit':
+                self.keepalive_until = 0
+                continue
+            msg = gr.message().make_from_string(str(data['command']), -2, data['data'], 0)
+            self.output_q.insert_tail(msg)
+            self.remote_ip = addr[0]
+            self.remote_port = addr[1]
+            self.keepalive_until = time.time() + KEEPALIVE_TIME
+
+def op25_terminal(input_q,  output_q, terminal_type):
+        if terminal_type == 'curses':
+            return curses_terminal(input_q, output_q)
+        elif terminal_type[0].isdigit():
+            port = int(terminal_type)
+            return udp_terminal(input_q, output_q, port)
+        else:
+            sys.stderr.write('warning: unsupported terminal type: %s\n', terminal_type)
+            return None
+
+class terminal_client(object):
+    def __init__(self):
+        self.input_q = gr.msg_queue(10)
+        self.keep_running = True
+        self.terminal = None
+
+        ip_addr = sys.argv[1]
+        port = int(sys.argv[2])
+
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.sock.connect((ip_addr, port))
+        self.sock.settimeout(0.1)
+
+        self.terminal = curses_terminal(self.input_q, None, sock=self.sock)
+
+    def run(self): 
+        while self.keep_running:
+            try:
+                js, addr = self.sock.recvfrom(2048)
+                msg = gr.message().make_from_string(js, -4, 0, 0)
+                self.input_q.insert_tail(msg)
+            except socket.timeout:
+                pass
+            except:
+                raise
+            if not self.terminal.keep_running:
+                self.keep_running = False
+
+if __name__ == '__main__':
+    terminal = None
+    try:
+        terminal = terminal_client()
+        terminal.run()
+    except:
+        sys.stderr.write('terminal: exception occurred\n')
+        sys.stderr.write('terminal: exception:\n%s\n' % traceback.format_exc())
+    finally:
+        if terminal is not None and terminal.terminal is not None:
+            terminal.terminal.end_terminal()
