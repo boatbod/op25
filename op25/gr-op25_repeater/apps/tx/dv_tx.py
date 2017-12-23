@@ -79,6 +79,7 @@ class my_top_block(gr.top_block):
         parser = OptionParser(option_class=eng_option)
 
         parser.add_option("-a", "--args", type="string", default="", help="device args")
+        parser.add_option("-A", "--alt-modulator-rate", type="int", default=50000, help="when mod rate is not a submutiple of IF rate")
         parser.add_option("-b", "--bt", type="float", default=0.5, help="specify bt value")
         parser.add_option("-c", "--config-file", type="string", default=None, help="specify the config file name")
         parser.add_option("-f", "--file1", type="string", default=None, help="specify the input file slot 1")
@@ -95,7 +96,7 @@ class my_top_block(gr.top_block):
         parser.add_option("-Q", "--frequency", type="float", default=0.0, help="Hz")
         parser.add_option("-r", "--repeat", action="store_true", default=False, help="input file repeat")
         parser.add_option("-R", "--fullrate-mode", action="store_true", default=False, help="ysf fullrate")
-        parser.add_option("-s", "--modulator-rate", type="int", default=48000, help="must be submultiple of IF rate")
+        parser.add_option("-s", "--modulator-rate", type="int", default=48000, help="must be submultiple of IF rate - see also -A")
         parser.add_option("-S", "--alsa-rate", type="int", default=48000, help="sound source/sink sample rate")
         parser.add_option("-t", "--test", type="string", default=None, help="test pattern symbol file")
         parser.add_option("-v", "--verbose", type="int", default=0, help="additional output")
@@ -194,14 +195,22 @@ class my_top_block(gr.top_block):
                 self.connect(ENCODER, SYMBOL_SINK)
 
         if options.args:
+            self.setup_sdr_output(options, mod_adjust[options.protocol])
             f1 = float(options.if_rate) / options.modulator_rate
             i1 = int(options.if_rate / options.modulator_rate)
             if f1 - i1 > 1e-3:
-                print '*** Error, sdr rate %d not an integer multiple of modulator rate %d - ratio=%f' % (options.if_rate, options.modulator_rate, f1)
-                sys.exit(1)
-            self.setup_sdr_output(options, mod_adjust[options.protocol])
-            interp = filter.rational_resampler_fff(options.if_rate / options.modulator_rate, 1)
-            self.connect(MOD, AMP, interp, self.fm_modulator, self.u)
+                f1 = float(options.if_rate) / options.alt_modulator_rate
+                i1 = int(options.if_rate / options.alt_modulator_rate)
+                if f1 - i1 > 1e-3:
+                    print '*** Error, sdr rate %d not an integer multiple of alt modulator rate %d - ratio=%f' % (options.if_rate, options.alt_modulator_rate, f1)
+                    sys.exit(0)
+                a_resamp = filter.pfb.arb_resampler_fff(options.alt_modulator_rate / float(options.modulator_rate))
+                sys.stderr.write('adding resampler for rate change %d ===> %d\n' % (options.modulator_rate, options.alt_modulator_rate))
+                interp = filter.rational_resampler_fff(options.if_rate / options.alt_modulator_rate, 1)
+                self.connect(MOD, AMP, a_resamp, interp, self.fm_modulator, self.u)
+            else:
+                interp = filter.rational_resampler_fff(options.if_rate / options.modulator_rate, 1)
+                self.connect(MOD, AMP, interp, self.fm_modulator, self.u)
         else:
             self.connect(MOD, AMP, OUT)
 
