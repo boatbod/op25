@@ -428,7 +428,7 @@ p25p1_fdma::process_LCW(std::vector<uint8_t>& HB)
 		fprintf(stderr, "LCW: pb=%d, sf=%d, lco=%d", pb, sf, lco);
 
 	if (pb == 0) { // only decode if unencrypted
-		if ((sf == 0) && ((lcw[1] == 0x00) || (lcw[1] == 0x01))) {	// explicit MFID, standard format
+		if ((sf == 0) && ((lcw[1] == 0x00) || (lcw[1] == 0x01))) {	// sf=0, explicit MFID in standard format
 			switch (lco) {
 				case 0x00: { // Group Voice Channel User
 					uint16_t grpaddr = (lcw[4] << 8) + lcw[5];
@@ -440,7 +440,7 @@ p25p1_fdma::process_LCW(std::vector<uint8_t>& HB)
 					break;
 				}
 			}
-		} else {							// implicit MFID
+		} else if (sf == 1) {						// sf=1, implicit MFID
 			switch (lco) {
 				case 0x02: { // Group Voice Channel Update
 					uint16_t ch_A  = (lcw[1] << 8) + lcw[2];
@@ -449,6 +449,15 @@ p25p1_fdma::process_LCW(std::vector<uint8_t>& HB)
 					uint16_t grp_B = (lcw[7] << 8) + lcw[8];
 					if (d_debug >= 10)
 						fprintf(stderr, ", ch_A=%d, grp_A=%d, ch_B=%d, grp_B=%d", ch_A, grp_A, ch_B, grp_B);
+					break;
+				}
+				case 0x04: { // Group Voice Channel Update Explicit
+					uint8_t  svcopts = (lcw[2]     )         ;
+					uint16_t grpaddr = (lcw[3] << 8) + lcw[4];
+					uint16_t ch_T    = (lcw[5] << 8) + lcw[6];
+					uint16_t ch_R    = (lcw[7] << 8) + lcw[8];
+					if (d_debug >= 10)
+						fprintf(stderr, ", svcopts=0x%02x, grpaddr=%d, ch_T=%d, ch_R=%d", svcopts, grpaddr, ch_T, ch_R);
 					break;
 				}
 
