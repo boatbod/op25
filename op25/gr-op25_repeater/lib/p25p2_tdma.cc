@@ -249,9 +249,9 @@ void p25p2_tdma::decode_mac_msg(const uint8_t byte_buf[], const unsigned int len
 {
 	std::string s;
 	uint8_t b1b2, mco, msg_ptr, msg_len;
-        uint8_t svcopt1, svcopt2, svcopt3;
-        uint16_t ch_t1, ch_r1, ch_t2, ch_r2, colorcd;
-        uint16_t grpaddr1, ch_1, grpaddr2, ch_2, grpaddr3, ch_3;
+        uint8_t svcopts[3];
+        uint16_t chan[3], ch_t[2], ch_r[2], colorcd;
+        uint16_t grpaddr[3];
         uint32_t srcaddr;
 
 	for (msg_ptr = 1; msg_ptr < len; )
@@ -267,68 +267,70 @@ void p25p2_tdma::decode_mac_msg(const uint8_t byte_buf[], const unsigned int len
 			case 0x00: // Null message
 				break;
 			case 0x40: // Group Voice Channel Grant Abbreviated
-				ch_t1 = (byte_buf[msg_ptr+2] << 8) + byte_buf[msg_ptr+3];
-				grpaddr1 = (byte_buf[msg_ptr+4] << 8) + byte_buf[msg_ptr+5];
-				srcaddr  = (byte_buf[msg_ptr+6] << 16) + (byte_buf[msg_ptr+7] << 8) + byte_buf[msg_ptr+8];
+				svcopts[0] = (byte_buf[msg_ptr+1]     )                      ;
+				chan[0]    = (byte_buf[msg_ptr+2] << 8) + byte_buf[msg_ptr+3];
+				grpaddr[0] = (byte_buf[msg_ptr+4] << 8) + byte_buf[msg_ptr+5];
+				srcaddr    = (byte_buf[msg_ptr+6] << 16) + (byte_buf[msg_ptr+7] << 8) + byte_buf[msg_ptr+8];
 				if (d_debug >= 10)
-					fprintf(stderr, ", srcaddr=%u, grpaddr=%u, ch=%u", srcaddr, grpaddr1, ch_t1);
+					fprintf(stderr, ", svcopts=0x%02x, ch=%u, grpaddr=%u, srcaddr=%u", svcopts[0], chan[0], grpaddr[0], srcaddr);
 				break;
 			case 0xc0: // Group Voice Channel Grant Extended
-				ch_t1    = (byte_buf[msg_ptr+2] << 8) + byte_buf[msg_ptr+3];
-				ch_r1    = (byte_buf[msg_ptr+4] << 8) + byte_buf[msg_ptr+5];
-				grpaddr1 = (byte_buf[msg_ptr+6] << 8) + byte_buf[msg_ptr+7];
-				srcaddr  = (byte_buf[msg_ptr+8] << 16) + (byte_buf[msg_ptr+9] << 8) + byte_buf[msg_ptr+10];
+				svcopts[0] = (byte_buf[msg_ptr+1]     )                      ;
+				ch_t[0]    = (byte_buf[msg_ptr+2] << 8) + byte_buf[msg_ptr+3];
+				ch_r[0]    = (byte_buf[msg_ptr+4] << 8) + byte_buf[msg_ptr+5];
+				grpaddr[0] = (byte_buf[msg_ptr+6] << 8) + byte_buf[msg_ptr+7];
+				srcaddr    = (byte_buf[msg_ptr+8] << 16) + (byte_buf[msg_ptr+9] << 8) + byte_buf[msg_ptr+10];
 				if (d_debug >= 10)
-					fprintf(stderr, ", srcaddr=%u, grpaddr=%u, ch_t=%u, ch_r=%u", srcaddr, grpaddr1, ch_t1, ch_r1);
+					fprintf(stderr, ", svcopts=0x%02x, ch_t=%u, ch_t=%u, grpaddr=%u, srcaddr=%u", svcopts[0], ch_t[0], ch_r[0], grpaddr[0], srcaddr);
 				break;
                         case 0x01: // Group Voice Channel User Message Abbreviated
-                                grpaddr1 = (byte_buf[msg_ptr+2] << 8) + byte_buf[msg_ptr+3];
-                                srcaddr  = (byte_buf[msg_ptr+4] << 16) + (byte_buf[msg_ptr+5] << 8) + byte_buf[msg_ptr+6];
+                                grpaddr[0] = (byte_buf[msg_ptr+2] << 8) + byte_buf[msg_ptr+3];
+                                srcaddr    = (byte_buf[msg_ptr+4] << 16) + (byte_buf[msg_ptr+5] << 8) + byte_buf[msg_ptr+6];
                                 if (d_debug >= 10)
-                              	        fprintf(stderr, ", srcaddr=%u, grpaddr=%u", srcaddr, grpaddr1);
-                                s = "{\"srcaddr\" : " + std::to_string(srcaddr) + ", \"grpaddr\": " + std::to_string(grpaddr1) + "}";
+                              	        fprintf(stderr, ", grpaddr=%u, srcaddr=%u", grpaddr[0], srcaddr);
+                                s = "{\"srcaddr\" : " + std::to_string(srcaddr) + ", \"grpaddr\": " + std::to_string(grpaddr[0]) + "}";
 				send_msg(s, -3);
                                 break;
 			case 0x42: // Group Voice Channel Grant Update
-				ch_1     = (byte_buf[msg_ptr+1] << 8) + byte_buf[msg_ptr+2];
-				grpaddr1 = (byte_buf[msg_ptr+3] << 8) + byte_buf[msg_ptr+4];
-				ch_2     = (byte_buf[msg_ptr+5] << 8) + byte_buf[msg_ptr+6];
-				grpaddr2 = (byte_buf[msg_ptr+7] << 8) + byte_buf[msg_ptr+8];
+				chan[0]    = (byte_buf[msg_ptr+1] << 8) + byte_buf[msg_ptr+2];
+				grpaddr[0] = (byte_buf[msg_ptr+3] << 8) + byte_buf[msg_ptr+4];
+				chan[1]    = (byte_buf[msg_ptr+5] << 8) + byte_buf[msg_ptr+6];
+				grpaddr[1] = (byte_buf[msg_ptr+7] << 8) + byte_buf[msg_ptr+8];
 				if (d_debug >= 10)
-					fprintf(stderr, ", ch_1=%u, grpaddr1=%u, ch_2=%u, grpaddr2=%u", ch_1, grpaddr1, ch_2, grpaddr2);
+					fprintf(stderr, ", ch_1=%u, grpaddr1=%u, ch_2=%u, grpaddr2=%u", chan[0], grpaddr[0], chan[1], grpaddr[1]);
 				break;
 			case 0xc3: // Group Voice Channel Grant Update Explicit
-				svcopt1  = (byte_buf[msg_ptr+1]     )                      ;
-				ch_t1    = (byte_buf[msg_ptr+2] << 8) + byte_buf[msg_ptr+3];
-				ch_r1    = (byte_buf[msg_ptr+4] << 8) + byte_buf[msg_ptr+5];
-				grpaddr1 = (byte_buf[msg_ptr+6] << 8) + byte_buf[msg_ptr+7];
+				svcopts[0] = (byte_buf[msg_ptr+1]     )                      ;
+				ch_t[0]    = (byte_buf[msg_ptr+2] << 8) + byte_buf[msg_ptr+3];
+				ch_r[0]    = (byte_buf[msg_ptr+4] << 8) + byte_buf[msg_ptr+5];
+				grpaddr[0] = (byte_buf[msg_ptr+6] << 8) + byte_buf[msg_ptr+7];
 				if (d_debug >= 10)
-					fprintf(stderr, ", svcopts=0x%02x, ch_t=%u, ch_r=%u, grpaddr=%u", svcopt1, ch_t1, ch_r1, grpaddr1);
+					fprintf(stderr, ", svcopts=0x%02x, ch_t=%u, ch_r=%u, grpaddr=%u", svcopts[0], ch_t[0], ch_r[0], grpaddr[0]);
 				break;
 			case 0x05: // Group Voice Channel Grant Update Multiple
-				svcopt1  = (byte_buf[msg_ptr+ 1]     )                       ;
-				ch_1     = (byte_buf[msg_ptr+ 2] << 8) + byte_buf[msg_ptr+ 3];
-				grpaddr1 = (byte_buf[msg_ptr+ 4] << 8) + byte_buf[msg_ptr+ 5];
-				svcopt2  = (byte_buf[msg_ptr+ 6]     )                       ;
-				ch_2     = (byte_buf[msg_ptr+ 7] << 8) + byte_buf[msg_ptr+ 8];
-				grpaddr2 = (byte_buf[msg_ptr+ 9] << 8) + byte_buf[msg_ptr+10];
-				svcopt3  = (byte_buf[msg_ptr+11]     )                       ;
-				ch_3     = (byte_buf[msg_ptr+12] << 8) + byte_buf[msg_ptr+13];
-				grpaddr3 = (byte_buf[msg_ptr+14] << 8) + byte_buf[msg_ptr+15];
+				svcopts[0] = (byte_buf[msg_ptr+ 1]     )                       ;
+				chan[0]    = (byte_buf[msg_ptr+ 2] << 8) + byte_buf[msg_ptr+ 3];
+				grpaddr[0] = (byte_buf[msg_ptr+ 4] << 8) + byte_buf[msg_ptr+ 5];
+				svcopts[1] = (byte_buf[msg_ptr+ 6]     )                       ;
+				chan[1]    = (byte_buf[msg_ptr+ 7] << 8) + byte_buf[msg_ptr+ 8];
+				grpaddr[1] = (byte_buf[msg_ptr+ 9] << 8) + byte_buf[msg_ptr+10];
+				svcopts[2] = (byte_buf[msg_ptr+11]     )                       ;
+				chan[2]    = (byte_buf[msg_ptr+12] << 8) + byte_buf[msg_ptr+13];
+				grpaddr[2] = (byte_buf[msg_ptr+14] << 8) + byte_buf[msg_ptr+15];
 				if (d_debug >= 10)
-					fprintf(stderr, ", svcopt1=0x%02x, ch_1=%u, grpaddr1=%u, svcopt2=0x%02x, ch_2=%u, grpaddr2=%u, svcopt3=0x%02x, ch_3=%u, grpaddr3=%u", svcopt1, ch_1, grpaddr1, svcopt2, ch_2, grpaddr2, svcopt3, ch_3, grpaddr3);
+					fprintf(stderr, ", svcopt1=0x%02x, ch_1=%u, grpaddr1=%u, svcopt2=0x%02x, ch_2=%u, grpaddr2=%u, svcopt3=0x%02x, ch_3=%u, grpaddr3=%u", svcopts[0], chan[0], grpaddr[0], svcopts[1], chan[1], grpaddr[1], svcopts[2], chan[2], grpaddr[2]);
 				break;
 			case 0x25: // Group Voice Channel Grant Update Multiple Explicit
-				svcopt1  = (byte_buf[msg_ptr+ 1]     )                       ;
-				ch_t1    = (byte_buf[msg_ptr+ 2] << 8) + byte_buf[msg_ptr+ 3];
-				ch_r1    = (byte_buf[msg_ptr+ 4] << 8) + byte_buf[msg_ptr+ 5];
-				grpaddr1 = (byte_buf[msg_ptr+ 6] << 8) + byte_buf[msg_ptr+ 7];
-				svcopt2  = (byte_buf[msg_ptr+ 8]     )                       ;
-				ch_t2    = (byte_buf[msg_ptr+ 9] << 8) + byte_buf[msg_ptr+10];
-				ch_r2    = (byte_buf[msg_ptr+11] << 8) + byte_buf[msg_ptr+12];
-				grpaddr2 = (byte_buf[msg_ptr+13] << 8) + byte_buf[msg_ptr+14];
+				svcopts[0] = (byte_buf[msg_ptr+ 1]     )                       ;
+				ch_t[0]    = (byte_buf[msg_ptr+ 2] << 8) + byte_buf[msg_ptr+ 3];
+				ch_r[0]    = (byte_buf[msg_ptr+ 4] << 8) + byte_buf[msg_ptr+ 5];
+				grpaddr[0] = (byte_buf[msg_ptr+ 6] << 8) + byte_buf[msg_ptr+ 7];
+				svcopts[1] = (byte_buf[msg_ptr+ 8]     )                       ;
+				ch_t[1]    = (byte_buf[msg_ptr+ 9] << 8) + byte_buf[msg_ptr+10];
+				ch_r[1]    = (byte_buf[msg_ptr+11] << 8) + byte_buf[msg_ptr+12];
+				grpaddr[1] = (byte_buf[msg_ptr+13] << 8) + byte_buf[msg_ptr+14];
 				if (d_debug >= 10)
-					fprintf(stderr, ", svcopt1=0x%02x, ch_t1=%u, ch_r1=%u, grpaddr1=%u, svcopt2=0x%02x, ch_t2=%u, ch_r2=%u, grpaddr2=%u", svcopt1, ch_t1, ch_r1, grpaddr1, svcopt2, ch_t2, ch_r2, grpaddr2);
+					fprintf(stderr, ", svcopt1=0x%02x, ch_t1=%u, ch_r1=%u, grpaddr1=%u, svcopt2=0x%02x, ch_t2=%u, ch_r2=%u, grpaddr2=%u", svcopts[0], ch_t[0], ch_r[0], grpaddr[0], svcopts[1], ch_t[1], ch_r[1], grpaddr[1]);
 				break;
 			case 0x7b: // Network Status Broadcast Abbreviated
 				colorcd = ((byte_buf[msg_ptr+9] & 0x0f) << 8) + byte_buf[msg_ptr+10];
