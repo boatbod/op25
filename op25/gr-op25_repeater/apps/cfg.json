@@ -1,0 +1,49 @@
+{
+    "channels": [
+        {
+            "demod_type": "cqpsk", 
+            "destination": "udp://127.0.0.1:56120", 
+            "excess_bw": 0.2, 
+            "filter_type": "rc", 
+            "frequency": 460412500, 
+            "if_rate": 24000, 
+            "name": "p25", 
+            "plot": "symbol", 
+            "symbol_rate": 4800
+        }, 
+        {
+            "demod_type": "fsk4", 
+            "destination": "file:///tmp/out1.raw", 
+            "excess_bw": 0.2, 
+            "filter_type": "rrc", 
+            "frequency": 460500000, 
+            "if_rate": 24000, 
+            "name": "ysf", 
+            "plot": "datascope", 
+            "symbol_rate": 4800
+        }, 
+        {
+            "demod_type": "fsk4", 
+            "destination": "udp://127.0.0.1:56122", 
+            "excess_bw": 0.2, 
+            "filter_type": "rrc", 
+            "frequency": 460050000, 
+            "if_rate": 24000, 
+            "name": "dmr", 
+            "plot": "symbol", 
+            "symbol_rate": 4800
+        }
+    ], 
+    "devices": [
+        {
+            "args": "rtl:0", 
+            "frequency": 460100000, 
+            "gains": "lna:49", 
+            "name": "rtl0", 
+            "offset": 0, 
+            "ppm": 38, 
+            "rate": 1000000, 
+            "tunable": false
+        }
+    ]
+}
