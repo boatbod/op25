@@ -174,3 +174,42 @@ Options:
   -2, --phase2-tdma     enable phase2 tdma decode
   -Z DECIM_AMT, --decim-amt=DECIM_AMT
                         spectrum decimation
+
+MULTI-RECEIVER
+==============
+The multi_rx.py app allows an arbitrary number of SDR devices and channels
+to be defined.  Each channel may have one or more plot windows attached.
+
+Configuration is achieved via a json file (see cfg.json for an example).
+In this version, channels are automatically assigned to the first device
+found whose frequency span includes the selected frequency.
+
+As of this writing (winter, 2017), neither trunking nor P25 P2/TDMA are
+supported in multi_rx.py.  The rx.py app should be used for P25 trunking,
+for either P1/FDMA or P2/TDMA.
+
+Below is a summary of the major config file keys:
+demod_type:     'cqpsk' for qpsk p25 only; 'fsk4' for ysf/dstar/dmr/fsk4 p25
+filter_type:    'rc' for p25; 'rrc' for dmr and ysf; 'gmsk' for d-star
+plot:           'fft', 'constellation', 'datascope', 'symbol'
+                [if more than one plot desired, provide a comma-separated list]
+destination:    'udp://host:port' or 'file://<filename>'
+name:           arbitrary string used to identify channels and devices
+
+bug: 'fft' and 'constellation' currently mutually exclusive
+bug: 'gmsk' needs work
+
+Note: DMR audio for the second time slot is sent on the specified port number
+plus two.  In the example 'udp://127.0.0.1:56122', audio for the first slot
+would use 56122; and 56124 for the second.
+
+The command line options for multi_rx:
+Usage: multi_rx.py [options]
+
+Options:
+  -h, --help            show this help message and exit
+  -c CONFIG_FILE, --config-file=CONFIG_FILE
+                        specify config file name
+  -v VERBOSITY, --verbosity=VERBOSITY
+                        message debug level
+  -p, --pause           block on startup
