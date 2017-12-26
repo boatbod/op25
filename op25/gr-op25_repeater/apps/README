@@ -52,6 +52,19 @@ to suspend the program and examine stderr.2 for error messages.  If there
 is a traceback please report the full traceback (and the command line) to
 the mail list.
 
+REMOTE TERMINAL
+===============
+Adding (for example) "-l 56111" to the rx.py command starts rx.py but does
+not attach a curses terminal.  Instead the program runs as normal in the
+foreground (hit CTRL-C to end rx.py as desired).  To connect to a running 
+instance of rx.py, (in this example)
+    ./terminal.py 127.0.0.1 56111
+NOTE: rx.py and terminal.py need not run on the same machine.  The machine
+where terminal.py is running need not have an SDR device directly attached;
+but GNU Radio (and OP25) must be available.
+
+WARNING: there is no security or encryption on the UDP port.
+
 EXTERNAL UDP AUDIO SERVER
 =========================
 Starting rx.py with the "-w -W host" options directs udp audio data to
