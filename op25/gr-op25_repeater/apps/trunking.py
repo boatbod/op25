@@ -765,9 +765,11 @@ class rx_ctl (object):
         # nac is always 1st two bytes
         nac = (ord(s[0]) << 8) + ord(s[1])
         if nac == 0xffff:
-            # TDMA
-            self.update_state('tdma_duid%d' % type, curr_time)
-            return
+            if type != 7: # TDMA duid (end of call etc)
+                self.update_state('tdma_duid%d' % type, curr_time)
+                return
+            else: # voice channel originated VOICE_GRANT or VOICE_GRANT_UPDATE
+                nac = self.current_nac
         s = s[2:]
         if self.debug > 10:
             sys.stderr.write('nac %x type %d at %f state %d len %d\n' %(nac, type, time.time(), self.state, len(s)))
@@ -971,6 +973,8 @@ class rx_ctl (object):
                     self.tgid_hold_until = max(curr_time + self.TGID_HOLD_TIME, self.tgid_hold_until)
                     self.wait_until = curr_time + self.TSYS_HOLD_TIME
                     new_slot = tdma_slot
+            else:
+                pass # mid-call voice grant or voice grant update
         elif command == 'duid3' or command == 'tdma_duid3': # termination, no channel release
             if self.current_state != self.states.CC:
                 self.wait_until = curr_time + self.TSYS_HOLD_TIME

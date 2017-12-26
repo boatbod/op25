@@ -1,4 +1,5 @@
 // P25 TDMA Decoder (C) Copyright 2013, 2014 Max H. Parke KA1RBI
+// Copyright 2017 Graham J. Norbury (modularization rewrite)
 // 
 // This file is part of OP25
 // 
@@ -248,6 +249,7 @@ void p25p2_tdma::handle_mac_hangtime(const uint8_t byte_buf[], const unsigned in
 void p25p2_tdma::decode_mac_msg(const uint8_t byte_buf[], const unsigned int len) 
 {
 	std::string s;
+	std::string tsbk(12,0);
 	uint8_t b1b2, mco, msg_ptr, msg_len;
         uint8_t svcopts[3];
         uint16_t chan[3], ch_t[2], ch_r[2], colorcd;
@@ -273,6 +275,14 @@ void p25p2_tdma::decode_mac_msg(const uint8_t byte_buf[], const unsigned int len
 				srcaddr    = (byte_buf[msg_ptr+6] << 16) + (byte_buf[msg_ptr+7] << 8) + byte_buf[msg_ptr+8];
 				if (d_debug >= 10)
 					fprintf(stderr, ", svcopts=0x%02x, ch=%u, grpaddr=%u, srcaddr=%u", svcopts[0], chan[0], grpaddr[0], srcaddr);
+				tsbk[0] = 0xff; tsbk[1] = 0xff;
+				tsbk[2] = 0x80;
+				tsbk[3] = 0x00;
+				tsbk[4] = svcopts[0];
+				tsbk[5] = chan[0] >> 8; tsbk[6] = chan[0] & 0xff;
+				tsbk[7] = grpaddr[0] >> 8; tsbk[8] = grpaddr[0] & 0xff;
+				tsbk[9] = srcaddr >> 16; tsbk[10] = (srcaddr >> 8) & 0xff; tsbk[11] = srcaddr & 0xff;
+				send_msg(tsbk, 7);
 				break;
 			case 0xc0: // Group Voice Channel Grant Extended
 				svcopts[0] = (byte_buf[msg_ptr+1]     )                      ;
@@ -298,6 +308,14 @@ void p25p2_tdma::decode_mac_msg(const uint8_t byte_buf[], const unsigned int len
 				grpaddr[1] = (byte_buf[msg_ptr+7] << 8) + byte_buf[msg_ptr+8];
 				if (d_debug >= 10)
 					fprintf(stderr, ", ch_1=%u, grpaddr1=%u, ch_2=%u, grpaddr2=%u", chan[0], grpaddr[0], chan[1], grpaddr[1]);
+				tsbk[0] = 0xff; tsbk[1] = 0xff;
+				tsbk[2] = 0x82;
+				tsbk[3] = 0x00;
+				tsbk[4] = chan[0] >> 8; tsbk[5] = chan[0] & 0xff;
+				tsbk[6] = grpaddr[0] >> 8; tsbk[7] = grpaddr[0] & 0xff;
+				tsbk[8] = chan[1] >> 8; tsbk[9] = chan[1] & 0xff;
+				tsbk[10] = grpaddr[1] >> 8; tsbk[11] = grpaddr[1] & 0xff;
+				send_msg(tsbk, 7);
 				break;
 			case 0xc3: // Group Voice Channel Grant Update Explicit
 				svcopts[0] = (byte_buf[msg_ptr+1]     )                      ;
