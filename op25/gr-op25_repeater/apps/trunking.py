@@ -165,7 +165,12 @@ class trunked_system (object):
             return ""
         if tgid not in self.tgid_map:
             return "Talkgroup ID %d [0x%x]" % (tgid, tgid)
-        return self.tgid_map[tgid]
+        return self.tgid_map[tgid][0]
+
+    def get_prio(self, tgid):
+        if (not tgid) or (tgid not in self.tgid_map):
+            return 3
+        return self.tgid_map[tgid][1]
 
     def update_talkgroup(self, frequency, tgid, tdma_slot, srcaddr):
         if self.debug >= 5:
@@ -174,12 +179,12 @@ class trunked_system (object):
         if tgid not in self.talkgroups:
             self.talkgroups[tgid] = {'counter':0}
             if self.debug >= 5:
-                sys.stderr.write('%f new tgid: %s %s\n' % (time.time(), tgid,self.get_tag(tgid)))
-           
+                sys.stderr.write('%f new tgid: %s %s prio %d\n' % (time.time(), tgid, self.get_tag(tgid), self.get_prio(tgid)))
         self.talkgroups[tgid]['time'] = time.time()
         self.talkgroups[tgid]['frequency'] = frequency
         self.talkgroups[tgid]['tdma_slot'] = tdma_slot
         self.talkgroups[tgid]['srcaddr'] = srcaddr
+        self.talkgroups[tgid]['prio'] = self.get_prio(tgid)
 
     def update_voice_frequency(self, frequency, tgid=None, tdma_slot=None, srcaddr=0):
         if not frequency:	# e.g., channel identifier not yet known
@@ -214,9 +219,12 @@ class trunked_system (object):
             self.blacklist.pop(tg)
 
     def find_talkgroup(self, start_time, tgid=None):
+        tgt_tgid = None
         self.blacklist_update(start_time)
+
         if tgid is not None and tgid in self.talkgroups and self.talkgroups[tgid]['time'] >= start_time:
-            return self.talkgroups[tgid]['frequency'], tgid, self.talkgroups[tgid]['tdma_slot'], self.talkgroups[tgid]['srcaddr']
+            tgt_tgid = tgid
+
         for active_tgid in self.talkgroups:
             if self.talkgroups[active_tgid]['time'] < start_time:
                 continue
@@ -226,8 +234,13 @@ class trunked_system (object):
                 continue
             if self.talkgroups[active_tgid]['tdma_slot'] is not None and (self.ns_syid < 0 or self.ns_wacn < 0):
                 continue
-            if tgid is None:
-                return self.talkgroups[active_tgid]['frequency'], active_tgid, self.talkgroups[active_tgid]['tdma_slot'], self.talkgroups[active_tgid]['srcaddr']
+            if tgt_tgid is None:
+                tgt_tgid = active_tgid
+            elif self.talkgroups[active_tgid]['prio'] < self.talkgroups[tgt_tgid]['prio']:
+                tgt_tgid = active_tgid
+                   
+        if tgt_tgid is not None:
+            return self.talkgroups[tgt_tgid]['frequency'], tgt_tgid, self.talkgroups[tgt_tgid]['tdma_slot'], self.talkgroups[tgt_tgid]['srcaddr']
         return None, None, None, None
 
     def add_blacklist(self, tgid, end_time=None):
@@ -707,7 +720,11 @@ class rx_ctl (object):
                     for row in sreader:
                         tgid = int(row[0])
                         txt = utf_ascii(row[1])
-                        self.configs[nac]['tgid_map'][tgid] = txt
+                        if len(row) >= 3:
+                            prio = int(row[2])
+                        else:
+                            prio = 3
+                        self.configs[nac]['tgid_map'][tgid] = (txt, prio)
             if 'center_frequency' in configs[nac]:
                 self.configs[nac]['center_frequency'] = get_frequency(configs[nac]['center_frequency'])
 
@@ -965,7 +982,7 @@ class rx_ctl (object):
                 new_frequency, new_tgid, tdma_slot, srcaddr = tsys.find_talkgroup(curr_time, tgid=desired_tgid)
                 if new_frequency:
                     if self.debug > 0:
-                        sys.stderr.write("%f voice update: tg(%s), freq(%s), slot(%s)\n" % (time.time(), new_tgid, new_frequency, tdma_slot))
+                        sys.stderr.write("%f voice update:  tg(%s), freq(%s), slot(%s), prio(%d)\n" % (time.time(), new_tgid, new_frequency, tdma_slot, tsys.get_prio(new_tgid)))
                     new_state = self.states.TO_VC
                     self.current_tgid = new_tgid
                     self.current_srcaddr = srcaddr
@@ -973,8 +990,20 @@ class rx_ctl (object):
                     self.tgid_hold_until = max(curr_time + self.TGID_HOLD_TIME, self.tgid_hold_until)
                     self.wait_until = curr_time + self.TSYS_HOLD_TIME
                     new_slot = tdma_slot
-            else:
-                pass # mid-call voice grant or voice grant update
+            else: # check for priority tgid preemption
+                new_frequency, new_tgid, tdma_slot, srcaddr = tsys.find_talkgroup(tsys.talkgroups[self.current_tgid]['time'], tgid=self.current_tgid)
+                if new_tgid != self.current_tgid:
+                    if self.debug > 0:
+                        sys.stderr.write("%f voice preempt: tg(%s), freq(%s), slot(%s), prio(%d)\n" % (time.time(), new_tgid, new_frequency, tdma_slot, tsys.get_prio(new_tgid)))
+                    new_state = self.states.TO_VC
+                    self.current_tgid = new_tgid
+                    self.current_srcaddr = srcaddr
+                    self.tgid_hold = new_tgid
+                    self.tgid_hold_until = max(curr_time + self.TGID_HOLD_TIME, self.tgid_hold_until)
+                    self.wait_until = curr_time + self.TSYS_HOLD_TIME
+                    new_slot = tdma_slot
+                else:
+                    new_frequency = None
         elif command == 'duid3' or command == 'tdma_duid3': # termination, no channel release
             if self.current_state != self.states.CC:
                 self.wait_until = curr_time + self.TSYS_HOLD_TIME

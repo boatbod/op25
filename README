@@ -17,6 +17,7 @@ Many changes:
 - encrypted audio flag shown on terminal screen
 - source radio id displayed on terminal screen (if available)
 - supports IP addresses or host names for --wireshark-host (-W) parameter
+- added optional trunk group priority parameter to end of tgid-tags.tsv file
 
 New command line options:
   --fine-tune      : sub-ppm tuning adjustment
