@@ -782,10 +782,10 @@ class rx_ctl (object):
         # nac is always 1st two bytes
         nac = (ord(s[0]) << 8) + ord(s[1])
         if nac == 0xffff:
-            if type != 7: # TDMA duid (end of call etc)
+            if (type != 7) and (type != 12): # TDMA duid (end of call etc)
                 self.update_state('tdma_duid%d' % type, curr_time)
                 return
-            else: # voice channel originated VOICE_GRANT or VOICE_GRANT_UPDATE
+            else: # voice channel derived TSBK or MBT PDU
                 nac = self.current_nac
         s = s[2:]
         if self.debug > 10:
@@ -1025,7 +1025,7 @@ class rx_ctl (object):
             self.tgid_hold = self.current_tgid
             self.tgid_hold_until = max(curr_time + self.TGID_HOLD_TIME, self.tgid_hold_until)
             self.wait_until = curr_time + self.TSYS_HOLD_TIME
-        elif command == 'duid7' or command == 'duid12':
+        elif command == 'duid7' or command == 'duid12': # tsbk/pdu should never arrive here...
             pass
         elif command == 'hold':
             if self.hold_mode is False and self.current_tgid:

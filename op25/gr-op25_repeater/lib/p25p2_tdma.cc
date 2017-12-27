@@ -250,6 +250,7 @@ void p25p2_tdma::decode_mac_msg(const uint8_t byte_buf[], const unsigned int len
 {
 	std::string s;
 	std::string tsbk(12,0);
+	std::string pdu(20,0);
 	uint8_t b1b2, mco, msg_ptr, msg_len;
         uint8_t svcopts[3];
         uint16_t chan[3], ch_t[2], ch_r[2], colorcd;
@@ -292,6 +293,21 @@ void p25p2_tdma::decode_mac_msg(const uint8_t byte_buf[], const unsigned int len
 				srcaddr    = (byte_buf[msg_ptr+8] << 16) + (byte_buf[msg_ptr+9] << 8) + byte_buf[msg_ptr+10];
 				if (d_debug >= 10)
 					fprintf(stderr, ", svcopts=0x%02x, ch_t=%u, ch_t=%u, grpaddr=%u, srcaddr=%u", svcopts[0], ch_t[0], ch_r[0], grpaddr[0], srcaddr);
+				pdu[0] = 0xff; pdu[1] = 0xff;
+				pdu[2] = 0x17; // unconfirmed alternate mbt
+				pdu[3] = 0xfd; // sap = 61
+				pdu[4] = 0x00; // mfrid
+				pdu[5] = (srcaddr >> 16); pdu[6] = (srcaddr >> 8) & 0xff; pdu[7] = srcaddr & 0xff;
+				pdu[7] = 0x81; // blocks to follow = 1
+				pdu[8] = 0x00; // opcode
+				pdu[9] = svcopts[0];
+				pdu[10] = 0x00; // reserved
+				pdu[11] = 0x00; pdu[12] = 0x00; // header crc (ignored by trunking)
+				pdu[13] = 0x00; pdu[14] = 0x00; // reserved
+				pdu[14] = ch_t[0] >> 8; pdu[15] = ch_t[0] & 0xff;
+				pdu[16] = ch_r[0] >> 8; pdu[17] = ch_r[0] & 0xff;
+				pdu[18] = grpaddr[0] >> 8; pdu[19] = grpaddr[0] & 0xff;
+				send_msg(pdu, 12);
 				break;
                         case 0x01: // Group Voice Channel User Message Abbreviated
                                 grpaddr[0] = (byte_buf[msg_ptr+2] << 8) + byte_buf[msg_ptr+3];
@@ -324,6 +340,14 @@ void p25p2_tdma::decode_mac_msg(const uint8_t byte_buf[], const unsigned int len
 				grpaddr[0] = (byte_buf[msg_ptr+6] << 8) + byte_buf[msg_ptr+7];
 				if (d_debug >= 10)
 					fprintf(stderr, ", svcopts=0x%02x, ch_t=%u, ch_r=%u, grpaddr=%u", svcopts[0], ch_t[0], ch_r[0], grpaddr[0]);
+				tsbk[0] = 0xff; tsbk[1] = 0xff;
+				tsbk[2] = 0x83;
+				tsbk[3] = svcopts[0];
+				tsbk[4] = 0x00;
+				tsbk[5] = ch_t[0] >> 8; tsbk[6] = ch_t[0] & 0xff;
+				tsbk[7] = ch_r[0] >> 8; tsbk[8] = ch_r[0] & 0xff;
+				tsbk[9] = grpaddr[0] >> 8; tsbk[10] = grpaddr[0] & 0xff;
+				send_msg(tsbk, 7);
 				break;
 			case 0x05: // Group Voice Channel Grant Update Multiple
 				svcopts[0] = (byte_buf[msg_ptr+ 1]     )                       ;
@@ -337,6 +361,19 @@ void p25p2_tdma::decode_mac_msg(const uint8_t byte_buf[], const unsigned int len
 				grpaddr[2] = (byte_buf[msg_ptr+14] << 8) + byte_buf[msg_ptr+15];
 				if (d_debug >= 10)
 					fprintf(stderr, ", svcopt1=0x%02x, ch_1=%u, grpaddr1=%u, svcopt2=0x%02x, ch_2=%u, grpaddr2=%u, svcopt3=0x%02x, ch_3=%u, grpaddr3=%u", svcopts[0], chan[0], grpaddr[0], svcopts[1], chan[1], grpaddr[1], svcopts[2], chan[2], grpaddr[2]);
+				tsbk[0] = 0xff; tsbk[1] = 0xff;
+				tsbk[2] = 0x82;
+				tsbk[3] = 0x00;
+				tsbk[4] = chan[0] >> 8; tsbk[5] = chan[0] & 0xff;
+				tsbk[6] = grpaddr[0] >> 8; tsbk[7] = grpaddr[0] & 0xff;
+				tsbk[8] = chan[1] >> 8; tsbk[9] = chan[1] & 0xff;
+				tsbk[10] = grpaddr[1] >> 8; tsbk[11] = grpaddr[1] & 0xff;
+				send_msg(tsbk, 7);
+				tsbk[4] = chan[2] >> 8; tsbk[5] = chan[2] & 0xff;
+				tsbk[6] = grpaddr[2] >> 8; tsbk[7] = grpaddr[2] & 0xff;
+				tsbk[8] = chan[2] >> 8; tsbk[9] = chan[2] & 0xff;
+				tsbk[10] = grpaddr[2] >> 8; tsbk[11] = grpaddr[2] & 0xff;
+				send_msg(tsbk, 7);
 				break;
 			case 0x25: // Group Voice Channel Grant Update Multiple Explicit
 				svcopts[0] = (byte_buf[msg_ptr+ 1]     )                       ;
@@ -349,6 +386,19 @@ void p25p2_tdma::decode_mac_msg(const uint8_t byte_buf[], const unsigned int len
 				grpaddr[1] = (byte_buf[msg_ptr+13] << 8) + byte_buf[msg_ptr+14];
 				if (d_debug >= 10)
 					fprintf(stderr, ", svcopt1=0x%02x, ch_t1=%u, ch_r1=%u, grpaddr1=%u, svcopt2=0x%02x, ch_t2=%u, ch_r2=%u, grpaddr2=%u", svcopts[0], ch_t[0], ch_r[0], grpaddr[0], svcopts[1], ch_t[1], ch_r[1], grpaddr[1]);
+				tsbk[0] = 0xff; tsbk[1] = 0xff;
+				tsbk[2] = 0x83;
+				tsbk[3] = svcopts[0];
+				tsbk[4] = 0x00;
+				tsbk[5] = ch_t[0] >> 8; tsbk[6] = ch_t[0] & 0xff;
+				tsbk[7] = ch_r[0] >> 8; tsbk[8] = ch_r[0] & 0xff;
+				tsbk[9] = grpaddr[0] >> 8; tsbk[10] = grpaddr[0] & 0xff;
+				send_msg(tsbk, 7);
+				tsbk[3] = svcopts[1];
+				tsbk[5] = ch_t[1] >> 8; tsbk[6] = ch_t[1] & 0xff;
+				tsbk[7] = ch_r[1] >> 8; tsbk[8] = ch_r[1] & 0xff;
+				tsbk[9] = grpaddr[1] >> 8; tsbk[10] = grpaddr[1] & 0xff;
+				send_msg(tsbk, 7);
 				break;
 			case 0x7b: // Network Status Broadcast Abbreviated
 				colorcd = ((byte_buf[msg_ptr+9] & 0x0f) << 8) + byte_buf[msg_ptr+10];

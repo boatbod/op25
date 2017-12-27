@@ -461,12 +461,22 @@ p25p1_fdma::process_LCW(std::vector<uint8_t>& HB)
 					break;
 				}
 				case 0x04: { // Group Voice Channel Update Explicit
+					std::string tsbk(12,0);
 					uint8_t  svcopts = (lcw[2]     )         ;
 					uint16_t grpaddr = (lcw[3] << 8) + lcw[4];
 					uint16_t ch_T    = (lcw[5] << 8) + lcw[6];
 					uint16_t ch_R    = (lcw[7] << 8) + lcw[8];
 					if (d_debug >= 10)
 						fprintf(stderr, ", svcopts=0x%02x, grpaddr=%d, ch_T=%d, ch_R=%d", svcopts, grpaddr, ch_T, ch_R);
+					tsbk[0] = 0xff; tsbk[1] = 0xff;
+					tsbk[2] = 0x83;
+					tsbk[3] = 0x00;
+					tsbk[4] = svcopts;
+					tsbk[5] = 0x00;
+					tsbk[6] = ch_T >> 8; tsbk[7] = ch_T & 0xff;
+					tsbk[8] = ch_R >> 8; tsbk[9] = ch_R & 0xff;
+					tsbk[10] = grpaddr >> 8; tsbk[11] = grpaddr & 0xff;
+					send_msg(tsbk, 7);
 					break;
 				}
 
