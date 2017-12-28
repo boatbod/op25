@@ -532,7 +532,7 @@ class p25_rx_block (gr.top_block):
         if (self.mixer_sink is None) and (self.kill_sink is None):
             self.lock()
             self.mixer_sink = mixer_sink_c()
-            self.demod.connect_complex('resampler', self.mixer_sink)
+            self.demod.connect_complex('mixer', self.mixer_sink)
             self.kill_sink = self.mixer_sink
             self.unlock()
         elif (self.mixer_sink is not None):

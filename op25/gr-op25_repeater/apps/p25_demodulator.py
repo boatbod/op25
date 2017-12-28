@@ -336,9 +336,9 @@ class p25_demod_cb(p25_demod_base):
         self.disconnect_chain()
         self.connect_state = demod_type
         if demod_type == 'fsk4':
-            self.connect(self.arb_resampler, self.fm_demod, self.baseband_amp, self.symbol_filter, self.fsk4_demod, self.slicer)
+            self.connect(self.if_out, self.cutoff, self.fm_demod, self.baseband_amp, self.symbol_filter, self.fsk4_demod, self.slicer)
         elif demod_type == 'cqpsk':
-            self.connect(self.arb_resampler, self.agc, self.clock, self.diffdec, self.to_float, self.rescale, self.slicer)
+            self.connect(self.if_out, self.cutoff, self.agc, self.clock, self.diffdec, self.to_float, self.rescale, self.slicer)
         else:
             print 'connect_chain failed, type: %s' % demod_type
             assert 0 == 1
@@ -387,9 +387,6 @@ class p25_demod_cb(p25_demod_base):
         elif src == 'src':
             self.connect(self, sink)
             self.complex_sink = [self, sink]
-        elif src == 'resampler':
-            self.connect(self.arb_resampler, sink)
-            self.complex_sink = [self.arb_resampler, sink]
         elif src == 'bpf':
             self.connect(self.bpf, sink)
             self.complex_sink = [self.bpf, sink]
