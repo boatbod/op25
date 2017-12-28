@@ -67,6 +67,7 @@ namespace gr {
 
   //! Sets value of omega and its min and max values 
   void set_omega (float omega);
+  float get_freq_error(void);
   void reset();
 
 protected:

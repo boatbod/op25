@@ -1,6 +1,6 @@
 /* -*- c++ -*- */
 /* 
- * Copyright 2013 <+YOU OR YOUR COMPANY+>.
+ * Copyright 2017 Max H. Parke KA1RBI
  * 
  * This is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,11 +19,12 @@
  */
 
 
-#ifndef INCLUDED_OP25_REPEATER_GARDNER_COSTAS_CC_H
-#define INCLUDED_OP25_REPEATER_GARDNER_COSTAS_CC_H
+#ifndef INCLUDED_OP25_REPEATER_FRAME_ASSEMBLER_H
+#define INCLUDED_OP25_REPEATER_FRAME_ASSEMBLER_H
 
 #include <op25_repeater/api.h>
 #include <gnuradio/block.h>
+#include <gnuradio/msg_queue.h>
 
 namespace gr {
   namespace op25_repeater {
@@ -33,27 +34,26 @@ namespace gr {
      * \ingroup op25_repeater
      *
      */
-    class OP25_REPEATER_API gardner_costas_cc : virtual public gr::block
+    class OP25_REPEATER_API frame_assembler : virtual public gr::block
     {
      public:
-      typedef boost::shared_ptr<gardner_costas_cc> sptr;
+      typedef boost::shared_ptr<frame_assembler> sptr;
 
       /*!
-       * \brief Return a shared_ptr to a new instance of op25_repeater::gardner_costas_cc.
+       * \brief Return a shared_ptr to a new instance of op25_repeater::frame_assembler.
        *
-       * To avoid accidental use of raw pointers, op25_repeater::gardner_costas_cc's
+       * To avoid accidental use of raw pointers, op25_repeater::frame_assembler's
        * constructor is in a private implementation
-       * class. op25_repeater::gardner_costas_cc::make is the public interface for
+       * class. op25_repeater::frame_assembler::make is the public interface for
        * creating new instances.
        */
-      static sptr make(float samples_per_symbol, float gain_mu, float gain_omega, float alpha, float beta, float max_freq, float min_freq);
-      virtual void set_omega(float omega) {}
-      virtual float get_freq_error(void) {}
-      virtual void reset() {}
+      static sptr make(const char* options, int debug, gr::msg_queue::sptr queue);
+      virtual void set_xormask(const char*p) {}
+      virtual void set_slotid(int slotid) {}
     };
 
   } // namespace op25_repeater
 } // namespace gr
 
-#endif /* INCLUDED_OP25_REPEATER_GARDNER_COSTAS_CC_H */
+#endif /* INCLUDED_OP25_REPEATER_FRAME_ASSEMBLER_H */
 

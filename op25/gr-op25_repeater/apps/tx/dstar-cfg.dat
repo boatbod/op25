@@ -1,0 +1,41 @@
+#################################################################################
+#
+# config file for DSTAR TX 
+#
+#################################################################################
+# 
+# This file is part of OP25
+# 
+# This is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 3, or (at your option)
+# any later version.
+# 
+# This software is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License
+# along with this software; see the file COPYING.  If not, write to
+# the Free Software Foundation, Inc., 51 Franklin Street,
+# Boston, MA 02110-1301, USA.
+#################################################################################
+#
+# NOTE 
+#
+# Syntax is unforgiving - no whitespace allowed (outside of comments)
+#
+#################################################################################
+# flags - specify values in hex
+flag1=0
+flag2=0
+flag3=0
+# call sign fields - all have an 8-character limit
+rptcall2=DIRECT
+rptcall1=DIRECT
+urcall=CQCQCQ
+# # # # # # # # # # # # set your callsign in next line 
+mycall1=mycall
+# appears to be used as a radio model ID - 4-char limit
+mycall2=OP25

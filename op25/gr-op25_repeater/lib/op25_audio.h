@@ -46,7 +46,6 @@ private:
     bool        d_file_enabled;
     struct      sockaddr_in d_sock_addr;
 
-    int hostname_to_ip(const char *hostname , char *ip);
     void open_socket();
     void close_socket();
     ssize_t do_send(const void * bufp, size_t len, int port, bool is_ctrl) const;

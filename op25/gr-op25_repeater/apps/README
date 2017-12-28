@@ -62,6 +62,19 @@ to suspend the program and examine stderr.2 for error messages.  If there
 is a traceback please report the full traceback (and the command line) to
 the mail list.
 
+REMOTE TERMINAL
+===============
+Adding (for example) "-l 56111" to the rx.py command starts rx.py but does
+not attach a curses terminal.  Instead the program runs as normal in the
+foreground (hit CTRL-C to end rx.py as desired).  To connect to a running 
+instance of rx.py, (in this example)
+    ./terminal.py 127.0.0.1 56111
+NOTE: rx.py and terminal.py need not run on the same machine.  The machine
+where terminal.py is running need not have an SDR device directly attached;
+but GNU Radio (and OP25) must be available.
+
+WARNING: there is no security or encryption on the UDP port.
+
 EXTERNAL UDP AUDIO SERVER
 =========================
 Starting rx.py with the "-w -W host" options directs udp audio data to
@@ -84,6 +97,9 @@ Starting rx.py with the "-U" command line option enables an internal udp
 audio server which will play received audio through the default ALSA
 device.  Optionally you may specify which ALSA device to use by setting
 the "-O audio_out" option along with "-U".
+
+As of this writing (Aug 2017) it is still necessary to specify the "-w"
+(wireshark) option if using either the internal or external audio server.
 
 PLOT MODES
 ==========
@@ -176,3 +192,41 @@ Options:
   -Z DECIM_AMT, --decim-amt=DECIM_AMT
                         spectrum decimation
 
+MULTI-RECEIVER
+==============
+The multi_rx.py app allows an arbitrary number of SDR devices and channels
+to be defined.  Each channel may have one or more plot windows attached.
+
+Configuration is achieved via a json file (see cfg.json for an example).
+In this version, channels are automatically assigned to the first device
+found whose frequency span includes the selected frequency.
+
+As of this writing (winter, 2017), neither trunking nor P25 P2/TDMA are
+supported in multi_rx.py.  The rx.py app should be used for P25 trunking,
+for either P1/FDMA or P2/TDMA.
+
+Below is a summary of the major config file keys:
+demod_type:     'cqpsk' for qpsk p25 only; 'fsk4' for ysf/dstar/dmr/fsk4 p25
+filter_type:    'rc' for p25; 'rrc' for dmr and ysf; 'gmsk' for d-star
+plot:           'fft', 'constellation', 'datascope', 'symbol'
+                [if more than one plot desired, provide a comma-separated list]
+destination:    'udp://host:port' or 'file://<filename>'
+name:           arbitrary string used to identify channels and devices
+
+bug: 'fft' and 'constellation' currently mutually exclusive
+bug: 'gmsk' needs work
+
+Note: DMR audio for the second time slot is sent on the specified port number
+plus two.  In the example 'udp://127.0.0.1:56122', audio for the first slot
+would use 56122; and 56124 for the second.
+
+The command line options for multi_rx:
+Usage: multi_rx.py [options]
+
+Options:
+  -h, --help            show this help message and exit
+  -c CONFIG_FILE, --config-file=CONFIG_FILE
+                        specify config file name
+  -v VERBOSITY, --verbosity=VERBOSITY
+                        message debug level
+  -p, --pause           block on startup

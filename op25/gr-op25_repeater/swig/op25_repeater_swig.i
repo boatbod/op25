@@ -11,6 +11,7 @@
 #include "op25_repeater/vocoder.h"
 #include "op25_repeater/gardner_costas_cc.h"
 #include "op25_repeater/p25_frame_assembler.h"
+#include "op25_repeater/frame_assembler.h"
 #include "op25_repeater/fsk4_slicer_fb.h"
 #include "op25_repeater/ambe_encoder_sb.h"
 #include "op25_repeater/dmr_bs_tx_bb.h"
@@ -35,8 +36,12 @@ GR_SWIG_BLOCK_MAGIC2(op25_repeater, vocoder);
 
 %include "op25_repeater/gardner_costas_cc.h"
 GR_SWIG_BLOCK_MAGIC2(op25_repeater, gardner_costas_cc);
+
 %include "op25_repeater/p25_frame_assembler.h"
 GR_SWIG_BLOCK_MAGIC2(op25_repeater, p25_frame_assembler);
+
+%include "op25_repeater/frame_assembler.h"
+GR_SWIG_BLOCK_MAGIC2(op25_repeater, frame_assembler);
 
 %include "op25_repeater/fsk4_slicer_fb.h"
 GR_SWIG_BLOCK_MAGIC2(op25_repeater, fsk4_slicer_fb);

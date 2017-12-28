@@ -32,6 +32,7 @@ list(APPEND op25_repeater_sources
     vocoder_impl.cc
     gardner_costas_cc_impl.cc
     p25_frame_assembler_impl.cc
+    frame_assembler_impl.cc
     fsk4_slicer_fb_impl.cc )
 
 list(APPEND op25_repeater_sources
@@ -52,7 +53,9 @@ list(APPEND op25_repeater_sources
     ambe.c
     mbelib.c
     ambe_encoder.cc
+    rx_sync.cc
     op25_audio.cc
+    CCITTChecksumReverse.cpp
 )
 
 add_library(gnuradio-op25_repeater SHARED ${op25_repeater_sources})

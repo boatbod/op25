@@ -35,6 +35,40 @@
 
 #include "op25_audio.h"
 
+// convert hostname to ip address
+static int hostname_to_ip(const char *hostname , char *ip)
+{
+    int sockfd;  
+    struct addrinfo hints, *servinfo, *p;
+    struct sockaddr_in *h;
+    int rv;
+ 
+    memset(&hints, 0, sizeof hints);
+    hints.ai_family = AF_UNSPEC; // use AF_INET6 to force IPv6
+    hints.ai_socktype = SOCK_DGRAM;
+ 
+    if ( (rv = getaddrinfo( hostname , NULL , &hints , &servinfo)) != 0) 
+    {
+        fprintf(stderr, "op25_audio::hostname_to_ip() getaddrinfo: %s\n", gai_strerror(rv));
+        return -1;
+    }
+ 
+    // loop through all the results and connect to the first we can
+    for(p = servinfo; p != NULL; p = p->ai_next) 
+    {
+        h = (struct sockaddr_in *) p->ai_addr;
+        if (h->sin_addr.s_addr != 0)
+        {
+            strcpy(ip , inet_ntoa( h->sin_addr ) );
+            break;
+        }
+    }
+     
+    freeaddrinfo(servinfo); // all done with this structure
+    return 0;
+
+}
+
 // constructor
 op25_audio::op25_audio(const char* udp_host, int port, int debug) :
     d_udp_enabled(false),
@@ -102,41 +136,6 @@ op25_audio::op25_audio(const char* destination, int debug) :
         d_file_enabled = true;
     }
 }
-
-// convert hostname to ip address
-int op25_audio::hostname_to_ip(const char *hostname , char *ip)
-{
-    int sockfd;  
-    struct addrinfo hints, *servinfo, *p;
-    struct sockaddr_in *h;
-    int rv;
- 
-    memset(&hints, 0, sizeof hints);
-    hints.ai_family = AF_UNSPEC; // use AF_INET6 to force IPv6
-    hints.ai_socktype = SOCK_DGRAM;
- 
-    if ( (rv = getaddrinfo( hostname , NULL , &hints , &servinfo)) != 0) 
-    {
-        fprintf(stderr, "op25_audio::hostname_to_ip() getaddrinfo: %s\n", gai_strerror(rv));
-        return -1;
-    }
- 
-    // loop through all the results and connect to the first we can
-    for(p = servinfo; p != NULL; p = p->ai_next) 
-    {
-        h = (struct sockaddr_in *) p->ai_addr;
-        if (h->sin_addr.s_addr != 0)
-        {
-            strcpy(ip , inet_ntoa( h->sin_addr ) );
-            break;
-        }
-    }
-     
-    freeaddrinfo(servinfo); // all done with this structure
-    return 0;
-
-}
-
 // open socket and set up data structures
 void op25_audio::open_socket()
 {
@@ -224,7 +223,7 @@ ssize_t op25_audio::send_audio(const void *buf, size_t len) const
 // send audio data on specifed channel to destination
 ssize_t op25_audio::send_audio_channel(const void *buf, size_t len, ssize_t slot_id) const
 {
-    return do_send(buf, len, d_audio_port + slot_id, false);
+    return do_send(buf, len, d_audio_port + slot_id*2, false);
 }
 
 // send flag to audio destination 

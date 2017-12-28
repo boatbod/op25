@@ -12,7 +12,7 @@ fi
 
 sudo apt-get update
 sudo apt-get build-dep gnuradio
-sudo apt-get install gnuradio gnuradio-dev gr-osmosdr librtlsdr-dev libuhd-dev  libhackrf-dev libitpp-dev libpcap-dev cmake git swig gnuplot-x11
+sudo apt-get install gnuradio gnuradio-dev gr-osmosdr librtlsdr-dev libuhd-dev  libhackrf-dev libitpp-dev libpcap-dev cmake git swig
 
 mkdir build
 cd build
@@ -20,3 +20,16 @@ cmake ../
 make
 sudo make install
 sudo ldconfig
+
+echo ====== 
+echo ====== NOTICE 
+echo ====== 
+echo ====== The gnuplot package is not installed by default here,
+echo ====== as its installation requires numerous prerequisite packages
+echo ====== that you may not want to install.
+echo ====== 
+echo ====== In order to do plotting in rx.py using the \-P option
+echo ====== you must install gnuplot, e.g., manually as follows:
+echo ====== 
+echo ====== sudo apt-get install gnuplot-x11
+echo ====== 

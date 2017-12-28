@@ -66,13 +66,15 @@ from gr_gnuplot import symbol_sink_f
 from gr_gnuplot import eye_sink_f
 from gr_gnuplot import mixer_sink_c
 
-from terminal   import curses_terminal
+from terminal import op25_terminal
 from sockaudio  import socket_audio
 
 #speeds = [300, 600, 900, 1200, 1440, 1800, 1920, 2400, 2880, 3200, 3600, 3840, 4000, 4800, 6000, 6400, 7200, 8000, 9600, 14400, 19200]
 speeds = [4800, 6000]
 
 os.environ['IMBE'] = 'soft'
+
+WIRESHARK_PORT = 23456
 
 # The P25 receiver
 #
@@ -104,6 +106,7 @@ class p25_rx_block (gr.top_block):
         parser.add_option("-F", "--ifile", type="string", default=None, help="read input from complex capture file")
         parser.add_option("-H", "--hamlib-model", type="int", default=None, help="specify model for hamlib")
         parser.add_option("-s", "--seek", type="int", default=0, help="ifile seek in K")
+        parser.add_option("-l", "--terminal-type", type="string", default='curses', help="'curses' or udp port")
         parser.add_option("-L", "--logfile-workers", type="int", default=None, help="number of demodulators to instantiate")
         parser.add_option("-S", "--sample-rate", type="int", default=320e3, help="source samp rate")
         parser.add_option("-t", "--tone-detect", action="store_true", default=False, help="use experimental tone detect algorithm")
@@ -162,8 +165,8 @@ class p25_rx_block (gr.top_block):
                 range = self.src.get_gain_range(name)
                 print "gain: name: %s range: start %d stop %d step %d" % (name, range[0].start(), range[0].stop(), range[0].step())
             if options.gains:
-                for tuple in options.gains.split(","):
-                    name, gain = tuple.split(":")
+                for tup in options.gains.split(","):
+                    name, gain = tup.split(":")
                     gain = int(gain)
                     print "setting gain %s to %d" % (name, gain)
                     self.src.set_gain(gain, name)
@@ -234,7 +237,7 @@ class p25_rx_block (gr.top_block):
             pass
 
         # attach terminal thread
-        self.terminal = curses_terminal(self.input_q, self.output_q)
+        self.terminal = op25_terminal(self.input_q, self.output_q, self.options.terminal_type)
 
         # attach audio thread
         if self.options.udp_player:
@@ -246,7 +249,9 @@ class p25_rx_block (gr.top_block):
     #
     def __build_graph(self, source, capture_rate):
         global speeds
-        # tell the scope the source rate
+        global WIRESHARK_PORT
+
+        sps = 5		# samples / symbol
 
         self.rx_q = gr.msg_queue(100)
         udp_port = 0
@@ -262,8 +267,18 @@ class p25_rx_block (gr.top_block):
         self.tdma_state = False
         self.xor_cache = {}
 
+        self.fft_state  = False
+        self.c4fm_state = False
+        self.fscope_state = False
+        self.corr_state = False
+        self.fac_state = False
+        self.fsk4_demod_connected = False
+        self.psk_demod_connected = False
+        self.fsk4_demod_mode = False
+        self.corr_i_chan = False
+
         if self.baseband_input:
-            self.demod = p25_demodulator.p25_demod_fb(input_rate=capture_rate)
+            self.demod = p25_demodulator.p25_demod_fb(input_rate=capture_rate, excess_bw=self.options.excess_bw)
         else:	# complex input
             # local osc
             self.lo_freq = self.options.offset
@@ -273,9 +288,10 @@ class p25_rx_block (gr.top_block):
                                                        demod_type = self.options.demod_type,
                                                        relative_freq = self.lo_freq,
                                                        offset = self.options.offset,
-                                                       if_rate = 48000,
+                                                       if_rate = sps * 4800,
                                                        gain_mu = self.options.gain_mu,
                                                        costas_alpha = self.options.costas_alpha,
+                                                       excess_bw = self.options.excess_bw,
                                                        symbol_rate = self.symbol_rate)
 
         num_ambe = 0
@@ -366,15 +382,18 @@ class p25_rx_block (gr.top_block):
             if hash not in self.xor_cache:
                 self.xor_cache[hash] = lfsr.p25p2_lfsr(params['nac'], params['sysid'], params['wacn']).xor_chars
             self.decoder.set_xormask(self.xor_cache[hash], hash)
-            sps = self.basic_rate / 6000
+            rate = 6000
         else:
-            sps = self.basic_rate / 4800
+            rate = 4800
+        sps = self.basic_rate / rate
+        self.demod.set_symbol_rate(rate)   # this and the foll. call should be merged?
         self.demod.clock.set_omega(float(sps))
 
     def change_freq(self, params):
         freq = params['freq']
         offset = params['offset']
         center_freq = params['center_frequency']
+        fine_tune = self.options.fine_tune
 
         if self.options.hamlib_model:
             self.hamlib.set_freq(freq)
@@ -432,7 +451,8 @@ class p25_rx_block (gr.top_block):
 
     def set_audio_scaler(self, vol):
         #print 'audio scaler: %f' % ((1 / 32768.0) * (vol * 0.1))
-        self.decoder.set_scaler_k((1 / 32768.0) * (vol * 0.1))
+        if hasattr(self.decoder, 'set_scaler_k'):
+            self.decoder.set_scaler_k((1 / 32768.0) * (vol * 0.1))
 
     def set_rtl_ppm(self, ppm):
         self.src.set_freq_corr(ppm)
@@ -783,24 +803,35 @@ class du_queue_watcher(threading.Thread):
             msg = self.msgq.delete_head()
             self.callback(msg)
 
+class rx_main(object):
+    def __init__(self):
+        self.keep_running = True
+        self.tb = p25_rx_block()
+        self.q_watcher = du_queue_watcher(self.tb.output_q, self.process_qmsg)
+
+    def process_qmsg(self, msg):
+        if self.tb.process_qmsg(msg):
+            self.keep_running = False
+
+    def run(self):
+        try:
+            self.tb.start()
+            while self.keep_running:
+                time.sleep(1)
+        except:
+            sys.stderr.write('main: exception occurred\n')
+            sys.stderr.write('main: exception:\n%s\n' % traceback.format_exc())
+        if self.tb.terminal:
+            self.tb.terminal.end_terminal()
+        if self.tb.audio:
+            self.tb.audio.stop()
+        self.tb.stop()
+        if self.tb.kill_sink:
+            self.tb.kill_sink.kill()
+
 # Start the receiver
 #
 
 if __name__ == "__main__":
-    tb = p25_rx_block()
-    tb.start()
-    try:
-        while True:
-            msg = tb.output_q.delete_head()
-            if tb.process_qmsg(msg):
-                break
-    except:
-        sys.stderr.write('main: exception occurred\n')
-        sys.stderr.write('main: exception:\n%s\n' % traceback.format_exc())
-    if tb.terminal:
-        tb.terminal.end_curses()
-    if tb.audio:
-        tb.audio.stop()
-    tb.stop()
-    if tb.kill_sink:
-        tb.kill_sink.kill()
+    rx = rx_main()
+    rx.run()

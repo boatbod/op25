@@ -935,7 +935,6 @@ software_imbe_decoder::decode_tap(int _L, int _K, float _w0, const int * _v, con
 	int en, tmp_f;
 
       L = _L;
-      int K = _K;
       w0 = _w0;
    for(ell = 1; ell <= L; ell++) {
 	vee[ell][ New] = _v[ell - 1];
