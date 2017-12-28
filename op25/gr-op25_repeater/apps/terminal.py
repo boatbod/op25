@@ -88,6 +88,8 @@ class curses_terminal(threading.Thread):
         self.textpad = curses.textpad.Textbox(self.text_win)
         self.stdscr.refresh()
 
+        self.title_help()
+
     def end_terminal(self):
         try:
             curses.endwin()
