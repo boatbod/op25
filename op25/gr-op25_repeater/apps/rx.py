@@ -193,7 +193,7 @@ class p25_rx_block (gr.top_block):
         # setup (read-only) attributes
         self.symbol_rate = 4800
         self.symbol_deviation = 600.0
-        self.basic_rate = 48000
+        self.basic_rate = 24000
         _default_speed = 4800
 
         # keep track of flow graph connections
