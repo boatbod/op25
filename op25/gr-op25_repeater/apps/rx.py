@@ -393,7 +393,6 @@ class p25_rx_block (gr.top_block):
         freq = params['freq']
         offset = params['offset']
         center_freq = params['center_frequency']
-        fine_tune = self.options.fine_tune
 
         if self.options.hamlib_model:
             self.hamlib.set_freq(freq)
