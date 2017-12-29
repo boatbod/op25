@@ -222,7 +222,7 @@ class trunked_system (object):
         tgt_tgid = None
         self.blacklist_update(start_time)
 
-        if tgid is not None and tgid in self.talkgroups and self.talkgroups[tgid]['time'] >= start_time:
+        if tgid is not None and tgid in self.talkgroups:
             tgt_tgid = tgid
 
         for active_tgid in self.talkgroups:
@@ -239,7 +239,7 @@ class trunked_system (object):
             elif self.talkgroups[active_tgid]['prio'] < self.talkgroups[tgt_tgid]['prio']:
                 tgt_tgid = active_tgid
                    
-        if tgt_tgid is not None:
+        if tgt_tgid is not None and self.talkgroups[tgt_tgid]['time'] >= start_time:
             return self.talkgroups[tgt_tgid]['frequency'], tgt_tgid, self.talkgroups[tgt_tgid]['tdma_slot'], self.talkgroups[tgt_tgid]['srcaddr']
         return None, None, None, None
 
