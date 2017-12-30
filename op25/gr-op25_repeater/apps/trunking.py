@@ -721,7 +721,10 @@ class rx_ctl (object):
                         tgid = int(row[0])
                         txt = utf_ascii(row[1])
                         if len(row) >= 3:
-                            prio = int(row[2])
+                            try:
+                                prio = int(row[2])
+                            except ValueError as ex:
+                                prio = 3
                         else:
                             prio = 3
                         self.configs[nac]['tgid_map'][tgid] = (txt, prio)
