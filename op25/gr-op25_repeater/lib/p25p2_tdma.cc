@@ -251,11 +251,9 @@ void p25p2_tdma::decode_mac_msg(const uint8_t byte_buf[], const unsigned int len
 	std::string s;
 	std::string tsbk(12,0);
 	std::string pdu(20,0);
-	uint8_t b1b2, mco, msg_ptr, msg_len;
-        uint8_t svcopts[3];
-        uint16_t chan[3], ch_t[2], ch_r[2], colorcd;
-        uint16_t grpaddr[3];
-        uint32_t srcaddr;
+	uint8_t b1b2, cfva, mco, lra, rfss, site_id, ssc, svcopts[3], msg_ptr, msg_len;
+        uint16_t chan[3], ch_t[2], ch_r[2], colorcd, grpaddr[3], sys_id;
+        uint32_t srcaddr, wacn_id;
 
 	for (msg_ptr = 1; msg_ptr < len; )
 	{
@@ -401,9 +399,41 @@ void p25p2_tdma::decode_mac_msg(const uint8_t byte_buf[], const unsigned int len
 				send_msg(tsbk, 7);
 				break;
 			case 0x7b: // Network Status Broadcast Abbreviated
+				lra     =   byte_buf[msg_ptr+1];
+				wacn_id =  (byte_buf[msg_ptr+2] << 12) + (byte_buf[msg_ptr+3] << 4) + (byte_buf[msg_ptr+4] >> 4);
+				sys_id  = ((byte_buf[msg_ptr+4] & 0x0f) << 8) + byte_buf[msg_ptr+5];
+				chan[0] =  (byte_buf[msg_ptr+6] << 8) + byte_buf[msg_ptr+7];
+				ssc     =   byte_buf[msg_ptr+8];
 				colorcd = ((byte_buf[msg_ptr+9] & 0x0f) << 8) + byte_buf[msg_ptr+10];
 				if (d_debug >= 10)
-					fprintf(stderr, ", colorcd=%03x", colorcd);
+					fprintf(stderr, ", lra=0x%02x, wacn_id=0x%05x, sys_id=0x%03x, ch=%u, ssc=0x%02x, colorcd=%03x", lra, wacn_id, sys_id, chan[0], ssc, colorcd);
+				tsbk[0] = colorcd >> 8; tsbk[1] = colorcd & 0xff;
+				tsbk[2] = 0x66;
+				tsbk[3] = 0x00;
+				for (int i = 0; i < 8; i++) {
+					tsbk[4+i] = byte_buf[msg_ptr+2+i];
+				}
+				send_msg(tsbk, 7);
+				break;
+			case 0x7c: // Adjacent Status Broadcast Abbreviated
+				lra     =   byte_buf[msg_ptr+1];
+				cfva    =  (byte_buf[msg_ptr+2] >> 4);
+				sys_id  = ((byte_buf[msg_ptr+2] & 0x0f) << 8) + byte_buf[msg_ptr+3];
+				rfss    =   byte_buf[msg_ptr+4];
+				site_id =   byte_buf[msg_ptr+5];
+				chan[0] =  (byte_buf[msg_ptr+6] << 8) + byte_buf[msg_ptr+7];
+				ssc     =   byte_buf[msg_ptr+8];
+				if (d_debug >= 10)
+					fprintf(stderr, ", lra=0x%02x, cfva=0x%01x, sys_id=0x%03x, rfss=%u, site=%u, ch=%u, ssc=0x%02x", lra, cfva, sys_id, rfss, site_id, chan[0], ssc);
+				tsbk[0] = 0xff; tsbk[1] = 0xff;
+				tsbk[2] = 0x6c;
+				tsbk[3] = 0x00;
+				for (int i = 0; i < 8; i++) {
+					tsbk[4+i] = byte_buf[msg_ptr+2+i];
+				}
+				send_msg(tsbk, 7);
+				break;
+			case 0xfc: // Adjacent Status Broadcast Extended
 				break;
 			case 0xfb: // Network Status Broadcast Extended
 				colorcd = ((byte_buf[msg_ptr+11] & 0x0f) << 8) + byte_buf[msg_ptr+12];
