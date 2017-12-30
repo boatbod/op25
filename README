@@ -1,11 +1,10 @@
 Forked from git://git.osmocom.org/op25 "max" branch on 9/10/2017
-Up to date with "max" branch as of 12/27/2017
+Up to date with "max" branch as of 12/29/2017
 
 Many changes:
 - udp python audio server sockaudio.py and remote player audio.py
 - wireshark fixes (experimental)
 - ability to configure NAC 0x000 in trunk.tsv and have system use first NAC decoded
-- fixes for compiling on Debian Stretch
 - integrated N8UR logging changes to trunking.py
 - ability to adjust fine tuning in real time (,./<> keys in terminal) 
 - ability to dynamically resize the curses terminal
@@ -17,6 +16,7 @@ Many changes:
 - encrypted audio flag shown on terminal screen
 - source radio id displayed on terminal screen (if available)
 - supports IP addresses or host names for --wireshark-host (-W) parameter
+- decode and pass voice channel sourced trunk signaling up to trunking module
 - added optional trunk group priority parameter to end of tgid-tags.tsv file
 
 New command line options:
@@ -25,4 +25,13 @@ New command line options:
   --udp-player     : enable built-in audio player
   --nocrypt        : silence encrypted audio
 
-NOTE: using the --nocrypt command line option will silence encrypted audio, but the trunking logic will cause the application to remain on the active tgid until the transmission ends.  It is generally preferable to blacklist tgids that are always encrypted rather than simply silence them.  Use the --nocrypt functionality to silence occasional encrypted transmissions on mixed use tgids.
+NOTE 1: using the --nocrypt command line option will silence encrypted audio, but the trunking logic will cause the application to remain on the active tgid until the transmission ends.  It is generally preferable to blacklist tgids that are always encrypted rather than simply silence them.  Use the --nocrypt functionality to silence occasional encrypted transmissions on mixed use tgids.
+
+NOTE 2: trunk id to tag mapping file (tgid-tags.tsv) can contain an optional 3rd numeric parameter to be used as the trunk priority when simultaneous calls are present on the system being monitored.  Default priority is 3 if not explicitly specified.  Lower numeric value = higher priority.  Data columns are separated by a single TAB character.
+
+e.g.
+11501	TB FIRE DISP	2
+11502	TB FIRE TAC2	3
+11503	TB FIRE TAC3	3
+11504	TB FIRE TAC4	4
+11505	TB FIRE TAC5	3 
