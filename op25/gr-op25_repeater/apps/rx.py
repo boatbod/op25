@@ -683,15 +683,6 @@ class p25_rx_block (gr.top_block):
         pickle.dump(self.info, f)
         f.close()
 
-    # Adjust the channel offset
-    #
-    def adjust_channel_offset(self, delta_hz):
-        max_delta_hz = 12000.0
-        delta_hz *= self.symbol_deviation      
-        delta_hz = max(delta_hz, -max_delta_hz)
-        delta_hz = min(delta_hz, max_delta_hz)
-        self.channel_filter.set_center_freq(self.channel_offset - delta_hz+ self.options.offset)
-
     def open_ifile(self, capture_rate, gain, input_filename, file_seek):
         speed = 96000 # TODO: fixme
         ifile = blocks.file_source(gr.sizeof_gr_complex, input_filename, 1)
@@ -742,19 +733,6 @@ class p25_rx_block (gr.top_block):
             self.set_freq(self.options.frequency)
         # except Exception, x:
         #     wx.MessageBox("Cannot open USRP: " + x.message, "USRP Error", wx.CANCEL | wx.ICON_EXCLAMATION)
-
-    # Set the channel offset
-    #
-    def set_channel_offset(self, offset_hz, scale, units):
-        self.channel_offset = -offset_hz
-        self.channel_filter.set_center_freq(self.channel_offset+ self.options.offset)
-        self.frame.SetStatusText("Channel offset: " + str(offset_hz * scale) + units, 1)
-
-    # Set the RF squelch threshold level
-    #
-    def set_squelch_threshold(self, squelch_db):
-        self.squelch.set_threshold(squelch_db)
-        self.frame.SetStatusText("Squelch: " + str(squelch_db) + "dB", 2)
 
     def process_qmsg(self, msg):
         # return true = end top block
