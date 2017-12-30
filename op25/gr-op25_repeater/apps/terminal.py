@@ -90,6 +90,31 @@ class curses_terminal(threading.Thread):
 
         self.title_help()
 
+    def resize_curses(self):
+        self.maxy, self.maxx = self.stdscr.getmaxyx()
+ 
+        if (self.maxx < 70) or (self.maxy < 6):	# do not resize if window is now too small
+            return 
+
+        self.stdscr.clear()
+
+        self.title_bar.resize(1, self.maxx)
+        self.help_bar.resize(1, self.maxx)
+        self.help_bar.mvwin(self.maxy-1, 0)
+        self.top_bar.resize(1, self.maxx)
+        self.freq_list.resize(self.maxy-5, self.maxx)
+        self.active1.resize(1, self.maxx-15)
+        self.active1.mvwin(self.maxy-3, 0)
+        self.active2.resize(1, self.maxx-15)
+        self.active2.mvwin(self.maxy-2, 0)
+        self.status1.resize(1, 15)
+        self.status1.mvwin(self.maxy-3, self.maxx-15)
+        self.status2.resize(1, 15)
+        self.status2.mvwin(self.maxy-2, self.maxx-15)
+        self.stdscr.refresh()
+
+        self.title_help()
+
     def end_terminal(self):
         try:
             curses.endwin()
