@@ -174,7 +174,7 @@ void p25p2_tdma::handle_mac_ptt(const uint8_t byte_buf[], const unsigned int len
         send_msg(s, -3);
 
         if (d_debug >= 10) {
-                fprintf(stderr, "MAC_PTT: srcaddr=%u, grpaddr=%u", srcaddr, grpaddr);
+                fprintf(stderr, "%s MAC_PTT: srcaddr=%u, grpaddr=%u", logts.get(), srcaddr, grpaddr);
         }
         if (d_do_nocrypt) {
                 for (int i = 0; i < 9; i++) {
@@ -203,7 +203,7 @@ void p25p2_tdma::handle_mac_end_ptt(const uint8_t byte_buf[], const unsigned int
         uint16_t grpaddr = (byte_buf[16] << 8) + byte_buf[17];
 
         if (d_debug >= 10)
-                fprintf(stderr, "MAC_END_PTT: colorcd=0x%03x, srcaddr=%u, grpaddr=%u\n", colorcd, srcaddr, grpaddr);
+                fprintf(stderr, "%s MAC_END_PTT: colorcd=0x%03x, srcaddr=%u, grpaddr=%u\n", logts.get(), colorcd, srcaddr, grpaddr);
 
         std::string s = "{\"srcaddr\" : " + std::to_string(srcaddr) + ", \"grpaddr\": " + std::to_string(grpaddr) + "}";
         send_msg(s, -3);
@@ -213,7 +213,7 @@ void p25p2_tdma::handle_mac_end_ptt(const uint8_t byte_buf[], const unsigned int
 void p25p2_tdma::handle_mac_idle(const uint8_t byte_buf[], const unsigned int len) 
 {
         if (d_debug >= 10)
-                fprintf(stderr, "MAC_IDLE: ");
+                fprintf(stderr, "%s MAC_IDLE: ", logts.get());
 
         decode_mac_msg(byte_buf, len);
         op25audio.send_audio_flag(op25_audio::DRAIN);
@@ -225,7 +225,7 @@ void p25p2_tdma::handle_mac_idle(const uint8_t byte_buf[], const unsigned int le
 void p25p2_tdma::handle_mac_active(const uint8_t byte_buf[], const unsigned int len) 
 {
         if (d_debug >= 10)
-                fprintf(stderr, "MAC_ACTIVE: ");
+                fprintf(stderr, "%s MAC_ACTIVE: ", logts.get());
 
         decode_mac_msg(byte_buf, len);
 
@@ -236,7 +236,7 @@ void p25p2_tdma::handle_mac_active(const uint8_t byte_buf[], const unsigned int 
 void p25p2_tdma::handle_mac_hangtime(const uint8_t byte_buf[], const unsigned int len) 
 {
         if (d_debug >= 10)
-                fprintf(stderr, "MAC_HANGTIME: ");
+                fprintf(stderr, "%s MAC_HANGTIME: ", logts.get());
 
         decode_mac_msg(byte_buf, len);
         op25audio.send_audio_flag(op25_audio::DRAIN);
@@ -636,7 +636,7 @@ int p25p2_tdma::handle_packet(const uint8_t dibits[])
 void p25p2_tdma::handle_4V2V_ess(const uint8_t dibits[])
 {
         if (d_debug >= 10) {
-		fprintf(stderr, "%s_BURST ", (burst_id < 4) ? "4V" : "2V");
+		fprintf(stderr, "%s %s_BURST ", logts.get(), (burst_id < 4) ? "4V" : "2V");
 	}
 
         if ( !d_do_nocrypt ) {

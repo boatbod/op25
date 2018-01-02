@@ -234,7 +234,7 @@ void
 p25p1_fdma::process_HDU(const bit_vector& A)
 {
 	if (d_debug >= 10) {
-		fprintf (stderr, "NAC 0x%03x HDU:  ", framer->nac);
+		fprintf (stderr, "%s NAC 0x%03x HDU:  ", logts.get(), framer->nac);
 	}
 
         uint32_t MFID;
@@ -296,7 +296,7 @@ void
 p25p1_fdma::process_LDU1(const bit_vector& A)
 {
 	if (d_debug >= 10) {
-		fprintf (stderr, "NAC 0x%03x LDU1: ", framer->nac);
+		fprintf (stderr, "%s NAC 0x%03x LDU1: ", logts.get(), framer->nac);
 	}
 
 	std::vector<uint8_t> HB(63,0); // hexbit vector
@@ -314,7 +314,7 @@ void
 p25p1_fdma::process_LDU2(const bit_vector& A)
 {
 	if (d_debug >= 10) {
-		fprintf (stderr, "NAC 0x%03x LDU2: ", framer->nac);
+		fprintf (stderr, "%s NAC 0x%03x LDU2: ", logts.get(), framer->nac);
 	}
 
 	std::vector<uint8_t> HB(63,0); // hexbit vector
@@ -363,7 +363,7 @@ void
 p25p1_fdma::process_TDU()
 {
 	if (d_debug >= 10) {
-		fprintf (stderr, "NAC 0x%03x TDU:  ", framer->nac);
+		fprintf (stderr, "%s NAC 0x%03x TDU:  ", logts.get(), framer->nac);
 	}
 
 	process_TTDU();
@@ -377,7 +377,7 @@ void
 p25p1_fdma::process_TDU(const bit_vector& A)
 {
 	if (d_debug >= 10) {
-		fprintf (stderr, "NAC 0x%03x TDU:  ", framer->nac);
+		fprintf (stderr, "%s NAC 0x%03x TDU:  ", logts.get(), framer->nac);
 	}
 
 	process_TTDU();
@@ -500,7 +500,7 @@ p25p1_fdma::process_TSBK(const bit_vector& fr, uint32_t fr_len)
 			process_duid(framer->duid, framer->nac, deinterleave_buf[j].data(), 10);
 
 			if (d_debug >= 10) {
-				fprintf (stderr, "NAC 0x%03x TSBK: op=%02x : ", framer->nac, op);
+				fprintf (stderr, "%s NAC 0x%03x TSBK: op=%02x : ", logts.get(), framer->nac, op);
 				for (int i = 0; i < 12; i++) {
 					fprintf(stderr, "%02x ", deinterleave_buf[j][i]);
 				}
@@ -544,7 +544,7 @@ p25p1_fdma::process_PDU(const bit_vector& fr, uint32_t fr_len)
 					op =   deinterleave_buf[0][7] & 0x3f; // Alternate MBT format
 				}
 
-				fprintf (stderr, "NAC 0x%03x PDU:  fmt=%02x, op=0x%02x : ", framer->nac, fmt, op);
+				fprintf (stderr, "%s NAC 0x%03x PDU:  fmt=%02x, op=0x%02x : ", logts.get(), framer->nac, fmt, op);
 				for (int j = 0; (j < blks+1) && (j < 3); j++) {
 					for (int i = 0; i < 12; i++) {
 						fprintf(stderr, "%02x ", deinterleave_buf[j][i]);
@@ -553,7 +553,7 @@ p25p1_fdma::process_PDU(const bit_vector& fr, uint32_t fr_len)
 				fprintf(stderr, "\n");
 			}
 		} else if (d_debug >= 10) {
-			fprintf(stderr, "NAC 0x%03x PDU:  non-MBT message ignored", framer->nac);
+			fprintf(stderr, "%s NAC 0x%03x PDU:  non-MBT message ignored", logts.get(), framer->nac);
 		}
 
 	}

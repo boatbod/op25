@@ -32,10 +32,11 @@
 #include "p25p2_vf.h"
 #include "p25p2_framer.h"
 #include "op25_audio.h"
+#include "log_ts.h"
 
 #include "ezpwd/rs"
 
-class p25p2_tdma;
+//class p25p2_tdma;
 class p25p2_tdma
 {
 public:
@@ -66,6 +67,7 @@ private:
 	bool d_do_audio_output;
         bool d_do_nocrypt;
         const op25_audio& op25audio;
+	log_ts logts;
 
 	int d_debug;
 

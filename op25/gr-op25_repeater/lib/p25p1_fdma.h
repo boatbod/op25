@@ -27,6 +27,7 @@
 
 #include "ezpwd/rs"
 
+#include "log_ts.h"
 #include "op25_audio.h"
 #include "p25_framer.h"
 #include "p25p1_voice_encode.h"
@@ -74,6 +75,7 @@ namespace gr {
 	struct timeval last_qtime;
         p25p1_voice_decode p1voice_decode;
         const op25_audio& op25audio;
+	log_ts logts;
 
         ezpwd::RS<63,55> rs8;  // Reed-Solomon decoders for 8, 12 and 16 bit parity
         ezpwd::RS<63,51> rs12;
