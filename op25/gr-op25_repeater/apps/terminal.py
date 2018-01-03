@@ -123,7 +123,7 @@ class curses_terminal(threading.Thread):
 
     def title_help(self):
         title_str = "OP25"
-        help_str = "(f)req (h)old (s)kip (l)ock (q)uit (1-4)plot (,.<>)tune"
+        help_str = "(f)req (h)old (s)kip (l)ock (q)uit (1-5)plot (,.<>)tune"
         self.title_bar.clear()
         self.help_bar.clear()
         self.title_bar.addstr(0, 0, title_str.center(self.maxx-1, " "), curses.A_REVERSE)
