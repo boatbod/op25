@@ -545,7 +545,7 @@ void p25p2_tdma::handle_voice_frame(const uint8_t dibits[])
 	int rc = -1;
 
 	vf.process_vcw(dibits, b);
-	if (b[0] < 120)
+	if (b[0] < 120) // anything above 120 is an erasure or special frame
 		rc = mbe_dequantizeAmbe2250Parms (&cur_mp, &prev_mp, b);
 	/* FIXME: check RC */
 	K = 12;
