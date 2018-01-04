@@ -448,13 +448,16 @@ p25p1_fdma::process_LCW(std::vector<uint8_t>& HB)
 					uint16_t grp_A = (lcw[3] << 8) + lcw[4];
 					uint16_t ch_B  = (lcw[5] << 8) + lcw[6];
 					uint16_t grp_B = (lcw[7] << 8) + lcw[8];
-					if (d_debug >= 10)
-						fprintf(stderr, ", ch_A=%d, grp_A=%d, ch_B=%d, grp_B=%d", ch_A, grp_A, ch_B, grp_B);
+					if (d_debug >= 10) {
+						fprintf(stderr, ", ch_A=%d, grp_A=%d, ch_B=%d, grp_B=%d :", ch_A, grp_A, ch_B, grp_B);
+						for (i = 0; i < 9; i++)
+							fprintf(stderr, " %02x", lcw[i]);
+					}
 					tsbk[0] = 0xff; tsbk[1] = 0xff;
 					tsbk[2] = 0x82;
 					tsbk[3] = 0x00;
 					tsbk[4] = ch_A >> 8; tsbk[5] = ch_A & 0xff;
-					tsbk[6] = grp_A >> 8; tsbk[6] = grp_A & 0xff;
+					tsbk[6] = grp_A >> 8; tsbk[7] = grp_A & 0xff;
 					tsbk[8] = ch_B >> 8; tsbk[9] = ch_B & 0xff;
 					tsbk[10] = grp_B >> 8; tsbk[11] = grp_B & 0xff;
 					send_msg(tsbk, 7);
