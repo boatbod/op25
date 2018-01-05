@@ -322,15 +322,14 @@ p25p1_fdma::process_LDU2(const bit_vector& A)
 
         int i, j, ec;
 	ec = rs8.decode(HB); // Reed Solomon (24,16,9) error correction
-	j = 39;												// 72 bit MI
-	for (i = 0; i < 9;) {
-		ess_mi[i++] = (uint8_t)  (HB[j  ]         << 2) + (HB[j+1] >> 4);
-		ess_mi[i++] = (uint8_t) ((HB[j+1] & 0x0f) << 4) + (HB[j+2] >> 2);
-		ess_mi[i++] = (uint8_t) ((HB[j+2] & 0x03) << 6) +  HB[j+3];
-		j += 4;
-	}
-
 	if (ec >= 0) {	// save info if good decode
+		j = 39;												// 72 bit MI
+		for (i = 0; i < 9;) {
+			ess_mi[i++] = (uint8_t)  (HB[j  ]         << 2) + (HB[j+1] >> 4);
+			ess_mi[i++] = (uint8_t) ((HB[j+1] & 0x0f) << 4) + (HB[j+2] >> 2);
+			ess_mi[i++] = (uint8_t) ((HB[j+2] & 0x03) << 6) +  HB[j+3];
+			j += 4;
+		}
 		ess_algid =  (HB[j  ]         <<  2) + (HB[j+1] >> 4);					// 8 bit AlgId
 		ess_keyid = ((HB[j+1] & 0x0f) << 12) + (HB[j+2] << 6) + HB[j+3];			// 16 bit KeyId
 
