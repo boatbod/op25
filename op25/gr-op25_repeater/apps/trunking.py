@@ -982,11 +982,9 @@ class rx_ctl (object):
         elif command == 'update':
             if self.current_state == self.states.CC:
                 desired_tgid = None
-                desired_hold = False
                 if self.tgid_hold_until > curr_time:
                     desired_tgid = self.tgid_hold
-                    desired_hold = True
-                new_frequency, new_tgid, tdma_slot, srcaddr = tsys.find_talkgroup(curr_time, tgid=desired_tgid, hold=desired_hold)
+                new_frequency, new_tgid, tdma_slot, srcaddr = tsys.find_talkgroup(curr_time, tgid=desired_tgid, hold=self.hold_mode)
                 if new_frequency:
                     if self.debug > 0:
                         sys.stderr.write("%f voice update:  tg(%s), freq(%s), slot(%s), prio(%d)\n" % (time.time(), new_tgid, new_frequency, tdma_slot, tsys.get_prio(new_tgid)))
@@ -998,11 +996,7 @@ class rx_ctl (object):
                     self.wait_until = curr_time + self.TSYS_HOLD_TIME
                     new_slot = tdma_slot
             else: # check for priority tgid preemption
-                if self.tgid_hold_until > curr_time:
-                    desired_hold = True
-                else:
-                    desired_hold = False
-                new_frequency, new_tgid, tdma_slot, srcaddr = tsys.find_talkgroup(tsys.talkgroups[self.current_tgid]['time'], tgid=self.current_tgid, hold=desired_hold)
+                new_frequency, new_tgid, tdma_slot, srcaddr = tsys.find_talkgroup(tsys.talkgroups[self.current_tgid]['time'], tgid=self.current_tgid, hold=self.hold_mode)
                 if new_tgid != self.current_tgid:
                     if self.debug > 0:
                         sys.stderr.write("%f voice preempt: tg(%s), freq(%s), slot(%s), prio(%d)\n" % (time.time(), new_tgid, new_frequency, tdma_slot, tsys.get_prio(new_tgid)))
