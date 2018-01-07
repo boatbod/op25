@@ -51,8 +51,8 @@ namespace gr {
         void process_LDU1(const bit_vector& A);
         void process_LDU2(const bit_vector& A);
         void process_TTDU();
-        void process_TDU(const bit_vector& A);
-        void process_TDU();
+        void process_TDU15(const bit_vector& A);
+        void process_TDU3();
 	void process_TSBK(const bit_vector& fr, uint32_t fr_len);
 	void process_PDU(const bit_vector& fr, uint32_t fr_len);
 	void process_voice(const bit_vector& A);

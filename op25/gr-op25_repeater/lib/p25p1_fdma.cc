@@ -359,10 +359,10 @@ p25p1_fdma::process_TTDU()
 }
 
 void
-p25p1_fdma::process_TDU()
+p25p1_fdma::process_TDU3()
 {
 	if (d_debug >= 10) {
-		fprintf (stderr, "%s NAC 0x%03x TDU:  ", logts.get(), framer->nac);
+		fprintf (stderr, "%s NAC 0x%03x TDU3:  ", logts.get(), framer->nac);
 	}
 
 	process_TTDU();
@@ -373,10 +373,10 @@ p25p1_fdma::process_TDU()
 }
 
 void
-p25p1_fdma::process_TDU(const bit_vector& A)
+p25p1_fdma::process_TDU15(const bit_vector& A)
 {
 	if (d_debug >= 10) {
-		fprintf (stderr, "%s NAC 0x%03x TDU:  ", logts.get(), framer->nac);
+		fprintf (stderr, "%s NAC 0x%03x TDU15:  ", logts.get(), framer->nac);
 	}
 
 	process_TTDU();
@@ -655,7 +655,7 @@ p25p1_fdma::rx_sym (const uint8_t *syms, int nsyms)
 				process_HDU(framer->frame_body);
 				break;
 			case 0x03:
-				process_TDU();
+				process_TDU3();
 				break;
 			case 0x05:
 				process_LDU1(framer->frame_body);
@@ -670,7 +670,7 @@ p25p1_fdma::rx_sym (const uint8_t *syms, int nsyms)
 				process_PDU(framer->frame_body, framer->frame_size);
 				break;
 			case 0x0f:
-				process_TDU(framer->frame_body);
+				process_TDU15(framer->frame_body);
 				break;
 		}
 
