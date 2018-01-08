@@ -787,8 +787,6 @@ class rx_ctl (object):
         index = tdma_slot
         if tdma_slot is None:
             index = 0
-        filename = 'idle-channel-%d-%d-%f.wav' % (frequency, index, curr_time)
-        decoder.set_output(filename, index=index)
         self.working_frequencies[frequency]['tgids'].pop(tgid)
         print '%f release tgid %d frequency %d' % (curr_time, tgid, frequency)
 
@@ -822,6 +820,9 @@ class rx_ctl (object):
                 else:
                     #active_tdma_slots = [tgids[tg]['tdma_slot'] for tg in tgids]
                     print '%f new tgid %d slot %s arriving on already active frequency %d' % (curr_time, tgid, tdma_slot, frequency)
+                    previous_tgid = [id for id in tgids if tgids[id]['tdma_slot'] == tdma_slot]
+                    assert len(previous_tgid) == 1   ## check for logic error
+                    self.free_talkgroup(frequency, previous_tgid[0], curr_time)
                     worker = self.working_frequencies[frequency]['worker']
             else:
                 worker = self.find_available_worker()
