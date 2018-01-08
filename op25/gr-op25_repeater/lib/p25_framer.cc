@@ -57,11 +57,11 @@ p25_framer::~p25_framer ()
  */
 bool p25_framer::nid_codeword(uint64_t acc) {
 	bit_vector cw(64);
-	bool low = acc & 1;
+
 	// for bch, split bits into codeword vector
-	for (int i=0; i < 64; i++) {
-		acc >>= 1;
+	for (int i = 0; i <= 63; i++) {
 		cw[i] = acc & 1;
+		acc >>= 1;
 	}
 
 	// do bch decode
@@ -76,16 +76,21 @@ bool p25_framer::nid_codeword(uint64_t acc) {
 
 	// load corrected bch bits into acc
 	acc = 0;
-	for (int i=63; i>=0; i--) {
-		acc |= cw[i];
+	for (int i = 63; i >= 0; i--) {
 		acc <<= 1;
+		acc |= cw[i];
 	}
-	acc |= low;   // FIXME
 
 	nid_word = acc;		// reconstructed NID
 	// extract nac and duid
 	nac  = (acc >> 52) & 0xfff;
 	duid = (acc >> 48) & 0x00f;
+
+	// validate parity bit relative to duid (TIA-102-BAAC)
+	if (((duid == 1) || (duid == 2) || (duid == 5) || (duid == 6) || (duid == 9) || (duid == 10) || (duid == 13) || (duid == 14)) && !cw[63])
+		return false;
+	else if (((duid == 0) || (duid == 3) || (duid == 4) || (duid == 7) || (duid == 8) || (duid == 11) || (duid == 12) || (duid == 15)) && cw[63])
+		return false;
 
 	return true;
 }
