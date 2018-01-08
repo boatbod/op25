@@ -86,11 +86,14 @@ bool p25_framer::nid_codeword(uint64_t acc) {
 	nac  = (acc >> 52) & 0xfff;
 	duid = (acc >> 48) & 0x00f;
 
-	// validate parity bit relative to duid (TIA-102-BAAC)
+#if 0
+	// Validate parity bit relative to duid (TIA-102-BAAC)
+	// FIXME: is spec incorrect? (LDU1, LDU2 not working as advertised)
 	if (((duid == 1) || (duid == 2) || (duid == 5) || (duid == 6) || (duid == 9) || (duid == 10) || (duid == 13) || (duid == 14)) && !cw[63])
 		return false;
 	else if (((duid == 0) || (duid == 3) || (duid == 4) || (duid == 7) || (duid == 8) || (duid == 11) || (duid == 12) || (duid == 15)) && cw[63])
 		return false;
+#endif
 
 	return true;
 }
