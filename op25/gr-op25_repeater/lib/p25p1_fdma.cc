@@ -424,7 +424,7 @@ p25p1_fdma::process_LCW(std::vector<uint8_t>& HB)
 	std::string s = "";
 
 	if (d_debug >= 10)
-		fprintf(stderr, "LCW: pb=%d, sf=%d, lco=%d", pb, sf, lco);
+		fprintf(stderr, "LCW: ec=%d, pb=%d, sf=%d, lco=%d", ec, pb, sf, lco);
 
 	if (pb == 0) { // only decode if unencrypted
 		if ((sf == 0) && ((lcw[1] == 0x00) || (lcw[1] == 0x01))) {	// sf=0, explicit MFID in standard format
