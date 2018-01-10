@@ -901,7 +901,10 @@ class rx_ctl (object):
                         worker = self.working_frequencies[frequency]['worker']
                 else:
                     #active_tdma_slots = [tgids[tg]['tdma_slot'] for tg in tgids]
-                    sys.stderr.write('%f new tgid %d slot %s arriving on already active frequency %d\n' % (curr_time, tgid, tdma_slot, frequency))
+                    sys.stderr.write("%f new tgid %d slot %s arriving on already active frequency %d\n" % (curr_time, tgid, tdma_slot, frequency))
+                    previous_tgid = [id for id in tgids if tgids[id]['tdma_slot'] == tdma_slot]
+                    assert len(previous_tgid) == 1   ## check for logic error
+                    self.free_talkgroup(frequency, previous_tgid[0], curr_time)
                     worker = self.working_frequencies[frequency]['worker']
             else:
                 worker = self.find_available_worker()
