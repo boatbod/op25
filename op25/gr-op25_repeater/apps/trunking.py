@@ -867,8 +867,6 @@ class rx_ctl (object):
         index = tdma_slot
         if tdma_slot is None:
             index = 0
-        filename = 'idle-channel-%d-%d-%f.wav' % (frequency, index, curr_time)
-        decoder.set_output(filename, index=index)
         self.working_frequencies[frequency]['tgids'].pop(tgid)
         sys.stderr.write('%f release tgid %d frequency %d\n' % (curr_time, tgid, frequency))
 
