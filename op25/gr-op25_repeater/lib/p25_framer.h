@@ -29,8 +29,7 @@ private:
 	int d_debug;
 
 public:
-	p25_framer();  	// constructor
-	p25_framer(int debug);
+	p25_framer(int debug = 0);
 	~p25_framer ();	// destructor
 	bool rx_sym(uint8_t dibit) ;
 

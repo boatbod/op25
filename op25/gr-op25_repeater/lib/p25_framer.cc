@@ -33,21 +33,6 @@ static const int max_frame_lengths[16] = {
 };
 
 // constructor
-p25_framer::p25_framer() :
-	d_debug(0),
-	reverse_p(0),
-	nid_syms(0),
-	next_bit(0),
-	nid_accum(0),
-	nac(0),
-	duid(0),
-	parity(0),
-	frame_size_limit(0),
-	symbols_received(0),
-	frame_body(P25_VOICE_FRAME_SIZE)
-{
-}
-
 p25_framer::p25_framer(int debug) :
 	d_debug(debug),
 	reverse_p(0),
@@ -114,10 +99,11 @@ bool p25_framer::nid_codeword(uint64_t acc) {
 
 #if 1
 	// Validate duid and parity bit (TIA-102-BAAC)
-	// NOTE: spec appears to be contain incorrect parity values for LDU1 & LDU2
-	if (((duid == 0) || (duid == 3) || (duid == 5) || (duid == 7) || (duid == 10) || (duid == 12) || (duid == 15)) && !parity)
+	if (((duid == 0) || (duid == 3) || (duid == 7) || (duid == 12) || (duid == 15)) && !parity)
 		return true;
-	else 
+	else if (((duid == 5) || (duid == 10)) & parity)
+		return true;
+	else
 		if (d_debug >= 10)
 			fprintf(stderr, "p25_framer::nid_codeword: duid/parity check fail: nid=%016lx, ec=%d\n", nid_word, ec);
 		return false;
