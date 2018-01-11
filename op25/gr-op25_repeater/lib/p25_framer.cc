@@ -34,10 +34,29 @@ static const int max_frame_lengths[16] = {
 
 // constructor
 p25_framer::p25_framer() :
+	d_debug(0),
 	reverse_p(0),
 	nid_syms(0),
 	next_bit(0),
 	nid_accum(0),
+	nac(0),
+	duid(0),
+	parity(0),
+	frame_size_limit(0),
+	symbols_received(0),
+	frame_body(P25_VOICE_FRAME_SIZE)
+{
+}
+
+p25_framer::p25_framer(int debug) :
+	d_debug(debug),
+	reverse_p(0),
+	nid_syms(0),
+	next_bit(0),
+	nid_accum(0),
+	nac(0),
+	duid(0),
+	parity(0),
 	frame_size_limit(0),
 	symbols_received(0),
 	frame_body(P25_VOICE_FRAME_SIZE)
@@ -58,43 +77,51 @@ p25_framer::~p25_framer ()
 bool p25_framer::nid_codeword(uint64_t acc) {
 	bit_vector cw(64);
 
-	// for bch, split bits into codeword vector
+	// save the parity lsb, not used by BCH`
+	int acc_parity = acc & 1;
+
+	// for bch, split bits into codeword vector (lsb first)
 	for (int i = 0; i <= 63; i++) {
-		cw[i] = acc & 1;
 		acc >>= 1;
+		cw[i] = acc & 1;
 	}
 
 	// do bch decode
-	int rc = bchDec(cw);
+	int ec = bchDec(cw);
+	
+	// load corrected bch bits into acc (msb first)
+	acc = 0;
+	for (int i = 63; i >= 0; i--) {
+		acc |= cw[i];
+		acc <<= 1;
+	}
+
+	// put the parity lsb back
+	acc |= acc_parity;
 
 	// check if bch decode unsuccessful
-	if (rc < 0) {
+	if ((ec < 0) || (ec > 10)) {
 		return false;
 	}
 
-	bch_errors = rc;
-
-	// load corrected bch bits into acc
-	acc = 0;
-	for (int i = 63; i >= 0; i--) {
-		acc <<= 1;
-		acc |= cw[i];
-	}
+	bch_errors = ec;
 
 	nid_word = acc;		// reconstructed NID
 	// extract nac and duid
 	nac  = (acc >> 52) & 0xfff;
 	duid = (acc >> 48) & 0x00f;
+	parity = acc_parity;
 
-#if 0
-	// Validate parity bit relative to duid (TIA-102-BAAC)
-	// FIXME: is spec incorrect? (LDU1, LDU2 not working as advertised)
-	if (((duid == 1) || (duid == 2) || (duid == 5) || (duid == 6) || (duid == 9) || (duid == 10) || (duid == 13) || (duid == 14)) && !cw[63])
-		return false;
-	else if (((duid == 0) || (duid == 3) || (duid == 4) || (duid == 7) || (duid == 8) || (duid == 11) || (duid == 12) || (duid == 15)) && cw[63])
+#if 1
+	// Validate duid and parity bit (TIA-102-BAAC)
+	// NOTE: spec appears to be contain incorrect parity values for LDU1 & LDU2
+	if (((duid == 0) || (duid == 3) || (duid == 5) || (duid == 7) || (duid == 10) || (duid == 12) || (duid == 15)) && !parity)
+		return true;
+	else 
+		if (d_debug >= 10)
+			fprintf(stderr, "p25_framer::nid_codeword: duid/parity check fail: nid=%016lx, ec=%d\n", nid_word, ec);
 		return false;
 #endif
-
 	return true;
 }
 
