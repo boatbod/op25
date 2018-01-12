@@ -174,7 +174,7 @@ class trunked_system (object):
 
     def update_talkgroup(self, frequency, tgid, tdma_slot, srcaddr):
         if self.debug >= 5:
-            sys.stderr.write('%f set tgid: %s\n' % (time.time(), tgid))
+            sys.stderr.write('%f set tgid=%s, srcaddr=%s\n' % (time.time(), tgid, srcaddr))
         
         if tgid not in self.talkgroups:
             self.talkgroups[tgid] = {'counter':0}
