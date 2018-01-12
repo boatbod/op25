@@ -230,7 +230,7 @@ class trunked_system (object):
                 break
             if self.talkgroups[active_tgid]['time'] < start_time:
                 continue
-            if active_tgid in self.blacklist and active_tgid not in self.whitelist:
+            if active_tgid in self.blacklist and (not self.whitelist or active_tgid not in self.whitelist):
                 continue
             if self.whitelist and active_tgid not in self.whitelist:
                 continue
