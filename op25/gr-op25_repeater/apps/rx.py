@@ -238,6 +238,8 @@ class p25_rx_block (gr.top_block):
 
         # attach terminal thread
         self.terminal = op25_terminal(self.input_q, self.output_q, self.options.terminal_type)
+        if self.terminal is None:
+            sys.exit(1)
 
         # attach audio thread
         if self.options.udp_player:

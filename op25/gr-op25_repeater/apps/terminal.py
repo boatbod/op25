@@ -58,8 +58,8 @@ class curses_terminal(threading.Thread):
         self.last_update = 0
         self.auto_update = True
         self.current_nac = None
-        self.maxy = None
-        self.maxy = None
+        self.maxx = 0
+        self.maxy = 0
         self.sock = sock
         self.start()
 
@@ -345,7 +345,7 @@ def op25_terminal(input_q,  output_q, terminal_type):
             port = int(terminal_type)
             return udp_terminal(input_q, output_q, port)
         else:
-            sys.stderr.write('warning: unsupported terminal type: %s\n', terminal_type)
+            sys.stderr.write('warning: unsupported terminal type: %s\n' % terminal_type)
             return None
 
 class terminal_client(object):
