@@ -61,10 +61,11 @@ class pipeline(gr.hier_block2):
                 alt_input = self
             self.connect(alt_input, ENCODER2, (DMR, 1))
         elif protocol == 'dstar':
-            ENCODER = op25_repeater.dstar_tx_sb(verbose, None)
+            assert config_file
+            ENCODER = op25_repeater.dstar_tx_sb(verbose, config_file)
         elif protocol == 'p25':
             ENCODER = op25_repeater.vocoder(True,		# 0=Decode,True=Encode
-                                  0,	# Verbose flag
+                                  False,	# Verbose flag
                                   0,	# flex amount
                                   "",			# udp ip address
                                   0,			# udp port
