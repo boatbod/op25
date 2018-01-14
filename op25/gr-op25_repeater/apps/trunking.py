@@ -208,8 +208,8 @@ class trunked_system (object):
     def get_updated_talkgroups(self, start_time):
         return [tgid for tgid in self.talkgroups if (
                        self.talkgroups[tgid]['time'] >= start_time and
-                       tgid not in self.blacklist and
-                       not (self.whitelist and tgid not in self.whitelist))]
+                       ((self.whitelist and tgid in self.whitelist) or
+                       (not self.whitelist and tgid not in self.blacklist)))]
 
     def blacklist_update(self, start_time):
         expired_tgs = [tg for tg in self.blacklist.keys()
