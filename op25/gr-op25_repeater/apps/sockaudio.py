@@ -2,6 +2,8 @@
 
 # Copyright 2017 Graham Norbury
 # 
+# Copyright 2011, 2012, 2013, 2014, 2015, 2016, 2017 Max H. Parke KA1RBI
+# 
 # This file is part of OP25
 # 
 # OP25 is free software; you can redistribute it and/or modify it
@@ -28,7 +30,7 @@ import errno
 
 # OP25 defaults
 PCM_RATE = 8000			# audio sample rate (Hz)
-PCM_BUFFER_SIZE = 2000		# size of ALSA buffer in frames
+PCM_BUFFER_SIZE = 4000		# size of ALSA buffer in frames
 
 MAX_SUPERFRAME_SIZE = 320	# maximum size of incoming UDP audio buffer
 
@@ -128,7 +130,7 @@ class alsasound(object):
 		self.format = pcm_format
 		self.channels = pcm_channels
 		self.rate = pcm_rate
-		pcm_start_threshold = int(pcm_buffer_size * 0.75)
+		pcm_buf_sz = c_ulong(pcm_buffer_size)
 
 		c_pars = (c_void_p * int(self.libasound.snd_pcm_hw_params_sizeof() / sizeof(c_void_p)))()
 		err = self.libasound.snd_pcm_hw_params_any(self.c_pcm, c_pars)
@@ -136,40 +138,43 @@ class alsasound(object):
 			sys.stderr.write("hw_params_any failed: %d\n" % err)
 			return err
 
-		err = self.libasound.snd_pcm_hw_params_set_access(self.c_pcm, c_pars, SND_PCM_ACCESS_RW_INTERLEAVED);
+		err = self.libasound.snd_pcm_hw_params_set_access(self.c_pcm, c_pars, SND_PCM_ACCESS_RW_INTERLEAVED)
 		if err < 0:
 			sys.stderr.write("set_access failed: %d\n" % err)
 			return err
-		err = self.libasound.snd_pcm_hw_params_set_format(self.c_pcm, c_pars, c_uint(self.format));
+		err = self.libasound.snd_pcm_hw_params_set_format(self.c_pcm, c_pars, c_uint(self.format))
 		if err < 0:
 			sys.stderr.write("set_format failed: %d\n" % err)
 			return err
-		err = self.libasound.snd_pcm_hw_params_set_channels(self.c_pcm, c_pars, c_uint(self.channels));
+		err = self.libasound.snd_pcm_hw_params_set_channels(self.c_pcm, c_pars, c_uint(self.channels))
 		if err < 0:
 			sys.stderr.write("set_channels failed: %d\n" % err)
 			return err
-		err = self.libasound.snd_pcm_hw_params_set_rate(self.c_pcm, c_pars, c_uint(self.rate), c_int(0));
+		err = self.libasound.snd_pcm_hw_params_set_rate(self.c_pcm, c_pars, c_uint(self.rate), c_int(0))
 		if err < 0:
 			sys.stderr.write("set_rate failed: %d\n" % err)
 			return err
-		err =  0 ########self.libasound.snd_pcm_hw_params_set_buffer_size(self.c_pcm, c_pars, c_ulong(pcm_buffer_size), c_int(0));
+		err = self.libasound.snd_pcm_hw_params_set_buffer_size_near(self.c_pcm, c_pars, byref(pcm_buf_sz))
 		if err < 0:
-			sys.stderr.write("set_buffer_size failed: %d\n" % err)
+			sys.stderr.write("set_buffer_size_near failed: %d\n" % err)
 			return err
-		err = self.libasound.snd_pcm_hw_params(self.c_pcm, c_pars);
+		if pcm_buf_sz.value != pcm_buffer_size:
+			sys.stderr.write("set_buffer_size_near requested %d, but returned %d\n" % (pcm_buffer_size, pcm_buf_sz.value))
+		err = self.libasound.snd_pcm_hw_params(self.c_pcm, c_pars)
 		if err < 0:
 			sys.stderr.write("hw_params failed: %d\n" % err)
 			return err
 
 		self.libasound.snd_pcm_hw_params_current(self.c_pcm, c_pars)
 		c_bits =  self.libasound.snd_pcm_hw_params_get_sbits(c_pars)
-		self.framesize = self.channels * c_bits/8;
+		self.framesize = self.channels * c_bits/8
 
 		c_sw_pars = (c_void_p * int(self.libasound.snd_pcm_sw_params_sizeof() / sizeof(c_void_p)))()
 		err = self.libasound.snd_pcm_sw_params_current(self.c_pcm, c_sw_pars)
 		if err < 0:
 			sys.stderr.write("get_sw_params_current failed: %d\n" % err)
 			return err
+		pcm_start_threshold = int(pcm_buf_sz.value * 0.75)
 		err = self.libasound.snd_pcm_sw_params_set_start_threshold(self.c_pcm, c_sw_pars, c_uint(pcm_start_threshold))
 		if err < 0:
 			sys.stderr.write("set_sw_params_start_threshold failed: %d\n" % err)
@@ -197,7 +202,7 @@ class alsasound(object):
 		if (ret < 0):
 			if (ret == -errno.EPIPE): # underrun
 				if (LOG_AUDIO_XRUNS):
-					sys.stderr.write("[%f] PCM underrun\n" % time.time())
+					sys.stderr.write("%f PCM underrun\n" % time.time())
 				ret = self.libasound.snd_pcm_recover(self.c_pcm, ret, 1)
 				if (ret >= 0):
 					ret = self.libasound.snd_pcm_writei(self.c_pcm, cast(c_data, POINTER(c_void_p)), n_frames)
@@ -219,6 +224,16 @@ class alsasound(object):
 
 	def drain(self):
 		ret = self.libasound.snd_pcm_drain(self.c_pcm)
+		if (ret == -errno.ESTRPIPE): # suspended
+			while True:
+				ret = self.libasound.snd_pcm_resume(self.c_pcm)
+				if (ret != -errno.EAGAIN):
+					break
+				time.sleep(1)
+		ret = self.libasound.snd_pcm_prepare(self.c_pcm)
+
+	def drop(self):
+		ret = self.libasound.snd_pcm_drop(self.c_pcm)
 		if (ret == -errno.ESTRPIPE): # suspended
 			while True:
 				ret = self.libasound.snd_pcm_resume(self.c_pcm)
@@ -264,6 +279,8 @@ class socket_audio(threading.Thread):
 					flag = ord(d[0][0]) + (ord(d[0][1]) << 8)	# 16 bit little endian
 					if (flag == 0):					# 0x0000 = drain pcm buffer
 						self.pcm.drain()
+					elif (flag == 1):				# 0x0001 = flush pcm buffer
+						self.pcm.drop()
 				else:			# audio data
 					self.pcm.write(d[0])
 			else:
@@ -280,7 +297,6 @@ class socket_audio(threading.Thread):
 	def setup_socket(self, udp_host, udp_port):
 		self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 		self.sock.bind((udp_host, udp_port))
-		sys.stderr.write('setup_socket: %d\n' % udp_port)
 		return
 
 	def close_socket(self):
