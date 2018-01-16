@@ -103,7 +103,7 @@ bool p25_framer::nid_codeword(uint64_t acc) {
 		return false;
 
 	// Report high ec values
-	if (ec > 8)
+	if ((ec > 8) && (d_debug >= 10))
 		fprintf(stderr, "p25_framer::nid_codeword: nid=%016lx, ec=%d\n", nid_word, ec);
 
 	// Validate duid and parity bit (TIA-102-BAAC)
