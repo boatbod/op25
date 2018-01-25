@@ -1,0 +1,44 @@
+<html>
+<head>
+<title>OP25</title>
+<link rel="stylesheet" type="text/css" href="main.css">
+<script src="main.js"></script>
+<meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/>
+<meta http-equiv="Content-Language" content="en" />
+</head>
+<body onload="javascript:do_onload();">
+<input type="button" name="status" value="STATUS" onclick="javascript:f_select(&quot;status&quot;);" href=""></input>
+&nbsp;&nbsp;|&nbsp;&nbsp;
+<input type="button" name="plot" value="PLOT" onclick="javascript:f_select(&quot;plot&quot;);"></input>
+<br><hr>
+<div id="div_status" style="display: none;">
+<div id="div_s1">
+Waiting for data
+</div>
+<div id="div_s2" style="display: none;">
+</div>
+<div id="div_s3" style="display: none;">
+<form method="post" action="#" id="form_scan">
+<input type="button" name="skip" value="SKIP" onclick="javascript:f_scan_button(&quot;skip&quot;);"></input>
+<input type="button" name="hold" value="HOLD" onclick="javascript:f_scan_button(&quot;hold&quot;);"></input>
+<input type="button" name="lockout" value="LOCKOUT" onclick="javascript:f_scan_button(&quot;lockout&quot;);"></input>
+</form>
+</div>
+</div>
+<div id="div_plot" style="display: none;">
+<img src="1x1.png" id="img0" style="display:none;"><br>
+<img src="1x1.png" id="img1" style="display:none;"><br>
+<img src="1x1.png" id="img2" style="display:none;"><br>
+<img src="1x1.png" id="img3" style="display:none;"><br>
+</div>
+<br><hr>
+&copy;Copyright 2017, 2018 Max H. Parke KA1RBI<p>
+<font size="-1">
+This program comes with ABSOLUTELY NO WARRANTY.<br>
+OP25 is free software, and you are welcome to redistribute it<br>
+under certain conditions.  For further details refer to this link:
+<a href="https://www.gnu.org/licenses/gpl-3.0.en.html" target="_blank">LICENSE</a>
+</font>
+<br>
+</body>
+</html>

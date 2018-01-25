@@ -1,0 +1,5 @@
+body {background-color: yellow;}
+table { border-style: solid; background-color: #00c000; border-collapse: collapse}
+th {border-style: solid;}
+td {border-style: solid;}
+input#s_table_nac {text-align: right;}
