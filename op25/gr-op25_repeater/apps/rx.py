@@ -281,7 +281,10 @@ class p25_rx_block (gr.top_block):
         # connect it all up
         self.connect(source, self.demod, self.decoder)
 
-        for plot_mode in self.options.plot_mode.split(','):
+        plot_modes = []
+        if self.options.plot_mode is not None:
+            plot_modes = self.options.plot_mode.split(',')
+        for plot_mode in plot_modes:
             if plot_mode == 'constellation':
                 assert self.options.demod_type == 'cqpsk'  ## constellation requires cqpsk demod-type
                 sink = constellation_sink_c()
@@ -298,6 +301,8 @@ class p25_rx_block (gr.top_block):
                 assert self.options.demod_type == 'fsk4'  ## datascope requires fsk4 demod-type
                 sink = eye_sink_f(sps=sps)
                 self.demod.connect_bb('symbol_filter', sink)
+            else:
+                raise ValueError('unsupported plot type: %s' % plot_mode)
             self.plot_sinks.append(sink)
             if self.options.terminal_type.startswith('http:'):
                 sink.gnuplot.set_interval(_def_interval)
