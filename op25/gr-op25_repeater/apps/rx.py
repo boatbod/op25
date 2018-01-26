@@ -75,6 +75,9 @@ os.environ['IMBE'] = 'soft'
 
 WIRESHARK_PORT = 23456
 
+_def_interval = 5.0	# sec
+_def_file_dir = '../www/images'
+
 # The P25 receiver
 #
 class p25_rx_block (gr.top_block):
@@ -84,7 +87,7 @@ class p25_rx_block (gr.top_block):
     def __init__(self):
 
         self.trunk_rx = None
-        self.kill_sink = None
+        self.plot_sinks = []
 
         gr.top_block.__init__(self)
 
@@ -100,12 +103,12 @@ class p25_rx_block (gr.top_block):
         parser.add_option("-c", "--calibration", type="eng_float", default=0.0, help="USRP offset or audio IF frequency", metavar="Hz")
         parser.add_option("-C", "--costas-alpha", type="eng_float", default=0.04, help="value of alpha for Costas loop", metavar="Hz")
         parser.add_option("-D", "--demod-type", type="choice", default="cqpsk", choices=('cqpsk', 'fsk4'), help="cqpsk | fsk4")
-        parser.add_option("-P", "--plot-mode", type="choice", default=None, choices=(None, 'constellation', 'fft', 'symbol', 'datascope'), help="constellation | fft | symbol | datascope")
+        parser.add_option("-P", "--plot-mode", type="string", default=None, help="one or more of constellation, fft, symbol, datascope (comma-separated)")
         parser.add_option("-f", "--frequency", type="eng_float", default=0.0, help="USRP center frequency", metavar="Hz")
         parser.add_option("-F", "--ifile", type="string", default=None, help="read input from complex capture file")
         parser.add_option("-H", "--hamlib-model", type="int", default=None, help="specify model for hamlib")
         parser.add_option("-s", "--seek", type="int", default=0, help="ifile seek in K")
-        parser.add_option("-l", "--terminal-type", type="string", default='curses', help="'curses' or udp port")
+        parser.add_option("-l", "--terminal-type", type="string", default='curses', help="'curses' or udp port or 'http:host:port'")
         parser.add_option("-L", "--logfile-workers", type="int", default=None, help="number of demodulators to instantiate")
         parser.add_option("-S", "--sample-rate", type="int", default=320e3, help="source samp rate")
         parser.add_option("-t", "--tone-detect", action="store_true", default=False, help="use experimental tone detect algorithm")
@@ -186,6 +189,7 @@ class p25_rx_block (gr.top_block):
         self.symbol_deviation = 600.0
         self.basic_rate = 24000
         _default_speed = 4800
+        self.options = options
 
         # keep track of flow graph connections
         self.cnxns = []
@@ -194,8 +198,6 @@ class p25_rx_block (gr.top_block):
         self.data_scope_connected = False
 
         self.constellation_scope_connected = False
-
-        self.options = options
 
         for i in xrange(len(speeds)):
             if speeds[i] == _default_speed:
@@ -279,26 +281,27 @@ class p25_rx_block (gr.top_block):
         # connect it all up
         self.connect(source, self.demod, self.decoder)
 
-        if self.options.plot_mode == 'constellation':
-            assert self.options.demod_type == 'cqpsk'  ## constellation requires cqpsk demod-type
-            self.constellation_sink = constellation_sink_c()
-            self.demod.connect_complex('diffdec', self.constellation_sink)
-            self.kill_sink = self.constellation_sink
-        elif self.options.plot_mode == 'symbol':
-            self.symbol_sink = symbol_sink_f()
-            self.demod.connect_float(self.symbol_sink)
-            self.kill_sink = self.symbol_sink
-        elif self.options.plot_mode == 'fft':
-            self.fft_sink = fft_sink_c()
-            self.spectrum_decim = filter.rational_resampler_ccf(1, self.options.decim_amt)
-            self.connect(self.spectrum_decim, self.fft_sink)
-            self.demod.connect_complex('src', self.spectrum_decim)
-            self.kill_sink = self.fft_sink
-        elif self.options.plot_mode == 'datascope':
-            assert self.options.demod_type == 'fsk4'  ## datascope requires fsk4 demod-type
-            self.eye_sink = eye_sink_f(sps=sps)
-            self.demod.connect_bb('symbol_filter', self.eye_sink)
-            self.kill_sink = self.eye_sink
+        for plot_mode in self.options.plot_mode.split(','):
+            if plot_mode == 'constellation':
+                assert self.options.demod_type == 'cqpsk'  ## constellation requires cqpsk demod-type
+                sink = constellation_sink_c()
+                self.demod.connect_complex('diffdec', sink)
+            elif plot_mode == 'symbol':
+                sink = symbol_sink_f()
+                self.demod.connect_float(sink)
+            elif plot_mode == 'fft':
+                sink = fft_sink_c()
+                self.spectrum_decim = filter.rational_resampler_ccf(1, self.options.decim_amt)
+                self.connect(self.spectrum_decim, sink)
+                self.demod.connect_complex('src', self.spectrum_decim)
+            elif plot_mode == 'datascope':
+                assert self.options.demod_type == 'fsk4'  ## datascope requires fsk4 demod-type
+                sink = eye_sink_f(sps=sps)
+                self.demod.connect_bb('symbol_filter', sink)
+            self.plot_sinks.append(sink)
+            if self.options.terminal_type.startswith('http:'):
+                sink.gnuplot.set_interval(_def_interval)
+                sink.gnuplot.set_output_dir(_def_file_dir)
 
         if self.options.raw_symbols:
             self.sink_sf = blocks.file_sink(gr.sizeof_char, self.options.raw_symbols)
@@ -579,6 +582,17 @@ class p25_rx_block (gr.top_block):
         # except Exception, x:
         #     wx.MessageBox("Cannot open USRP: " + x.message, "USRP Error", wx.CANCEL | wx.ICON_EXCLAMATION)
 
+    def process_ajax(self):
+        if not self.options.terminal_type.startswith('http:'):
+            return
+        filenames = [sink.gnuplot.filename for sink in self.plot_sinks if sink.gnuplot.filename]
+        error = None
+        if self.options.demod_type == 'cqpsk':
+            error = self.demod.get_freq_error()
+        d = {'json_type': 'rx_update', 'error': error, 'files': filenames}
+        msg = gr.message().make_from_string(json.dumps(d), -4, 0, 0)
+        self.input_q.insert_tail(msg)
+
     def process_qmsg(self, msg):
         # return true = end top block
         RX_COMMANDS = 'skip lockout hold'
@@ -590,6 +604,7 @@ class p25_rx_block (gr.top_block):
             js = self.trunk_rx.to_json()
             msg = gr.message().make_from_string(js, -4, 0, 0)
             self.input_q.insert_tail(msg)
+            self.process_ajax()
         elif s == 'set_freq':
             freq = msg.arg1()
             self.set_freq(freq)
@@ -642,8 +657,8 @@ class rx_main(object):
         if self.tb.audio:
             self.tb.audio.stop()
         self.tb.stop()
-        if self.tb.kill_sink:
-            self.tb.kill_sink.kill()
+        for sink in self.tb.plot_sinks:
+            sink.kill()
 
 # Start the receiver
 #
