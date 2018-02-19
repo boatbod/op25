@@ -39,12 +39,12 @@ namespace gr {
 
     void p25_frame_assembler_impl::p25p2_queue_msg(int duid)
     {
-	static const char wbuf[2] = {0xff, 0xff}; // dummy NAC
+	static const unsigned char wbuf[2] = {0xff, 0xff}; // dummy NAC
 	if (!d_do_msgq)
 		return;
 	if (d_msg_queue->full_p())
 		return;
-	gr::message::sptr msg = gr::message::make_from_string(std::string(wbuf, 2), duid, 0, 0);
+	gr::message::sptr msg = gr::message::make_from_string(std::string((const char *)wbuf, 2), duid, 0, 0);
 	d_msg_queue->insert_tail(msg);
     }
 
