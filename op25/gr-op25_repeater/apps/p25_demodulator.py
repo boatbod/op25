@@ -299,7 +299,7 @@ class p25_demod_cb(p25_demod_base):
             self.clock.reset()
 
     def set_relative_frequency(self, freq):
-        if abs(freq) > self.input_rate/2:
+        if abs(freq) > ((self.input_rate / 2) - (self.if1 / 2)):
             #print 'set_relative_frequency: error, relative frequency %d exceeds limit %d' % (freq, self.input_rate/2)
             return False
         if freq == self.lo_freq:
