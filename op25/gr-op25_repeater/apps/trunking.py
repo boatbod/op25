@@ -58,6 +58,7 @@ class trunked_system (object):
         self.tsbk_cache = {}
         self.secondary = {}
         self.adjacent = {}
+        self.adjacent_data = {}
         self.rfss_syid = 0
         self.rfss_rfid = 0
         self.rfss_stid = 0
@@ -105,12 +106,15 @@ class trunked_system (object):
         d['secondary'] = self.secondary.keys()
         d['tsbks'] = self.stats['tsbks']
         d['frequencies'] = {}
+        d['frequency_data'] = {}
         d['last_tsbk'] = self.last_tsbk
         t = time.time()
         for f in self.voice_frequencies.keys():
             tgs = '%s %s' % (self.voice_frequencies[f]['tgid'][0], self.voice_frequencies[f]['tgid'][1])
             d['frequencies'][f] = 'voice frequency %f tgid(s) %s %4.1fs ago count %d' %  (f / 1000000.0, tgs, t - self.voice_frequencies[f]['time'], self.voice_frequencies[f]['counter'])
 
+            d['frequency_data'][f] = {'tgids': self.voice_frequencies[f]['tgid'], 'last_activity': '%7.1f' % (t - self.voice_frequencies[f]['time']), 'counter': self.voice_frequencies[f]['counter']}
+	d['adjacent_data'] = self.adjacent_data
         return json.dumps(d)
 
     def to_string(self):
@@ -276,6 +280,7 @@ class trunked_system (object):
             f2 = self.channel_id_to_frequency(ch2)
             if f1 and f2:
                 self.adjacent[f1] = 'rfid: %d stid:%d uplink:%f' % (rfid, stid, f2 / 1000000.0)
+                self.adjacent_data[f1] = {'rfid': rfid, 'stid':stid, 'uplink': f2, 'table': None}
             if self.debug > 10:
                 sys.stderr.write('mbt3c adjacent sys %x rfid %x stid %x ch1 %x ch2 %x f1 %s f2 %s\n' % (syid, rfid, stid, ch1, ch2, self.channel_id_to_string(ch1), self.channel_id_to_string(ch2)))
         elif opcode == 0x3b:  # network status
@@ -513,6 +518,7 @@ class trunked_system (object):
             f1 = self.channel_id_to_frequency(ch1)
             if f1 and table in self.freq_table:
                 self.adjacent[f1] = 'rfid: %d stid:%d uplink:%f tbl:%d' % (rfid, stid, (f1 + self.freq_table[table]['offset']) / 1000000.0, table)
+                self.adjacent_data[f1] = {'rfid': rfid, 'stid':stid, 'uplink': f1 + self.freq_table[table]['offset'], 'table': table}
             if self.debug > 10:
                 sys.stderr.write('tsbk3c adjacent: rfid %x stid %d ch1 %x(%s)\n' %(rfid, stid, ch1, self.channel_id_to_string(ch1)))
                 if table in self.freq_table:

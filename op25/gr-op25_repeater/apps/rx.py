@@ -76,6 +76,9 @@ os.environ['IMBE'] = 'soft'
 
 WIRESHARK_PORT = 23456
 
+_def_interval = 5.0	# sec
+_def_file_dir = '../www/images'
+
 # The P25 receiver
 #
 class p25_rx_block (gr.top_block):
@@ -106,7 +109,7 @@ class p25_rx_block (gr.top_block):
         parser.add_option("-F", "--ifile", type="string", default=None, help="read input from complex capture file")
         parser.add_option("-H", "--hamlib-model", type="int", default=None, help="specify model for hamlib")
         parser.add_option("-s", "--seek", type="int", default=0, help="ifile seek in K")
-        parser.add_option("-l", "--terminal-type", type="string", default='curses', help="'curses' or udp port")
+        parser.add_option("-l", "--terminal-type", type="string", default='curses', help="'curses' or udp port or 'http:host:port'")
         parser.add_option("-L", "--logfile-workers", type="int", default=None, help="number of demodulators to instantiate")
         parser.add_option("-S", "--sample-rate", type="int", default=320e3, help="source samp rate")
         parser.add_option("-t", "--tone-detect", action="store_true", default=False, help="use experimental tone detect algorithm")
@@ -195,6 +198,7 @@ class p25_rx_block (gr.top_block):
         self.symbol_deviation = 600.0
         self.basic_rate = 24000
         _default_speed = 4800
+        self.options = options
 
         # keep track of flow graph connections
         self.cnxns = []
@@ -203,8 +207,6 @@ class p25_rx_block (gr.top_block):
         self.data_scope_connected = False
 
         self.constellation_scope_connected = False
-
-        self.options = options
 
         for i in xrange(len(speeds)):
             if speeds[i] == _default_speed:
@@ -736,6 +738,17 @@ class p25_rx_block (gr.top_block):
         # except Exception, x:
         #     wx.MessageBox("Cannot open USRP: " + x.message, "USRP Error", wx.CANCEL | wx.ICON_EXCLAMATION)
 
+    def process_ajax(self):
+        if not self.options.terminal_type.startswith('http:'):
+            return
+        filenames = [sink.gnuplot.filename for sink in self.plot_sinks if sink.gnuplot.filename]
+        error = None
+        if self.options.demod_type == 'cqpsk':
+            error = self.demod.get_freq_error()
+        d = {'json_type': 'rx_update', 'error': error, 'files': filenames}
+        msg = gr.message().make_from_string(json.dumps(d), -4, 0, 0)
+        self.input_q.insert_tail(msg)
+
     def process_qmsg(self, msg):
         # return true = end top block
         RX_COMMANDS = 'skip lockout hold'
@@ -747,6 +760,7 @@ class p25_rx_block (gr.top_block):
             js = self.trunk_rx.to_json()
             msg = gr.message().make_from_string(js, -4, 0, 0)
             self.input_q.insert_tail(msg)
+            self.process_ajax()
         elif s == 'set_freq':
             freq = msg.arg1()
             self.set_freq(freq)

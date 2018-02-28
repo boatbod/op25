@@ -20,6 +20,8 @@
 # 02110-1301, USA.
 
 import sys
+import os
+import time
 import subprocess
 
 from gnuradio import gr, gru, eng_notation
@@ -51,6 +53,11 @@ class wrap_gp(object):
 		self.avg_sum_pwr = 0.0
 		self.buf = []
 		self.plot_count = 0
+		self.last_plot = 0
+		self.plot_interval = None
+		self.sequence = 0
+		self.output_dir = None
+		self.filename = None
 
 		self.attach_gp()
 
@@ -62,6 +69,12 @@ class wrap_gp(object):
 	def kill(self):
 		self.gp.stdin.write("quit\n")
 		self.gp.wait()
+
+	def set_interval(self, v):
+		self.plot_interval = v
+
+	def set_output_dir(self, v):
+		self.output_dir = v
 
 	def plot(self, buf, bufsz, mode='eye'):
 		BUFSZ = bufsz
@@ -75,6 +88,10 @@ class wrap_gp(object):
 		if mode == 'eye' and self.plot_count % 20 != 0:
 			self.buf = []
 			return consumed
+
+		if self.plot_interval and self.last_plot + self.plot_interval > time.time():
+			return consumed
+		self.last_plot = time.time()
 
 		plots = []
 		s = ''
@@ -98,7 +115,7 @@ class wrap_gp(object):
 					s += '%f\n' % (b)
 				s += 'e\n'
 				self.buf = []
-				plots.append('"-" with dots')
+				plots.append('"-" with points')
 			elif mode == 'fft' or mode == 'mixer':
 				sum_pwr = 0.0
 				self.ffts = np.fft.fft(self.buf * np.blackman(BUFSZ)) / (0.42 * BUFSZ)
@@ -125,7 +142,18 @@ class wrap_gp(object):
 				plots.append('"-" with lines')
 		self.buf = []
 
-		h= 'set terminal x11 noraise\n'
+		filename = None
+		if self.output_dir:
+			if self.sequence >= 2:
+				delete_pathname = '%s/plot-%s-%d.png' % (self.output_dir, mode, self.sequence-2)
+				if os.access(delete_pathname, os.W_OK):
+					os.remove(delete_pathname)
+			h= 'set terminal png\n'
+			filename = 'plot-%s-%d.png' % (mode, self.sequence)
+			self.sequence += 1
+			h += 'set output "%s/%s"\n' % (self.output_dir, filename)
+		else:
+			h= 'set terminal x11 noraise\n'
 		#background = 'set object 1 circle at screen 0,0 size screen 1 fillcolor rgb"black"\n' #FIXME!
 		background = ''
 		h+= 'set key off\n'
@@ -162,6 +190,8 @@ class wrap_gp(object):
 		self.gp.poll()
 		if self.gp.returncode is None:	# make sure gnuplot is still running 
 			self.gp.stdin.write(dat)
+		if filename:
+			self.filename = filename
 		return consumed
 
 	def set_center_freq(self, f):

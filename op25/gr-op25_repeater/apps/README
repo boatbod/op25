@@ -153,6 +153,8 @@ Options:
   -H HAMLIB_MODEL, --hamlib-model=HAMLIB_MODEL
                         specify model for hamlib
   -s SEEK, --seek=SEEK  ifile seek in K
+  -l TERMINAL_TYPE, --terminal-type=TERMINAL_TYPE
+                        'curses' or udp port or 'http:host:port'
   -L LOGFILE_WORKERS, --logfile-workers=LOGFILE_WORKERS
                         number of demodulators to instantiate
   -S SAMPLE_RATE, --sample-rate=SAMPLE_RATE
@@ -191,6 +193,31 @@ Options:
   -2, --phase2-tdma     enable phase2 tdma decode
   -Z DECIM_AMT, --decim-amt=DECIM_AMT
                         spectrum decimation
+
+HTTP CONSOLE
+============
+New as of Jan. 2018, the OP25 dashboard is accessible to any Web browser over
+HTTP.  Include the option "-l http:<host>:<port>" when starting the rx.py app,
+where <host> is either "127.0.0.1" to limit access from only this host, or
+"0.0.0.0" if HTTP access from anywhere is to be allowed*.  After rx.py has
+started it begins listening on the specified port for incoming connections.
+
+Once connected the status page should automatically update to show trunking
+system status, frequency list, adjacent sites, and other data.
+
+Example:  you have started rx.py with the option "-l http:127.0.0.1:8080".
+To connect, set your web browser URL to "http://127.0.0.1:8080".
+
+If one or more plot modes has been selected using the "-P" option you may
+view them by clicking the "PLOT" button.  The plots are updated approx.
+every five seconds.  Click "STATUS" to return to the main status page.
+
+*WARNING*: there is no security or encryption.  Be careful when using "0.0.0.0"
+as the listening address since anyone with access to the network can connect.
+
+NOTE: the python-pyramid package is required when using this option.   It can
+be installed by running
+     sudo apt-get install python-pyramid
 
 MULTI-RECEIVER
 ==============
