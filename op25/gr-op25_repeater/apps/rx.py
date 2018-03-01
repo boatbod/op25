@@ -227,7 +227,7 @@ class p25_rx_block (gr.top_block):
         # configure specified data source
         if options.input:
             self.open_file(options.input)
-        elif options.frequency:
+        elif (self.rtl_found or options.frequency):
             self.open_usrp()
         elif options.audio_if:
             self.open_audio_c(self.channel_rate, options.gain, options.audio_input)
@@ -662,10 +662,6 @@ class p25_rx_block (gr.top_block):
             self.src.set_antenna(self.options.antenna)
         self.info["capture-rate"] = capture_rate
         self.src.set_bandwidth(capture_rate)
-        r = self.src.set_center_freq(self.options.frequency + self.options.calibration+ self.options.offset)
-        print 'set_center_freq: %d' % r
-        if not r:
-            raise RuntimeError("failed to set USRP frequency")
         # capture file
         # if preserve:
         if 0:
@@ -734,7 +730,8 @@ class p25_rx_block (gr.top_block):
                 "source-dev": "USRP",
                 "source-decim": 1 }
             self.__set_rx_from_osmosdr()
-            self.set_freq(self.options.frequency)
+            if self.options.frequency:
+                self.set_freq(self.options.frequency)
         # except Exception, x:
         #     wx.MessageBox("Cannot open USRP: " + x.message, "USRP Error", wx.CANCEL | wx.ICON_EXCLAMATION)
 
