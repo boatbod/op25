@@ -67,8 +67,9 @@ def post_req(environ, start_response, postdata):
     global my_input_q, my_output_q, my_recv_q, my_port
     try:
         data = json.loads(postdata)
-        msg = gr.message().make_from_string(str(data['command']), -2, data['data'], 0)
-        my_output_q.insert_tail(msg)
+        for d in data:
+            msg = gr.message().make_from_string(str(d['command']), -2, d['data'], 0)
+            my_output_q.insert_tail(msg)
         time.sleep(0.2)
     except:
         sys.stderr.write('post_req: error processing input: %s:\n' % (postdata))

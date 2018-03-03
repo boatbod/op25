@@ -18,6 +18,22 @@
 // Software Foundation, Inc., 51 Franklin Street, Boston, MA
 // 02110-1301, USA.
 
+var d_debug = 1;
+
+var http_req = new XMLHttpRequest();
+var counter1 = 0;
+var error_val = null;
+var current_tgid = null;
+var send_busy = 0;
+var send_qfull = 0;
+var send_queue = [];
+var req_cb_count = 0;
+var request_count = 0;
+var nfinal_count = 0;
+var n200_count = 0;
+var r200_count = 0;
+var SEND_QLIMIT = 5;
+
 function find_parent(ele, tagname) {
     while (ele) {
         if (ele.nodeName == tagname)
@@ -84,12 +100,6 @@ function f_select(command) {
         ctl.style['display'] = "none";
     nav_update(command);
 }
-
-var http_req = new XMLHttpRequest();
-
-var counter1 = 0;
-var error_val = null;
-var current_tgid = null;
 
 function is_digit(s) {
     if (s >= "0" && s <= "9")
@@ -188,7 +198,7 @@ function trunk_update(d) {
             html += "</span><br>";
         }
         if (error_val != null) {
-            html += "<span class=\"label\">Frequency error: </span><span class=\"value\">" + error_val + " Hz. (approx) </span>";
+            html += "<span class=\"label\">Frequency error: </span><span class=\"value\">" + error_val + " Hz. (approx) </span><br>";
         }
 
 // system frequencies table
@@ -220,11 +230,17 @@ function trunk_update(d) {
 
 
 function http_req_cb() {
+    req_cb_count += 1;
     s = http_req.readyState;
-    if (s != 4)
+    if (s != 4) {
+        nfinal_count += 1;
         return;
-    if (http_req.status != 200)
+    }
+    if (http_req.status != 200) {
+        n200_count += 1;
         return;
+    }
+    r200_count += 1;
     var dl = JSON.parse(http_req.responseText);
     var dispatch = {'trunk_update': trunk_update, 'change_freq': change_freq, 'rx_update': rx_update}
     for (var i=0; i<dl.length; i++) {
@@ -247,17 +263,30 @@ function do_onload() {
 
 function do_update() {
     send_command("update", 0);
+    f_debug();
 }
 
 function send_command(command, data) {
+    request_count += 1;
+    if (send_queue.length >= SEND_QLIMIT) {
+        send_qfull += 1;
+        send_queue.unshift();
+    }
+    send_queue.push( {"command": command, "data": data} );
+    send_process();
+}
+
+function send_process() {
     s = http_req.readyState;
     if (s != 0 && s != 4) {
+        send_busy += 1;
         return;
     }
     http_req.open("POST", "/");
     http_req.onreadystatechange = http_req_cb;
     http_req.setRequestHeader("Content-type", "application/json");
-    cmd = JSON.stringify( {"command": command, "data": data} );
+    cmd = JSON.stringify( send_queue );
+    send_queue = [];
     http_req.send(cmd);
 }
 
@@ -266,4 +295,20 @@ function f_scan_button(command) {
         send_command(command, -1);
     else
         send_command(command, current_tgid);
+}
+
+function f_debug() {
+	if (!d_debug) return;
+	var html = "busy " + send_busy;
+	html += " qfull " + send_qfull;
+	html += " sendq size " + send_queue.length;
+	html += " requests " + request_count;
+	html += "<br>callbacks:";
+	html += " total=" + req_cb_count;
+	html += " incomplete=" + nfinal_count;
+	html += " error=" + n200_count;
+	html += " OK=" + r200_count;
+	html += "<br>";
+	var div_debug = document.getElementById("div_debug");
+	div_debug.innerHTML = html;
 }
