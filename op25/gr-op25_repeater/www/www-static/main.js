@@ -54,8 +54,22 @@ function f_command(ele, command) {
     }
 }
 
+function nav_update(command) {
+	var names = ["b1", "b2", "b3"];
+	var bmap = { "status": "b1", "plot": "b2", "about": "b3" };
+	var id = bmap[command];
+	for (var id1 in names) {
+		b = document.getElementById(names[id1]);
+		if (names[id1] == id) {
+			b.className = "nav-button-active";
+		} else {
+			b.className = "nav-button";
+		}
+	}
+}
+
 function f_select(command) {
-    var div_list = ["status", "plot"];
+    var div_list = ["status", "plot", "about"];
     for (var i=0; i<div_list.length; i++) {
         var ele = document.getElementById("div_" + div_list[i]);
         if (command == div_list[i])
@@ -63,6 +77,12 @@ function f_select(command) {
         else
             ele.style['display'] = "none";
     }
+    var ctl = document.getElementById("controls");
+    if (command == "status")
+        ctl.style['display'] = "";
+    else
+        ctl.style['display'] = "none";
+    nav_update(command);
 }
 
 var http_req = new XMLHttpRequest();
@@ -91,12 +111,14 @@ function rx_update(d) {
     error_val = d["error"];
 }
 
+// frequency, system, and talkgroup display
+
 function change_freq(d) {
-    var html = "Frequency: " + d['freq'] / 1000000.0;
-    html += " <font size=\"+2\"><b>(" + d['system'] + ")</b></font> ";
+    var html = "<span class=\"label\">Frequency: </span><span class=\"value\">" + d['freq'] / 1000000.0;
+    html += "</span> <span class=\"systgid\"> &nbsp;" + d['system'] + " </span> ";
     if (d['tgid'] != null) {
-        html += "Talkgroup ID " + d['tgid'];
-        html += " <font size=\"+2\"><b>(" + d['tag'] + ")</b></font>";
+        html += "<span class=\"label\">Talkgroup ID: </span><span class=\"value\"> " + d['tgid'];
+        html += "</span> <span class=\"systgid\"> &nbsp;" + d['tag'] + " </span>";
     }
     html += "<br>";
     var div_s2 = document.getElementById("div_s2");
@@ -110,15 +132,17 @@ function change_freq(d) {
     }
 }
 
+// adjacent sites table
+
 function adjacent_data(d) {
     if (Object.keys(d).length < 1) {
-        var html = "";
+        var html = "</div>";
         return html;
     }
-    var html = "<p>";
-    html += "<table border=1 borderwidth=0 cellpadding=0 cellspacing=0>";
+    var html = "<div class=\"adjacent\">";
+    html += "<table border=1 borderwidth=0 cellpadding=0 cellspacing=0 width=100%>";
     html += "<tr><th colspan=99 style=\"align: center\">Adjacent Sites</th></tr>";
-    html += "<tr><th>Frequency</th><th>RF Id</th><th>Site Id</th><th>Uplink</th></tr>";
+    html += "<tr><th>Frequency</th><th>RFSS</th><th>Site</th><th>Uplink</th></tr>";
     var ct = 0;
     for (var freq in d) {
         var color = "#d0d0d0";
@@ -127,9 +151,14 @@ function adjacent_data(d) {
         ct += 1;
         html += "<tr style=\"background-color: " + color + ";\"><td>" + freq / 1000000.0 + "</td><td>" + d[freq]["rfid"] + "</td><td>" + d[freq]["stid"] + "</td><td>" + (d[freq]["uplink"] / 1000000.0) + "</td></tr>";
     }
-    html += "</table>";
+    html += "</table></div></div><br><br>";
+
+// end adjacent sites table
+
     return html;
 }
+
+// additional system info: wacn, sysID, rfss, site id, secondary control channels, freq error
 
 function trunk_update(d) {
     var do_hex = {"syid":0, "sysid":0, "wacn": 0};
@@ -138,32 +167,36 @@ function trunk_update(d) {
     for (var nac in d) {
         if (!is_digit(nac.charAt(0)))
             continue;
-        html += "<font size=\"+2\"><b>";
+        html += "<span class=\"nac\">";
         html += "NAC " + "0x" + parseInt(nac).toString(16) + " ";
         html += d[nac]['rxchan'] / 1000000.0;
         html += " / ";
         html += d[nac]['txchan'] / 1000000.0;
         html += " tsbks " + d[nac]['tsbks'];
-        html += "</b></font><br>";
-        html += "WACN " + "0x" + parseInt(d[nac]['wacn']).toString(16) + " ";
-        html += "System ID " + "0x" + parseInt(d[nac]['sysid']).toString(16) + " ";
-        html += "RF ID " + d[nac]['rfid'] + " ";
-        html += "Site ID " + d[nac]['stid'] + "<br>";
+        html += "</span><br>";
+
+        html += "<span class=\"label\">WACN: </span>" + "<span class=\"value\">0x" + parseInt(d[nac]['wacn']).toString(16) + " </span>";
+        html += "<span class=\"label\">System ID: </span>" + "<span class=\"value\">0x" + parseInt(d[nac]['sysid']).toString(16) + " </span>";
+        html += "<span class=\"label\">RFSS ID: </span><span class=\"value\">" + d[nac]['rfid'] + " </span>";
+        html += "<span class=\"label\">Site ID: </span><span class=\"value\">" + d[nac]['stid'] + "</span><br>";
         if (d[nac]["secondary"].length) {
-            html += "Secondary control channel(s): ";
+            html += "<span class=\"label\">Secondary control channel(s): </span><span class=\"value\"> ";
             for (i=0; i<d[nac]["secondary"].length; i++) {
                 html += d[nac]["secondary"][i] / 1000000.0;
                 html += " ";
             }
-            html += "<br>";
+            html += "</span><br>";
         }
         if (error_val != null) {
-            html += "Frequency error " + error_val + " Hz. (approx)";
+            html += "<span class=\"label\">Frequency error: </span><span class=\"value\">" + error_val + " Hz. (approx) </span>";
         }
-        html += "<p>";
-        html += "<table border=1 borderwidth=0 cellpadding=0 cellspacing=0>";
+
+// system frequencies table
+
+        html += "<p><div class=\"info\"><div class=\"system\">";
+        html += "<table border=1 borderwidth=0 cellpadding=0 cellspacing=0 width=100%>"; // was width=350
         html += "<tr><th colspan=99 style=\"align: center\">System Frequencies</th></tr>";
-        html += "<tr><th>Frequency</th><th>Last Seen</th><th colspan=2>Talkgoup ID(s)</th><th>Count</th></tr>";
+        html += "<tr><th>Frequency</th><th>Last Seen</th><th colspan=2>Talkgoup ID</th><th>Count</th></tr>";
         var ct = 0;
         for (var freq in d[nac]['frequency_data']) {
             tg2 = d[nac]['frequency_data'][freq]['tgids'][1];
@@ -175,12 +208,16 @@ function trunk_update(d) {
             ct += 1;
             html += "<tr style=\"background-color: " + color + ";\"><td>" + parseInt(freq) / 1000000.0 + "</td><td>" + d[nac]['frequency_data'][freq]['last_activity'] + "</td><td>" + d[nac]['frequency_data'][freq]['tgids'][0] + "</td><td>" + tg2 + "</td><td>" + d[nac]['frequency_data'][freq]['counter'] + "</td></tr>";
         }
-        html += "</table>";
+        html += "</table></div>";
+
+// end system freqencies table
+
         html += adjacent_data(d[nac]['adjacent_data']);
     }
     var div_s1 = document.getElementById("div_s1");
     div_s1.innerHTML = html;
 }
+
 
 function http_req_cb() {
     s = http_req.readyState;
@@ -204,6 +241,8 @@ function do_onload() {
     var ele = document.getElementById("div_status");
     ele.style["display"] = "";
     setInterval(do_update, 1000);
+    b = document.getElementById("b1");
+    b.className = "nav-button-active";
 }
 
 function do_update() {
