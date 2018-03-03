@@ -84,55 +84,12 @@ class p25_rx_block (gr.top_block):
 
     # Initialize the P25 receiver
     #
-    def __init__(self):
+    def __init__(self, options):
 
         self.trunk_rx = None
         self.plot_sinks = []
 
         gr.top_block.__init__(self)
-
-        # command line argument parsing
-        parser = OptionParser(option_class=eng_option)
-        parser.add_option("--args", type="string", default="", help="device args")
-        parser.add_option("--antenna", type="string", default="", help="select antenna")
-        parser.add_option("-a", "--audio", action="store_true", default=False, help="use direct audio input")
-        parser.add_option("-A", "--audio-if", action="store_true", default=False, help="soundcard IF mode (use --calibration to set IF freq)")
-        parser.add_option("-I", "--audio-input", type="string", default="", help="pcm input device name.  E.g., hw:0,0 or /dev/dsp")
-        parser.add_option("-i", "--input", default=None, help="input file name")
-        parser.add_option("-b", "--excess-bw", type="eng_float", default=0.2, help="for RRC filter", metavar="Hz")
-        parser.add_option("-c", "--calibration", type="eng_float", default=0.0, help="USRP offset or audio IF frequency", metavar="Hz")
-        parser.add_option("-C", "--costas-alpha", type="eng_float", default=0.04, help="value of alpha for Costas loop", metavar="Hz")
-        parser.add_option("-D", "--demod-type", type="choice", default="cqpsk", choices=('cqpsk', 'fsk4'), help="cqpsk | fsk4")
-        parser.add_option("-P", "--plot-mode", type="string", default=None, help="one or more of constellation, fft, symbol, datascope (comma-separated)")
-        parser.add_option("-f", "--frequency", type="eng_float", default=0.0, help="USRP center frequency", metavar="Hz")
-        parser.add_option("-F", "--ifile", type="string", default=None, help="read input from complex capture file")
-        parser.add_option("-H", "--hamlib-model", type="int", default=None, help="specify model for hamlib")
-        parser.add_option("-s", "--seek", type="int", default=0, help="ifile seek in K")
-        parser.add_option("-l", "--terminal-type", type="string", default='curses', help="'curses' or udp port or 'http:host:port'")
-        parser.add_option("-L", "--logfile-workers", type="int", default=None, help="number of demodulators to instantiate")
-        parser.add_option("-S", "--sample-rate", type="int", default=320e3, help="source samp rate")
-        parser.add_option("-t", "--tone-detect", action="store_true", default=False, help="use experimental tone detect algorithm")
-        parser.add_option("-T", "--trunk-conf-file", type="string", default=None, help="trunking config file name")
-        parser.add_option("-v", "--verbosity", type="int", default=0, help="message debug level")
-        parser.add_option("-V", "--vocoder", action="store_true", default=False, help="voice codec")
-        parser.add_option("-o", "--offset", type="eng_float", default=0.0, help="tuning offset frequency [to circumvent DC offset]", metavar="Hz")
-        parser.add_option("-p", "--pause", action="store_true", default=False, help="block on startup")
-        parser.add_option("-w", "--wireshark", action="store_true", default=False, help="output data to Wireshark")
-        parser.add_option("-W", "--wireshark-host", type="string", default="127.0.0.1", help="Wireshark host")
-        parser.add_option("-r", "--raw-symbols", type="string", default=None, help="dump decoded symbols to file")
-        parser.add_option("-g", "--gain", type="eng_float", default=None, help="set USRP gain in dB (default is midpoint) or set audio gain")
-        parser.add_option("-G", "--gain-mu", type="eng_float", default=0.025, help="gardner gain")
-        parser.add_option("-N", "--gains", type="string", default=None, help="gain settings")
-        parser.add_option("-O", "--audio-output", type="string", default="default", help="audio output device name")
-        parser.add_option("-U", "--udp-player", action="store_true", default=False, help="enable built-in udp audio player")
-        parser.add_option("-q", "--freq-corr", type="eng_float", default=0.0, help="frequency correction")
-        parser.add_option("-d", "--fine-tune", type="eng_float", default=0.0, help="fine tuning")
-        parser.add_option("-2", "--phase2-tdma", action="store_true", default=False, help="enable phase2 tdma decode")
-        parser.add_option("-Z", "--decim-amt", type="int", default=1, help="spectrum decimation")
-        (options, args) = parser.parse_args()
-        if len(args) != 0:
-            parser.print_help()
-            sys.exit(1)
 
         self.channel_rate = 0
         self.baseband_input = False
@@ -642,7 +599,8 @@ class du_queue_watcher(threading.Thread):
 class rx_main(object):
     def __init__(self):
         self.keep_running = True
-        self.tb = p25_rx_block()
+        self.cli_options()
+        self.tb = p25_rx_block(self.options)
         self.q_watcher = du_queue_watcher(self.tb.output_q, self.process_qmsg)
 
     def process_qmsg(self, msg):
@@ -664,6 +622,51 @@ class rx_main(object):
         self.tb.stop()
         for sink in self.tb.plot_sinks:
             sink.kill()
+
+    def cli_options(self):
+        # command line argument parsing
+        parser = OptionParser(option_class=eng_option)
+        parser.add_option("--args", type="string", default="", help="device args")
+        parser.add_option("--antenna", type="string", default="", help="select antenna")
+        parser.add_option("-a", "--audio", action="store_true", default=False, help="use direct audio input")
+        parser.add_option("-A", "--audio-if", action="store_true", default=False, help="soundcard IF mode (use --calibration to set IF freq)")
+        parser.add_option("-I", "--audio-input", type="string", default="", help="pcm input device name.  E.g., hw:0,0 or /dev/dsp")
+        parser.add_option("-i", "--input", type="string", default=None, help="input file name")
+        parser.add_option("-b", "--excess-bw", type="eng_float", default=0.2, help="for RRC filter", metavar="Hz")
+        parser.add_option("-c", "--calibration", type="eng_float", default=0.0, help="USRP offset or audio IF frequency", metavar="Hz")
+        parser.add_option("-C", "--costas-alpha", type="eng_float", default=0.04, help="value of alpha for Costas loop", metavar="Hz")
+        parser.add_option("-D", "--demod-type", type="choice", default="cqpsk", choices=('cqpsk', 'fsk4'), help="cqpsk | fsk4")
+        parser.add_option("-P", "--plot-mode", type="string", default=None, help="one or more of constellation, fft, symbol, datascope (comma-separated)")
+        parser.add_option("-f", "--frequency", type="eng_float", default=0.0, help="USRP center frequency", metavar="Hz")
+        parser.add_option("-F", "--ifile", type="string", default=None, help="read input from complex capture file")
+        parser.add_option("-H", "--hamlib-model", type="int", default=None, help="specify model for hamlib")
+        parser.add_option("-s", "--seek", type="int", default=0, help="ifile seek in K")
+        parser.add_option("-l", "--terminal-type", type="string", default='curses', help="'curses' or udp port or 'http:host:port'")
+        parser.add_option("-L", "--logfile-workers", type="int", default=None, help="number of demodulators to instantiate")
+        parser.add_option("-S", "--sample-rate", type="int", default=320e3, help="source samp rate")
+        parser.add_option("-t", "--tone-detect", action="store_true", default=False, help="use experimental tone detect algorithm")
+        parser.add_option("-T", "--trunk-conf-file", type="string", default=None, help="trunking config file name")
+        parser.add_option("-v", "--verbosity", type="int", default=0, help="message debug level")
+        parser.add_option("-V", "--vocoder", action="store_true", default=False, help="voice codec")
+        parser.add_option("-o", "--offset", type="eng_float", default=0.0, help="tuning offset frequency [to circumvent DC offset]", metavar="Hz")
+        parser.add_option("-p", "--pause", action="store_true", default=False, help="block on startup")
+        parser.add_option("-w", "--wireshark", action="store_true", default=False, help="output data to Wireshark")
+        parser.add_option("-W", "--wireshark-host", type="string", default="127.0.0.1", help="Wireshark host")
+        parser.add_option("-r", "--raw-symbols", type="string", default=None, help="dump decoded symbols to file")
+        parser.add_option("-g", "--gain", type="eng_float", default=None, help="set USRP gain in dB (default is midpoint) or set audio gain")
+        parser.add_option("-G", "--gain-mu", type="eng_float", default=0.025, help="gardner gain")
+        parser.add_option("-N", "--gains", type="string", default=None, help="gain settings")
+        parser.add_option("-O", "--audio-output", type="string", default="default", help="audio output device name")
+        parser.add_option("-U", "--udp-player", action="store_true", default=False, help="enable built-in udp audio player")
+        parser.add_option("-q", "--freq-corr", type="eng_float", default=0.0, help="frequency correction")
+        parser.add_option("-d", "--fine-tune", type="eng_float", default=0.0, help="fine tuning")
+        parser.add_option("-2", "--phase2-tdma", action="store_true", default=False, help="enable phase2 tdma decode")
+        parser.add_option("-Z", "--decim-amt", type="int", default=1, help="spectrum decimation")
+        (options, args) = parser.parse_args()
+        if len(args) != 0:
+            parser.print_help()
+            sys.exit(1)
+        self.options = options
 
 # Start the receiver
 #
