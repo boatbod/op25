@@ -1,5 +1,5 @@
 Forked from git://git.osmocom.org/op25 "max" branch on 9/10/2017
-Up to date with "max" branch as of 2/27/2018
+Up to date with "max" branch as of 3/3/2018
 
 Many changes:
 - udp python audio server sockaudio.py and remote player audio.py
