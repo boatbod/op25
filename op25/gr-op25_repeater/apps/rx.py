@@ -88,7 +88,7 @@ class p25_rx_block (gr.top_block):
     def __init__(self):
 
         self.trunk_rx = None
-        self.kill_sink = None
+        self.plot_sinks = []
 
         gr.top_block.__init__(self)
 
@@ -310,9 +310,7 @@ class p25_rx_block (gr.top_block):
         if self.options.plot_mode == 'constellation':
             self.toggle_constellation()
         elif self.options.plot_mode == 'symbol':
-            self.symbol_sink = symbol_sink_f()
-            self.demod.connect_float(self.symbol_sink)
-            self.kill_sink = self.symbol_sink
+            self.toggle_symbol()
         elif self.options.plot_mode == 'fft':
             self.toggle_fft()
         elif self.options.plot_mode == 'datascope':
@@ -532,32 +530,28 @@ class p25_rx_block (gr.top_block):
             self.toggle_mixer()
 
     def toggle_mixer(self):
-        if (self.mixer_sink is None) and (self.kill_sink is None):
+        if (self.mixer_sink is None):
             self.lock()
             self.mixer_sink = mixer_sink_c()
             self.demod.connect_complex('mixer', self.mixer_sink)
-            self.kill_sink = self.mixer_sink
+            self.add_plot_sink(self.mixer_sink)
             self.unlock()
         elif (self.mixer_sink is not None):
             self.lock()
             self.demod.disconnect_complex()
             self.mixer_sink.kill()
+            self.remove_plot_sink(self.mixer_sink)
             self.mixer_sink = None
-            self.kill_sink = None
             self.unlock()
-        else:
-            sys.stderr.write("Only one Plot can be active at a time\n")
-
-
 
     def toggle_fft(self):
-        if (self.fft_sink is None) and (self.kill_sink is None):
+        if (self.fft_sink is None):
             self.lock()
             self.fft_sink = fft_sink_c()
             self.spectrum_decim = filter.rational_resampler_ccf(1, self.options.decim_amt)
             self.connect(self.spectrum_decim, self.fft_sink)
             self.demod.connect_complex('src', self.spectrum_decim)
-            self.kill_sink = self.fft_sink
+            self.add_plot_sink(self.fft_sink)
             self.fft_sink.set_offset(self.options.offset)
             self.fft_sink.set_center_freq(self.target_freq)
             self.fft_sink.set_width(self.options.sample_rate)
@@ -567,69 +561,72 @@ class p25_rx_block (gr.top_block):
             self.disconnect(self.spectrum_decim, self.fft_sink)
             self.demod.disconnect_complex()
             self.fft_sink.kill()
+            self.remove_plot_sink(self.fft_sink)
             self.spectrum_decim = None
             self.fft_sink = None
-            self.kill_sink = None
             self.unlock()
-        else:
-            sys.stderr.write("Only one Plot can be active at a time\n")
 
     def toggle_constellation(self):
-        if (self.constellation_sink is None) and (self.kill_sink is None):
+        if (self.constellation_sink is None):
             if self.options.demod_type != 'cqpsk':
                 sys.stderr.write("Constellation Plot requires 'cqpsk' modulation\n")
                 return
             self.lock()
             self.constellation_sink = constellation_sink_c()
             self.demod.connect_complex('diffdec', self.constellation_sink)
-            self.kill_sink = self.constellation_sink
+            self.add_plot_sink(self.constellation_sink)
             self.unlock()
         elif (self.constellation_sink is not None):
             self.lock()
             self.demod.disconnect_complex()
             self.constellation_sink.kill()
+            self.remove_plot_sink(self.constellation_sink)
             self.constellation_sink = None
-            self.kill_sink = None
             self.unlock()
-        else:
-            sys.stderr.write("Only one Plot can be active at a time\n")
  
     def toggle_symbol(self):
-        if (self.symbol_sink is None) and (self.kill_sink is None):
+        if (self.symbol_sink is None):
             self.lock()
             self.symbol_sink = symbol_sink_f()
             self.demod.connect_float(self.symbol_sink)
-            self.kill_sink = self.symbol_sink
+            self.add_plot_sink(self.symbol_sink)
             self.unlock()
         elif (self.symbol_sink is not None):
             self.lock()
             self.demod.disconnect_float()
             self.symbol_sink.kill()
+            self.remove_plot_sink(self.symbol_sink)
             self.symbol_sink = None
-            self.kill_sink = None
             self.unlock()
-        else:
-            sys.stderr.write("Only one Plot can be active at a time\n")
 
     def toggle_eye(self):
-        if (self.eye_sink is None) and (self.kill_sink is None):
+        if (self.eye_sink is None):
             if self.options.demod_type == 'cqpsk':
                 sys.stderr.write("Datascope Plot cannot be used with 'cqpsk' modulation\n")
                 return
             self.lock()
             self.eye_sink = eye_sink_f(sps=10)
             self.demod.connect_bb('symbol_filter', self.eye_sink)
-            self.kill_sink = self.eye_sink
+            self.add_plot_sink(self.eye_sink)
             self.unlock()
         elif (self.eye_sink is not None):
             self.lock()
             self.demod.disconnect_bb()
             self.eye_sink.kill()
+            self.remove_plot_sink(self.eye_sink)
             self.eye_sink = None
-            self.kill_sink = None
             self.unlock()
-        else:
-            sys.stderr.write("Only one Plot can be active at a time\n")
+
+    def add_plot_sink(self, plot):
+        if plot not in self.plot_sinks:
+            self.plot_sinks.append(plot)
+        if self.options.terminal_type.startswith('http:'):
+            plot.gnuplot.set_interval(_def_interval)
+            plot.gnuplot.set_output_dir(_def_file_dir)
+
+    def remove_plot_sink(self, plot):
+        if plot in self.plot_sinks:
+            self.plot_sinks.remove(plot)
 
     # read capture file properties (decimation etc.)
     #
@@ -816,8 +813,8 @@ class rx_main(object):
         if self.tb.audio:
             self.tb.audio.stop()
         self.tb.stop()
-        if self.tb.kill_sink:
-            self.tb.kill_sink.kill()
+        for sink in self.tb.plot_sinks:
+            sink.kill()
 
 # Start the receiver
 #
