@@ -201,8 +201,8 @@ class p25_demod_cb(p25_demod_base):
         self.lo_freq = 0
         self.float_sink = None
         self.complex_sink = None
-        self.if1 = None
-        self.if2 = None
+        self.if1 = 0
+        self.if2 = 0
         self.t_cache = {}
         if filter_type == 'rrc':
             self.set_baseband_gain(0.61)
