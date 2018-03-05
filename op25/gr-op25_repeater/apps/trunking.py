@@ -981,7 +981,6 @@ class rx_ctl (object):
                     sys.stderr.write("%f voice timeout\n" % time.time())
                 if self.hold_mode is False:
                     self.current_tgid = None
-                    self.tgid_hold = None
                 self.current_srcaddr = 0
                 self.current_encrypted = 0
                 new_state = self.states.CC
@@ -989,8 +988,14 @@ class rx_ctl (object):
         elif command == 'update':
             if self.current_state == self.states.CC:
                 desired_tgid = None
-                if self.tgid_hold_until > curr_time:
+                if (self.tgid_hold is not None) and (self.tgid_hold_until > curr_time):
+                    if self.debug > 1:
+                        sys.stderr.write("%f soft hold tg(%s) active\n" % (time.time(), self.tgid_hold))
                     desired_tgid = self.tgid_hold
+                elif (self.tgid_hold is not None) and (self.hold_mode == False):
+                    if self.debug > 1:
+                        sys.stderr.write("%f soft hold tg(%s) expired\n" % (time.time(), self.tgid_hold))
+                    self.tgid_hold = None
                 new_frequency, new_tgid, tdma_slot, srcaddr = tsys.find_talkgroup(curr_time, tgid=desired_tgid, hold=self.hold_mode)
                 if new_frequency:
                     if self.debug > 0:
@@ -1019,16 +1024,19 @@ class rx_ctl (object):
         elif command == 'duid3' or command == 'tdma_duid3': # termination, no channel release
             if self.current_state != self.states.CC:
                 self.wait_until = curr_time + self.TSYS_HOLD_TIME
+                self.tgid_hold = self.current_tgid
+                self.tgid_hold_until = max(curr_time + self.TGID_HOLD_TIME, self.tgid_hold_until)
         elif command == 'duid15' or command == 'tdma_duid15': # termination with channel release
             if self.current_state != self.states.CC:
                 if self.debug > 1:
                     sys.stderr.write("%f %s, tg(%d)\n" % (time.time(), command, self.current_tgid))
-                if self.hold_mode is False:
-                    self.current_tgid = None
-                    self.tgid_hold = None
                 self.current_srcaddr = 0
                 self.current_encrypted = 0
                 self.wait_until = curr_time + self.TSYS_HOLD_TIME
+                self.tgid_hold = self.current_tgid
+                self.tgid_hold_until = max(curr_time + self.TGID_HOLD_TIME, self.tgid_hold_until)
+                if self.hold_mode is False:
+                    self.current_tgid = None
                 new_state = self.states.CC
                 new_frequency = tsys.trunk_cc
         elif command == 'duid0' or command == 'duid5' or command == 'duid10' or command == 'tdma_duid5':
