@@ -990,11 +990,11 @@ class rx_ctl (object):
                 desired_tgid = None
                 if (self.tgid_hold is not None) and (self.tgid_hold_until > curr_time):
                     if self.debug > 1:
-                        sys.stderr.write("%f soft hold tg(%s) active\n" % (time.time(), self.tgid_hold))
+                        sys.stderr.write("%f hold tg(%s) active\n" % (time.time(), self.tgid_hold))
                     desired_tgid = self.tgid_hold
                 elif (self.tgid_hold is not None) and (self.hold_mode == False):
                     if self.debug > 1:
-                        sys.stderr.write("%f soft hold tg(%s) expired\n" % (time.time(), self.tgid_hold))
+                        sys.stderr.write("%f hold tg(%s) expired\n" % (time.time(), self.tgid_hold))
                     self.tgid_hold = None
                 new_frequency, new_tgid, tdma_slot, srcaddr = tsys.find_talkgroup(curr_time, tgid=desired_tgid, hold=self.hold_mode)
                 if new_frequency:
