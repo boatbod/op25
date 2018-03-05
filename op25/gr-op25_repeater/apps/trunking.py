@@ -990,7 +990,7 @@ class rx_ctl (object):
                 desired_tgid = None
                 if (self.tgid_hold is not None) and (self.tgid_hold_until > curr_time):
                     if self.debug > 1:
-                        sys.stderr.write("%f hold active tg(%s)e\n" % (time.time(), self.tgid_hold))
+                        sys.stderr.write("%f hold active tg(%s)\n" % (time.time(), self.tgid_hold))
                     desired_tgid = self.tgid_hold
                 elif (self.tgid_hold is not None) and (self.hold_mode == False):
                     if self.debug > 1:
