@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# Copyright 2017 Graham Norbury
+# Copyright 2017, 2018 Graham Norbury
 # 
 # Copyright 2011, 2012, 2013, 2014, 2015, 2016, 2017 Max H. Parke KA1RBI
 # 
@@ -35,12 +35,13 @@ def signal_handler(signal, frame):
 parser = OptionParser()
 parser.add_option("-O", "--audio-output", type="string", default="default", help="audio output device name")
 parser.add_option("--wireshark-port", type="int", default=23456, help="Wireshark port")
+parser.add_option("-2", "--two-channel", action="store_true", default=False, help="single or two channel audio")
 (options, args) = parser.parse_args()
 if len(args) != 0:
    parser.print_help()
    sys.exit(1)
 
-audiothread = socket_audio("0.0.0.0", options.wireshark_port, options.audio_output)
+audiothread = socket_audio("0.0.0.0", options.wireshark_port, options.audio_output, options.two_channel)
 
 if __name__ == "__main__":
    signal.signal(signal.SIGINT, signal_handler)

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# Copyright 2017 Graham Norbury
+# Copyright 2017, 2018 Graham Norbury
 # 
 # Copyright 2011, 2012, 2013, 2014, 2015, 2016, 2017 Max H. Parke KA1RBI
 # 
@@ -25,6 +25,7 @@ from ctypes import *
 import sys
 import time
 import threading
+import select
 import socket
 import errno
 
@@ -257,50 +258,101 @@ class alsasound(object):
 
 # OP25 thread to receive UDP audio samples and send to Alsa driver
 class socket_audio(threading.Thread):
-	def __init__(self, udp_host, udp_port, pcm_device, **kwds):
+	def __init__(self, udp_host, udp_port, pcm_device, two_channels = False, **kwds):
 		threading.Thread.__init__(self, **kwds)
 		self.setDaemon(1)
 		self.keep_running = True
-		self.sock = None
+		self.two_channels = two_channels
+		self.sock_a = None
+		self.sock_b = None
 		self.pcm = alsasound()
-		self.setup_socket(udp_host, udp_port)
+		self.setup_sockets(udp_host, udp_port)
 		self.setup_pcm(pcm_device)
 		self.start()
 		return
 
 	def run(self):
 		while self.keep_running:
-			# Data received on the udp port is 320 bytes for an audio frame or 2 bytes for a flag
-			#
-			d = self.sock.recvfrom(MAX_SUPERFRAME_SIZE)	# recvfrom blocks until data becomes available
-			if d[0]:
-				d_len = len(d[0])
-				if (d_len == 2):	# flag
-					flag = ord(d[0][0]) + (ord(d[0][1]) << 8)	# 16 bit little endian
-					if (flag == 0):					# 0x0000 = drain pcm buffer
-						self.pcm.drain()
-					elif (flag == 1):				# 0x0001 = flush pcm buffer
-						self.pcm.drop()
-				else:			# audio data
-					self.pcm.write(d[0])
-			else:
-				break
+			readable, writable, exceptional = select.select( [self.sock_a, self.sock_b], [], [self.sock_a, self.sock_b] )
+			in_a = None
+			in_b = None
+			data_a = ""
+			data_b = ""
+			flag_a = -1
+			flag_b = -1
 
-		self.close_socket()
+			# Data received on the udp port is 320 bytes for an audio frame or 2 bytes for a flag
+			if self.sock_a in readable:
+				in_a = self.sock_a.recvfrom(MAX_SUPERFRAME_SIZE)
+
+			if self.sock_b in readable:
+				in_b = self.sock_b.recvfrom(MAX_SUPERFRAME_SIZE)
+
+			if in_a is not None:
+				len_a = len(in_a[0])
+				if len_a == 2:
+					flag_a = ord(in_a[0][0]) + (ord(in_a[0][1]) << 8)	# 16 bit little endian
+				elif len_a > 0:
+					data_a = in_a[0]
+
+			if in_b is not None:
+				len_b = len(in_b[0])
+				if len_b == 2:
+					flag_b = ord(in_b[0][0]) + (ord(in_b[0][1]) << 8)	# 16 bit little endian
+				elif len_b > 0:
+					data_b = in_b[0]
+
+			if (((flag_a == 0) and (flag_b == 0)) or
+			    ((flag_a == 0) and ((in_b is None) or (flag_b == 1))) or 
+			    ((flag_b == 0) and ((in_a is None) or (flag_a == 1)))):
+				self.pcm.drain()
+				continue
+
+			if (((flag_a == 1) and (flag_b == 1)) or
+			    ((flag_a == 1) and (in_b is None)) or 
+			    ((flag_b == 1) and (in_a is None))):
+				self.pcm.drop()
+				continue
+
+			if not self.two_channels:
+				self.pcm.write(self.interleave(data_a, data_a))
+			else:
+				self.pcm.write(self.interleave(data_a, data_b))
+
+		self.close_sockets()
 		self.close_pcm()
 		return
+
+	def interleave(self, data_a, data_b):
+		combi_data = ""
+		d_len = max(len(data_a), len(data_b))
+		iter_a = iter(data_a)
+		iter_b = iter(data_b)
+		i = 0
+		while i < d_len:
+			i += 2
+			combi_data += next(iter_a, chr(0))
+			combi_data += next(iter_a, chr(0))
+			combi_data += next(iter_b, chr(0))
+			combi_data += next(iter_b, chr(0))
+		return combi_data
 
 	def stop(self):
 		self.keep_running = False
 		return
 
-	def setup_socket(self, udp_host, udp_port):
-		self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-		self.sock.bind((udp_host, udp_port))
+	def setup_sockets(self, udp_host, udp_port):
+		self.sock_a = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+		self.sock_b = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+		self.sock_a.setblocking(0)
+		self.sock_b.setblocking(0)
+		self.sock_a.bind((udp_host, udp_port))
+		self.sock_b.bind((udp_host, udp_port + 2))
 		return
 
-	def close_socket(self):
-		self.sock.close()
+	def close_sockets(self):
+		self.sock_a.close()
+		self.sock_b.close()
 		return
 
 	def setup_pcm(self, hwdevice):
@@ -312,7 +364,7 @@ class socket_audio(threading.Thread):
 			self.keep_running = False
 			return
 
-		err = self.pcm.setup(SND_PCM_FORMAT_S16_LE.value, 1, PCM_RATE, PCM_BUFFER_SIZE)
+		err = self.pcm.setup(SND_PCM_FORMAT_S16_LE.value, 2, PCM_RATE, PCM_BUFFER_SIZE)
 		if err < 0:
 			sys.stderr.write('failed to set up pcm stream\n')
 			self.keep_running = False
