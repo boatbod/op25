@@ -34,7 +34,7 @@ def signal_handler(signal, frame):
 
 parser = OptionParser()
 parser.add_option("-O", "--audio-output", type="string", default="default", help="audio output device name")
-parser.add_option("--wireshark-port", type="int", default=23456, help="Wireshark port")
+parser.add_option("-u", "--wireshark-port", type="int", default=23456, help="Wireshark port")
 parser.add_option("-2", "--two-channel", action="store_true", default=False, help="single or two channel audio")
 (options, args) = parser.parse_args()
 if len(args) != 0:
