@@ -993,8 +993,6 @@ class rx_ctl (object):
                         sys.stderr.write("%f hold active tg(%s)\n" % (time.time(), self.tgid_hold))
                     desired_tgid = self.tgid_hold
                 elif (self.tgid_hold is not None) and (self.hold_mode == False):
-                    if self.debug > 1:
-                        sys.stderr.write("%f hold expired tg(%s)\n" % (time.time(), self.tgid_hold))
                     self.tgid_hold = None
                 new_frequency, new_tgid, tdma_slot, srcaddr = tsys.find_talkgroup(curr_time, tgid=desired_tgid, hold=self.hold_mode)
                 if new_frequency:
