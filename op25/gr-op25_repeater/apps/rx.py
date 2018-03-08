@@ -773,6 +773,7 @@ class rx_main(object):
 
     def cli_options(self):
         # command line argument parsing
+        parser = OptionParser(option_class=eng_option)
         parser.add_option("--args", type="string", default="", help="device args")
         parser.add_option("--antenna", type="string", default="", help="select antenna")
         parser.add_option("-a", "--audio", action="store_true", default=False, help="use direct audio input")
