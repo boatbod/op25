@@ -36,7 +36,7 @@
     ], 
     "devices": [
         {
-            "args": "rtl:0", 
+            "args": "rtl=0", 
             "frequency": 460100000, 
             "gains": "lna:49", 
             "name": "rtl0", 
