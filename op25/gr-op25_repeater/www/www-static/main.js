@@ -137,27 +137,27 @@ function change_freq(d) {
 }
 
 function channel_status() {
-    var html = "<span class=\"label\">Frequency: "
+    var html = "<span class=\"label\">Frequency: </span>";
     if (c_freq != 0) {
-        html += "</span><span class=\"value\">" + c_freq / 1000000.0;
+        html += "<span class=\"value\">" + c_freq / 1000000.0 + "</span>";
     }
     if (c_system != null)
     {
-        html += "</span> <span class=\"value\"> &nbsp;" + c_system + " </span>";
+        html += "<span class=\"value\"> &nbsp;" + c_system + "</span>";
     }
     html += "<br>";
-    html += "<span class=\"label\">Talkgroup ID: ";
+    html += "<span class=\"label\">Talkgroup ID: </span>";
     if (current_tgid != null) {
-        html += "</span><span class=\"value\"> " + current_tgid;
-        html += "</span> <span class=\"value\"> &nbsp;" + c_tag + " </span>";
+        html += "<span class=\"value\"> " + current_tgid + "</span>";
+        html += "<span class=\"value\"> &nbsp;" + c_tag + " </span>";
         if (c_encrypted) {
-            html += "[ENCRYPTED]"
+            html += "<span class=\"label\">[ENCRYPTED]</span>";
         }
     }
     html += "<br>";
-    html += "<span class=\"label\">Source ID: "
+    html += "<span class=\"label\">Source ID: </span>";
     if ((current_tgid) != null && (c_srcaddr != 0) && (c_srcaddr != 0xffffff)) 
-        html += "</span><span class=\"value\">" + c_srcaddr;
+        html += "<span class=\"value\">" + c_srcaddr + "</span>";
     html += "<br>";
     var div_s2 = document.getElementById("div_s2");
     div_s2.innerHTML = html;
