@@ -33,6 +33,11 @@ var nfinal_count = 0;
 var n200_count = 0;
 var r200_count = 0;
 var SEND_QLIMIT = 5;
+var c_freq = 0;
+var c_system = null;
+var c_tag = null;
+var c_srcaddr = 0;
+var c_encrypted = 0;
 
 function find_parent(ele, tagname) {
     while (ele) {
@@ -124,22 +129,39 @@ function rx_update(d) {
 // frequency, system, and talkgroup display
 
 function change_freq(d) {
-    var html = "<span class=\"label\">Frequency: </span><span class=\"value\">" + d['freq'] / 1000000.0;
-    html += "</span> <span class=\"systgid\"> &nbsp;" + d['system'] + " </span> ";
-    if (d['tgid'] != null) {
-        html += "<span class=\"label\">Talkgroup ID: </span><span class=\"value\"> " + d['tgid'];
-        html += "</span> <span class=\"systgid\"> &nbsp;" + d['tag'] + " </span>";
+    c_freq = d['freq'];
+    c_system = d['system'];
+    current_tgid = d['tgid'];
+    c_tag = d['tag'];
+    channel_status();
+}
+
+function channel_status() {
+    var html = "<span class=\"label\">Frequency: "
+    if (c_freq != 0) {
+        html += "</span><span class=\"value\">" + c_freq / 1000000.0;
     }
+    if (c_system != null)
+    {
+        html += "</span> <span class=\"value\"> &nbsp;" + c_system + " </span>";
+    }
+    html += "<br>";
+    html += "<span class=\"label\">Talkgroup ID: ";
+    if (current_tgid != null) {
+        html += "</span><span class=\"value\"> " + current_tgid;
+        html += "</span> <span class=\"value\"> &nbsp;" + c_tag + " </span>";
+        if (c_encrypted) {
+            html += "[ENCRYPTED]"
+        }
+    }
+    html += "<br>";
+    html += "<span class=\"label\">Source ID: "
+    if ((current_tgid) != null && (c_srcaddr != 0) && (c_srcaddr != 0xffffff)) 
+        html += "</span><span class=\"value\">" + c_srcaddr;
     html += "<br>";
     var div_s2 = document.getElementById("div_s2");
     div_s2.innerHTML = html;
     div_s2.style["display"] = "";
-    if (d['tgid'] != null)
-        current_tgid = d['tgid'];
-    if (current_tgid != null) {
-        var div_s3 = document.getElementById("div_s3");
-        div_s3.style["display"] = "";
-    }
 }
 
 // adjacent sites table
@@ -173,6 +195,8 @@ function adjacent_data(d) {
 function trunk_update(d) {
     var do_hex = {"syid":0, "sysid":0, "wacn": 0};
     var do_float = {"rxchan":0, "txchan":0};
+    var srcaddr = 0;
+    var encrypted = 0;
     var html = "";
     for (var nac in d) {
         if (!is_digit(nac.charAt(0)))
@@ -223,9 +247,16 @@ function trunk_update(d) {
 // end system freqencies table
 
         html += adjacent_data(d[nac]['adjacent_data']);
+
+        if (d[nac]['srcaddr'] != undefined)
+            c_srcaddr = d[nac]['srcaddr']
+        if (d[nac]['encrypted'] != undefined)
+            c_encrypted = d[nac]['encrypted']
     }
     var div_s1 = document.getElementById("div_s1");
     div_s1.innerHTML = html;
+
+    channel_status();
 }
 
 
