@@ -76,7 +76,7 @@ os.environ['IMBE'] = 'soft'
 
 WIRESHARK_PORT = 23456
 
-_def_interval = 5.0	# sec
+_def_interval = 1.0	# sec
 _def_file_dir = '../www/images'
 
 # The P25 receiver

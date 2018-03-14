@@ -99,11 +99,20 @@ function f_select(command) {
         else
             ele.style['display'] = "none";
     }
-    var ctl = document.getElementById("controls");
-    if (command == "status")
-        ctl.style['display'] = "";
-    else
-        ctl.style['display'] = "none";
+    var ctl1 = document.getElementById("controls1");
+    var ctl2 = document.getElementById("controls2");
+    if (command == "status") {
+        ctl1.style['display'] = "";
+        ctl2.style['display'] = "none";
+    }
+    else if (command == "plot") {
+        ctl1.style['display'] = "none";
+        ctl2.style['display'] = "";
+    }
+    else {
+        ctl1.style['display'] = "none";
+        ctl2.style['display'] = "none";
+    }
     nav_update(command);
 }
 
@@ -123,6 +132,10 @@ function rx_update(d) {
                 img.style["display"] = "";
             }
         }
+    }
+    else {
+        var img = document.getElementById("img0");
+        img.style["display"] = "none";
     }
     error_val = d["error"];
     fine_tune = d['fine_tune'];
@@ -326,6 +339,10 @@ function send_process() {
 
 function f_tune_button(command) {
     send_command('adj_tune', command);
+}
+
+function f_plot_button(command) {
+    send_command('toggle_plot', command);
 }
 
 function f_scan_button(command) {

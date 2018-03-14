@@ -29,7 +29,23 @@
 </div>
 <!-- control buttons -->
 
-<div id="controls" class="flex-container">
+<div id="controls1" class="flex-container">
+
+	<div>
+	<input type="button" class="scan-button" name="skip" value="SKIP" onclick="javascript:f_scan_button(&quot;skip&quot;);">
+	</div>
+
+	<div>
+	<input type="button" class="scan-button" name="hold" value="HOLD" onclick="javascript:f_scan_button(&quot;hold&quot;);">
+	</div>
+
+	<div>
+	<input type="button" class="scan-button" name="lockout" value="LOCKOUT" onclick="javascript:f_scan_button(&quot;lockout&quot;);">
+	</div>
+
+	<div>
+		<!-- spacer -->
+	</div>
 
 	<div>
 	<input type="button" class="scan-button" name="<<" value="<<" onclick="javascript:f_tune_button(-1200);">
@@ -47,20 +63,48 @@
 	<input type="button" class="scan-button" name=">>" value=">>" onclick="javascript:f_tune_button(1200);">
 	</div>
 
+</div>
+
+<div id="controls2" class="flex-container" style="display: none;">
+
+	<div>
+	<input type="button" class="plot-button" name="pl1" value="FFT" onclick="javascript:f_plot_button(1);">
+	</div>
+
+	<div>
+	<input type="button" class="plot-button" name="pl2" value="Con" onclick="javascript:f_plot_button(2);">
+	</div>
+
+	<div>
+	<input type="button" class="plot-button" name="pl3" value="Sym" onclick="javascript:f_plot_button(3);">
+	</div>
+
+	<div>
+	<input type="button" class="plot-button" name="pl4" value="Dat" onclick="javascript:f_plot_button(4);">
+	</div>
+
+	<div>
+	<input type="button" class="plot-button" name="pl5" value="Mix" onclick="javascript:f_plot_button(5);">
+	</div>
+
 	<div>
 		<!-- spacer -->
 	</div>
 
 	<div>
-	<input type="button" class="scan-button" name="skip" value="SKIP" onclick="javascript:f_scan_button(&quot;skip&quot;);">
+	<input type="button" class="scan-button" name="<<" value="<<" onclick="javascript:f_tune_button(-1200);">
 	</div>
 
 	<div>
-	<input type="button" class="scan-button" name="hold" value="HOLD" onclick="javascript:f_scan_button(&quot;hold&quot;);">
+	<input type="button" class="scan-button" name="<" value="<" onclick="javascript:f_tune_button(-100);">
 	</div>
 
 	<div>
-	<input type="button" class="scan-button" name="lockout" value="LOCKOUT" onclick="javascript:f_scan_button(&quot;lockout&quot;);">
+	<input type="button" class="scan-button" name=">" value=">" onclick="javascript:f_tune_button(100);">
+	</div>
+
+	<div>
+	<input type="button" class="scan-button" name=">>" value=">>" onclick="javascript:f_tune_button(1200);">
 	</div>
 
 </div>

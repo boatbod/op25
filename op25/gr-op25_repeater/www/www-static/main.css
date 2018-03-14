@@ -57,6 +57,22 @@ hr {
 	background: linear-gradient(#669999, #82B0B0);
 }
 
+.plot-button {
+	/* background-color: #669999; */
+	border-color: black;
+	color: white;
+	padding: 10px 10px;
+	text-decoration: none;
+	margin: 4px 2px;
+	cursor: pointer;
+	width: 57px;
+	font-size: 14px;
+	font-weight: bold;
+	box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2), 0 3px 10px 0 rgba(0,0,0,0.19);
+	background: #669999; /* For browsers that do not support gradients */
+	background: linear-gradient(#669999, #82B0B0);
+}
+
 /* flex container for top buttons */
 
 /*
