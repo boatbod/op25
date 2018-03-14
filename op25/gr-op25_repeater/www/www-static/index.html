@@ -32,6 +32,26 @@
 <div id="controls" class="flex-container">
 
 	<div>
+	<input type="button" class="scan-button" name="<<" value="<<" onclick="javascript:f_tune_button(-1200);">
+	</div>
+
+	<div>
+	<input type="button" class="scan-button" name="<" value="<" onclick="javascript:f_tune_button(-100);">
+	</div>
+
+	<div>
+	<input type="button" class="scan-button" name=">" value=">" onclick="javascript:f_tune_button(100);">
+	</div>
+
+	<div>
+	<input type="button" class="scan-button" name=">>" value=">>" onclick="javascript:f_tune_button(1200);">
+	</div>
+
+	<div>
+		<!-- spacer -->
+	</div>
+
+	<div>
 	<input type="button" class="scan-button" name="skip" value="SKIP" onclick="javascript:f_scan_button(&quot;skip&quot;);">
 	</div>
 
@@ -71,13 +91,20 @@
 
 
 
-	<div id="div_s2" class="s2" style="display: none;">
+	<div id="div_s2" class="s2">
+	    <div id="div_s2a" class="s1" style="width: 15%; float: left">
+		<span class="label">Frequency:</span><br>
+		<span class="label">Trunkgroup ID:</span><br>
+		<span class="label">Source ID:</span><br>
+	    </div>
+
+	    <div id="div_s2b" class="s1" style="width: 85%; float: right; display: none;">
 		<!-- frequency, system, tg display -->
+	    </div>
 	</div>
 
 
 	<br>
-
 
 
 	<div id="div_s1" class="s1">

@@ -23,6 +23,7 @@ var d_debug = 1;
 var http_req = new XMLHttpRequest();
 var counter1 = 0;
 var error_val = null;
+var fine_tune = null;
 var current_tgid = null;
 var send_busy = 0;
 var send_qfull = 0;
@@ -124,6 +125,7 @@ function rx_update(d) {
         }
     }
     error_val = d["error"];
+    fine_tune = d['fine_tune'];
 }
 
 // frequency, system, and talkgroup display
@@ -137,7 +139,7 @@ function change_freq(d) {
 }
 
 function channel_status() {
-    var html = "<span class=\"label\">Frequency: </span>";
+    var html = ""
     if (c_freq != 0) {
         html += "<span class=\"value\">" + c_freq / 1000000.0 + "</span>";
     }
@@ -146,7 +148,6 @@ function channel_status() {
         html += "<span class=\"value\"> &nbsp;" + c_system + "</span>";
     }
     html += "<br>";
-    html += "<span class=\"label\">Talkgroup ID: </span>";
     if (current_tgid != null) {
         html += "<span class=\"value\"> " + current_tgid + "</span>";
         html += "<span class=\"value\"> &nbsp;" + c_tag + " </span>";
@@ -155,13 +156,12 @@ function channel_status() {
         }
     }
     html += "<br>";
-    html += "<span class=\"label\">Source ID: </span>";
     if ((current_tgid) != null && (c_srcaddr != 0) && (c_srcaddr != 0xffffff)) 
         html += "<span class=\"value\">" + c_srcaddr + "</span>";
     html += "<br>";
-    var div_s2 = document.getElementById("div_s2");
-    div_s2.innerHTML = html;
-    div_s2.style["display"] = "";
+    var div_s2b = document.getElementById("div_s2b");
+    div_s2b.innerHTML = html;
+    div_s2b.style["display"] = "";
 }
 
 // adjacent sites table
@@ -223,6 +223,9 @@ function trunk_update(d) {
         }
         if (error_val != null) {
             html += "<span class=\"label\">Frequency error: </span><span class=\"value\">" + error_val + " Hz. (approx) </span><br>";
+        }
+        if (fine_tune != null) {
+            html += "<span class=\"label\">Fine tune offset: </span><span class=\"value\">" + fine_tune + "</span><br>";
         }
 
 // system frequencies table
@@ -319,6 +322,10 @@ function send_process() {
     cmd = JSON.stringify( send_queue );
     send_queue = [];
     http_req.send(cmd);
+}
+
+function f_tune_button(command) {
+    send_command('adj_tune', command);
 }
 
 function f_scan_button(command) {

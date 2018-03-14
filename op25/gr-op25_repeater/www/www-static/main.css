@@ -173,6 +173,7 @@ div.adjacent {
 .s2 {
 	border: 1px solid #999;
 	height: auto;
+	overflow: auto;
 	width: 720px;
 	padding: 5px;
 	background: LightGray; /* For browsers that do not support gradients */
