@@ -91,25 +91,35 @@ function nav_update(command) {
 }
 
 function f_select(command) {
-    var div_list = ["status", "plot", "about"];
-    for (var i=0; i<div_list.length; i++) {
-        var ele = document.getElementById("div_" + div_list[i]);
-        if (command == div_list[i])
-            ele.style['display'] = "";
-        else
-            ele.style['display'] = "none";
-    }
+    var div_status = document.getElementById("div_status")
+    var div_plot   = document.getElementById("div_plot")
+    var div_about  = document.getElementById("div_about")
+    var div_s2     = document.getElementById("div_s2")
+    var div_s3     = document.getElementById("div_s3")
     var ctl1 = document.getElementById("controls1");
     var ctl2 = document.getElementById("controls2");
     if (command == "status") {
+        div_status.style['display'] = "";
+        div_plot.style['display'] = "none";
+        div_about.style['display'] = "none";
+        div_s2.style['display'] = "";
+        div_s3.style['display'] = "";
         ctl1.style['display'] = "";
         ctl2.style['display'] = "none";
     }
     else if (command == "plot") {
+        div_status.style['display'] = "";
+        div_plot.style['display'] = "";
+        div_about.style['display'] = "none";
+        div_s2.style['display'] = "none";
+        div_s3.style['display'] = "none";
         ctl1.style['display'] = "none";
         ctl2.style['display'] = "";
     }
-    else {
+    else if (command == "about") {
+        div_status.style['display'] = "none";
+        div_plot.style['display'] = "none";
+        div_about.style['display'] = "";
         ctl1.style['display'] = "none";
         ctl2.style['display'] = "none";
     }
@@ -238,12 +248,15 @@ function trunk_update(d) {
             html += "<span class=\"label\">Frequency error: </span><span class=\"value\">" + error_val + " Hz. (approx) </span><br>";
         }
         if (fine_tune != null) {
-            html += "<span class=\"label\">Fine tune offset: </span><span class=\"value\">" + fine_tune + "</span><br>";
+            html += "<span class=\"label\">Fine tune offset: </span><span class=\"value\">" + fine_tune + "</span>";
         }
 
-// system frequencies table
+        var div_s1 = document.getElementById("div_s1");
+        div_s1.innerHTML = html;
 
-        html += "<p><div class=\"info\"><div class=\"system\">";
+// system frequencies table
+        html = ""
+        html += "<div class=\"info\"><div class=\"system\">";
         html += "<table border=1 borderwidth=0 cellpadding=0 cellspacing=0 width=100%>"; // was width=350
         html += "<tr><th colspan=99 style=\"align: center\">System Frequencies</th></tr>";
         html += "<tr><th>Frequency</th><th>Last Seen</th><th colspan=2>Talkgoup ID</th><th>Count</th></tr>";
@@ -269,8 +282,8 @@ function trunk_update(d) {
         if (d[nac]['encrypted'] != undefined)
             c_encrypted = d[nac]['encrypted']
     }
-    var div_s1 = document.getElementById("div_s1");
-    div_s1.innerHTML = html;
+    var div_s3 = document.getElementById("div_s3");
+    div_s3.innerHTML = html;
 
     channel_status();
 }

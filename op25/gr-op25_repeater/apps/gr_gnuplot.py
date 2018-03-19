@@ -89,10 +89,6 @@ class wrap_gp(object):
 			self.buf = []
 			return consumed
 
-		if self.plot_interval and self.last_plot + self.plot_interval > time.time():
-			return consumed
-		self.last_plot = time.time()
-
 		plots = []
 		s = ''
 		while(len(self.buf)):
@@ -141,6 +137,12 @@ class wrap_gp(object):
 				self.buf = []
 				plots.append('"-" with lines')
 		self.buf = []
+
+		# FFT processing needs to be completed to maintain the weighted average buckets
+		# regardless of whether we actually produce a new plot or not.
+		if self.plot_interval and self.last_plot + self.plot_interval > time.time():
+			return consumed
+		self.last_plot = time.time()
 
 		filename = None
 		if self.output_dir:
