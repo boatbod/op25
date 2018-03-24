@@ -67,8 +67,7 @@ class wrap_gp(object):
 		self.gp = subprocess.Popen(args, executable=exe, stdin=subprocess.PIPE)
 
 	def kill(self):
-		self.gp.stdin.write("quit\n")
-		self.gp.wait()
+		self.gp.communicate("quit\n")
 
 	def set_interval(self, v):
 		self.plot_interval = v
