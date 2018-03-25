@@ -485,91 +485,91 @@ class p25_rx_block (gr.top_block):
 
     def toggle_mixer(self):
         if (self.mixer_sink is None):
-            self.lock()
             self.mixer_sink = mixer_sink_c()
-            self.demod.connect_complex('mixer', self.mixer_sink)
             self.add_plot_sink(self.mixer_sink)
+            self.lock()
+            self.demod.connect_complex('mixer', self.mixer_sink)
             self.unlock()
         elif (self.mixer_sink is not None):
             self.lock()
             self.demod.disconnect_complex()
+            self.unlock()
             self.mixer_sink.kill()
             self.remove_plot_sink(self.mixer_sink)
             self.mixer_sink = None
-            self.unlock()
 
     def toggle_fft(self):
         if (self.fft_sink is None):
-            self.lock()
             self.fft_sink = fft_sink_c()
-            self.spectrum_decim = filter.rational_resampler_ccf(1, self.options.decim_amt)
-            self.connect(self.spectrum_decim, self.fft_sink)
-            self.demod.connect_complex('src', self.spectrum_decim)
             self.add_plot_sink(self.fft_sink)
+            self.spectrum_decim = filter.rational_resampler_ccf(1, self.options.decim_amt)
             self.fft_sink.set_offset(self.options.offset)
             self.fft_sink.set_center_freq(self.target_freq)
             self.fft_sink.set_width(self.options.sample_rate)
+            self.lock()
+            self.connect(self.spectrum_decim, self.fft_sink)
+            self.demod.connect_complex('src', self.spectrum_decim)
             self.unlock()
         elif (self.fft_sink is not None):
             self.lock()
             self.disconnect(self.spectrum_decim, self.fft_sink)
             self.demod.disconnect_complex()
+            self.unlock()
             self.fft_sink.kill()
             self.remove_plot_sink(self.fft_sink)
             self.spectrum_decim = None
             self.fft_sink = None
-            self.unlock()
 
     def toggle_constellation(self):
         if (self.constellation_sink is None):
             if self.options.demod_type != 'cqpsk':
                 sys.stderr.write("Constellation Plot requires 'cqpsk' modulation\n")
                 return
-            self.lock()
             self.constellation_sink = constellation_sink_c()
-            self.demod.connect_complex('diffdec', self.constellation_sink)
             self.add_plot_sink(self.constellation_sink)
+            self.lock()
+            self.demod.connect_complex('diffdec', self.constellation_sink)
             self.unlock()
         elif (self.constellation_sink is not None):
             self.lock()
             self.demod.disconnect_complex()
+            self.unlock()
             self.constellation_sink.kill()
             self.remove_plot_sink(self.constellation_sink)
             self.constellation_sink = None
-            self.unlock()
  
     def toggle_symbol(self):
         if (self.symbol_sink is None):
-            self.lock()
             self.symbol_sink = symbol_sink_f()
-            self.demod.connect_float(self.symbol_sink)
             self.add_plot_sink(self.symbol_sink)
+            self.lock()
+            self.demod.connect_float(self.symbol_sink)
             self.unlock()
         elif (self.symbol_sink is not None):
             self.lock()
             self.demod.disconnect_float()
+            self.unlock()
             self.symbol_sink.kill()
             self.remove_plot_sink(self.symbol_sink)
             self.symbol_sink = None
-            self.unlock()
 
     def toggle_eye(self):
         if (self.eye_sink is None):
             if self.options.demod_type == 'cqpsk':
                 sys.stderr.write("Datascope Plot cannot be used with 'cqpsk' modulation\n")
                 return
-            self.lock()
             self.eye_sink = eye_sink_f(sps=10)
-            self.demod.connect_bb('symbol_filter', self.eye_sink)
             self.add_plot_sink(self.eye_sink)
+            self.lock()
+            self.demod.connect_bb('symbol_filter', self.eye_sink)
             self.unlock()
         elif (self.eye_sink is not None):
             self.lock()
             self.demod.disconnect_bb()
+            self.unlock()
             self.eye_sink.kill()
             self.remove_plot_sink(self.eye_sink)
             self.eye_sink = None
-            self.unlock()
 
     def add_plot_sink(self, plot):
         if plot not in self.plot_sinks:
