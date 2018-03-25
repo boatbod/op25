@@ -68,9 +68,18 @@ class wrap_gp(object):
 
 	def kill(self):
                 try:
-		    self.gp.communicate("quit\n")
+                        self.gp.stdin.close()   # closing pipe should cause subprocess to exit
                 except IOError:
-                    pass
+                        pass
+                sleep_count = 0
+                while True:                     # wait politely, but only for so long
+                        self.gp.poll()
+                        if self.gp.returncode is not None:
+                                break
+                        time.sleep(0.1)
+                        sleep_count += 1
+                        if (sleep_count % 5) == 0:
+                            self.gp.kill()
 
 	def set_interval(self, v):
 		self.plot_interval = v
@@ -193,7 +202,10 @@ class wrap_gp(object):
 		dat = '%splot %s\n%s' % (h, ','.join(plots), s)
 		self.gp.poll()
 		if self.gp.returncode is None:	# make sure gnuplot is still running 
-			self.gp.stdin.write(dat)
+                        try:
+			        self.gp.stdin.write(dat)
+                        except (IOError, ValueError):
+                                pass
 		if filename:
 			self.filename = filename
 		return consumed
