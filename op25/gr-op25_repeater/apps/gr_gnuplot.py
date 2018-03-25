@@ -202,7 +202,10 @@ class wrap_gp(object):
 		dat = '%splot %s\n%s' % (h, ','.join(plots), s)
 		self.gp.poll()
 		if self.gp.returncode is None:	# make sure gnuplot is still running 
-			self.gp.stdin.write(dat)
+			try:
+				self.gp.stdin.write(dat)
+			except (IOError, ValueError):
+				pass
 		if filename:
 			self.filename = filename
 		return consumed
