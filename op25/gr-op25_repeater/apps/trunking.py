@@ -1094,7 +1094,7 @@ class rx_ctl (object):
             new_nac = self.find_next_tsys()
             new_state = self.states.CC
 
-        if new_nac:
+        if new_nac is not None:
             nac = self.current_nac = new_nac
             tsys = self.trunked_systems[nac]
             new_frequency = tsys.trunk_cc
@@ -1102,7 +1102,7 @@ class rx_ctl (object):
             self.current_encrypted = 0
             self.current_tgid = None
 
-        if new_frequency:
+        if new_frequency is not None:
             self.set_frequency({
                 'freq':   new_frequency,
                 'tgid':   self.current_tgid,
@@ -1115,7 +1115,7 @@ class rx_ctl (object):
                 'wacn':   tsys.ns_wacn, 
                 'sysid':  tsys.ns_syid})
 
-        if new_state:
+        if new_state is not None:
             self.current_state = new_state
 
 def main():
