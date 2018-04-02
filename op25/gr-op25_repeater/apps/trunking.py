@@ -49,8 +49,9 @@ def get_frequency(f):	# return frequency in Hz
         return int(float(f) * 1000000)
 
 class trunked_system (object):
-    def __init__(self, debug=0, config=None):
+    def __init__(self, debug=0, config=None, wildcard=False):
         self.debug = debug
+        self.wildcard_tsys = wildcard
         self.freq_table = {}
         self.stats = {}
         self.stats['tsbks'] = 0
@@ -93,6 +94,29 @@ class trunked_system (object):
             self.cc_list   = config['cclist']
             self.center_frequency = config['center_frequency']
             self.modulation = config['modulation']
+
+    def reset(self):
+        self.freq_table = {}
+        self.stats = {}
+        self.stats['tsbks'] = 0
+        self.stats['crc'] = 0
+        self.tsbk_cache = {}
+        self.secondary = {}
+        self.adjacent = {}
+        self.adjacent_data = {}
+        self.rfss_syid = 0
+        self.rfss_rfid = 0
+        self.rfss_stid = 0
+        self.rfss_chan = 0
+        self.rfss_txchan = 0
+        self.ns_syid = -1
+        self.ns_wacn = -1
+        self.ns_chan = 0
+        self.voice_frequencies = {}
+        self.tgid_map = {}
+        self.last_tsbk = 0
+        self.cc_timeouts = 0
+        self.talkgroups = {}
 
     def to_json(self):
         d = {}
@@ -529,16 +553,18 @@ class trunked_system (object):
 
     def hunt_cc(self, curr_time):
         if self.cc_timeouts < 6:
-            return
+            return False
         self.cc_timeouts = 0
         self.cc_list_index += 1
         if self.cc_list_index >= len(self.cc_list):
             self.cc_list_index = 0
         self.trunk_cc = self.cc_list[self.cc_list_index]
-        if self.debug >=5:
-            if self.trunk_cc != self.last_trunk_cc:
+        if self.trunk_cc != self.last_trunk_cc:
+            self.last_trunk_cc = self.trunk_cc
+            if self.debug >=5:
                 sys.stderr.write('%f set control channel: %f\n' % (curr_time, self.trunk_cc / 1000000.0))
-                self.last_trunk_cc = self.trunk_cc
+            return True
+        return False
 
 def get_int_dict(s):
     # test below looks like it was meant to read a csv list from the config
@@ -635,9 +661,12 @@ class rx_ctl (object):
         whitelist = None
         tgid_map = {}
         cfg = None
+        nac0 = False
         if nac in self.configs:
             cfg = self.configs[nac]
-        self.trunked_systems[nac] = trunked_system(debug = self.debug, config=cfg)
+        if nac == 0:
+            nac0 = True
+        self.trunked_systems[nac] = trunked_system(debug = self.debug, config=cfg, wildcard=nac0)
 
     def build_config_tsv(self, tsv_filename):
         import csv
@@ -663,7 +692,12 @@ class rx_ctl (object):
                             fields[hdrmap[i]] = fields[hdrmap[i]].lower()
                 nac = int(fields['nac'], 0)
                 configs[nac] = fields
-            
+
+        if 0 in configs: # if NAC 0 exists, remove all other configs
+            for nac in configs.keys():
+                if nac != 0:
+                    configs.pop(nac)
+
         self.setup_config(configs)
 
     def build_config(self, config_filename):
@@ -1076,7 +1110,19 @@ class rx_ctl (object):
             sys.stderr.write('update_state: unknown command: %s\n' % command)
             assert 0 == 1
 
-        tsys.hunt_cc(curr_time)
+        hunted_cc = tsys.hunt_cc(curr_time)
+        if tsys.wildcard_tsys and hunted_cc and self.current_nac != 0:
+            if self.debug >= 5:
+                sys.stderr.write("%f reset tsys to NAC 0 after control channel change\n" % time.time())
+            self.trunked_systems[0] = self.trunked_systems.pop(self.current_nac)
+            self.configs[0] = self.configs.pop(self.current_nac)
+            self.nacs = self.configs.keys()
+            self.current_nac = 0
+            self.current_state = self.states.CC
+            self.current_tgid = None
+            self.current_srcaddr = 0
+            self.current_encrypted = 0
+            tsys.reset()
 
         if self.current_state != self.states.CC and self.tgid_hold_until <= curr_time and self.hold_mode is False and new_state is None:
             if self.debug > 1:
