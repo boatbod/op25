@@ -96,7 +96,7 @@ class curses_terminal(threading.Thread):
         if (self.maxx < 70) or (self.maxy < 6):	# do not resize if window is now too small
             return 
 
-        self.stdscr.clear()
+        self.stdscr.erase()
 
         self.title_bar.resize(1, self.maxx)
         self.help_bar.resize(1, self.maxx)
@@ -124,8 +124,8 @@ class curses_terminal(threading.Thread):
     def title_help(self):
         title_str = "OP25"
         help_str = "(f)req (h)old (s)kip (l)ock (q)uit (1-5)plot (,.<>)tune"
-        self.title_bar.clear()
-        self.help_bar.clear()
+        self.title_bar.erase()
+        self.help_bar.erase()
         self.title_bar.addstr(0, 0, title_str.center(self.maxx-1, " "), curses.A_REVERSE)
         self.help_bar.addstr(0, 0, help_str.center(self.maxx-1, " "), curses.A_REVERSE)
         self.title_bar.refresh()
@@ -164,11 +164,11 @@ class curses_terminal(threading.Thread):
         elif c == ord('f'):
             self.prompt.addstr(0, 0, 'Frequency')
             self.prompt.refresh()
-            self.text_win.clear()
+            self.text_win.erase()
             response = self.textpad.edit()
-            self.prompt.clear()
+            self.prompt.erase()
             self.prompt.refresh()
-            self.text_win.clear()
+            self.text_win.erase()
             self.text_win.refresh()
             self.title_help()
             try:
@@ -211,10 +211,10 @@ class curses_terminal(threading.Thread):
             s += ' tsbks %d' % (msg[current_nac]['tsbks'])
             freqs = sorted(msg[current_nac]['frequencies'].keys())
             s = s[:(self.maxx - 1)]
-            self.top_bar.clear()
+            self.top_bar.erase()
             self.top_bar.addstr(0, 0, s)
             self.top_bar.refresh()
-            self.freq_list.clear()
+            self.freq_list.erase()
             for i in xrange(len(freqs)):
                 if i > (self.maxy - 6):
                     break
@@ -222,7 +222,7 @@ class curses_terminal(threading.Thread):
                 s = s[:(self.maxx - 1)]
                 self.freq_list.addstr(i, 0, s)
             self.freq_list.refresh()
-            self.status1.clear()
+            self.status1.erase()
             if 'srcaddr' in msg[current_nac]:
                 srcaddr = msg[current_nac]['srcaddr']
                 if (srcaddr != 0) and (srcaddr != 0xffffff):
@@ -230,7 +230,7 @@ class curses_terminal(threading.Thread):
                     s = s[:14]
                     self.status1.addstr(0, (14-len(s)), s)
             self.status1.refresh()
-            self.status2.clear()
+            self.status2.erase()
             if 'encrypted' in msg[current_nac]:
                 encrypted = msg[current_nac]['encrypted']
                 if encrypted != 0:
@@ -247,8 +247,8 @@ class curses_terminal(threading.Thread):
                 if msg['tdma'] is not None:
                     s += ' TDMA Slot %s' % msg['tdma']
             s = s[:(self.maxx - 1)]
-            self.active1.clear()
-            self.active2.clear()
+            self.active1.erase()
+            self.active2.erase()
             self.active1.addstr(0, 0, s)
             self.active1.refresh()
             if msg['tag']:
