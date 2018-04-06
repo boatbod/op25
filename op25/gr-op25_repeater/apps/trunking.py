@@ -113,7 +113,6 @@ class trunked_system (object):
         self.ns_wacn = -1
         self.ns_chan = 0
         self.voice_frequencies = {}
-        self.tgid_map = {}
         self.last_tsbk = 0
         self.cc_timeouts = 0
         self.talkgroups = {}
