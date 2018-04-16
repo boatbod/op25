@@ -192,10 +192,12 @@ class p25_rx_block (gr.top_block):
         else:
             pass
 
-        # attach terminal thread
+        # attach terminal thread and make sure currently tuned frequency is displayed
         self.terminal = op25_terminal(self.input_q, self.output_q, self.options.terminal_type)
         if self.terminal is None:
             sys.exit(1)
+        if self.options.frequency:
+            self.freq_update()
 
         # attach audio thread
         if self.options.udp_player:
@@ -371,8 +373,13 @@ class p25_rx_block (gr.top_block):
         else:
             self.set_freq(freq + offset)
 
+        self.options.frequency = freq
         self.configure_tdma(params)
+        self.freq_update(params)
 
+    def freq_update(self, params = {}):
+        if 'freq' not in params:
+            params = {'freq' : self.options.frequency, 'tgid' : None, 'tag' : "", 'tdma' : None}
         params['json_type'] = 'change_freq'
         params['fine_tune'] = self.options.fine_tune
         js = json.dumps(params)
