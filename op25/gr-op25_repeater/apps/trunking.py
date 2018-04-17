@@ -608,6 +608,7 @@ class rx_ctl (object):
         self.current_id = 0
         self.current_tgid = None
         self.current_srcaddr = 0
+        self.current_grpaddr = 0	# from P25 LCW
         self.current_encrypted = 0
         self.current_slot = None
         self.TSYS_HOLD_TIME = 3.0	# TODO: make more configurable
@@ -784,9 +785,9 @@ class rx_ctl (object):
         d = {'json_type': 'trunk_update'}
         for nac in self.trunked_systems.keys():
             d[nac] = json.loads(self.trunked_systems[nac].to_json())
-        if self.current_nac is not None:
-            d[self.current_nac]['srcaddr'] = self.current_srcaddr
-            d[self.current_nac]['encrypted'] = self.current_encrypted
+        d['srcaddr'] = self.current_srcaddr
+        d['grpaddr'] = self.current_grpaddr
+        d['encrypted'] = self.current_encrypted
         return json.dumps(d)
 
     def to_string(self):
@@ -804,6 +805,8 @@ class rx_ctl (object):
             js = json.loads(msg.to_string())
             if ('srcaddr' in js) and (js['srcaddr'] != 0):
                 self.current_srcaddr = js['srcaddr']
+            if ('grpaddr' in js):
+                self.current_grpaddr = js['grpaddr']
             if 'encrypted' in js:
                 self.current_encrypted = js['encrypted']
         elif type == -2:	# request from gui
@@ -1015,6 +1018,7 @@ class rx_ctl (object):
                 if self.hold_mode is False:
                     self.current_tgid = None
                 self.current_srcaddr = 0
+                self.current_grpaddr = 0
                 self.current_encrypted = 0
                 new_state = self.states.CC
                 new_frequency = tsys.trunk_cc
@@ -1062,6 +1066,7 @@ class rx_ctl (object):
                 if self.debug > 1:
                     sys.stderr.write("%f %s, tg(%d)\n" % (time.time(), command, self.current_tgid))
                 self.current_srcaddr = 0
+                self.current_grpaddr = 0
                 self.current_encrypted = 0
                 self.wait_until = curr_time + self.TSYS_HOLD_TIME
                 self.tgid_hold = self.current_tgid
@@ -1120,6 +1125,7 @@ class rx_ctl (object):
             self.current_state = self.states.CC
             self.current_tgid = None
             self.current_srcaddr = 0
+            self.current_grpaddr = 0
             self.current_encrypted = 0
             tsys.reset()
 
@@ -1129,12 +1135,14 @@ class rx_ctl (object):
             self.tgid_hold = None
             self.current_tgid = None
             self.current_srcaddr = 0
+            self.current_grpaddr = 0
             self.current_encrypted = 0
             new_state = self.states.CC
             new_frequency = tsys.trunk_cc
         elif self.wait_until <= curr_time and self.tgid_hold_until <= curr_time and self.hold_mode is False and new_state is None:
             self.wait_until = curr_time + self.TSYS_HOLD_TIME
             self.current_srcaddr = 0
+            self.current_grpaddr = 0
             self.current_encrypted = 0
             new_nac = self.find_next_tsys()
             new_state = self.states.CC
@@ -1144,6 +1152,7 @@ class rx_ctl (object):
             tsys = self.trunked_systems[nac]
             new_frequency = tsys.trunk_cc
             self.current_srcaddr = 0
+            self.current_grpaddr = 0
             self.current_encrypted = 0
             self.current_tgid = None
 

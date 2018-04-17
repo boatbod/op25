@@ -38,6 +38,7 @@ var c_freq = 0;
 var c_system = null;
 var c_tag = null;
 var c_srcaddr = 0;
+var c_grpaddr = 0;
 var c_encrypted = 0;
 
 function find_parent(ele, tagname) {
@@ -172,14 +173,18 @@ function channel_status() {
     }
     html += "<br>";
     if (current_tgid != null) {
-        html += "<span class=\"value\"> " + current_tgid + "</span>";
-        html += "<span class=\"value\"> &nbsp;" + c_tag + " </span>";
+        html += "<span class=\"value\">" + c_tag + "</span>";
         if (c_encrypted) {
             html += "<span class=\"label\">[ENCRYPTED]</span>";
         }
     }
     html += "<br>";
-    if ((current_tgid) != null && (c_srcaddr != 0) && (c_srcaddr != 0xffffff)) 
+    if (current_tgid != null)
+        html += "<span class=\"value\">" + current_tgid + "</span>";
+    else if (c_grpaddr != 0)
+        html += "<span class=\"value\">" + c_grpaddr + "</span>";
+    html += "<br>";
+    if ((c_srcaddr != 0) && (c_srcaddr != 0xffffff)) 
         html += "<span class=\"value\">" + c_srcaddr + "</span>";
     html += "<br>";
     var div_s2b = document.getElementById("div_s2b");
@@ -276,12 +281,15 @@ function trunk_update(d) {
 // end system freqencies table
 
         html += adjacent_data(d[nac]['adjacent_data']);
-
-        if (d[nac]['srcaddr'] != undefined)
-            c_srcaddr = d[nac]['srcaddr']
-        if (d[nac]['encrypted'] != undefined)
-            c_encrypted = d[nac]['encrypted']
     }
+
+    if (d['srcaddr'] != undefined)
+        c_srcaddr = d['srcaddr']
+    if (d['grpaddr'] != undefined)
+        c_grpaddr = d['grpaddr']
+    if (d['encrypted'] != undefined)
+        c_encrypted = d['encrypted']
+
     var div_s3 = document.getElementById("div_s3");
     div_s3.innerHTML = html;
 

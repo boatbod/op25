@@ -197,7 +197,7 @@ class curses_terminal(threading.Thread):
         # return true signifies end of main event loop
         msg = json.loads(js)
         if msg['json_type'] == 'trunk_update':
-            nacs = [x for x in msg.keys() if x != 'json_type']
+            nacs = [x for x in msg.keys() if x.isnumeric() ]
             if not nacs:
                 return
             times = {msg[nac]['last_tsbk']:nac for nac in nacs}
@@ -223,16 +223,16 @@ class curses_terminal(threading.Thread):
                 self.freq_list.addstr(i, 0, s)
             self.freq_list.refresh()
             self.status1.erase()
-            if 'srcaddr' in msg[current_nac]:
-                srcaddr = msg[current_nac]['srcaddr']
+            if 'srcaddr' in msg:
+                srcaddr = msg['srcaddr']
                 if (srcaddr != 0) and (srcaddr != 0xffffff):
                     s = '%d' % (srcaddr)
                     s = s[:14]
                     self.status1.addstr(0, (14-len(s)), s)
             self.status1.refresh()
             self.status2.erase()
-            if 'encrypted' in msg[current_nac]:
-                encrypted = msg[current_nac]['encrypted']
+            if 'encrypted' in msg:
+                encrypted = msg['encrypted']
                 if encrypted != 0:
                     s = 'ENCRYPTED'
                     self.status2.addstr(0, (14-len(s)), s, curses.A_REVERSE)
