@@ -427,7 +427,7 @@ p25p1_fdma::process_LCW(std::vector<uint8_t>& HB)
 		fprintf(stderr, "LCW: ec=%d, pb=%d, sf=%d, lco=%d", ec, pb, sf, lco);
 
 	if (pb == 0) { // only decode if unencrypted
-		if ((sf == 0) && ((lcw[1] == 0x00) || (lcw[1] == 0x01))) {	// sf=0, explicit MFID in standard format
+		if ((sf == 0) && ((lcw[1] == 0x00) || (lcw[1] == 0x01) || (lcw[1] == 0x90))) {	// sf=0, explicit MFID in standard or Motorola format
 			switch (lco) {
 				case 0x00: { // Group Voice Channel User
 					uint16_t grpaddr = (lcw[4] << 8) + lcw[5];
@@ -557,7 +557,7 @@ p25p1_fdma::process_PDU(const bit_vector& fr, uint32_t fr_len)
 				fprintf(stderr, "\n");
 			}
 		} else if (d_debug >= 10) {
-			fprintf(stderr, "%s NAC 0x%03x PDU:  non-MBT message ignored", logts.get(), framer->nac);
+			fprintf(stderr, "%s NAC 0x%03x PDU:  non-MBT message ignored\n", logts.get(), framer->nac);
 		}
 
 	}
@@ -711,7 +711,7 @@ p25p1_fdma::rx_sym (const uint8_t *syms, int nsyms)
     }
     diff_usec += diff_sec * 1000000;
     if (diff_usec >= TIMEOUT_THRESHOLD) {
-      if (d_debug >= 10)
+      if (d_debug > 10)
         fprintf(stderr, "%010lu.%06lu p25p1_fdma::rx_sym() timeout\n", currtime.tv_sec, currtime.tv_usec);
 
       if (d_do_audio_output) {

@@ -802,6 +802,8 @@ class rx_ctl (object):
         updated = 0
         curr_time = time.time()
         if type == -3:		# P25 call signalling data
+            if self.debug >= 10:
+                sys.stderr.write("process_qmsg: P25 info: %s\n" % msg.to_string())
             js = json.loads(msg.to_string())
             if ('srcaddr' in js) and (js['srcaddr'] != 0):
                 self.current_srcaddr = js['srcaddr']
@@ -816,7 +818,7 @@ class rx_ctl (object):
             self.update_state(cmd, curr_time)
             return
         elif type == -1:	# timeout
-            if self.debug >= 10:
+            if self.debug > 10:
                 sys.stderr.write('%f process_data_unit timeout\n' % time.time())
             self.update_state('timeout', curr_time)
             if self.logfile_workers:
