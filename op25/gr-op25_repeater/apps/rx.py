@@ -102,6 +102,7 @@ class p25_rx_block (gr.top_block):
         self.eye_sink = None
         self.mixer_sink = None
         self.target_freq = 0.0
+        self.last_freq_params = {'freq' : 0.0, 'tgid' : None, 'tag' : "", 'tdma' : None}
 
         self.src = None
         if (not options.input) and (not options.audio) and (not options.audio_if):
@@ -196,8 +197,6 @@ class p25_rx_block (gr.top_block):
         self.terminal = op25_terminal(self.input_q, self.output_q, self.options.terminal_type)
         if self.terminal is None:
             sys.exit(1)
-        if self.options.frequency:
-            self.freq_update()
 
         # attach audio thread
         if self.options.udp_player:
@@ -348,6 +347,7 @@ class p25_rx_block (gr.top_block):
         self.demod.clock.set_omega(float(sps))
 
     def change_freq(self, params):
+        self.last_freq_params = params
         freq = params['freq']
         offset = params['offset']
         center_freq = params['center_frequency']
@@ -373,13 +373,11 @@ class p25_rx_block (gr.top_block):
         else:
             self.set_freq(freq + offset)
 
-        self.options.frequency = freq
         self.configure_tdma(params)
-        self.freq_update(params)
+        self.freq_update()
 
-    def freq_update(self, params = {}):
-        if 'freq' not in params:
-            params = {'freq' : self.options.frequency, 'tgid' : None, 'tag' : "", 'tdma' : None}
+    def freq_update(self):
+        params = self.last_freq_params
         params['json_type'] = 'change_freq'
         params['fine_tune'] = self.options.fine_tune
         js = json.dumps(params)
@@ -689,6 +687,7 @@ class p25_rx_block (gr.top_block):
                 "source-decim": 1 }
             self.__set_rx_from_osmosdr()
             if self.options.frequency:
+                self.last_freq_params['freq'] = self.options.frequency
                 self.set_freq(self.options.frequency)
         # except Exception, x:
         #     wx.MessageBox("Cannot open USRP: " + x.message, "USRP Error", wx.CANCEL | wx.ICON_EXCLAMATION)
@@ -710,6 +709,7 @@ class p25_rx_block (gr.top_block):
         s = msg.to_string()
         if s == 'quit': return True
         elif s == 'update':
+            self.freq_update()
             if self.trunk_rx is None:
                 return False	## possible race cond - just ignore
             js = self.trunk_rx.to_json()
