@@ -438,7 +438,16 @@ class trunked_system (object):
             ch1  = (tsbk >> 48) & 0xffff
             ch2  = (tsbk >> 32) & 0xffff
             if self.debug > 10:
-                sys.stderr.write('tsbk16 sndcp data ch: chan %x %x\n' %(ch1, ch2))
+                sys.stderr.write('tsbk16 sndcp data ch: chan %x %x\n' % (ch1, ch2))
+        elif opcode == 0x28:   # grp_aff_rsp
+            mfrid  = (tsbk >> 80) & 0xff
+            lg     = (tsbk >> 79) & 0x01
+            gav    = (tsbk >> 72) & 0x03
+            aga    = (tsbk >> 56) & 0xffff
+            ga     = (tsbk >> 40) & 0xffff
+            ta     = (tsbk >> 16) & 0xffffff
+            if self.debug > 10:
+                sys.stderr.write('tsbk28 grp_aff_resp: mfrid: 0x%x, gav: %d, aga: %d, ga: %d, ta: %d\n' % (mfrid, gav, aga, ga, ta))
         elif opcode == 0x34:   # iden_up vhf uhf
             iden = (tsbk >> 76) & 0xf
             bwvu = (tsbk >> 72) & 0xf
