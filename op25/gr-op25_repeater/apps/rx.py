@@ -325,7 +325,7 @@ class p25_rx_block (gr.top_block):
 
     def configure_tdma(self, params):
         if params['tdma'] is not None and not self.options.phase2_tdma:
-            print '***TDMA request for frequency %d failed- phase2_tdma option not enabled' % params['freq']
+            sys.stderr.write("***TDMA request for frequency %d failed- phase2_tdma option not enabled" % params['freq'])
             return
         set_tdma = False
         if params['tdma'] is not None:
