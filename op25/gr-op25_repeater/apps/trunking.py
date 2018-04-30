@@ -1045,7 +1045,8 @@ class rx_ctl (object):
                 new_frequency, new_tgid, tdma_slot, srcaddr = tsys.find_talkgroup(curr_time, tgid=desired_tgid, hold=self.hold_mode)
                 if new_frequency:
                     if self.debug > 0:
-                        sys.stderr.write("%f voice update:  tg(%s), freq(%s), slot(%s), prio(%d)\n" % (time.time(), new_tgid, new_frequency, tdma_slot, tsys.get_prio(new_tgid)))
+                        tslot = tdma_slot if tdma_slot is not None else '-'
+                        sys.stderr.write("%f voice update:  tg(%s), freq(%s), slot(%s), prio(%d)\n" % (time.time(), new_tgid, new_frequency, tslot, tsys.get_prio(new_tgid)))
                     new_state = self.states.TO_VC
                     self.current_tgid = new_tgid
                     self.current_srcaddr = srcaddr
