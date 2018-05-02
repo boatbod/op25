@@ -163,7 +163,13 @@ function change_freq(d) {
 }
 
 function channel_status() {
-    var html = ""
+    var html
+    var s2_freq = document.getElementById("s2_freq");
+    var s2_tg = document.getElementById("s2_tg");
+    var s2_grp = document.getElementById("s2_grp");
+    var s2_src = document.getElementById("s2_src");
+
+    html = ""
     if (c_freq != 0) {
         html += "<span class=\"value\">" + c_freq / 1000000.0 + "</span>";
     }
@@ -171,25 +177,28 @@ function channel_status() {
     {
         html += "<span class=\"value\"> &nbsp;" + c_system + "</span>";
     }
-    html += "<br>";
+    s2_freq.innerHTML = html
+
+    html = ""
     if (current_tgid != null) {
         html += "<span class=\"value\">" + c_tag + "</span>";
         if (c_encrypted) {
             html += "<span class=\"label\">[ENCRYPTED]</span>";
         }
     }
-    html += "<br>";
+    s2_tg.innerHTML = html
+
+    html = ""
     if (current_tgid != null)
         html += "<span class=\"value\">" + current_tgid + "</span>";
     else if (c_grpaddr != 0)
         html += "<span class=\"value\">" + c_grpaddr + "</span>";
-    html += "<br>";
+    s2_grp.innerHTML = html
+
+    html = ""
     if ((c_srcaddr != 0) && (c_srcaddr != 0xffffff)) 
         html += "<span class=\"value\">" + c_srcaddr + "</span>";
-    html += "<br>";
-    var div_s2b = document.getElementById("div_s2b");
-    div_s2b.innerHTML = html;
-    div_s2b.style["display"] = "";
+    s2_src.innerHTML = html
 }
 
 // adjacent sites table

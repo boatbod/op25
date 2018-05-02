@@ -187,6 +187,7 @@ div.adjacent {
 }
 
 .s2 {
+	display: table;
 	border: 1px solid #999;
 	height: auto;
 	overflow: auto;
@@ -195,6 +196,23 @@ div.adjacent {
 	background: LightGray; /* For browsers that do not support gradients */
 	background: linear-gradient(White, Silver);
 	box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2), 0 3px 10px 0 rgba(0,0,0,0.19);
+}
+
+.s2_row {
+	display: table-row;
+	width:auto;
+}
+
+.s2_cell_a {
+	display: table-column;
+	float: left;
+	width: 15%
+}
+
+.s2_cell_b {
+	display: table-column;
+	float: left;
+	width: 85%
 }
 
 .s3 {
