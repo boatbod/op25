@@ -588,10 +588,11 @@ def get_int_dict(s):
     with open(s,"r") as f:
         for v in f:
             v = v.split("\t",1) # split on tab
-            v = int(v[0])       # keep first field, and convert to int
-            if v not in d:      # is this a new tg?
-                d[v] = []       # if so, add to dict (key only, value null)
-                sys.stderr.write('added talkgroup %d from %s\n' % (v,s))
+            if v[0].isdigit():
+                v = int(v[0])       # keep first field, and convert to int
+                if v not in d:      # is this a new tg?
+                    d[v] = []       # if so, add to dict (key only, value null)
+                    sys.stderr.write('added talkgroup %d from %s\n' % (v,s))
     f.close()
     return dict.fromkeys(d)
 
@@ -769,8 +770,11 @@ class rx_ctl (object):
                 with open(configs[nac]['tgid_tags_file'], 'rb') as csvfile:
                     sreader = csv.reader(csvfile, delimiter='\t', quotechar='"', quoting=csv.QUOTE_ALL)
                     for row in sreader:
-                        tgid = int(row[0])
-                        txt = utf_ascii(row[1])
+                        try:
+                            tgid = int(row[0])
+                            txt = utf_ascii(row[1])
+                        except (IndexError, ValueError) as ex:
+                            continue
                         if len(row) >= 3:
                             try:
                                 prio = int(row[2])
