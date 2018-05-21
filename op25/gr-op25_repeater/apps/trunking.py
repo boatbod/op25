@@ -588,11 +588,13 @@ def get_int_dict(s):
     with open(s,"r") as f:
         for v in f:
             v = v.split("\t",1) # split on tab
-            if v[0].isdigit():
+            try:
                 v = int(v[0])       # keep first field, and convert to int
                 if v not in d:      # is this a new tg?
                     d[v] = []       # if so, add to dict (key only, value null)
                     sys.stderr.write('added talkgroup %d from %s\n' % (v,s))
+            except (IndexError, ValueError) as ex:
+                continue
     f.close()
     return dict.fromkeys(d)
 
