@@ -82,7 +82,8 @@ p25cai_du_handler::handle(data_unit_sptr du)
       const size_t CAI_SZ = du->size();
       uint8_t cai[CAI_SZ];
       du->decode_frame(CAI_SZ, cai);
-      write(d_cai, cai, CAI_SZ);
+      if (write(d_cai, cai, CAI_SZ) < 0)
+         printf("error %d: %s\n", errno, strerror(errno));
    }
    data_unit_handler::handle(du);
 }
