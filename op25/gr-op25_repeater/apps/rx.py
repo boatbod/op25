@@ -114,7 +114,7 @@ class p25_rx_block (gr.top_block):
                 print "osmosdr source_c creation failure"
                 ignore = True
  
-            if any(x in options.args.lower() for x in ['rtl', 'airspy']):
+            if any(x in options.args.lower() for x in ['rtl', 'airspy', 'hackrf', 'uhd']):
                 #print "'rtl' has been found in options.args (%s)" % (options.args)
                 self.rtl_found = True
 
