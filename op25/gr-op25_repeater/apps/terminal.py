@@ -178,7 +178,7 @@ class curses_terminal(threading.Thread):
             except:
                 freq = None
             if freq:
-                self.send_command('set freq', freq)
+                self.send_command('set_freq', freq)
         elif c == ord(','):
             self.send_command('adj_tune', -100)
         elif c == ord('.'):

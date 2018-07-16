@@ -718,6 +718,7 @@ class p25_rx_block (gr.top_block):
             self.process_ajax()
         elif s == 'set_freq':
             freq = msg.arg1()
+            self.last_freq_params['freq'] = freq
             self.set_freq(freq)
         elif s == 'adj_tune':
             freq = msg.arg1()
