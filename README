@@ -18,6 +18,7 @@ Many changes:
 - supports IP addresses or host names for --wireshark-host (-W) parameter
 - decode and pass voice channel sourced trunk signaling up to trunking module
 - added optional trunk group priority parameter to end of tgid-tags.tsv file
+- added ability to handle ranges of tgid in blacklist/whitelist files
 
 New command line options:
   --fine-tune      : sub-ppm tuning adjustment
