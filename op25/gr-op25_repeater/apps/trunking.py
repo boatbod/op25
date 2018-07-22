@@ -575,24 +575,22 @@ class trunked_system (object):
         return False
 
 def get_int_dict(s):
-    # test below looks like it was meant to read a csv list from the config
-    # file directly, rather than from a separate file.  Not sure if this is
-    # actually used anymore, and could break if whitelist/blacklist file
-    # path begins with a digit.
-
-    if s[0].isdigit():
-        return dict.fromkeys([int(d) for d in s.split(',')])
-
     # create dict by reading from file
     d = {}                     # this is the dict
     with open(s,"r") as f:
         for v in f:
             v = v.split("\t",1) # split on tab
             try:
-                v = int(v[0])       # keep first field, and convert to int
-                if v not in d:      # is this a new tg?
-                    d[v] = []       # if so, add to dict (key only, value null)
-                    sys.stderr.write('added talkgroup %d from %s\n' % (v,s))
+                v0 = int(v[0])				# first parameter is tgid or start of tgid range
+		v1 = v0
+		if (len(v) > 1) and (int(v[1]) > v0):	# second parameter if present is end of tgid range
+                	v1 = int(v[1])
+		
+		for tg in range(v0, (v1 + 1)):
+                	if tg not in d:      # is this a new tg?
+                		d[tg] = []   # if so, add to dict (key only, value null)
+                		sys.stderr.write('added talkgroup %d from %s\n' % (tg,s))
+
             except (IndexError, ValueError) as ex:
                 continue
     f.close()
