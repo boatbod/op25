@@ -575,6 +575,14 @@ class trunked_system (object):
         return False
 
 def get_int_dict(s):
+    # test below looks like it was meant to read a csv list from the config
+    # file directly, rather than from a separate file.  Not sure if this is
+    # actually used anymore, and could break if whitelist/blacklist file
+    # path begins with a digit.
+
+    if s[0].isdigit():
+        return dict.fromkeys([int(d) for d in s.split(',')])
+
     # create dict by reading from file
     d = {}                     # this is the dict
     with open(s,"r") as f:
