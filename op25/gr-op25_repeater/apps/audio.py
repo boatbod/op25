@@ -36,12 +36,14 @@ parser = OptionParser()
 parser.add_option("-O", "--audio-output", type="string", default="default", help="audio output device name")
 parser.add_option("-u", "--wireshark-port", type="int", default=23456, help="Wireshark port")
 parser.add_option("-2", "--two-channel", action="store_true", default=False, help="single or two channel audio")
+parser.add_option("-x", "--audio-gain", type="float", default="1.0", help="audio gain (default = 1.0)")
+ 
 (options, args) = parser.parse_args()
 if len(args) != 0:
    parser.print_help()
    sys.exit(1)
 
-audiothread = socket_audio("0.0.0.0", options.wireshark_port, options.audio_output, options.two_channel)
+audiothread = socket_audio("0.0.0.0", options.wireshark_port, options.audio_output, options.two_channel, options.audio_gain)
 
 if __name__ == "__main__":
    signal.signal(signal.SIGINT, signal_handler)

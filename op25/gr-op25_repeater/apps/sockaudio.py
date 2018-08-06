@@ -28,6 +28,7 @@ import threading
 import select
 import socket
 import errno
+import struct
 
 # OP25 defaults
 PCM_RATE = 8000			# audio sample rate (Hz)
@@ -258,11 +259,12 @@ class alsasound(object):
 
 # OP25 thread to receive UDP audio samples and send to Alsa driver
 class socket_audio(threading.Thread):
-	def __init__(self, udp_host, udp_port, pcm_device, two_channels = False, **kwds):
+	def __init__(self, udp_host, udp_port, pcm_device, two_channels = False, audio_gain = 1.0, **kwds):
 		threading.Thread.__init__(self, **kwds)
 		self.setDaemon(1)
 		self.keep_running = True
 		self.two_channels = two_channels
+		self.audio_gain = audio_gain
 		self.sock_a = None
 		self.sock_b = None
 		self.pcm = alsasound()
@@ -315,13 +317,28 @@ class socket_audio(threading.Thread):
 				continue
 
 			if not self.two_channels:
+				data_a = self.scale(data_a)
 				self.pcm.write(self.interleave(data_a, data_a))
 			else:
+				data_a = self.scale(data_a)
+				data_b = self.scale(data_b)
 				self.pcm.write(self.interleave(data_a, data_b))
 
 		self.close_sockets()
 		self.close_pcm()
 		return
+
+	def scale(self, data):	# crude amplitude scaler (volume) for S16_LE samples
+		scaled_data = ""
+		d_len = len(data) / 2
+		iter_d = iter(data)
+		i = 0;
+		while i < d_len:
+			i += 1
+			pcm_r = struct.unpack('<h', next(iter_d, chr(0)) + next(iter_d, chr(0)))[0]
+			pcm_s = min(max((int)(pcm_r * self.audio_gain), -32768), 32767)
+			scaled_data += struct.pack('<h', pcm_s)
+		return scaled_data
 
 	def interleave(self, data_a, data_b):
 		combi_data = ""

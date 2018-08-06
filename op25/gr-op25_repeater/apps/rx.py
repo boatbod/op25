@@ -200,7 +200,7 @@ class p25_rx_block (gr.top_block):
 
         # attach audio thread
         if self.options.udp_player:
-            self.audio = socket_audio("127.0.0.1", self.options.wireshark_port, self.options.audio_output)
+            self.audio = socket_audio("127.0.0.1", self.options.wireshark_port, self.options.audio_output, False, self.options.audio_gain)
         else:
             self.audio = None
 
@@ -816,6 +816,7 @@ class rx_main(object):
         parser.add_option("-G", "--gain-mu", type="eng_float", default=0.025, help="gardner gain")
         parser.add_option("-N", "--gains", type="string", default=None, help="gain settings")
         parser.add_option("-O", "--audio-output", type="string", default="default", help="audio output device name")
+        parser.add_option("-x", "--audio-gain", type="eng_float", default="1.0", help="audio gain (default = 1.0)")
         parser.add_option("-U", "--udp-player", action="store_true", default=False, help="enable built-in udp audio player")
         parser.add_option("-q", "--freq-corr", type="eng_float", default=0.0, help="frequency correction")
         parser.add_option("-d", "--fine-tune", type="eng_float", default=0.0, help="fine tuning")
