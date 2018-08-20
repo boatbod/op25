@@ -47,6 +47,11 @@ _def_symbol_deviation = 600.0
 _def_bb_gain = 1.0
 _def_excess_bw = 0.2
 
+_def_gmsk_mu = None
+_def_mu = 0.5
+_def_freq_error = 0.0
+_def_omega_relative_limit = 0.005
+
 # /////////////////////////////////////////////////////////////////////////////
 #                           demodulator
 # /////////////////////////////////////////////////////////////////////////////
@@ -87,18 +92,31 @@ class p25_demod_base(gr.hier_block2):
 
         self.baseband_amp = blocks.multiply_const_ff(_def_bb_gain)
         coeffs = op25_c4fm_mod.c4fm_taps(sample_rate=self.if_rate, span=9, generator=op25_c4fm_mod.transfer_function_rx).generate()
+        sps = self.if_rate / 4800
         if filter_type == 'rrc':
-            sps = self.if_rate / 4800
             ntaps = 7 * sps
             if ntaps & 1 == 0:
                 ntaps += 1
             coeffs = filter.firdes.root_raised_cosine(1.0, if_rate, symbol_rate, excess_bw, ntaps)
-        self.symbol_filter = filter.fir_filter_fff(1, coeffs)
-        autotuneq = gr.msg_queue(2)
-        self.fsk4_demod = op25.fsk4_demod_ff(autotuneq, self.if_rate, self.symbol_rate)
-
-        levels = [ -2.0, 0.0, 2.0, 4.0 ]
-        self.slicer = op25_repeater.fsk4_slicer_fb(levels)
+        if filter_type == 'gmsk':
+            # lifted from gmsk.py
+            _omega = sps
+            _gain_mu = _def_gmsk_mu
+            _mu = _def_mu
+            if not _gain_mu:
+                _gain_mu = 0.175
+            _gain_omega = .25 * _gain_mu * _gain_mu        # critically damped
+            self.symbol_filter = blocks.multiply_const_ff(1.0)
+            self.fsk4_demod = digital.clock_recovery_mm_ff(_omega, _gain_omega,
+                                                           _mu, _gain_mu,
+                                                           _def_omega_relative_limit)
+            self.slicer = digital.binary_slicer_fb()
+        else:
+            self.symbol_filter = filter.fir_filter_fff(1, coeffs)
+            autotuneq = gr.msg_queue(2)
+            self.fsk4_demod = op25.fsk4_demod_ff(autotuneq, self.if_rate, self.symbol_rate)
+            levels = [ -2.0, 0.0, 2.0, 4.0 ]
+            self.slicer = op25_repeater.fsk4_slicer_fb(levels)
 
     def set_symbol_rate(self, rate):
         self.symbol_rate = rate
@@ -249,9 +267,6 @@ class p25_demod_cb(p25_demod_base):
         fb = fa + 625
         cutoff_coeffs = filter.firdes.low_pass(1.0, self.if_rate, (fb+fa)/2, fb-fa, filter.firdes.WIN_HANN)
         self.cutoff = filter.fir_filter_ccf(1, cutoff_coeffs)
-
-        levels = [ -2.0, 0.0, 2.0, 4.0 ]
-        self.slicer = op25_repeater.fsk4_slicer_fb(levels)
 
         omega = float(self.if_rate) / float(self.symbol_rate)
         gain_omega = 0.1  * gain_mu * gain_mu
