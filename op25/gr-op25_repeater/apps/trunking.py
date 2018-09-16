@@ -772,6 +772,7 @@ class rx_ctl (object):
                 self.configs[nac]['modulation'] = 'cqpsk'
             for k in ['whitelist', 'blacklist']:
                 if k in configs[nac]:
+                    sys.stderr.write("Reading %s file\n" % k)
                     self.configs[nac][k] = get_int_dict(configs[nac][k])
             if 'tgid_tags_file' in configs[nac]:
                 import csv
