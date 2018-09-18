@@ -726,6 +726,8 @@ class p25_rx_block (gr.top_block):
         elif s == 'toggle_plot':
             plot_type = msg.arg1()
             self.toggle_plot(plot_type)
+        elif s == 'dump_tgids':
+            self.trunk_rx.dump_tgids()
         elif s == 'add_default_config':
             nac = msg.arg1()
             self.trunk_rx.add_default_config(nac)

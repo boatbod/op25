@@ -189,6 +189,8 @@ class curses_terminal(threading.Thread):
             self.send_command('adj_tune', 1200)
         elif (c >= ord('1') ) and (c <= ord('5')):
             self.send_command('toggle_plot', (c - ord('0')))
+        elif c == ord('d'):
+            self.send_command('dump_tgids', 0)
         elif c == ord('x'):
             assert 1 == 0
         return False

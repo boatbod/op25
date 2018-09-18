@@ -272,6 +272,12 @@ class trunked_system (object):
             return self.talkgroups[tgt_tgid]['frequency'], tgt_tgid, self.talkgroups[tgt_tgid]['tdma_slot'], self.talkgroups[tgt_tgid]['srcaddr']
         return None, None, None, None
 
+    def dump_tgids(self):
+	sys.stderr.write("Known tgids: { ")
+        for tgid in sorted(self.talkgroups.keys()):
+            sys.stderr.write("%d " % tgid);
+        sys.stderr.write("}\n") 
+
     def add_blacklist(self, tgid, end_time=None):
         if not tgid:
             return
@@ -811,6 +817,10 @@ class rx_ctl (object):
         d['grpaddr'] = self.current_grpaddr
         d['encrypted'] = self.current_encrypted
         return json.dumps(d)
+
+    def dump_tgids(self):
+        for nac in self.trunked_systems.keys():
+            self.trunked_systems[nac].dump_tgids()
 
     def to_string(self):
         s = ''
