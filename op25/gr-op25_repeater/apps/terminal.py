@@ -79,8 +79,8 @@ class curses_terminal(threading.Thread):
         self.help_bar = curses.newwin(1, self.maxx, self.maxy-1, 0)
         self.top_bar = curses.newwin(1, self.maxx, 1, 0)
         self.freq_list = curses.newwin(self.maxy-5, self.maxx, 2, 0)
-        self.active1 = curses.newwin(1, self.maxx-10, self.maxy-3, 0)
-        self.active2 = curses.newwin(1, self.maxx-10, self.maxy-2, 0)
+        self.active1 = curses.newwin(1, self.maxx-15, self.maxy-3, 0)
+        self.active2 = curses.newwin(1, self.maxx-15, self.maxy-2, 0)
         self.status1 = curses.newwin(1, 15, self.maxy-3, self.maxx-15)
         self.status2 = curses.newwin(1, 15, self.maxy-2, self.maxx-15)
         self.prompt = curses.newwin(1, 10, self.maxy-1, 0)
@@ -248,14 +248,14 @@ class curses_terminal(threading.Thread):
                 s += ' Talkgroup ID %s' % (msg['tgid'])
                 if msg['tdma'] is not None:
                     s += ' TDMA Slot %s' % msg['tdma']
-            s = s[:(self.maxx - 1)]
+            s = s[:(self.maxx - 16)]
             self.active1.erase()
             self.active2.erase()
             self.active1.addstr(0, 0, s)
             self.active1.refresh()
             if msg['tag']:
                 s = msg['tag']
-                s = s[:(self.maxx - 1)]
+                s = s[:(self.maxx - 16)]
                 self.active2.addstr(0, 0, s)
             self.active2.refresh()
             self.stdscr.refresh()
