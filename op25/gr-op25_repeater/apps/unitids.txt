@@ -1,0 +1,2 @@
+#<<srcaddr>>	<<label>>
+123456	MILDURA BASE 1

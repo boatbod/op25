@@ -25,6 +25,9 @@ import collections
 import json
 sys.path.append('tdma')
 import lfsr
+import csv
+from pathlib import Path
+import paho.mqtt.client as mqtt
 
 def utf_ascii(ustr):
     return (ustr.decode("utf-8")).encode("ascii", "ignore")
@@ -644,6 +647,10 @@ class rx_ctl (object):
         self.working_frequencies = {}
         self.xor_cache = {}
         self.last_garbage_collect = 0
+        self.last_srcaddr = None
+        self.last_tag = None
+        self.last_system = None
+        self.unitids = {}
         if self.logfile_workers:
             self.input_rate = self.logfile_workers[0]['demod'].input_rate
 
@@ -673,6 +680,36 @@ class rx_ctl (object):
                 'tdma':   None, 
                 'wacn':   None, 
                 'sysid':  None})
+
+        with open("unitids.txt", 'rb') as csvfile:
+            sreader = csv.reader(csvfile, delimiter='\t', quotechar='"', quoting=csv.QUOTE_ALL)
+            for row in sreader:
+                if row[0].startswith('#'):
+                    continue
+                self.unitids[row[0]] = row[1]
+                sys.stdout.write('Adding "%s" for Unit ID "%s"\n' % (row[1], row[0]))
+        mqttcfg_file = Path("mqtt.cfg")
+        self.mqttdata = None
+        self.mqttclient = None
+        if mqttcfg_file.is_file():
+            with open("mqtt.cfg") as json_data_file:
+                self.mqttdata = json.load(json_data_file)
+                self.mqttclient = mqtt.Client(self.mqttdata["client_name"])
+                self.mqttclient.username_pw_set(username=self.mqttdata["username"],password=self.mqttdata["password"])
+                self.mqttclient.connect(self.mqttdata["host_name"])
+                self.mqttclient.on_connect=self.on_mqttconnect
+                self.mqttclient.on_log=self.on_mqttlog
+                self.mqttclient.loop_start()
+
+    def on_mqttconnect(client, userdata, flags, rc):
+        if rc==0:
+            client.connected_flag=True #set flag
+            sys.stdout.write("connected OK")
+        else:
+            sys.stdout.write("Bad connection Returned code=",rc)
+
+    def on_mqttlog(client, userdata, level, buf):
+        sys.stdout.write("log: ",buf)
 
     def set_frequency(self, params):
         frequency = params['freq']
@@ -829,6 +866,39 @@ class rx_ctl (object):
             s += self.trunked_systems[nac].to_string()
         return s
 
+    def update_mqttpublish(self):
+        current_system = self.trunked_systems[self.current_nac].sysname
+        current_tag = None
+        newchange = 0
+        if self.current_tgid is not None:
+            tsys = self.trunked_systems[self.current_nac]
+            current_tag = tsys.get_tag(self.current_tgid)
+        #    sys.stderr.write("Current TGID: %s\n" % current_tag)
+        #    if self.current_srcaddr != 0:
+        #        sys.stderr.write("Current SRC Addr: %s\n" % self.current_srcaddr)
+        #        newchange = "1"
+        #else:
+        #    if current_system != self.last_system:
+        #        sys.stderr.write("Current System: %s\n" % self.trunked_systems[self.current_nac].sysname)
+        if self.last_srcaddr != self.current_srcaddr:
+            newchange = 1
+        if self.last_system != current_system:
+            newchange = 1
+        if self.last_tag != current_tag:
+            newchange = 1
+        if newchange == 1:
+            mqttdatasend = {}
+            mqttdatasend['srcaddr'] = self.current_srcaddr
+            mqttdatasend['system'] = current_system
+            mqttdatasend['tag'] = current_tag
+            if str(self.current_srcaddr) in self.unitids:
+                mqttdatasend['unitname'] = self.unitids[str(self.current_srcaddr)]
+            self.mqttclient.publish(self.mqttdata["publish_topic"], payload=json.dumps(mqttdatasend), qos=0, retain=False)
+        self.last_srcaddr = self.current_srcaddr
+        self.last_system = current_system
+        self.last_tag = current_tag
+        newchange = 0
+
     def process_qmsg(self, msg):
         type = msg.type()
         updated = 0
@@ -922,6 +992,8 @@ class rx_ctl (object):
             self.update_state('update', curr_time)
         else:
             self.update_state('duid%d' % type, curr_time)
+
+        self.update_mqttpublish()
 
     def find_available_worker(self):
         for worker in self.logfile_workers:
