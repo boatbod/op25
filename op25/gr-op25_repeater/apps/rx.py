@@ -330,11 +330,11 @@ class p25_rx_block (gr.top_block):
         set_tdma = False
         if params['tdma'] is not None:
             set_tdma = True
+            self.decoder.set_slotid(params['tdma'])
         if set_tdma == self.tdma_state:
             return	# already in desired state
         self.tdma_state = set_tdma
         if set_tdma:
-            self.decoder.set_slotid(params['tdma'])
             hash = '%x%x%x' % (params['nac'], params['sysid'], params['wacn'])
             if hash not in self.xor_cache:
                 self.xor_cache[hash] = lfsr.p25p2_lfsr(params['nac'], params['sysid'], params['wacn']).xor_chars
