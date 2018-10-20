@@ -65,22 +65,24 @@ def static_file(environ, start_response):
 
 def post_req(environ, start_response, postdata):
     global my_input_q, my_output_q, my_recv_q, my_port
+    valid_req = False
     try:
         data = json.loads(postdata)
         for d in data:
             msg = gr.message().make_from_string(str(d['command']), -2, d['data'], 0)
             my_output_q.insert_tail(msg)
+        valid_req = True
         time.sleep(0.2)
     except:
         sys.stderr.write('post_req: error processing input: %s:\n' % (postdata))
-        traceback.print_exc(limit=None, file=sys.stderr)
-        sys.stderr.write('*** end traceback ***\n')
 
     resp_msg = []
     while not my_recv_q.empty_p():
         msg = my_recv_q.delete_head()
         if msg.type() == -4:
             resp_msg.append(json.loads(msg.to_string()))
+    if not valid_req:
+        resp_msg = []
     status = '200 OK'
     content_type = 'application/json'
     output = json.dumps(resp_msg)
