@@ -276,7 +276,7 @@ class trunked_system (object):
         return None, None, None, None
 
     def dump_tgids(self):
-	sys.stderr.write("Known tgids: { ")
+        sys.stderr.write("Known tgids: { ")
         for tgid in sorted(self.talkgroups.keys()):
             sys.stderr.write("%d " % tgid);
         sys.stderr.write("}\n") 
@@ -285,6 +285,20 @@ class trunked_system (object):
         if not tgid:
             return
         self.blacklist[tgid] = end_time
+
+    def add_whitelist(self, tgid):
+        print("Adding to whitelist")
+        if not tgid:
+            return
+        self.whitelist[tgid] = None
+
+    def remove_whitelist(self, tgid):
+        if not tgid:
+            return
+        self.whitelist.pop(tgid)
+
+    def get_whitelist(self):
+        return self.whitelist
 
     def decode_mbt_data(self, opcode, src, header, mbt_data):
         self.cc_timeouts = 0
@@ -598,16 +612,10 @@ def get_int_dict(s):
         for v in f:
             v = v.split("\t",1) # split on tab
             try:
-                v0 = int(v[0])				# first parameter is tgid or start of tgid range
-		v1 = v0
-		if (len(v) > 1) and (int(v[1]) > v0):	# second parameter if present is end of tgid range
-                	v1 = int(v[1])
-		
-		for tg in range(v0, (v1 + 1)):
-                	if tg not in d:      # is this a new tg?
-                		d[tg] = []   # if so, add to dict (key only, value null)
-                		sys.stderr.write('added talkgroup %d from %s\n' % (tg,s))
-
+                v = int(v[0])       # keep first field, and convert to int
+                if v not in d:      # is this a new tg?
+                    d[v] = []       # if so, add to dict (key only, value null)
+                    sys.stderr.write('added talkgroup %d from %s\n' % (v,s))
             except (IndexError, ValueError) as ex:
                 continue
     f.close()
@@ -687,7 +695,7 @@ class rx_ctl (object):
                 if row[0].startswith('#'):
                     continue
                 self.unitids[row[0]] = row[1]
-                sys.stdout.write('Adding "%s" for Unit ID "%s"\n' % (row[1], row[0]))
+                ##sys.stdout.write('Adding "%s" for Unit ID "%s"\n' % (row[1], row[0]))
         mqttcfg_file = Path("mqtt.cfg")
         self.mqttdata = None
         self.mqttclient = None
@@ -699,6 +707,8 @@ class rx_ctl (object):
                 self.mqttclient.connect(self.mqttdata["host_name"])
                 self.mqttclient.on_connect=self.on_mqttconnect
                 self.mqttclient.on_log=self.on_mqttlog
+                self.mqttclient.on_message=self.on_mqttmessage
+                self.mqttclient.subscribe('%s/#' % self.mqttdata["control_topic"])
                 self.mqttclient.loop_start()
 
     def on_mqttconnect(client, userdata, flags, rc):
@@ -710,6 +720,35 @@ class rx_ctl (object):
 
     def on_mqttlog(client, userdata, level, buf):
         sys.stdout.write("log: ",buf)
+
+    def on_mqttmessage(self, client, userdata, message):
+        curr_time = time.time()
+        tsys = self.trunked_systems[self.current_nac]
+        msg = message.topic.replace('%s/' % self.mqttdata["control_topic"], '')
+        payload = message.payload.decode("utf-8")
+        (command, tgid) = msg.split("/")
+        print("log: ",str(command))
+
+        if command == "skip":
+            end_time = curr_time + self.TGID_SKIP_TIME
+            tsys.add_blacklist(tgid, end_time=end_time)
+            self.mqttclient.publish('%s/skipped/%s' % (self.mqttdata["publish_topic"], tgid), "Skipped until: %f" % end_time, qos=0, retain=False)
+        elif command == "disabletg":
+            tsys.remove_whitelist(int(tgid))
+            self.mqttclient.publish('%s/disabledtgid/%s' % (self.mqttdata["publish_topic"], tgid), "", qos=0, retain=False)
+        elif command == "enabletg":
+            tsys.add_whitelist(int(tgid))
+            self.mqttclient.publish('%s/enabletgid/%s' % (self.mqttdata["publish_topic"], tgid), "", qos=0, retain=False)
+        elif command == "blacklist":
+            self.mqttclient.publish('%s/blacklisttgid/%s' % (self.mqttdata["publish_topic"], tgid), json.dumps(tsys.blacklist), qos=0, retain=False)
+        elif command =="getwhitelist":
+            whitelist_tgid = []
+            for key in tsys.get_whitelist():
+                tgidinfo = {}
+                tgidinfo["tgid"] = key
+                tgidinfo["name"] = tsys.get_tag(key)
+                whitelist_tgid.append(tgidinfo)
+            self.mqttclient.publish('%s/whitelisttgids' % (self.mqttdata["publish_topic"]), json.dumps(whitelist_tgid), qos=0, retain=False)
 
     def set_frequency(self, params):
         frequency = params['freq']
