@@ -560,17 +560,16 @@ class p25_rx_block (gr.top_block):
 
     def toggle_eye(self):
         if (self.eye_sink is None):
-            if self.options.demod_type == 'cqpsk':
-                sys.stderr.write("Datascope Plot cannot be used with 'cqpsk' modulation\n")
-                return
             self.eye_sink = eye_sink_f(sps=10)
             self.add_plot_sink(self.eye_sink)
             self.lock()
+            self.demod.connect_fm_demod() # make sure fm demod exists in flowgraph
             self.demod.connect_bb('symbol_filter', self.eye_sink)
             self.unlock()
         elif (self.eye_sink is not None):
             self.lock()
-            self.demod.disconnect_bb()
+            self.demod.disconnect_bb()    # attempt to remove fm demod if not needed
+            self.demod.disconnect_fm_demod()
             self.unlock()
             self.eye_sink.kill()
             self.remove_plot_sink(self.eye_sink)

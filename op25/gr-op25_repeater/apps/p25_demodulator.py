@@ -90,6 +90,7 @@ class p25_demod_base(gr.hier_block2):
         self.symbol_rate = symbol_rate
         self.bb_sink = None
 
+        self.null_sink = blocks.null_sink(gr.sizeof_float)
         self.baseband_amp = blocks.multiply_const_ff(_def_bb_gain)
         coeffs = op25_c4fm_mod.c4fm_taps(sample_rate=self.if_rate, span=9, generator=op25_c4fm_mod.transfer_function_rx).generate()
         sps = self.if_rate / 4800
@@ -214,6 +215,7 @@ class p25_demod_cb(p25_demod_base):
         self.if_rate = if_rate
         self.symbol_rate = symbol_rate
         self.connect_state = None
+        self.aux_fm_connected = False
         self.offset = 0
         self.sps = 0.0
         self.lo_freq = 0
@@ -339,9 +341,10 @@ class p25_demod_cb(p25_demod_base):
     # assumes lock held or init
     def disconnect_chain(self):
         if self.connect_state == 'cqpsk':
-            self.disconnect(self.arb_resampler, self.agc, self.clock, self.diffdec, self.to_float, self.rescale, self.slicer)
+            self.disconnect_fm_demod()
+            self.disconnect(self.if_out, self.cutoff, self.agc, self.clock, self.diffdec, self.to_float, self.rescale, self.slicer)
         elif self.connect_state == 'fsk4':
-            self.disconnect(self.arb_resampler, self.fm_demod, self.baseband_amp, self.symbol_filter, self.fsk4_demod, self.slicer)
+            self.disconnect(self.if_out, self.cutoff, self.fm_demod, self.baseband_amp, self.symbol_filter, self.fsk4_demod, self.slicer)
         self.connect_state = None
 
     # assumes lock held or init
@@ -359,6 +362,22 @@ class p25_demod_cb(p25_demod_base):
             assert 0 == 1
         if self.float_sink is not None:
             self.connect_float(self.float_sink[1])
+
+    # assumes lock held or init
+    def connect_fm_demod(self):
+        if self.aux_fm_connected or self.connect_state != 'cqpsk':	# only valid for cqpsk demod type
+            sys.stderr.write("connect_fm_demod() failed test\n")
+            return
+        self.connect(self.cutoff, self.fm_demod, self.baseband_amp, self.symbol_filter, self.null_sink)
+        self.aux_fm_connected = True
+
+    # assumes lock held or init
+    def disconnect_fm_demod(self):
+        if not self.aux_fm_connected or self.connect_state != 'cqpsk':	# only valid for cqpsk demod type
+            sys.stderr.write("disconnect_fm_demod() failed test\n")
+            return
+        self.disconnect(self.cutoff, self.fm_demod, self.baseband_amp, self.symbol_filter, self.null_sink)
+        self.aux_fm_connected = False
 
     def disconnect_float(self):
         # assumes lock held or init

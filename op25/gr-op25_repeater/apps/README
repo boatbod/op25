@@ -47,7 +47,7 @@ terminal window there are several keyboard commands:
  1 - toggle fft plot
  2 - toggle constellation plot (cqpsk)
  3 - toggle symbol plot
- 4 - toggle datascope plot (fsk4)
+ 4 - toggle datascope plot
  5 - toggle mixer plot
 There are also two experimental commands (should not be used in -T mode)
  f - manually change frequencies
@@ -108,9 +108,9 @@ Four types of plotting are currently implemented, via the -P parameter:
  * constellation
  * datascope
  * symbol
-The symbol mode is allowed both in fsk4 and cqpsk modes.  The datascope
-mode works only with fsk4 demod mode (-D fsk4).  The constellation mode
-only works when the cqpsk demod mode is selected (or defaulted).
+The symbol and datascope mode is allowed both in fsk4 and cqpsk modes.
+The constellation mode only works when the cqpsk demod mode is selected
+(or defaulted).
 
 A couple of notes specific to plot mode:
 
