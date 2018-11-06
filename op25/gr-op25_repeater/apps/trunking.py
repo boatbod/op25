@@ -653,7 +653,7 @@ class rx_ctl (object):
             else:
                 self.build_config(conf_file)
             self.nacs = self.configs.keys()
-            self.current_nac = self.nacs[0]
+            self.current_nac = self.find_next_tsys()
             self.current_state = self.states.CC
 
             tsys = self.trunked_systems[self.current_nac]
@@ -912,6 +912,8 @@ class rx_ctl (object):
             updated += self.trunked_systems[nac].decode_mbt_data(opcode, src, header << 16, mbt_data << 32)
 
         if nac != self.current_nac:
+            if self.debug > 10: # this is occasionally expected if cycling between different tsys
+                sys.stderr.write("%f received NAC %x does not match expected NAC %x\n" % (time.time(), nac, self.current_nac))
             return
 
         if self.logfile_workers:
