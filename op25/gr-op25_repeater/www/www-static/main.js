@@ -40,6 +40,7 @@ var c_tag = null;
 var c_srcaddr = 0;
 var c_grpaddr = 0;
 var c_encrypted = 0;
+var c_nac = 0;
 
 function find_parent(ele, tagname) {
     while (ele) {
@@ -235,8 +236,14 @@ function trunk_update(d) {
     var srcaddr = 0;
     var encrypted = 0;
     var html = "";
+
+    if (d['nac'] != undefined)
+        c_nac = d['nac']
+
     for (var nac in d) {
         if (!is_digit(nac.charAt(0)))
+            continue;
+        if (nac != c_nac)
             continue;
         html += "<span class=\"nac\">";
         html += "NAC " + "0x" + parseInt(nac).toString(16) + " ";

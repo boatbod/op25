@@ -816,6 +816,7 @@ class rx_ctl (object):
         d['srcaddr'] = self.current_srcaddr
         d['grpaddr'] = self.current_grpaddr
         d['encrypted'] = self.current_encrypted
+        d['nac'] = self.current_nac
         return json.dumps(d)
 
     def dump_tgids(self):

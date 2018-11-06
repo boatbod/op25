@@ -202,8 +202,11 @@ class curses_terminal(threading.Thread):
             nacs = [x for x in msg.keys() if x.isnumeric() ]
             if not nacs:
                 return
-            times = {msg[nac]['last_tsbk']:nac for nac in nacs}
-            current_nac = times[ sorted(times.keys(), reverse=True)[0] ]
+            if 'nac' in msg:
+                current_nac = str(msg['nac'])
+            else:
+                times = {msg[nac]['last_tsbk']:nac for nac in nacs}
+                current_nac = times[ sorted(times.keys(), reverse=True)[0] ]
             self.current_nac = current_nac
             s = 'NAC 0x%x' % (int(current_nac))
             s += ' WACN 0x%x' % (msg[current_nac]['wacn'])
