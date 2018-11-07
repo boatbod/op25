@@ -130,9 +130,10 @@ p25_frame_assembler_impl::general_work (int noutput_items,
 	for (int i = 0; i < ninput_items[0]; i++) {
 		if(p2tdma.rx_sym(in[i])) {
 			int rc = p2tdma.handle_frame();
-			if (rc > -1)
+			if (rc > -1) {
 				p25p2_queue_msg(rc);
 				p1fdma.reset_timer(); // prevent P1 timeouts due to long TDMA transmissions
+			}
 		}
 	}
   }
