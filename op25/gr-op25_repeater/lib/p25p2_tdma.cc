@@ -176,20 +176,17 @@ void p25p2_tdma::handle_mac_ptt(const uint8_t byte_buf[], const unsigned int len
         if (d_debug >= 10) {
                 fprintf(stderr, "%s MAC_PTT: srcaddr=%u, grpaddr=%u", logts.get(), srcaddr, grpaddr);
         }
-        if (d_do_nocrypt) {
-                for (int i = 0; i < 9; i++) {
-                        ess_mi[i] = byte_buf[i+1];
-                }
-                ess_algid = byte_buf[10];
-                ess_keyid = (byte_buf[11] << 8) + byte_buf[12];
-                if (d_debug >= 10) {
-                        fprintf(stderr, ", algid=%x, keyid=%x, mi=", ess_algid, ess_keyid);
-                        for (int i = 0; i < 9; i++) {
-                                fprintf(stderr,"%02x ", ess_mi[i]);
-                        }
-                }
+
+        for (int i = 0; i < 9; i++) {
+                ess_mi[i] = byte_buf[i+1];
         }
+        ess_algid = byte_buf[10];
+        ess_keyid = (byte_buf[11] << 8) + byte_buf[12];
         if (d_debug >= 10) {
+                fprintf(stderr, ", algid=%x, keyid=%x, mi=", ess_algid, ess_keyid);
+                for (int i = 0; i < 9; i++) {
+                        fprintf(stderr,"%02x ", ess_mi[i]);
+                }
                 fprintf(stderr, "\n");
         }
 
@@ -638,13 +635,6 @@ void p25p2_tdma::handle_4V2V_ess(const uint8_t dibits[])
         if (d_debug >= 10) {
 		fprintf(stderr, "%s %s_BURST ", logts.get(), (burst_id < 4) ? "4V" : "2V");
 	}
-
-        if ( d_do_nocrypt ) {
-                if (d_debug >= 10) {
-	                fprintf(stderr, "\n");
-                }
-                return;
-        }
 
         if (burst_id < 4) {
                 for (int i=0; i < 12; i += 3) { // ESS-B is 4 hexbits / 12 dibits
