@@ -639,7 +639,7 @@ void p25p2_tdma::handle_4V2V_ess(const uint8_t dibits[])
 		fprintf(stderr, "%s %s_BURST ", logts.get(), (burst_id < 4) ? "4V" : "2V");
 	}
 
-        if ( !d_do_nocrypt ) {
+        if ( d_do_nocrypt ) {
                 if (d_debug >= 10) {
 	                fprintf(stderr, "\n");
                 }
