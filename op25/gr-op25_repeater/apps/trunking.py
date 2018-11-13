@@ -709,6 +709,9 @@ class rx_ctl (object):
                         hdrmap.append(hdr)
                     continue
                 fields = {}
+                if (len(row) < 4) or (len(row) > 9):
+                    sys.stderr.write("Skipping invalid row in %s: %s\n" % (tsv_filename, row))
+                    continue
                 for i in xrange(len(row)):
                     if row[i]:
                         fields[hdrmap[i]] = row[i]
@@ -721,6 +724,10 @@ class rx_ctl (object):
             for nac in configs.keys():
                 if nac != 0:
                     configs.pop(nac)
+
+        if len(configs) < 1:
+            sys.stderr.write("No valid trunking configs. Aborting!\n")
+            sys.exit(1)
 
         self.setup_config(configs)
 

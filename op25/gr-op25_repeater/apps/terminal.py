@@ -202,7 +202,7 @@ class curses_terminal(threading.Thread):
             nacs = [x for x in msg.keys() if x.isnumeric() ]
             if not nacs:
                 return
-            if 'nac' in msg:
+            if msg.get('nac'):
                 current_nac = str(msg['nac'])
             else:
                 times = {msg[nac]['last_tsbk']:nac for nac in nacs}
