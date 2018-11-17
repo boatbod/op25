@@ -66,7 +66,7 @@ class curses_terminal(threading.Thread):
     def setup_curses(self):
         self.stdscr = curses.initscr()
         self.maxy, self.maxx = self.stdscr.getmaxyx()
-        if (self.maxy < 6) or (self.maxx < 70):
+        if (self.maxy < 6) or (self.maxx < 60):
             sys.stderr.write("Terminal window too small! Minimum size [70 x 6], actual [%d x %d]\n" % (self.maxx, self.maxy))
             print "Terminal window too small! Minimum size [70 x 6], actual [%d x %d]\n" % (self.maxx, self.maxy)
             self.keep_running = False
@@ -84,7 +84,7 @@ class curses_terminal(threading.Thread):
         self.status1 = curses.newwin(1, 15, self.maxy-3, self.maxx-15)
         self.status2 = curses.newwin(1, 15, self.maxy-2, self.maxx-15)
         self.prompt = curses.newwin(1, 10, self.maxy-1, 0)
-        self.text_win = curses.newwin(1, 70, self.maxy-1, 10)
+        self.text_win = curses.newwin(1, 11, self.maxy-1, 10)
         self.textpad = curses.textpad.Textbox(self.text_win)
         self.stdscr.refresh()
 
@@ -93,7 +93,7 @@ class curses_terminal(threading.Thread):
     def resize_curses(self):
         self.maxy, self.maxx = self.stdscr.getmaxyx()
  
-        if (self.maxx < 70) or (self.maxy < 6):	# do not resize if window is now too small
+        if (self.maxx < 60) or (self.maxy < 6):	# do not resize if window is now too small
             return 
 
         self.stdscr.erase()
