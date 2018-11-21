@@ -729,7 +729,7 @@ class p25_rx_block (gr.top_block):
             self.trunk_rx.dump_tgids()
         elif s == 'add_default_config':
             nac = msg.arg1()
-            self.trunk_rx.add_default_config(nac)
+            self.trunk_rx.add_default_config(int(nac))
         elif s in RX_COMMANDS:
             self.rx_q.insert_tail(msg)
         return False
