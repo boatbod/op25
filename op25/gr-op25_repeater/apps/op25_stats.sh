@@ -40,7 +40,7 @@ sort -k 1b,1 $2 \
  > $temp2
 
 # denominator for percentages
-cmd_cnt=`grep 'set tgid:' $1 | wc -l` 
+cmd_cnt=`grep 'set tgid=' $1 | wc -l` 
 
 echo "Writing op25-tgid-frequency.txt"
 echo "# Talkgroup Frequency Analysis" > op25-tgid-frequency.txt
