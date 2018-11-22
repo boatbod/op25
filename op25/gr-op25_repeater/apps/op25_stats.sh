@@ -30,7 +30,8 @@ grep 'new tgid:' $1 | cut -d" " -f4- | sort -n >> op25-new-tgids.txt
 echo "Munging log and tag files..."
 temp1=$(mktemp)
 temp2=$(mktemp)
-grep 'set tgid:' $1 | cut -d" " -f4- | sort -k 1b,1 | uniq -c \
+#grep 'set tgid:' $1 | cut -d" " -f4- | sort -k 1b,1 | uniq -c \
+grep 'set tgid=' $1 | sed s/^.*tgid=// | sed s/,.*$// | sort -k 1b,1 | uniq -c \
     | sed -r 's/^ +([0-9]+) /\1\t/' > $temp1
 
 sort -k 1b,1 $2 \
