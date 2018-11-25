@@ -542,9 +542,24 @@ void p25p2_tdma::handle_voice_frame(const uint8_t dibits[])
 	int rc = -1;
 
 	vf.process_vcw(dibits, b);
-	if (b[0] < 120) // anything above 120 is an erasure or special frame
+	//if (b[0] < 120) // anything above 120 is an erasure or special frame
+	if (b[0] <= 127) // anything above 120 is an erasure or special frame
 		rc = mbe_dequantizeAmbe2250Parms (&cur_mp, &prev_mp, b);
-	/* FIXME: check RC */
+
+        if (rc==2) { // Erasure: TIA-102.BABA.5.6 Frame Repeat
+        	if (d_debug >= 10) {
+			fprintf(stderr, "%s AMBE ERASURE\n", logts.get());  
+		}
+        	mbe_useLastMbeParms(&cur_mp, &prev_mp);
+		rc = 0;
+		// TODO: max 4 frame repeats allowed before muting required
+        } else if (rc ==3) { // Tone : TIA-102.BABA.7.3 Tone Regeneration
+        	if (d_debug >= 10) {
+			fprintf(stderr, "%s AMBE TONE\n", logts.get());  
+		}
+		// TODO: implement tone synthesis
+	}
+
 	K = 12;
 	if (cur_mp.L <= 36)
 		K = int(float(cur_mp.L + 2.0) / 3.0);
