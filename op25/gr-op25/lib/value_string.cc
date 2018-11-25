@@ -2,6 +2,7 @@
 
 /*
  * Copyright 2008 Steve Glass
+ * Copyright 2018 Matt Ames
  * 
  * This file is part of OP25.
  * 
@@ -53,18 +54,38 @@ const value_string ALGIDS[] = {
    { 0x02, "FIREFLY Type 1" },
    { 0x03, "MAYFLY Type 1" },
    { 0x04, "SAVILLE" },
+   { 0x05, "Motorola Assigned - PADSTONE" },
    { 0x41, "BATON (Auto Odd)" },
    /* Type III */
-   { 0x80, "Plain" },
-   { 0x81, "DES-OFB" },
-   { 0x82, "2 key Triple DES" },
-   { 0x83, "3 key Triple DES" },
+   { 0x80, "Unencrypted" },
+   { 0x81, "DES-OFB, 56 bit key" },
+   { 0x83, "3 key Triple DES, 168 bit key" },
    { 0x84, "AES-256" },
-   /* Motorola proprietary */
+   { 0x85, "AES-128-ECB"},
+   { 0x88, "AES-CBC"},
+   /* Motorola proprietary - some of these have been observed over the air,
+      some have been taken from firmware dumps on various devices, others
+      have come from the TIA's FTP website while it was still public,
+      from document "ALGID Guide 2015-04-15.pdf", and others have been
+      have been worked out with a little bit of guesswork */
    { 0x9F, "Motorola DES-XL" },
    { 0xA0, "Motorola DVI-XL" },
    { 0xA1, "Motorola DVP-XL" },
+   { 0xA2, "Motorola DVI-SPFL"},
+   { 0xA3, "Motorola Assigned - Unknown" },
+   { 0xA4, "Motorola Assigned - Unknown" },
+   { 0xA5, "Motorola Assigned - Unknown" },
+   { 0xA6, "Motorola Assigned - Unknown" },
+   { 0xA7, "Motorola Assigned - Unknown" },
+   { 0xA8, "Motorola Assigned - Unknown" },
+   { 0xA9, "Motorola Assigned - Unknown" },
    { 0xAA, "Motorola ADP" },
+   { 0xAB, "Motorola CFX-256" },
+   { 0xAC, "Motorola Assigned - Unknown" },
+   { 0xAD, "Motorola Assigned - Unknown" },
+   { 0xAE, "Motorola Assigned - Unknown" },
+   { 0xAF, "Motorola AES-256-GCM (possibly)" },
+   { 0xB0, "Motorola DVP"},
 };
 const size_t ALGIDS_SZ = sizeof(ALGIDS) / sizeof(ALGIDS[0]);
 

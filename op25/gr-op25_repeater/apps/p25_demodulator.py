@@ -112,6 +112,19 @@ class p25_demod_base(gr.hier_block2):
                                                            _mu, _gain_mu,
                                                            _def_omega_relative_limit)
             self.slicer = digital.binary_slicer_fb()
+        elif filter_type == 'fsk4mm':
+            self.symbol_filter = filter.fir_filter_fff(1, coeffs)
+            _omega = sps
+            _gain_mu = _def_gmsk_mu
+            _mu = _def_mu
+            if not _gain_mu:
+                _gain_mu = 0.0175
+            _gain_omega = .25 * _gain_mu * _gain_mu        # critically damped
+            self.fsk4_demod = digital.clock_recovery_mm_ff(_omega, _gain_omega,
+                                                           _mu, _gain_mu,
+                                                           _def_omega_relative_limit)
+            levels = [ -2.0, 0.0, 2.0, 4.0 ]
+            self.slicer = op25_repeater.fsk4_slicer_fb(levels)
         else:
             self.symbol_filter = filter.fir_filter_fff(1, coeffs)
             autotuneq = gr.msg_queue(2)

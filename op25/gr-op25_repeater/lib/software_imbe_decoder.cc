@@ -734,6 +734,7 @@ software_imbe_decoder::software_imbe_decoder()
    int i,j;
 	//initialize
    OldL = 0;
+   L = 9;
    Old = 1; New = 0;
    psi1 = 0.0;
    for(i=0; i < 58; i++) {
