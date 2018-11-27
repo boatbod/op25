@@ -39,7 +39,14 @@ struct mbe_parameters
   int repeat;
 };
 
+struct mbe_tones
+{
+  int ID;
+  int AD;
+};
+
 typedef struct mbe_parameters mbe_parms;
+typedef struct mbe_tones mbe_tone;
 
 #ifdef __cplusplus
 extern "C" {

@@ -104,6 +104,7 @@ p25p2_tdma::p25p2_tdma(const op25_audio& udp, int slotid, int debug, bool do_msg
         ESS_B(16,0),
         ess_algid(0x80),
         ess_keyid(0),
+        mbe_err_cnt(0),
 	p2framer()
 {
 	assert (slotid == 0 || slotid == 1);
@@ -536,39 +537,49 @@ int p25p2_tdma::handle_acch_frame(const uint8_t dibits[], bool fast)
 void p25p2_tdma::handle_voice_frame(const uint8_t dibits[]) 
 {
 	static const int NSAMP_OUTPUT=160;
+	mbe_tone tone;
+	bool valid_tone = false;
+	int u[4];
 	int b[9];
 	int16_t snd;
 	int K;
 	int rc = -1;
 
-	vf.process_vcw(dibits, b);
-	//if (b[0] < 120) // anything above 120 is an erasure or special frame
-	if (b[0] <= 127) // anything above 120 is an erasure or special frame
+	vf.process_vcw(dibits, b, u);
+	rc = mbe_dequantizeAmbeTone(&tone, u);	// Must first check if this is a Tone Frame
+	if (rc == 0) {
+		valid_tone = true;
+	} else { 
 		rc = mbe_dequantizeAmbe2250Parms (&cur_mp, &prev_mp, b);
-
-        if (rc==2) { // Erasure: TIA-102.BABA.5.6 Frame Repeat
-        	if (d_debug >= 10) {
-			fprintf(stderr, "%s AMBE ERASURE\n", logts.get());  
+		if (rc == 0) {			// Otherwise handle as Voice Frame or Erasure (Frame Repeat per TIA-102.BABA.5.6)
+			mbe_err_cnt = 0;
+		} else {
+        		if (d_debug >= 10) {
+				fprintf(stderr, "%s AMBE ERASURE mbe_err_cnt=%d\n", logts.get(), mbe_err_cnt);  
+			}
+			if (++mbe_err_cnt < 4) { // reuse last good frame up to 3 times, then mute audio if still bad
+        			mbe_useLastMbeParms(&cur_mp, &prev_mp);
+				rc = 0;
+			}
 		}
-        	mbe_useLastMbeParms(&cur_mp, &prev_mp);
-		rc = 0;
-		// TODO: max 4 frame repeats allowed before muting required
-        } else if (rc ==3) { // Tone : TIA-102.BABA.7.3 Tone Regeneration
-        	if (d_debug >= 10) {
-			fprintf(stderr, "%s AMBE TONE\n", logts.get());  
-		}
-		// TODO: implement tone synthesis
 	}
 
-	K = 12;
-	if (cur_mp.L <= 36)
-		K = int(float(cur_mp.L + 2.0) / 3.0);
-	if (rc == 0)
+	if (valid_tone) {
+		// TODO: implement tone synthesis in the software decoder
+		//software_decoder.decode_tone(tone.ID, tone.AD);
+        	if (d_debug >= 10) {
+			fprintf(stderr, "%s AMBE TONE ID=%d, AD=%d\n", logts.get(), tone.ID, tone.AD);  
+		}
+	} else if (rc ==0) {
+		K = 12;
+		if (cur_mp.L <= 36)
+			K = int(float(cur_mp.L + 2.0) / 3.0);
 		software_decoder.decode_tap(cur_mp.L, K, cur_mp.w0, &cur_mp.Vl[1], &cur_mp.Ml[1]);
+	}
 	audio_samples *samples = software_decoder.audio();
 	write_bufp = 0;
 	for (int i=0; i < NSAMP_OUTPUT; i++) {
-		if (samples->size() > 0) {
+		if ((rc ==0) && (samples->size() > 0)) {
 			snd = (int16_t)(samples->front());
 			samples->pop_front();
 		} else {

@@ -414,6 +414,33 @@ mbe_dequantizeAmbeParms (mbe_parms * cur_mp, mbe_parms * prev_mp, const int *b, 
 }
 
 int
+mbe_dequantizeAmbeTone(mbe_tone * tone, const int *u)
+{
+	int bitchk1, bitchk2;
+	int AD, ID1, ID2, ID3, ID4;
+	bitchk1 = (u[0] >> 6) & 0x3f;
+	bitchk2 = (u[3] & 0xf);
+
+	if ((bitchk1 != 63) || (bitchk2 != 0))
+		return -1; // Not a valid tone frame
+
+	AD = ((u[0] & 0x3f) << 1) + ((u[3] >> 4) & 0x1);
+	ID1 = ((u[1] & 0xfff) >> 4);
+	ID2 = ((u[1] & 0xf) << 4) + ((u[2] >> 7) & 0xf);
+	ID3 = ((u[2] & 0x7f) << 1) + ((u[3] >> 13) & 0x1);
+	ID4 = ((u[3] & 0x1fe0) >> 5);
+
+	if ((ID1 == ID2) && (ID1 == ID3) && (ID1 == ID4) &&
+	    (((ID1 >= 5) && (ID1 <= 122)) || ((ID1 >= 128) && (ID1 <= 163)) || (ID1 == 255))) {
+		tone->AD = AD;
+		tone->ID = ID1;
+		return 0; // valid in-range tone frequency 
+	}
+
+	return -1;
+}
+
+int
 mbe_dequantizeAmbe2400Parms (mbe_parms * cur_mp, mbe_parms * prev_mp, const int *b){
 	int dstar = 1;
 	return (mbe_dequantizeAmbeParms (cur_mp, prev_mp, b, dstar));
