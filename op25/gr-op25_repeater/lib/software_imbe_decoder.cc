@@ -970,6 +970,65 @@ software_imbe_decoder::decode_tap(int _L, int _K, float _w0, const int * _v, con
 }
 
 void
+software_imbe_decoder::decode_tone(int _ID, int _AD)
+{
+   int en;
+   float freq1 = 0, freq2 = 0;
+   audio_samples *samples = audio();
+
+   switch(_ID) {
+      case 5:
+         freq1 = 156.25;
+         freq2 = 0;
+         break;
+      case 6:
+         freq1 = 187.5;
+         freq2 = 0;
+         break;
+      //case 128-159:
+         // DTMF and KNOX tones
+         // break;
+      case 160:
+         freq1 = 440;
+         freq2 = 350;
+         break;
+      case 161:
+         freq1 = 480;
+         freq2 = 440;
+         break;
+      case 162:
+         freq1 = 620;
+         freq2 = 480;
+         break;
+      case 163:
+         freq1 = 490;
+         freq2 = 350;
+         break;
+      case 255:
+         freq1 = 0;
+         freq2 = 0;
+      default:
+         if ((_ID >= 7) && (_ID <= 122)) {
+            freq1 = 31.25 * _ID;
+            freq2 = 0;
+         }
+   }
+
+   // Zero Amplitude and unimplemented tones
+   if ((freq1 == 0) && (freq2 == 0)) {
+      for(en = 0; en <= 159; en++) {
+         samples->push_back(0);
+      }
+      return;
+   }
+
+   //TODO: Implement the tone synthesizer here...
+   // Probably going to have to change the interface to decode_tone() to
+   // facilitate saving phase between consecutive frames. 
+
+}
+
+void
 software_imbe_decoder::decode_spectral_amplitudes(int Start3, int Start8)
 {
    float G[7];           //Can we use C(1 to 6,1) for this?

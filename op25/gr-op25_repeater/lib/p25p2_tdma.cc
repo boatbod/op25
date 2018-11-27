@@ -566,8 +566,8 @@ void p25p2_tdma::handle_voice_frame(const uint8_t dibits[])
 
 	if (valid_tone) {
 		// TODO: implement tone synthesis in the software decoder
-		//software_decoder.decode_tone(tone.ID, tone.AD);
-        	if (d_debug >= 10) {
+		software_decoder.decode_tone(tone.ID, tone.AD);
+        	if (d_debug >= 1) {
 			fprintf(stderr, "%s AMBE TONE ID=%d, AD=%d\n", logts.get(), tone.ID, tone.AD);  
 		}
 	} else if (rc ==0) {
