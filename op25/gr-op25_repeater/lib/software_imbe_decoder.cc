@@ -973,7 +973,7 @@ void
 software_imbe_decoder::decode_tone(int _ID, int _AD, int * _n)
 {
    int en;
-   float step, sample, amplitude;
+   float step1, step2, sample, amplitude;
    float freq1 = 0, freq2 = 0;
    audio_samples *samples = audio();
 
@@ -1020,22 +1020,26 @@ software_imbe_decoder::decode_tone(int _ID, int _AD, int * _n)
       for(en = 0; en <= 159; en++) {
          samples->push_back(0);
       }
-      return;
-   }
-
+   } else if (freq2 == 0) {
    // Single frequency tones
-   if (freq2 == 0) {
-      step = 2 * M_PI * freq1 / 8000;
+      step1 = 2 * M_PI * freq1 / 8000;
       amplitude = _AD * 200;
       for (en = 0; en<=159; en++) {
-         sample =  amplitude * sin(*_n * step);
+         sample =  amplitude * sin(*_n * step1);
          samples->push_back(sample);
-         //fprintf(stderr, "FREQ: %f, AMPL: %f, STEP: %f, SAMPLE: %f, n: %d\n", freq1, amplitude, step, sample, *_n);
          (*_n)++;
       }
-      return;
+   } else {
+   // Dual frequency tones
+      step1 = 2 * M_PI * freq1 / 8000;
+      step2 = 2 * M_PI * freq2 / 8000;
+      amplitude = _AD * 200;
+      for (en = 0; en<=159; en++) {
+         sample =  amplitude * (sin(*_n * step1)/2 + sin(*_n * step2)/2);
+         samples->push_back(sample);
+         (*_n)++;
+      }
    }
-
 }
 
 void
