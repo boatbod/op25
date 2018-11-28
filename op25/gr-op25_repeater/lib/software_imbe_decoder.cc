@@ -979,39 +979,84 @@ software_imbe_decoder::decode_tone(int _ID, int _AD, int * _n)
 
    switch(_ID) {
       case 5:
-         freq1 = 156.25;
-         freq2 = 0;
+         freq1 = 156.25; freq2 = freq1;
          break;
       case 6:
-         freq1 = 187.5;
-         freq2 = 0;
+         freq1 = 187.5; freq2 = freq1;
          break;
-      //case 128-159:
-         // DTMF and KNOX tones
-         // break;
+      // DTMF
+      case 128:
+         freq1 = 1336; freq2 = 941;
+         break;
+      case 129:
+         freq1 = 1209; freq2 = 697;
+         break;
+      case 130:
+         freq1 = 1336; freq2 = 697;
+         break;
+      case 131:
+         freq1 = 1477; freq2 = 697;
+         break;
+      case 132:
+         freq1 = 1209; freq2 = 770;
+         break;
+      case 133:
+         freq1 = 1336; freq2 = 770;
+         break;
+      case 134:
+         freq1 = 1477; freq2 = 770;
+         break;
+      case 135:
+         freq1 = 1209; freq2 = 852;
+         break;
+      case 136:
+         freq1 = 1336; freq2 = 852;
+         break;
+      case 137:
+         freq1 = 1477; freq2 = 852;
+         break;
+      case 138:
+         freq1 = 1633; freq2 = 697;
+         break;
+      case 139:
+         freq1 = 1633; freq2 = 770;
+         break;
+      case 140:
+         freq1 = 1633; freq2 = 852;
+         break;
+      case 141:
+         freq1 = 1633; freq2 = 941;
+         break;
+      case 142:
+         freq1 = 1209; freq2 = 941;
+         break;
+      case 143:
+         freq1 = 1477; freq2 = 941;
+         break;
+      // KNOX
+      case 144:
+         freq1 = 1162; freq2 = 820;
+         break;
+      case 145:
+         freq1 = 1052; freq2 = 606;
+         break;
       case 160:
-         freq1 = 440;
-         freq2 = 350;
+         freq1 = 440; freq2 = 350;
          break;
       case 161:
-         freq1 = 480;
-         freq2 = 440;
+         freq1 = 480; freq2 = 440;
          break;
       case 162:
-         freq1 = 620;
-         freq2 = 480;
+         freq1 = 620; freq2 = 480;
          break;
       case 163:
-         freq1 = 490;
-         freq2 = 350;
+         freq1 = 490; freq2 = 350;
          break;
       case 255:
-         freq1 = 0;
-         freq2 = 0;
+         freq1 = 0; freq2 = 0;
       default:
          if ((_ID >= 7) && (_ID <= 122)) {
-            freq1 = 31.25 * _ID;
-            freq2 = 0;
+            freq1 = 31.25 * _ID; freq2 = freq1;
          }
    }
 
@@ -1020,25 +1065,17 @@ software_imbe_decoder::decode_tone(int _ID, int _AD, int * _n)
       for(en = 0; en <= 159; en++) {
          samples->push_back(0);
       }
-   } else if (freq2 == 0) {
-   // Single frequency tones
-      step1 = 2 * M_PI * freq1 / 8000;
-      amplitude = _AD * 200;
-      for (en = 0; en<=159; en++) {
-         sample =  amplitude * sin(*_n * step1);
-         samples->push_back(sample);
-         (*_n)++;
-      }
-   } else {
-   // Dual frequency tones
-      step1 = 2 * M_PI * freq1 / 8000;
-      step2 = 2 * M_PI * freq2 / 8000;
-      amplitude = _AD * 200;
-      for (en = 0; en<=159; en++) {
-         sample =  amplitude * (sin(*_n * step1)/2 + sin(*_n * step2)/2);
-         samples->push_back(sample);
-         (*_n)++;
-      }
+      return;
+   }
+
+   // Synthesize tones
+   step1 = 2 * M_PI * freq1 / 8000;
+   step2 = 2 * M_PI * freq2 / 8000;
+   amplitude = _AD * 200;
+   for (en = 0; en<=159; en++) {
+      sample =  amplitude * (sin((*_n) * step1)/2 + sin((*_n) * step2)/2);
+      samples->push_back(sample);
+      (*_n)++;
    }
 }
 
