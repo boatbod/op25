@@ -566,7 +566,7 @@ void p25p2_tdma::handle_voice_frame(const uint8_t dibits[])
 
 	if (tone_frame) {
 		software_decoder.decode_tone(tone_mp.ID, tone_mp.AD, &tone_mp.n);
-        	if (d_debug >= 1) {
+        	if (d_debug >= 10) {
 			fprintf(stderr, "%s AMBE TONE ID=%d, AD=%d\n", logts.get(), tone_mp.ID, tone_mp.AD);  
 		}
 	} else if (rc ==0) {
