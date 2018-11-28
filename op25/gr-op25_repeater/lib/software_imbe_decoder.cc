@@ -978,6 +978,7 @@ software_imbe_decoder::decode_tone(int _ID, int _AD, int * _n)
    audio_samples *samples = audio();
 
    switch(_ID) {
+      // single tones, set frequency
       case 5:
          freq1 = 156.25; freq2 = freq1;
          break;
@@ -1040,6 +1041,49 @@ software_imbe_decoder::decode_tone(int _ID, int _AD, int * _n)
       case 145:
          freq1 = 1052; freq2 = 606;
          break;
+      case 146:
+         freq1 = 1162; freq2 = 606;
+         break;
+      case 147:
+         freq1 = 1279; freq2 = 606;
+         break;
+      case 148:
+         freq1 = 1052; freq2 = 672;
+         break;
+      case 149:
+         freq1 = 1162; freq2 = 672;
+         break;
+      case 150:
+         freq1 = 1279; freq2 = 672;
+         break;
+      case 151:
+         freq1 = 1052; freq2 = 743;
+         break;
+      case 152:
+         freq1 = 1162; freq2 = 743;
+         break;
+      case 153:
+         freq1 = 1279; freq2 = 743;
+         break;
+      case 154:
+         freq1 = 1430; freq2 = 606;
+         break;
+      case 155:
+         freq1 = 1430; freq2 = 672;
+         break;
+      case 156:
+         freq1 = 1430; freq2 = 743;
+         break;
+      case 157:
+         freq1 = 1430; freq2 = 820;
+         break;
+      case 158:
+         freq1 = 1052; freq2 = 820;
+         break;
+      case 159:
+         freq1 = 1279; freq2 = 820;
+         break;
+      // dual tones
       case 160:
          freq1 = 440; freq2 = 350;
          break;
@@ -1052,9 +1096,11 @@ software_imbe_decoder::decode_tone(int _ID, int _AD, int * _n)
       case 163:
          freq1 = 490; freq2 = 350;
          break;
+      // zero amplitude
       case 255:
          freq1 = 0; freq2 = 0;
       default:
+      // single tones, calculated frequency
          if ((_ID >= 7) && (_ID <= 122)) {
             freq1 = 31.25 * _ID; freq2 = freq1;
          }
