@@ -109,6 +109,7 @@ p25p2_tdma::p25p2_tdma(const op25_audio& udp, int slotid, int debug, bool do_msg
 {
 	assert (slotid == 0 || slotid == 1);
 	mbe_initMbeParms (&cur_mp, &prev_mp, &enh_mp);
+	mbe_initToneParms (&tone_mp);
 }
 
 bool p25p2_tdma::rx_sym(uint8_t sym)
@@ -537,8 +538,7 @@ int p25p2_tdma::handle_acch_frame(const uint8_t dibits[], bool fast)
 void p25p2_tdma::handle_voice_frame(const uint8_t dibits[]) 
 {
 	static const int NSAMP_OUTPUT=160;
-	mbe_tone tone;
-	bool valid_tone = false;
+	bool tone_frame = false;
 	int u[4];
 	int b[9];
 	int16_t snd;
@@ -546,9 +546,9 @@ void p25p2_tdma::handle_voice_frame(const uint8_t dibits[])
 	int rc = -1;
 
 	vf.process_vcw(dibits, b, u);
-	rc = mbe_dequantizeAmbeTone(&tone, u);	// Must first check if this is a Tone Frame
+	rc = mbe_dequantizeAmbeTone(&tone_mp, u);	// Must first check if this is a Tone Frame
 	if (rc == 0) {
-		valid_tone = true;
+		tone_frame = true;
 	} else { 
 		rc = mbe_dequantizeAmbe2250Parms (&cur_mp, &prev_mp, b);
 		if (rc == 0) {			// Otherwise handle as Voice Frame or Erasure (Frame Repeat per TIA-102.BABA.5.6)
@@ -564,11 +564,10 @@ void p25p2_tdma::handle_voice_frame(const uint8_t dibits[])
 		}
 	}
 
-	if (valid_tone) {
-		// TODO: implement tone synthesis in the software decoder
-		software_decoder.decode_tone(tone.ID, tone.AD);
+	if (tone_frame) {
+		software_decoder.decode_tone(tone_mp.ID, tone_mp.AD, &tone_mp.n);
         	if (d_debug >= 1) {
-			fprintf(stderr, "%s AMBE TONE ID=%d, AD=%d\n", logts.get(), tone.ID, tone.AD);  
+			fprintf(stderr, "%s AMBE TONE ID=%d, AD=%d\n", logts.get(), tone_mp.ID, tone_mp.AD);  
 		}
 	} else if (rc ==0) {
 		K = 12;

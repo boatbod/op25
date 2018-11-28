@@ -60,6 +60,7 @@ private:
 	mbe_parms cur_mp;
 	mbe_parms prev_mp;
 	mbe_parms enh_mp;
+	mbe_tone tone_mp;
 	int mbe_err_cnt;
 	software_imbe_decoder software_decoder;
 	gr::msg_queue::sptr d_msg_queue;

@@ -970,9 +970,10 @@ software_imbe_decoder::decode_tap(int _L, int _K, float _w0, const int * _v, con
 }
 
 void
-software_imbe_decoder::decode_tone(int _ID, int _AD)
+software_imbe_decoder::decode_tone(int _ID, int _AD, int * _n)
 {
    int en;
+   float step, sample, amplitude;
    float freq1 = 0, freq2 = 0;
    audio_samples *samples = audio();
 
@@ -1022,9 +1023,18 @@ software_imbe_decoder::decode_tone(int _ID, int _AD)
       return;
    }
 
-   //TODO: Implement the tone synthesizer here...
-   // Probably going to have to change the interface to decode_tone() to
-   // facilitate saving phase between consecutive frames. 
+   // Single frequency tones
+   if (freq2 == 0) {
+      step = 2 * M_PI * freq1 / 8000;
+      amplitude = _AD * 200;
+      for (en = 0; en<=159; en++) {
+         sample =  amplitude * sin(*_n * step);
+         samples->push_back(sample);
+         //fprintf(stderr, "FREQ: %f, AMPL: %f, STEP: %f, SAMPLE: %f, n: %d\n", freq1, amplitude, step, sample, *_n);
+         (*_n)++;
+      }
+      return;
+   }
 
 }
 

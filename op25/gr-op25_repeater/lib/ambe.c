@@ -432,8 +432,13 @@ mbe_dequantizeAmbeTone(mbe_tone * tone, const int *u)
 
 	if ((ID1 == ID2) && (ID1 == ID3) && (ID1 == ID4) &&
 	    (((ID1 >= 5) && (ID1 <= 122)) || ((ID1 >= 128) && (ID1 <= 163)) || (ID1 == 255))) {
-		tone->AD = AD;
-		tone->ID = ID1;
+		if (tone->ID == ID1) {
+			tone->AD = AD;
+		} else {
+			tone->n = 0;
+			tone->ID = ID1;
+			tone->AD = AD;
+		}
 		return 0; // valid in-range tone frequency 
 	}
 
