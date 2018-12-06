@@ -800,7 +800,7 @@ class rx_main(object):
         parser.add_option("-s", "--seek", type="int", default=0, help="ifile seek in K")
         parser.add_option("-l", "--terminal-type", type="string", default='curses', help="'curses' or udp port or 'http:host:port'")
         parser.add_option("-L", "--logfile-workers", type="int", default=None, help="number of demodulators to instantiate")
-        parser.add_option("-S", "--sample-rate", type="int", default=320e3, help="source samp rate")
+        parser.add_option("-S", "--sample-rate", type="int", default=960000, help="source samp rate")
         parser.add_option("-t", "--tone-detect", action="store_true", default=False, help="use experimental tone detect algorithm")
         parser.add_option("-T", "--trunk-conf-file", type="string", default=None, help="trunking config file name")
         parser.add_option("-v", "--verbosity", type="int", default=0, help="message debug level")
