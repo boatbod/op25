@@ -105,6 +105,7 @@ p25p2_tdma::p25p2_tdma(const op25_audio& udp, int slotid, int debug, bool do_msg
         ess_algid(0x80),
         ess_keyid(0),
         mbe_err_cnt(0),
+        tone_frame(false),
 	p2framer()
 {
 	assert (slotid == 0 || slotid == 1);
@@ -538,7 +539,6 @@ int p25p2_tdma::handle_acch_frame(const uint8_t dibits[], bool fast)
 void p25p2_tdma::handle_voice_frame(const uint8_t dibits[]) 
 {
 	static const int NSAMP_OUTPUT=160;
-	bool tone_frame = false;
 	int u[4];
 	int b[9];
 	int16_t snd;
@@ -549,16 +549,16 @@ void p25p2_tdma::handle_voice_frame(const uint8_t dibits[])
 	rc = mbe_dequantizeAmbeTone(&tone_mp, u);	// Must first check if this is a Tone Frame
 	if (rc == 0) {
 		tone_frame = true;
-	} else { 
+	} else { 					// Otherwise it could be Voice or Erasure
 		rc = mbe_dequantizeAmbe2250Parms (&cur_mp, &prev_mp, b);
-		if (rc == 0) {			// Otherwise handle as Voice Frame or Erasure (Frame Repeat per TIA-102.BABA.5.6)
+		if (rc == 0) {				// Voice Frame
+			tone_frame = false;
 			mbe_err_cnt = 0;
-		} else {
-        		if (d_debug >= 10) {
-				fprintf(stderr, "%s AMBE ERASURE mbe_err_cnt=%d\n", logts.get(), mbe_err_cnt);  
-			}
-			if (++mbe_err_cnt < 4) { // reuse last good frame up to 3 times, then mute audio if still bad
-        			mbe_useLastMbeParms(&cur_mp, &prev_mp);
+		} else {				// Erasure with up to 3 Frame Repeats per TIA-102.BABA.5.6
+			if (++mbe_err_cnt < 4) {
+        			if (!tone_frame) { 	// frame repeat might be tone or voice
+					mbe_useLastMbeParms(&cur_mp, &prev_mp);
+				}
 				rc = 0;
 			}
 		}
@@ -566,9 +566,6 @@ void p25p2_tdma::handle_voice_frame(const uint8_t dibits[])
 
 	if (tone_frame) {
 		software_decoder.decode_tone(tone_mp.ID, tone_mp.AD, &tone_mp.n);
-        	if (d_debug >= 10) {
-			fprintf(stderr, "%s AMBE TONE ID=%d, AD=%d\n", logts.get(), tone_mp.ID, tone_mp.AD);  
-		}
 	} else if (rc ==0) {
 		K = 12;
 		if (cur_mp.L <= 36)

@@ -62,6 +62,7 @@ private:
 	mbe_parms enh_mp;
 	mbe_tone tone_mp;
 	int mbe_err_cnt;
+	bool tone_frame;
 	software_imbe_decoder software_decoder;
 	gr::msg_queue::sptr d_msg_queue;
 	std::deque<int16_t> &output_queue_decode;
