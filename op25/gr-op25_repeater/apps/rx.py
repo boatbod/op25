@@ -68,6 +68,7 @@ from gr_gnuplot import mixer_sink_c
 
 from terminal import op25_terminal
 from sockaudio  import socket_audio
+from icemeta import meta_server
 
 #speeds = [300, 600, 900, 1200, 1440, 1800, 1920, 2400, 2880, 3200, 3600, 3840, 4000, 4800, 6000, 6400, 7200, 8000, 9600, 14400, 19200]
 speeds = [4800, 6000]
@@ -103,6 +104,7 @@ class p25_rx_block (gr.top_block):
         self.mixer_sink = None
         self.target_freq = 0.0
         self.last_freq_params = {'freq' : 0.0, 'tgid' : None, 'tag' : "", 'tdma' : None}
+        self.meta_server = None
 
         self.src = None
         if (not options.input) and (not options.audio) and (not options.audio_if):
@@ -178,6 +180,7 @@ class p25_rx_block (gr.top_block):
 
         self.input_q = gr.msg_queue(10)
         self.output_q = gr.msg_queue(10)
+        self.meta_q = gr.msg_queue(10)
  
         # configure specified data source
         if options.input:
@@ -197,6 +200,12 @@ class p25_rx_block (gr.top_block):
         self.terminal = op25_terminal(self.input_q, self.output_q, self.options.terminal_type)
         if self.terminal is None:
             sys.exit(1)
+
+        # attach meta server thread
+        if self.options.metacfg is not None:
+            self.meta_server = meta_server(self.meta_q, self.options.metacfg)
+        else:
+            self.meta_server = None
 
         # attach audio thread
         if self.options.udp_player:
@@ -375,6 +384,7 @@ class p25_rx_block (gr.top_block):
 
         self.configure_tdma(params)
         self.freq_update()
+        self.meta_update(params['tgid'], params['tag'])
 
     def freq_update(self):
         params = self.last_freq_params
@@ -383,6 +393,17 @@ class p25_rx_block (gr.top_block):
         js = json.dumps(params)
         msg = gr.message().make_from_string(js, -4, 0, 0)
         self.input_q.insert_tail(msg)
+
+    def meta_update(self, tgid, tag):
+        if self.meta_server is None:
+            return
+
+        if tgid is None:
+            metadata = "[idle]"
+        else:
+            metadata = "[" + str(tgid) + "] " + tag
+        msg = gr.message().make_from_string(metadata, -2, 0, 0)
+        self.meta_q.insert_tail(msg)
 
     def hamlib_attach(self, model):
         Hamlib.rig_set_debug (Hamlib.RIG_DEBUG_NONE)	# RIG_DEBUG_TRACE
@@ -774,6 +795,8 @@ class rx_main(object):
             sys.stderr.write('main: exception:\n%s\n' % traceback.format_exc())
         if self.tb.terminal:
             self.tb.terminal.end_terminal()
+        if self.tb.meta_server:
+            self.tb.meta_server.stop()
         if self.tb.audio:
             self.tb.audio.stop()
         self.tb.stop()
@@ -800,6 +823,7 @@ class rx_main(object):
         parser.add_option("-s", "--seek", type="int", default=0, help="ifile seek in K")
         parser.add_option("-l", "--terminal-type", type="string", default='curses', help="'curses' or udp port or 'http:host:port'")
         parser.add_option("-L", "--logfile-workers", type="int", default=None, help="number of demodulators to instantiate")
+        parser.add_option("-M", "--metacfg", type="string", default=None, help="Icecast Metadata Config File")
         parser.add_option("-S", "--sample-rate", type="int", default=960000, help="source samp rate")
         parser.add_option("-t", "--tone-detect", action="store_true", default=False, help="use experimental tone detect algorithm")
         parser.add_option("-T", "--trunk-conf-file", type="string", default=None, help="trunking config file name")
