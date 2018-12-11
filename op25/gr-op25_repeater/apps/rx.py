@@ -68,7 +68,6 @@ from gr_gnuplot import mixer_sink_c
 
 from terminal import op25_terminal
 from sockaudio  import socket_audio
-from icemeta import meta_server
 
 #speeds = [300, 600, 900, 1200, 1440, 1800, 1920, 2400, 2880, 3200, 3600, 3840, 4000, 4800, 6000, 6400, 7200, 8000, 9600, 14400, 19200]
 speeds = [4800, 6000]
@@ -203,6 +202,7 @@ class p25_rx_block (gr.top_block):
 
         # attach meta server thread
         if self.options.metacfg is not None:
+            from icemeta import meta_server
             self.meta_server = meta_server(self.meta_q, self.options.metacfg)
         else:
             self.meta_server = None
