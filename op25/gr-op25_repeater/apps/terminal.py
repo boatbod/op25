@@ -179,6 +179,24 @@ class curses_terminal(threading.Thread):
                 freq = None
             if freq:
                 self.send_command('set_freq', freq)
+        elif c == ord('H'):
+            self.prompt.addstr(0, 0, 'Hold tgid')
+            self.prompt.refresh()
+            self.text_win.erase()
+            response = self.textpad.edit()
+            self.prompt.erase()
+            self.prompt.refresh()
+            self.text_win.erase()
+            self.text_win.refresh()
+            self.title_help()
+            try:
+                tgid = int(response)
+                if (tgid < 0) or (tgid > 65535):
+                    tgid = 0
+            except:
+                tgid = 0
+            self.send_command('hold', tgid)
+ 
         elif c == ord(','):
             self.send_command('adj_tune', -100)
         elif c == ord('.'):

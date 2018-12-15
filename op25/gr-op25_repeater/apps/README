@@ -37,6 +37,7 @@ should open.  You must click on the terminal window to restore it to
 focus, otherwise all keystrokes are consumed by gnuplot.  Once in the
 terminal window there are several keyboard commands:
  h - hold
+ H - hold/goto the specified tgid
  l - lockout
  s - skip
  q - quit program
