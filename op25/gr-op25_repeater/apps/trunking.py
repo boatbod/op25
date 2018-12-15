@@ -1130,7 +1130,7 @@ class rx_ctl (object):
         elif command == 'duid7' or command == 'duid12': # tsbk/pdu should never arrive here...
             pass
         elif command == 'hold':
-            if cmd_data != 0:
+            if cmd_data > 0:
                     self.tgid_hold = cmd_data
                     self.tgid_hold_until = curr_time + 86400 * 10000
                     self.hold_mode = True
