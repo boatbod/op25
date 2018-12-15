@@ -383,10 +383,18 @@ function f_plot_button(command) {
 }
 
 function f_scan_button(command) {
-    if (current_tgid == null)
-        send_command(command, -1);
-    else
-        send_command(command, current_tgid);
+    var hold_tgid = 0;
+
+    if (command == "goto") {
+        command = "hold"
+        if (current_tgid != null)
+           hold_tgid = current_tgid;
+        hold_tgid = parseInt(prompt("Enter tgid to hold", hold_tgid));
+        if (isNaN(hold_tgid) || (hold_tgid < 0) || (hold_tgid > 65535))
+            hold_tgid = 0;
+    }
+
+    send_command(command, hold_tgid);
 }
 
 function f_debug() {
