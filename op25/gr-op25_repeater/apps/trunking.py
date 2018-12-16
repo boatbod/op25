@@ -133,11 +133,19 @@ class trunked_system (object):
         d['last_tsbk'] = self.last_tsbk
         t = time.time()
         for f in self.voice_frequencies.keys():
-            tgs = '%s %s' % (self.voice_frequencies[f]['tgid'][0], self.voice_frequencies[f]['tgid'][1])
-            d['frequencies'][f] = 'voice frequency %f tgid(s) %s %4.1fs ago count %d' %  (f / 1000000.0, tgs, t - self.voice_frequencies[f]['time'], self.voice_frequencies[f]['counter'])
+            # I want to see the tags on the talkgroups that have traffic,
+            # perhaps I might want to add those to my whitelist...
+            name_1 = self.get_tag_display(self.voice_frequencies[f]['tgid'][0])
+            name_2 = self.get_tag_display(self.voice_frequencies[f]['tgid'][1])
+            if name_2 != '':
+                tgs = '%s [%s] %s [%s]' % (self.voice_frequencies[f]['tgid'][0], name_1, self.voice_frequencies[f]['tgid'][1], name_2)
+            else:
+                # I hate that 'None' thing.  Just skip outputting it.
+                tgs = '%s [%s]' % (self.voice_frequencies[f]['tgid'][0], name_1)
 
+            d['frequencies'][f] = 'voice freq: %f tgid(s) %s %4.1fs ago count %d' %  (f / 1000000.0, tgs, t - self.voice_frequencies[f]['time'], self.voice_frequencies[f]['counter'])
             d['frequency_data'][f] = {'tgids': self.voice_frequencies[f]['tgid'], 'last_activity': '%7.1f' % (t - self.voice_frequencies[f]['time']), 'counter': self.voice_frequencies[f]['counter']}
-	d['adjacent_data'] = self.adjacent_data
+            d['adjacent_data'] = self.adjacent_data
         return json.dumps(d)
 
     def to_string(self):
@@ -149,8 +157,16 @@ class trunked_system (object):
         s.append('')
         t = time.time()
         for f in self.voice_frequencies:
-            tgs = '%s %s' % (self.voice_frequencies[f]['tgid'][0], self.voice_frequencies[f]['tgid'][1])
-            s.append('voice frequency %f tgid(s) %s %4.1fs ago count %d' %  (f / 1000000.0, tgs, t - self.voice_frequencies[f]['time'], self.voice_frequencies[f]['counter']))
+            # I want to see the tags on the talkgroups that have traffic,
+            # perhaps I might want to add those to my whitelist...
+            name_1 = self.get_tag_display(self.voice_frequencies[f]['tgid'][0])
+            name_2 = self.get_tag_display(self.voice_frequencies[f]['tgid'][1])
+            if name_2 != '':
+                tgs = '%s [%s] %s [%s]' % (self.voice_frequencies[f]['tgid'][0], name_1, self.voice_frequencies[f]['tgid'][1], name_2)
+            else:
+                # I hate that 'None' thing.  Just skip outputting it.
+                tgs = '%s [%s]' % (self.voice_frequencies[f]['tgid'][0], name_1)
+            s.append('voice freq: %f tgid(s) %s %4.1fs ago count %d' %  (f / 1000000.0, tgs, t - self.voice_frequencies[f]['time'], self.voice_frequencies[f]['counter']))
         s.append('')
         for table in self.freq_table:
             a = self.freq_table[table]['frequency'] / 1000000.0
@@ -192,6 +208,17 @@ class trunked_system (object):
             return ""
         if tgid not in self.tgid_map:
             return "Talkgroup ID %d [0x%x]" % (tgid, tgid)
+        return self.tgid_map[tgid][0]
+
+    # This returns either an empty string if the tgid
+    # is null, a pair of question marks if there is
+    # no name for the talkgroup configured, or
+    # the name of the talkgroup.
+    def get_tag_display(self, tgid):
+        if not tgid:
+            return ""
+        if tgid not in self.tgid_map:
+            return "??"
         return self.tgid_map[tgid][0]
 
     def get_prio(self, tgid):

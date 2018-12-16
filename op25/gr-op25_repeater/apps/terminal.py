@@ -229,9 +229,13 @@ class curses_terminal(threading.Thread):
             s = 'NAC 0x%x' % (int(current_nac))
             s += ' WACN 0x%x' % (msg[current_nac]['wacn'])
             s += ' SYSID 0x%x' % (msg[current_nac]['sysid'])
-            s += ' %f' % (msg[current_nac]['rxchan']/ 1000000.0)
-            s += '/%f' % (msg[current_nac]['txchan']/ 1000000.0)
-            s += ' tsbks %d' % (msg[current_nac]['tsbks'])
+            # Modified to clarify what these frequencies are on the control channel (e.g. send or receive)
+            s += ' RX %f' % (msg[current_nac]['rxchan']/ 1000000.0)  
+            s += ' | TX %f' % (msg[current_nac]['txchan']/ 1000000.0)
+            # As a lowly Technician-class ham (KD8VAX), I didn't know what a tsbks was and it 
+            # kinda bugged me.  It's not an easy answer to find, so let's tell the user something
+            # a *little* more English-like.
+            s += ' trnk sig blks %d' % (msg[current_nac]['tsbks'])
             freqs = sorted(msg[current_nac]['frequencies'].keys())
             s = s[:(self.maxx - 1)]
             self.top_bar.erase()
