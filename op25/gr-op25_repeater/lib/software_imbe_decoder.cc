@@ -977,6 +977,10 @@ software_imbe_decoder::decode_tone(int _ID, int _AD, int * _n)
    float freq1 = 0, freq2 = 0;
    audio_samples *samples = audio();
 
+#ifdef DISABLE_AMBE_TONES
+   return;
+#endif
+
    switch(_ID) {
       // single tones, set frequency
       case 5:
