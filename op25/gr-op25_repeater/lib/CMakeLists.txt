@@ -20,13 +20,14 @@
 ########################################################################
 # Setup library
 ########################################################################
-option(AMBE_TONE_SYNTH "Enable AMBE tone synthesis" ON)
+option(AMBE_TONES "Enable AMBE tone synthesis" ON)
 if (AMBE_TONES)
   message(STATUS "AMBE Tone Synthesis Enabled")
 else()
   message(STATUS "AMBE Tone Synthesis Disabled")
   add_definitions(-DDISABLE_AMBE_TONES)
 endif()
+unset(AMBE_TONES CACHE)
 
 include(GrPlatform) #define LIB_SUFFIX
 
