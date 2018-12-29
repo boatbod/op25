@@ -567,7 +567,7 @@ void p25p2_tdma::handle_voice_frame(const uint8_t dibits[])
 
 	if (software_decoder.audio()->size() != 0) {
 		// THIS SHOULD NEVER HAPPEN...
-		fprintf(stderr, "%s p25p2_tdma::handle_voice_frame(): beginning audio sample buffer non-zero (len=%lu)\n", logts.get(), samples->size());
+		fprintf(stderr, "%s p25p2_tdma::handle_voice_frame(): beginning audio sample buffer non-zero (len=%lu)\n", logts.get(), software_decoder.audio()->size());
 	}
 
 	if (tone_frame) {
@@ -598,7 +598,7 @@ void p25p2_tdma::handle_voice_frame(const uint8_t dibits[])
 	}
 	if (software_decoder.audio()->size() != 0) {
 		// THIS SHOULD NEVER HAPPEN EITHER...
-		fprintf(stderr, "%s p25p2_tdma::handle_voice_frame(): residual audio sample buffer non-zero (len=%lu)\n", logts.get(), samples->size());
+		fprintf(stderr, "%s p25p2_tdma::handle_voice_frame(): residual audio sample buffer non-zero (len=%lu)\n", logts.get(), software_decoder.audio()->size());
 	}
 
 	mbe_moveMbeParms (&cur_mp, &prev_mp);
