@@ -539,6 +539,7 @@ int p25p2_tdma::handle_acch_frame(const uint8_t dibits[], bool fast)
 void p25p2_tdma::handle_voice_frame(const uint8_t dibits[]) 
 {
 	static const int NSAMP_OUTPUT=160;
+	audio_samples *samples = NULL;
 	int u[4];
 	int b[9];
 	int16_t snd;
@@ -566,16 +567,18 @@ void p25p2_tdma::handle_voice_frame(const uint8_t dibits[])
 
 	if (tone_frame) {
 		software_decoder.decode_tone(tone_mp.ID, tone_mp.AD, &tone_mp.n);
+		samples = software_decoder.audio();
 	} else if (rc ==0) {
 		K = 12;
 		if (cur_mp.L <= 36)
 			K = int(float(cur_mp.L + 2.0) / 3.0);
 		software_decoder.decode_tap(cur_mp.L, K, cur_mp.w0, &cur_mp.Vl[1], &cur_mp.Ml[1]);
+		samples = software_decoder.audio();
 	}
-	audio_samples *samples = software_decoder.audio();
+
 	write_bufp = 0;
 	for (int i=0; i < NSAMP_OUTPUT; i++) {
-		if ((rc ==0) && (samples->size() > 0)) {
+		if (samples && (samples->size() > 0)) {
 			snd = (int16_t)(samples->front());
 			samples->pop_front();
 		} else {
@@ -587,6 +590,10 @@ void p25p2_tdma::handle_voice_frame(const uint8_t dibits[])
 	if (d_do_audio_output && (write_bufp >= 0)) { 
 		op25audio.send_audio(write_buf, write_bufp);
 		write_bufp = 0;
+	}
+	if (samples->size() != 0) {
+		// THIS SHOULD NEVER HAPPEN...
+		fprintf(stderr, "%s p25p2_tdma::handle_voice_frame(): audio sample buffer non-zero (len=%lu)\n", logts.get(), samples->size());
 	}
 
 	mbe_moveMbeParms (&cur_mp, &prev_mp);
