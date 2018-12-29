@@ -402,7 +402,7 @@ class p25_rx_block (gr.top_block):
             metadata = "[idle]"
         else:
             metadata = "[" + str(tgid) + "] " + tag
-        msg = gr.message().make_from_string(metadata, -2, 0, 0)
+        msg = gr.message().make_from_string(metadata, -2, time.time(), 0)
         self.meta_q.insert_tail(msg)
 
     def hamlib_attach(self, model):

@@ -38,6 +38,8 @@ class meta_server(threading.Thread):
         self.keep_running = True
         self.last_metadata = ""
         self.cfg = {}
+        self.delay = 0
+        self.msg = None
         self.urlBase = ""
         self.load_json(metacfg)
         self.start()
@@ -47,24 +49,26 @@ class meta_server(threading.Thread):
             with open(metacfg) as json_file:
                 self.cfg = json.load(json_file)
             self.urlBase = "http://" + self.cfg['icecastServerAddress'] + "/admin/metadata?mount=/" + self.cfg['icecastMountpoint'] + "&mode=updinfo&song="
-        except ValueError:
-            sys.stderr.write("Error reading metadata config file: %s\n" % metacfg)
+            self.delay = float(self.cfg['delay'])
+        except (ValueError, KeyError):
+            sys.stderr.write("%f meta_server::load_json(): Error reading metadata config file: %s\n" % (time.time(), metacfg))
 
     def run(self):
         while(self.keep_running):
             self.process_q_events()
-            time.sleep(1)
+            if self.msg and (time.time() >= (self.msg.arg1() + self.delay)):
+                self.send_metadata(self.msg.to_string())
+                self.msg = None
+            time.sleep(0.1)
 
     def stop(self):
         self.keep_running = False
 
     def process_q_events(self):
-        while True:
-            if self.input_q.empty_p():
-                break
-            msg = self.input_q.delete_head_nowait()
-            if msg.type() == -2:
-                self.send_metadata(msg.to_string())
+        if (self.msg is None) and (self.input_q.empty_p() == False):
+            self.msg = self.input_q.delete_head_nowait()
+            if self.msg.type() != -2:
+                self.msg = None
 
     def send_metadata(self, metadata):
         if (self.urlBase != "") and (metadata != '') and (self.last_metadata != metadata):
@@ -73,7 +77,7 @@ class meta_server(threading.Thread):
             r = requests.get((requestToSend), auth=("source",self.cfg['icecastPass']))
             status = r.status_code
             if status != 200:
-                sys.stderr.write("Icecast Update Error: %s\n" % status)
+                sys.stderr.write("%f meta_server::send_metadata(): metadata update error: %s\n" % (time.time(), status))
             else:
                 self.last_metadata = metadata
 

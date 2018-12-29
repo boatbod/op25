@@ -1,1 +1,1 @@
-{"icecastPass": "password", "icecastMountpoint": "mountpoint", "icecastServerAddress": "server.name:port"}
+{"icecastPass": "password", "icecastMountpoint": "mountpoint", "icecastServerAddress": "server.name:port", "delay": "0.0"}
