@@ -546,41 +546,41 @@ void p25p2_tdma::handle_voice_frame(const uint8_t dibits[])
 	int K;
 	int rc = -1;
 
+	// Deinterleave and figure out frame type:
 	vf.process_vcw(dibits, b, u);
-	rc = mbe_dequantizeAmbeTone(&tone_mp, u);	// Must first check if this is a Tone Frame
-	if (rc == 0) {
+	rc = mbe_dequantizeAmbeTone(&tone_mp, u);
+	if (rc == 0) {					// Tone Frame
 		tone_frame = true;
-	} else { 					// Otherwise it could be Voice or Erasure
+		mbe_err_cnt = 0;
+	} else {
 		rc = mbe_dequantizeAmbe2250Parms (&cur_mp, &prev_mp, b);
 		if (rc == 0) {				// Voice Frame
 			tone_frame = false;
 			mbe_err_cnt = 0;
-		} else {				// Erasure with up to 3 Frame Repeats per TIA-102.BABA.5.6
-			if (++mbe_err_cnt < 4) {
-        			if (!tone_frame) { 	// frame repeat might be tone or voice
-					mbe_useLastMbeParms(&cur_mp, &prev_mp);
-				}
-				rc = 0;
-			}
+		} else if (++mbe_err_cnt < 4) {		// Erasure with Frame Repeat per TIA-102.BABA.5.6
+        		if (!tone_frame) 
+				mbe_useLastMbeParms(&cur_mp, &prev_mp);
+			rc = 0;
+		} else {
+			tone_frame = false;		// Mute audio output after 3 successive Frame Repeats
 		}
 	}
 
-	if (software_decoder.audio()->size() != 0) {
-		// THIS SHOULD NEVER HAPPEN...
-		fprintf(stderr, "%s p25p2_tdma::handle_voice_frame(): beginning audio sample buffer non-zero (len=%lu)\n", logts.get(), software_decoder.audio()->size());
+	// Synthesize tones or speech
+	if (rc == 0) {
+		if (tone_frame) {
+			software_decoder.decode_tone(tone_mp.ID, tone_mp.AD, &tone_mp.n);
+			samples = software_decoder.audio();
+		} else {
+			K = 12;
+			if (cur_mp.L <= 36)
+				K = int(float(cur_mp.L + 2.0) / 3.0);
+			software_decoder.decode_tap(cur_mp.L, K, cur_mp.w0, &cur_mp.Vl[1], &cur_mp.Ml[1]);
+			samples = software_decoder.audio();
+		}
 	}
 
-	if (tone_frame) {
-		software_decoder.decode_tone(tone_mp.ID, tone_mp.AD, &tone_mp.n);
-		samples = software_decoder.audio();
-	} else if (rc ==0) {
-		K = 12;
-		if (cur_mp.L <= 36)
-			K = int(float(cur_mp.L + 2.0) / 3.0);
-		software_decoder.decode_tap(cur_mp.L, K, cur_mp.w0, &cur_mp.Vl[1], &cur_mp.Ml[1]);
-		samples = software_decoder.audio();
-	}
-
+	// Populate output buffer with either audio samples or silence
 	write_bufp = 0;
 	for (int i=0; i < NSAMP_OUTPUT; i++) {
 		if (samples && (samples->size() > 0)) {
@@ -596,9 +596,11 @@ void p25p2_tdma::handle_voice_frame(const uint8_t dibits[])
 		op25audio.send_audio(write_buf, write_bufp);
 		write_bufp = 0;
 	}
+
+	// This should never happen; audio samples should never be left in buffer
 	if (software_decoder.audio()->size() != 0) {
-		// THIS SHOULD NEVER HAPPEN EITHER...
 		fprintf(stderr, "%s p25p2_tdma::handle_voice_frame(): residual audio sample buffer non-zero (len=%lu)\n", logts.get(), software_decoder.audio()->size());
+		software_decoder.audio()->clear();
 	}
 
 	mbe_moveMbeParms (&cur_mp, &prev_mp);
