@@ -233,6 +233,7 @@ class alsasound(object):
 					break
 				time.sleep(1)
 		ret = self.libasound.snd_pcm_prepare(self.c_pcm)
+		return ret
 
 	def drop(self):
 		ret = self.libasound.snd_pcm_drop(self.c_pcm)
@@ -243,6 +244,7 @@ class alsasound(object):
 					break
 				time.sleep(1)
 		ret = self.libasound.snd_pcm_prepare(self.c_pcm)
+		return ret
 
 	def dump(self):
 		if (self.c_pcm.value == None):
