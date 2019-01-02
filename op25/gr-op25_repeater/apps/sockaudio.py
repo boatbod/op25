@@ -257,24 +257,61 @@ class alsasound(object):
 		sys.stderr.write("%s\n" % c_str_p.value[0:c_strlen-1])
 		self.libasound.snd_output_close(c_buf_p)
 
+# Fake pcm wrapper to write sound samples to stdout (for liquidsoap)
+class stdout_wrapper(object): 
+	def __init__(self):
+		pass
+
+	def open(self, hwdev):
+		return 0
+
+	def close(self):
+		return 0
+
+	def setup(self, pcm_format, pcm_channels, pcm_rate, pcm_buffer_size):
+		return 0
+
+	def drain(self):
+		try:
+			sys.stdout.flush()
+		except IOError:
+			return -1
+		return 0
+
+	def drop(self):
+		return 0
+
+	def write(self, pcm_data):
+		try:
+			sys.stdout.write(pcm_data)
+		except IOError:
+			return -1
+		return 0
+
 # OP25 thread to receive UDP audio samples and send to Alsa driver
 class socket_audio(threading.Thread):
-	def __init__(self, udp_host, udp_port, pcm_device, two_channels = False, audio_gain = 1.0, **kwds):
+	def __init__(self, udp_host, udp_port, pcm_device, two_channels = False, audio_gain = 1.0, dest_stdout = False, **kwds):
 		threading.Thread.__init__(self, **kwds)
-		self.setDaemon(1)
+		self.setDaemon(True)
 		self.keep_running = True
 		self.two_channels = two_channels
 		self.audio_gain = audio_gain
+		self.dest_stdout = dest_stdout
 		self.sock_a = None
 		self.sock_b = None
-		self.pcm = alsasound()
+                if dest_stdout:
+			pcm_device = "stdout"
+			self.pcm = stdout_wrapper()
+		else:
+			self.pcm = alsasound()
 		self.setup_sockets(udp_host, udp_port)
 		self.setup_pcm(pcm_device)
 		self.start()
 		return
 
 	def run(self):
-		while self.keep_running:
+		rc = 0
+		while self.keep_running and (rc >= 0):
 			readable, writable, exceptional = select.select( [self.sock_a, self.sock_b], [], [self.sock_a, self.sock_b] )
 			in_a = None
 			in_b = None
@@ -307,22 +344,22 @@ class socket_audio(threading.Thread):
 			if (((flag_a == 0) and (flag_b == 0)) or
 			    ((flag_a == 0) and ((in_b is None) or (flag_b == 1))) or 
 			    ((flag_b == 0) and ((in_a is None) or (flag_a == 1)))):
-				self.pcm.drain()
+				rc = self.pcm.drain()
 				continue
 
 			if (((flag_a == 1) and (flag_b == 1)) or
 			    ((flag_a == 1) and (in_b is None)) or 
 			    ((flag_b == 1) and (in_a is None))):
-				self.pcm.drop()
+				rc = self.pcm.drop()
 				continue
 
 			if not self.two_channels:
 				data_a = self.scale(data_a)
-				self.pcm.write(self.interleave(data_a, data_a))
+				rc = self.pcm.write(self.interleave(data_a, data_a))
 			else:
 				data_a = self.scale(data_a)
 				data_b = self.scale(data_b)
-				self.pcm.write(self.interleave(data_a, data_b))
+				rc = self.pcm.write(self.interleave(data_a, data_b))
 
 		self.close_sockets()
 		self.close_pcm()

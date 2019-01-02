@@ -29,6 +29,7 @@ from optparse import OptionParser
 from sockaudio import socket_audio
 
 def signal_handler(signal, frame):
+   sys.stderr.write("audio.py shutting down\n")
    audiothread.stop()
    sys.exit(0)
 
@@ -37,16 +38,20 @@ parser.add_option("-O", "--audio-output", type="string", default="default", help
 parser.add_option("-u", "--wireshark-port", type="int", default=23456, help="Wireshark port")
 parser.add_option("-2", "--two-channel", action="store_true", default=False, help="single or two channel audio")
 parser.add_option("-x", "--audio-gain", type="float", default="1.0", help="audio gain (default = 1.0)")
+parser.add_option("-s", "--stdout", action="store_true", default=False, help="write to stdout instead of audio device")
  
 (options, args) = parser.parse_args()
 if len(args) != 0:
    parser.print_help()
    sys.exit(1)
 
-audiothread = socket_audio("0.0.0.0", options.wireshark_port, options.audio_output, options.two_channel, options.audio_gain)
+audiothread = socket_audio("0.0.0.0", options.wireshark_port, options.audio_output, options.two_channel, options.audio_gain, options.stdout)
 
 if __name__ == "__main__":
    signal.signal(signal.SIGINT, signal_handler)
-   while True:
-      time.sleep(1)
+   if options.stdout:
+      audiothread.join()
+   else:
+      while True:
+         time.sleep(1)
 
