@@ -15,9 +15,16 @@ input = mksafe(input.external(buffer=0.02, channels=2, samplerate=8000, restart_
 
 
 # LOCAL AUDIO
-# Uncomment the line below to enable local sound
+# Uncomment the appropriate line below to enable local sound
 #
-out(input)
+# Default audio subsystem
+out (input)
+#
+# PulseAudio
+#output.pulseaudio(input)
+#
+# ALSA
+#output.alsa(input)
 
 
 # ICECAST STREAMING
