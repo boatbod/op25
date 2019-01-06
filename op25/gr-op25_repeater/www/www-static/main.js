@@ -160,17 +160,21 @@ function change_freq(d) {
     c_system = d['system'];
     current_tgid = d['tgid'];
     c_tag = d['tag'];
+    c_stream_url = d['stream_url'];
     channel_status();
 }
 
 function channel_status() {
-    var html
+    var html;
     var s2_freq = document.getElementById("s2_freq");
     var s2_tg = document.getElementById("s2_tg");
     var s2_grp = document.getElementById("s2_grp");
     var s2_src = document.getElementById("s2_src");
 
-    html = ""
+    html = "";
+    if (c_stream_url != "") {
+        html += "<a href=\"" + c_stream_url + "\">";
+    }
     if (c_freq != 0) {
         html += "<span class=\"value\">" + c_freq / 1000000.0 + "</span>";
     }
@@ -178,28 +182,31 @@ function channel_status() {
     {
         html += "<span class=\"value\"> &nbsp;" + c_system + "</span>";
     }
+    if (c_stream_url != "") {
+        html += "</a>"
+    }
     s2_freq.innerHTML = html
 
-    html = ""
+    html = "";
     if (current_tgid != null) {
         html += "<span class=\"value\">" + c_tag + "</span>";
         if (c_encrypted) {
             html += "<span class=\"label\">[ENCRYPTED]</span>";
         }
     }
-    s2_tg.innerHTML = html
+    s2_tg.innerHTML = html;
 
-    html = ""
+    html = "";
     if (current_tgid != null)
         html += "<span class=\"value\">" + current_tgid + "</span>";
     else if (c_grpaddr != 0)
         html += "<span class=\"value\">" + c_grpaddr + "</span>";
-    s2_grp.innerHTML = html
+    s2_grp.innerHTML = html;
 
-    html = ""
+    html = "";
     if ((c_srcaddr != 0) && (c_srcaddr != 0xffffff)) 
         html += "<span class=\"value\">" + c_srcaddr + "</span>";
-    s2_src.innerHTML = html
+    s2_src.innerHTML = html;
 }
 
 // adjacent sites table

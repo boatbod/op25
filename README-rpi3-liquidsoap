@@ -35,6 +35,19 @@ sudo apt-get install liquidsoap liquidsoap-plugin-all
 ---------------------
 sudo apt-get install pulseaudio pulseaudio-utils
 
+5. Install Icecase (optional)
+-----------------------------
+sudo apt-get install icecast2
+Follow prompts and set up appropriate passwords
+Edit /etc/icecast/icecast.xml and define your mount point(s):
+sudo vi /etc/icecast2/icecast.xml
+    <!-- You may have multiple <listener> elements -->
+    <listen-socket>
+        <port>8000</port>
+        <shoutcast-mount>/op25</shoutcast-mount>
+    </listen-socket>
+
+
 5. Configure op25
 -----------------
 Set up rx.py command line options, trunk.tsv, meta.json and other files necessary to

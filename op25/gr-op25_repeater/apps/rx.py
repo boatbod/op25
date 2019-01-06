@@ -104,6 +104,7 @@ class p25_rx_block (gr.top_block):
         self.target_freq = 0.0
         self.last_freq_params = {'freq' : 0.0, 'tgid' : None, 'tag' : "", 'tdma' : None}
         self.meta_server = None
+        self.stream_url = ""
 
         self.src = None
         if (not options.input) and (not options.audio) and (not options.audio_if):
@@ -204,6 +205,12 @@ class p25_rx_block (gr.top_block):
         if self.options.metacfg is not None:
             from icemeta import meta_server
             self.meta_server = meta_server(self.meta_q, self.options.metacfg)
+            try:
+                with open(self.options.metacfg) as json_file:
+                    meta_cfg = json.load(json_file)
+                self.stream_url = "http://" + meta_cfg['icecastServerAddress'] + "/" + meta_cfg['icecastMountpoint'] + ".xspf"
+            except (ValueError, KeyError):
+                sys.stderr.write("%f rx.py: Error reading metadata config file: %s\n" % (time.time(), self.options.metacfg))
         else:
             self.meta_server = None
 
@@ -390,6 +397,7 @@ class p25_rx_block (gr.top_block):
         params = self.last_freq_params
         params['json_type'] = 'change_freq'
         params['fine_tune'] = self.options.fine_tune
+        params['stream_url'] = self.stream_url
         js = json.dumps(params)
         msg = gr.message().make_from_string(js, -4, 0, 0)
         self.input_q.insert_tail(msg)
