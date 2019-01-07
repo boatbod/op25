@@ -208,7 +208,7 @@ class p25_rx_block (gr.top_block):
             try:
                 with open(self.options.metacfg) as json_file:
                     meta_cfg = json.load(json_file)
-                self.stream_url = "http://" + meta_cfg['icecastServerAddress'] + "/" + meta_cfg['icecastMountpoint'] + ".xspf"
+                self.stream_url = "http://" + meta_cfg['icecastServerAddress'] + "/" + meta_cfg['icecastMountpoint'] + meta_cfg['icecastMountExt']
             except (ValueError, KeyError):
                 sys.stderr.write("%f rx.py: Error reading metadata config file: %s\n" % (time.time(), self.options.metacfg))
         else:
