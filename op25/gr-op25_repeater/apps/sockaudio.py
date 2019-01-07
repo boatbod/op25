@@ -291,10 +291,8 @@ class stdout_wrapper(object):
 		return 0
 
 # OP25 thread to receive UDP audio samples and send to Alsa driver
-class socket_audio(threading.Thread):
+class socket_audio(object):
 	def __init__(self, udp_host, udp_port, pcm_device, two_channels = False, audio_gain = 1.0, dest_stdout = False, **kwds):
-		threading.Thread.__init__(self, **kwds)
-		self.setDaemon(True)
 		self.keep_running = True
 		self.two_channels = two_channels
 		self.audio_gain = audio_gain
@@ -308,8 +306,6 @@ class socket_audio(threading.Thread):
 			self.pcm = alsasound()
 		self.setup_sockets(udp_host, udp_port)
 		self.setup_pcm(pcm_device)
-		self.start()
-		return
 
 	def run(self):
 		rc = 0
@@ -430,4 +426,19 @@ class socket_audio(threading.Thread):
 	def close_pcm(self):
 		self.pcm.close()
 		return
+
+class audio_thread(threading.Thread):
+	def __init__(self, udp_host, udp_port, pcm_device, two_channels = False, audio_gain = 1.0, dest_stdout = False, **kwds):
+		threading.Thread.__init__(self, **kwds)
+		self.setDaemon(True)
+		self.keep_running = True
+                self.sock_audio = socket_audio(udp_host, udp_port, pcm_device, two_channels, audio_gain, dest_stdout, **kwds)
+		self.start()
+		return
+
+	def run(self):
+		self.sock_audio.run()
+
+	def stop(self):
+		self.sock_audio.stop()
 

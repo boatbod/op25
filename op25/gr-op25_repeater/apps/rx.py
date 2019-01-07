@@ -67,7 +67,7 @@ from gr_gnuplot import eye_sink_f
 from gr_gnuplot import mixer_sink_c
 
 from terminal import op25_terminal
-from sockaudio  import socket_audio
+from sockaudio  import audio_thread
 
 #speeds = [300, 600, 900, 1200, 1440, 1800, 1920, 2400, 2880, 3200, 3600, 3840, 4000, 4800, 6000, 6400, 7200, 8000, 9600, 14400, 19200]
 speeds = [4800, 6000]
@@ -216,7 +216,7 @@ class p25_rx_block (gr.top_block):
 
         # attach audio thread
         if self.options.udp_player:
-            self.audio = socket_audio("127.0.0.1", self.options.wireshark_port, self.options.audio_output, False, self.options.audio_gain)
+            self.audio = audio_thread("127.0.0.1", self.options.wireshark_port, self.options.audio_output, False, self.options.audio_gain)
         else:
             self.audio = None
 
