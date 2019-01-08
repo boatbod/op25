@@ -31,10 +31,11 @@ import json
 
 # OP25 thread to send metadata tags to an Icecast server
 class meta_server(threading.Thread):
-    def __init__(self, input_q, metacfg, **kwds):
+    def __init__(self, input_q, metacfg, debug = 0, **kwds):
         threading.Thread.__init__(self, **kwds)
         self.setDaemon(1)
         self.input_q = input_q
+        self.logging = debug
         self.keep_running = True
         self.last_metadata = ""
         self.cfg = {}
@@ -74,10 +75,15 @@ class meta_server(threading.Thread):
         if (self.urlBase != "") and (metadata != '') and (self.last_metadata != metadata):
             metadataFormatted = metadata.replace(" ","+") # add "+" instead of " " for icecast2
             requestToSend = (self.urlBase) +(metadataFormatted)
+            if self.logging >= 11:
+                sys.stderr.write("%f metadata update: \"%s\"\n" % (time.time(), requestToSend))
             r = requests.get((requestToSend), auth=("source",self.cfg['icecastPass']))
             status = r.status_code
+            if self.logging >= 11:
+                sys.stderr.write("%f metadata result: \"%s\"\n" % (time.time(), status))
             if status != 200:
-                sys.stderr.write("%f meta_server::send_metadata(): metadata update error: %s\n" % (time.time(), status))
+                if self.logging >= 1:
+                    sys.stderr.write("%f meta_server::send_metadata(): metadata update error: %s\n" % (time.time(), status))
             else:
                 self.last_metadata = metadata
 

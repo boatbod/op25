@@ -204,15 +204,17 @@ class p25_rx_block (gr.top_block):
         # attach meta server thread
         if self.options.metacfg is not None:
             from icemeta import meta_server
-            self.meta_server = meta_server(self.meta_q, self.options.metacfg)
+            self.meta_server = meta_server(self.meta_q, self.options.metacfg, debug=self.options.verbosity)
             try:
                 with open(self.options.metacfg) as json_file:
                     meta_cfg = json.load(json_file)
                 self.stream_url = "http://" + meta_cfg['icecastServerAddress'] + "/" + meta_cfg['icecastMountpoint'] + meta_cfg['icecastMountExt']
+                sys.stderr.write("streaming server url=\"%s\"\n" % self.stream_url)
             except (ValueError, KeyError):
-                sys.stderr.write("%f rx.py: Error reading metadata config file: %s\n" % (time.time(), self.options.metacfg))
+                sys.stderr.write("error reading metadata config file: %s, streaming server url disabled\n" % self.options.metacfg)
         else:
             self.meta_server = None
+            sys.stderr.write("metadata update not enabled\n")
 
         # attach audio thread
         if self.options.udp_player:

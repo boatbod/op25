@@ -259,9 +259,13 @@ class alsasound(object):
 		sys.stderr.write("%s\n" % c_str_p.value[0:c_strlen-1])
 		self.libasound.snd_output_close(c_buf_p)
 
-# Fake pcm wrapper to write sound samples to stdout (for liquidsoap)
+	def check(self):
+		return 0
+
+# Wrapper to emulate pcm writes of sound samples to stdout (for liquidsoap)
 class stdout_wrapper(object): 
 	def __init__(self):
+		self.silence = chr(0) * 640
 		pass
 
 	def open(self, hwdev):
@@ -276,7 +280,7 @@ class stdout_wrapper(object):
 	def drain(self):
 		try:
 			sys.stdout.flush()
-		except IOError:
+		except IOError:	# IOError means listener has terminated
 			return -1
 		return 0
 
@@ -286,11 +290,20 @@ class stdout_wrapper(object):
 	def write(self, pcm_data):
 		try:
 			sys.stdout.write(pcm_data)
-		except IOError:
+		except IOError:	# IOError means listener has terminated
 			return -1
 		return 0
 
-# OP25 thread to receive UDP audio samples and send to Alsa driver
+	def check(self):
+		rc = 0
+		if (self.write(self.silence) < 0) or (self.drain() < 0): # write silence to check pipe connectivity 
+			rc = -1
+		return rc
+
+	def dump(self):
+		pass
+
+# Main class that receives UDP audio samples and sends them to a PCM subsystem (currently ALSA or STDOUT)
 class socket_audio(object):
 	def __init__(self, udp_host, udp_port, pcm_device, two_channels = False, audio_gain = 1.0, dest_stdout = False, **kwds):
 		self.keep_running = True
@@ -310,13 +323,18 @@ class socket_audio(object):
 	def run(self):
 		rc = 0
 		while self.keep_running and (rc >= 0):
-			readable, writable, exceptional = select.select( [self.sock_a, self.sock_b], [], [self.sock_a, self.sock_b] )
+			readable, writable, exceptional = select.select( [self.sock_a, self.sock_b], [], [self.sock_a, self.sock_b], 5.0)
 			in_a = None
 			in_b = None
 			data_a = ""
 			data_b = ""
 			flag_a = -1
 			flag_b = -1
+
+			# Check for select() polling timeout and pcm self-check
+			if (not readable) and (not writable) and (not exceptional):
+ 				rc = self.pcm.check()
+				continue
 
 			# Data received on the udp port is 320 bytes for an audio frame or 2 bytes for a flag
 			if self.sock_a in readable:
@@ -424,6 +442,7 @@ class socket_audio(object):
 		return
 
 	def close_pcm(self):
+		sys.stderr.write('audio closing\n')
 		self.pcm.close()
 		return
 
