@@ -851,6 +851,7 @@ class rx_ctl (object):
                 self.current_grpaddr = js['grpaddr']
             if 'encrypted' in js:
                 self.current_encrypted = js['encrypted']
+            return 
         elif type == -2:	# request from gui
             cmd = msg.to_string()
             if self.debug > 10:
