@@ -77,13 +77,17 @@ class meta_server(threading.Thread):
             requestToSend = (self.urlBase) +(metadataFormatted)
             if self.logging >= 11:
                 sys.stderr.write("%f metadata update: \"%s\"\n" % (time.time(), requestToSend))
-            r = requests.get((requestToSend), auth=("source",self.cfg['icecastPass']))
-            status = r.status_code
-            if self.logging >= 11:
-                sys.stderr.write("%f metadata result: \"%s\"\n" % (time.time(), status))
-            if status != 200:
+            try:
+                r = requests.get((requestToSend), auth=("source",self.cfg['icecastPass']), timeout=1.0)
+                status = r.status_code
+                if self.logging >= 11:
+                    sys.stderr.write("%f metadata result: \"%s\"\n" % (time.time(), status))
+                if status != 200:
+                    if self.logging >= 1:
+                        sys.stderr.write("%f meta_server::send_metadata(): metadata update error: %s\n" % (time.time(), status))
+                else:
+                    self.last_metadata = metadata
+            except (requests.ConnectionError, requests.Timeout):
                 if self.logging >= 1:
-                    sys.stderr.write("%f meta_server::send_metadata(): metadata update error: %s\n" % (time.time(), status))
-            else:
-                self.last_metadata = metadata
+                    sys.stderr.write("%f meta_server::send_metadata(): exception %s\n" % (time.time(), sys.exc_value))
 
