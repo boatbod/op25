@@ -1121,7 +1121,7 @@ software_imbe_decoder::decode_tone(int _ID, int _AD, int * _n)
    // Synthesize tones
    step1 = 2 * M_PI * freq1 / 8000;
    step2 = 2 * M_PI * freq2 / 8000;
-   amplitude = _AD * 100;
+   amplitude = _AD * 75; // make adjustment to overall tone amplitude here
    for (en = 0; en<=159; en++) {
       sample =  amplitude * (sin((*_n) * step1)/2 + sin((*_n) * step2)/2);
       samples->push_back(sample);
