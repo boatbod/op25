@@ -611,7 +611,7 @@ def get_int_dict(s):
     return dict.fromkeys(d)
 
 class rx_ctl (object):
-    def __init__(self, debug=0, frequency_set=None, conf_file=None, logfile_workers=None):
+    def __init__(self, debug=0, frequency_set=None, conf_file=None, logfile_workers=None, meta_update=None):
         class _states(object):
             ACQ = 0
             CC = 1
@@ -622,6 +622,8 @@ class rx_ctl (object):
         self.current_state = self.states.CC
         self.trunked_systems = {}
         self.frequency_set = frequency_set
+        self.meta_update = meta_update
+        self.meta_state = 0
         self.debug = debug
         self.tgid_hold = None
         self.tgid_hold_until = time.time()
@@ -678,6 +680,15 @@ class rx_ctl (object):
         frequency = params['freq']
         if frequency and self.frequency_set:
             self.frequency_set(params)
+
+    def do_metadata(self, state, tgid, tag):
+        if (state == 1) and (self.meta_state == 1): # don't update more than once for an idle channel (state=1)
+            return
+
+        if self.debug > 1:
+            sys.stderr.write("%f do_metadata state=%d: [%s] %s\n" % (time.time(), state, tgid, tag))
+        self.meta_update(tgid, tag)
+        self.meta_state = state
 
     def add_trunked_system(self, nac):
         assert nac not in self.trunked_systems	# duplicate nac not allowed
@@ -1088,6 +1099,7 @@ class rx_ctl (object):
                     self.tgid_hold_until = max(curr_time + self.TGID_HOLD_TIME, self.tgid_hold_until)
                     self.wait_until = curr_time + self.TSYS_HOLD_TIME
                     new_slot = tdma_slot
+                    self.do_metadata(0, new_tgid,tsys.get_tag(new_tgid))
             else: # check for priority tgid preemption
                 new_frequency, new_tgid, tdma_slot, srcaddr = tsys.find_talkgroup(tsys.talkgroups[self.current_tgid]['time'], tgid=self.current_tgid, hold=self.hold_mode)
                 if new_tgid != self.current_tgid:
@@ -1101,6 +1113,7 @@ class rx_ctl (object):
                     self.tgid_hold_until = max(curr_time + self.TGID_HOLD_TIME, self.tgid_hold_until)
                     self.wait_until = curr_time + self.TSYS_HOLD_TIME
                     new_slot = tdma_slot
+                    self.do_metadata(0, new_tgid,tsys.get_tag(new_tgid))
                 else:
                     new_frequency = None
         elif command == 'duid3' or command == 'tdma_duid3': # termination, no channel release
@@ -1207,6 +1220,9 @@ class rx_ctl (object):
             self.current_encrypted = 0
             new_nac = self.find_next_tsys()
             new_state = self.states.CC
+
+        if self.current_state == self.states.CC and self.tgid_hold_until <= curr_time:
+            self.do_metadata(1, None, None)
 
         if new_nac is not None:
             nac = self.current_nac = new_nac

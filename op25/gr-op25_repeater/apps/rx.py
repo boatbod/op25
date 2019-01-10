@@ -307,7 +307,7 @@ class p25_rx_block (gr.top_block):
                 logfile_workers.append({'demod': demod, 'decoder': decoder, 'active': False})
                 self.connect(source, demod, decoder)
 
-        self.trunk_rx = trunking.rx_ctl(frequency_set = self.change_freq, debug = self.options.verbosity, conf_file = self.options.trunk_conf_file, logfile_workers=logfile_workers)
+        self.trunk_rx = trunking.rx_ctl(frequency_set = self.change_freq, debug = self.options.verbosity, conf_file = self.options.trunk_conf_file, logfile_workers=logfile_workers, meta_update = self.meta_update)
 
         self.du_watcher = du_queue_watcher(self.rx_q, self.trunk_rx.process_qmsg)
 
@@ -393,7 +393,6 @@ class p25_rx_block (gr.top_block):
 
         self.configure_tdma(params)
         self.freq_update()
-        self.meta_update(params['tgid'], params['tag'])
 
     def freq_update(self):
         params = self.last_freq_params
@@ -411,7 +410,10 @@ class p25_rx_block (gr.top_block):
         if tgid is None:
             metadata = "[idle]"
         else:
-            metadata = "[" + str(tgid) + "] " + tag
+            metadata = "[" + str(tgid) + "]"
+        if tag is not None:
+            metadata += " " + tag
+
         msg = gr.message().make_from_string(metadata, -2, time.time(), 0)
         self.meta_q.insert_tail(msg)
 
