@@ -31,7 +31,8 @@ import numpy as np
 from gnuradio import gr
 
 _def_debug = 0
-_def_sps = 10
+_def_sps = 5
+_def_sps_mult = 2
 
 GNUPLOT = '/usr/bin/gnuplot'
 
@@ -66,6 +67,9 @@ class wrap_gp(object):
 		exe  = GNUPLOT
 		self.gp = subprocess.Popen(args, executable=exe, stdin=subprocess.PIPE)
 
+        def set_sps(self, sps):
+            self.sps = sps
+
 	def kill(self):
 		try:
 			self.gp.stdin.close()   # closing pipe should cause subprocess to exit
@@ -92,7 +96,6 @@ class wrap_gp(object):
 		consumed = min(len(buf), BUFSZ-len(self.buf))
 		if len(self.buf) < BUFSZ:
 			self.buf.extend(buf[:consumed])
-		if len(self.buf) < BUFSZ:
 			return consumed
 
 		self.plot_count += 1
@@ -225,14 +228,18 @@ class wrap_gp(object):
 class eye_sink_f(gr.sync_block):
     """
     """
-    def __init__(self, debug = _def_debug, sps = _def_sps):
+    def __init__(self, debug = _def_debug, sps = _def_sps ):
         gr.sync_block.__init__(self,
             name="eye_sink_f",
             in_sig=[np.float32],
             out_sig=None)
         self.debug = debug
-        self.sps = sps
+        self.sps = sps * _def_sps_mult
         self.gnuplot = wrap_gp(sps=self.sps)
+
+    def set_sps(self, sps):
+        self.sps = sps * _def_sps_mult
+        self.gnuplot.set_sps(self.sps)
 
     def work(self, input_items, output_items):
         in0 = input_items[0]

@@ -156,6 +156,8 @@ class p25_rx_block (gr.top_block):
         self.basic_rate = 24000
         _default_speed = 4800
         self.options = options
+        #
+        self.set_sps(_default_speed)
 
         # keep track of flow graph connections
         self.cnxns = []
@@ -228,8 +230,6 @@ class p25_rx_block (gr.top_block):
         global speeds
         global WIRESHARK_PORT
 
-        sps = 5		# samples / symbol
-
         self.rx_q = gr.msg_queue(100)
         udp_port = 0
 
@@ -265,7 +265,7 @@ class p25_rx_block (gr.top_block):
                                                        demod_type = self.options.demod_type,
                                                        relative_freq = self.lo_freq,
                                                        offset = self.options.offset,
-                                                       if_rate = sps * 4800,
+                                                       if_rate = self.sps * 4800,
                                                        gain_mu = self.options.gain_mu,
                                                        costas_alpha = self.options.costas_alpha,
                                                        excess_bw = self.options.excess_bw,
@@ -360,9 +360,13 @@ class p25_rx_block (gr.top_block):
             rate = 6000
         else:
             rate = 4800
-        sps = self.basic_rate / rate
-        self.demod.set_symbol_rate(rate)   # this and the foll. call should be merged?
-        self.demod.clock.set_omega(float(sps))
+        self.set_sps(rate)
+        self.demod.set_omega(rate)
+
+    def set_sps(self, rate):
+        self.sps = self.basic_rate / rate
+        if (self.eye_sink is not None):
+            self.eye_sink.set_sps(self.sps)
 
     def change_freq(self, params):
         self.last_freq_params = params
@@ -593,7 +597,7 @@ class p25_rx_block (gr.top_block):
 
     def toggle_eye(self):
         if (self.eye_sink is None):
-            self.eye_sink = eye_sink_f(sps=10)
+            self.eye_sink = eye_sink_f(sps=self.sps)
             self.add_plot_sink(self.eye_sink)
             self.lock()
             self.demod.connect_fm_demod() # make sure fm demod exists in flowgraph

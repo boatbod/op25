@@ -316,12 +316,12 @@ class p25_demod_cb(p25_demod_base):
     def get_freq_error(self):	# get error in Hz (approx).
         return int(self.clock.get_freq_error() * self.symbol_rate)
 
-    def set_omega(self, omega):
-        sps = self.if_rate / float(omega)
+    def set_omega(self, rate):
+        self.set_symbol_rate(rate)
+        sps = self.if_rate / float(rate)
         if sps == self.sps:
             return
         self.sps = sps
-        print 'set_omega %d %f' % (omega, sps)
         self.clock.set_omega(self.sps)
 
     def reset(self):
