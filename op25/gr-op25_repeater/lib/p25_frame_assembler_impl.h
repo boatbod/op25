@@ -61,7 +61,9 @@ namespace gr {
 	std::deque<int16_t> output_queue;
 
  public:
+#if 0
    virtual void forecast(int nof_output_items, gr_vector_int &nof_input_items_reqd);
+#endif
       // Nothing to declare in this block.
 
      public:

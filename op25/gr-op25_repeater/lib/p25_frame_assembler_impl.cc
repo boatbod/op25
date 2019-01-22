@@ -99,6 +99,7 @@ static const int MAX_IN = 1;	// maximum number of input streams
         fprintf(stderr, "p25_frame_assembler_impl: do_imbe[%d], do_output[%d], do_audio_output[%d], do_phase2_tdma[%d], do_nocrypt[%d]\n", do_imbe, do_output, do_audio_output, do_phase2_tdma, do_nocrypt);
 }
 
+#if 0
 void
 p25_frame_assembler_impl::forecast(int nof_output_items, gr_vector_int &nof_input_items_reqd)
 {
@@ -115,6 +116,7 @@ p25_frame_assembler_impl::forecast(int nof_output_items, gr_vector_int &nof_inpu
    nof_samples_reqd = std::max(nof_samples_reqd, 256);
    std::fill(&nof_input_items_reqd[0], &nof_input_items_reqd[nof_inputs], nof_samples_reqd);
 }
+#endif
 
 int 
 p25_frame_assembler_impl::general_work (int noutput_items,
