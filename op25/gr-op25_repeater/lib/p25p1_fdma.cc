@@ -597,19 +597,20 @@ p25p1_fdma::process_voice(const bit_vector& A)
 			uint32_t u[8];
 			char s[128];
 			imbe_deinterleave(A, cw, i);
-			// recover 88-bit IMBE voice code word
-			imbe_header_decode(cw, u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7], E0, ET);
-			// output one 32-byte msg per 0.020 sec.
-			// also, 32*9 = 288 byte pkts (for use via UDP)
-			sprintf(s, "%03x %03x %03x %03x %03x %03x %03x %02x\n", u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7]);
+
+			if ((d_do_output && !d_do_audio_output) || (d_debug >= 10)) {
+				// recover 88-bit IMBE voice code word : only needed for logging or wireshark
+				imbe_header_decode(cw, u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7], E0, ET);
+			}
+
 			if (d_debug >= 10) {
-				fprintf(stderr, "%s IMBE(u0-u7) %s", logts.get(), s);
+				fprintf(stderr, "%s IMBE(u0-u7) %03x %03x %03x %03x %03x %03x %03x %02x\n", logts.get(), u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7]);
 			}
 			if (d_do_audio_output) {
 				if (!d_do_nocrypt || !encrypted()) {
 					std::string encr = "{\"encrypted\" : " + std::to_string(0) + "}";
 					send_msg(encr, -3);
-					p1voice_decode.rxframe(u);
+					p1voice_decode.rxframe(cw);
 				} else {
 					std::string encr = "{\"encrypted\" : " + std::to_string(1) + "}";
 					send_msg(encr, -3);
@@ -617,6 +618,7 @@ p25p1_fdma::process_voice(const bit_vector& A)
 			}
 
 			if (d_do_output && !d_do_audio_output) {
+				sprintf(s, "%03x %03x %03x %03x %03x %03x %03x %03x\n", u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7]);
 				for (size_t j=0; j < strlen(s); j++) {
 					output_queue.push_back(s[j]);
 				}

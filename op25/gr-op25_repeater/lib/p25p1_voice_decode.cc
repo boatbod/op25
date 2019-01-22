@@ -60,7 +60,7 @@ p25p1_voice_decode::p25p1_voice_decode(bool verbose_flag, const op25_audio& udp,
 	const char *p = getenv("IMBE");
 	if (p && strcasecmp(p, "soft") == 0)
 		d_software_imbe_decoder = true;
-	else
+	else 
 		d_software_imbe_decoder = false;
     }
 
@@ -71,6 +71,30 @@ p25p1_voice_decode::p25p1_voice_decode(bool verbose_flag, const op25_audio& udp,
     {
     }
 
+void p25p1_voice_decode::rxframe(const voice_codeword& cw)
+{
+	int16_t snd[FRAME];
+	software_decoder.decode(cw);
+	audio_samples *samples = software_decoder.audio();
+	for (int i=0; i < FRAME; i++) {
+		if (samples->size() > 0) {
+			snd[i] = (int16_t)(samples->front() * 32768.0);
+			samples->pop_front();
+		} else {
+			snd[i] = 0;
+		}
+	}
+
+	if (op25audio.enabled()) {
+		op25audio.send_audio(snd, FRAME * sizeof(int16_t));
+	} else {
+		// add generated samples to output queue
+		for (int i = 0; i < FRAME; i++) {
+			output_queue.push_back(snd[i]);
+		}
+	}
+}
+
 void p25p1_voice_decode::rxframe(const uint32_t u[])
 {
 	int16_t snd[FRAME];
@@ -78,8 +102,8 @@ void p25p1_voice_decode::rxframe(const uint32_t u[])
 	// decode 88 bits, outputs 160 sound samples (8000 rate)
 	if (d_software_imbe_decoder) {
 		voice_codeword cw(voice_codeword_sz);
-		imbe_header_encode(cw, u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7]);
-		software_decoder.decode(cw);
+		imbe_header_encode(cw, u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7]); // Huh? Why re-encode what was previous decoded
+		software_decoder.decode(cw);						// just to have it be decoded again in this module
 		audio_samples *samples = software_decoder.audio();
 		for (int i=0; i < FRAME; i++) {
 			if (samples->size() > 0) {
@@ -94,7 +118,7 @@ void p25p1_voice_decode::rxframe(const uint32_t u[])
 			frame_vector[i] = u[i];
 		}
 /* TEST*/	frame_vector[7] >>= 1;
-		vocoder.imbe_decode(frame_vector, snd);
+		vocoder.imbe_decode(frame_vector, snd);					// Does anyone still use this version of the codec?
 	}
 	if (op25audio.enabled()) {
 		op25audio.send_audio(snd, FRAME * sizeof(int16_t));
