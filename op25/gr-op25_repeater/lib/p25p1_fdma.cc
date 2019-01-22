@@ -601,15 +601,18 @@ p25p1_fdma::process_voice(const bit_vector& A)
 			imbe_header_decode(cw, u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7], E0, ET);
 			// output one 32-byte msg per 0.020 sec.
 			// also, 32*9 = 288 byte pkts (for use via UDP)
-			sprintf(s, "%03x %03x %03x %03x %03x %03x %03x %03x\n", u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7]);
+			sprintf(s, "%03x %03x %03x %03x %03x %03x %03x %02x\n", u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7]);
+			if (d_debug >= 10) {
+				fprintf(stderr, "%s IMBE(u0-u7) %s", logts.get(), s);
+			}
 			if (d_do_audio_output) {
 				if (!d_do_nocrypt || !encrypted()) {
-					std::string s = "{\"encrypted\" : " + std::to_string(0) + "}";
-					send_msg(s, -3);
+					std::string encr = "{\"encrypted\" : " + std::to_string(0) + "}";
+					send_msg(encr, -3);
 					p1voice_decode.rxframe(u);
 				} else {
-					std::string s = "{\"encrypted\" : " + std::to_string(1) + "}";
-					send_msg(s, -3);
+					std::string encr = "{\"encrypted\" : " + std::to_string(1) + "}";
+					send_msg(encr, -3);
 				}
 			}
 
