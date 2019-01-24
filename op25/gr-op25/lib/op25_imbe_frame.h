@@ -354,7 +354,7 @@ imbe_pack(packed_codeword& cw, uint32_t u0, uint32_t u1, uint32_t u2, uint32_t u
 	cw.push_back(u1 & 0xff);
 	cw.push_back(u2 >> 4);
 	cw.push_back(((u2 & 0xf) << 4) + (u3 >> 8));
-	cw.push_back(u3 >> 4);
+	cw.push_back(u3 & 0xff);
 	cw.push_back(u4 >> 3);
 	cw.push_back(((u4 & 0x7) << 5) + (u5 >> 6));
 	cw.push_back(((u5 & 0x3f) << 2) + (u6 >> 9));
