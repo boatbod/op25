@@ -71,18 +71,31 @@ p25p1_voice_decode::p25p1_voice_decode(bool verbose_flag, const op25_audio& udp,
     {
     }
 
+// more-optimized version of rxframe() used by p25p1_fdma
 void p25p1_voice_decode::rxframe(const voice_codeword& cw)
 {
 	int16_t snd[FRAME];
-	software_decoder.decode(cw);
-	audio_samples *samples = software_decoder.audio();
-	for (int i=0; i < FRAME; i++) {
-		if (samples->size() > 0) {
-			snd[i] = (int16_t)(samples->front() * 32768.0);
-			samples->pop_front();
-		} else {
-			snd[i] = 0;
+	if (d_software_imbe_decoder) {
+		software_decoder.decode(cw);
+		audio_samples *samples = software_decoder.audio();
+		for (int i=0; i < FRAME; i++) {
+			if (samples->size() > 0) {
+				snd[i] = (int16_t)(samples->front() * 32768.0);
+				samples->pop_front();
+			} else {
+				snd[i] = 0;
+			}
 		}
+	} else { // non-default decoder, do we still need to support it?
+		uint32_t u[8], E0, ET;
+		int16_t frame_vector[8];
+		imbe_header_decode(cw, u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7], E0, ET);
+
+		for (int i=0; i < 8; i++) { // Ugh. For compatibility convert imbe params from uint32_t to int16_t
+			frame_vector[i] = u[i];
+		}
+		frame_vector[7] >>= 1;
+		vocoder.imbe_decode(frame_vector, snd);
 	}
 
 	if (op25audio.enabled()) {
@@ -95,6 +108,7 @@ void p25p1_voice_decode::rxframe(const voice_codeword& cw)
 	}
 }
 
+// this version of rxframe() not normally used except by rxchar()
 void p25p1_voice_decode::rxframe(const uint32_t u[])
 {
 	int16_t snd[FRAME];
@@ -102,8 +116,8 @@ void p25p1_voice_decode::rxframe(const uint32_t u[])
 	// decode 88 bits, outputs 160 sound samples (8000 rate)
 	if (d_software_imbe_decoder) {
 		voice_codeword cw(voice_codeword_sz);
-		imbe_header_encode(cw, u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7]); // Huh? Why re-encode what was previous decoded
-		software_decoder.decode(cw);						// just to have it be decoded again in this module
+		imbe_header_encode(cw, u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7]);
+		software_decoder.decode(cw);
 		audio_samples *samples = software_decoder.audio();
 		for (int i=0; i < FRAME; i++) {
 			if (samples->size() > 0) {
