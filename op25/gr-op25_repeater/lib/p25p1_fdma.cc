@@ -606,11 +606,10 @@ p25p1_fdma::process_voice(const bit_vector& A)
 			if (d_debug >= 10) {
 				packed_codeword p_cw;
 				imbe_pack(p_cw, u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7]);
-				fprintf(stderr, "%s IMBE", logts.get());
-				for (int i = 0; i <= 10; i++) {
-					fprintf(stderr, " %02x", p_cw[i]);
-				}
-				fprintf(stderr, "\n");
+				sprintf(s,"%02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x",
+						p_cw[0], p_cw[1], p_cw[2], p_cw[3], p_cw[4], p_cw[5],
+					       	p_cw[6], p_cw[7], p_cw[8], p_cw[9], p_cw[10]);
+				fprintf(stderr, "%s IMBE %s\n", logts.get(), s); // print to log in one operation
 			}
 			if (d_do_audio_output) {
 				if (!d_do_nocrypt || !encrypted()) {
