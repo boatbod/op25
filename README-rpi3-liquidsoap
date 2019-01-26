@@ -68,4 +68,28 @@ Terminal #3: (optional log window)
 cd ~/op25/op25/gr-op25_repeater/apps
 tail -f stderr.2
 
+7. Making liquidsoap and op25 start automatically at boot
+---------------------------------------------------------
+Automatically starting liquidsoap and op25 at boot time is best handled using
+the systemd services manager "systemctl".  Two service scripts are required, and
+although examples are provided, these should best be edited/customized to match
+your exact environment.  As written they assume /home/pi is the home directory
+which may or may not be the case...
+
+Another factor to consider is that op25 should only be auto-started at boot
+time when it has been configured for the http terminal type.  Auto-starting
+the default curses terminal is not going to be successful.
+
+First copy the two service files into /etc/systemd/system:
+sudo cp ~/op25/op25/gr-op25_repeater/apps/op25-liq.service /etc/systemd/system
+sudo cp ~/op25/op25/gr-op25_repeater/apps/op25-rx.service /etc/systemd/system
+
+Next enable and then start the two services:
+sudo systemctl enable op25-liq op25-rx
+sudo systemctl start op25-liq op25-rx
+
+You can subsequently stop the services by issuing the following command:
+systemctl stop op25-rx
+or
+systemctl stop op25-rx op25-liq
 

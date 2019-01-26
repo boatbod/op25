@@ -1,0 +1,15 @@
+[Unit]
+Description=op25-liq
+After=syslog.target network.target nss-lookup.target network-online.target
+Requires=network-online.target
+
+[Service]
+User=1000
+Group=1000
+WorkingDirectory=/home/pi/op25/op25/gr-op25_repeater/apps
+ExecStart=/usr/bin/liquidsoap op25.liq
+RestartSec=5
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

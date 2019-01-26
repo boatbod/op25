@@ -1,0 +1,16 @@
+[Unit]
+Description=op25-rx
+After=syslog.target network.target nss-lookup.target network-online.target
+Requires=network-online.target
+
+[Service]
+User=1000
+Group=1000
+WorkingDirectory=/home/pi/op25/op25/gr-op25_repeater/apps
+ExecStart=/bin/bash -- op25.sh
+RestartSec=5
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+
