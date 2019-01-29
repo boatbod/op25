@@ -549,7 +549,10 @@ void p25p2_tdma::handle_voice_frame(const uint8_t dibits[])
 	// Deinterleave and figure out frame type:
 	vf.process_vcw(dibits, b, u);
 	if (d_debug >= 10) {
-		fprintf(stderr, "%s AMBE(u0-u3) %03x %03x %03x %04x (b0-b8) %02x %02x %02x %03x %02x %02x %01x %01x %01x\n", logts.get(), u[0], u[1], u[2], u[3], b[0], b[1], b[2], b[3], b[4], b[5], b[6], b[7], b[8]);
+		packed_codeword p_cw;
+		vf.pack_cw(p_cw, u);
+		fprintf(stderr, "%s AMBE %02x %02x %02x %02x %02x %02x %02x\n", logts.get(),
+			       	p_cw[0], p_cw[1], p_cw[2], p_cw[3], p_cw[4], p_cw[5], p_cw[6]);
 	}
 	rc = mbe_dequantizeAmbeTone(&tone_mp, u);
 	if (rc == 0) {					// Tone Frame
