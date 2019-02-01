@@ -1,0 +1,9 @@
+# Untracked files
+stderr.2
+*.blist
+*.wlist
+*.json
+*.tsv
+*.sh
+*.txt
+*.liq
