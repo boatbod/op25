@@ -41,6 +41,7 @@ from gr_gnuplot import constellation_sink_c
 from gr_gnuplot import fft_sink_c
 from gr_gnuplot import symbol_sink_f
 from gr_gnuplot import eye_sink_f
+from gr_gnuplot import mixer_sink_c
 
 os.environ['IMBE'] = 'soft'
 
@@ -125,6 +126,11 @@ class channel(object):
                 assert config['demod_type'] == 'cqpsk'   ## constellation plot requires cqpsk demod type
                 self.sinks.append(constellation_sink_c())
                 self.demod.connect_complex('diffdec', self.sinks[i])
+                self.kill_sink.append(self.sinks[i])
+            elif plot == 'mixer':
+                i = len(self.sinks)
+                self.sinks.append(mixer_sink_c())
+                self.demod.connect_complex('mixer', self.sinks[i])
                 self.kill_sink.append(self.sinks[i])
             else:
                 sys.stderr.write('unrecognized plot type %s\n' % plot)
