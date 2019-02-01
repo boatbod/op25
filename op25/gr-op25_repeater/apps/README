@@ -239,7 +239,7 @@ for either P1/FDMA or P2/TDMA.
 Below is a summary of the major config file keys:
 demod_type:     'cqpsk' for qpsk p25 only; 'fsk4' for ysf/dstar/dmr/fsk4 p25
 filter_type:    'rc' for p25; 'rrc' for dmr and ysf; 'gmsk' for d-star
-plot:           'fft', 'constellation', 'datascope', 'symbol'
+plot:           'fft', 'constellation', 'datascope', 'symbol', 'mixer'
                 [if more than one plot desired, provide a comma-separated list]
 destination:    'udp://host:port' or 'file://<filename>'
 name:           arbitrary string used to identify channels and devices
