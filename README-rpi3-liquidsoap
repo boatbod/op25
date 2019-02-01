@@ -93,3 +93,23 @@ systemctl stop op25-rx
 or
 systemctl stop op25-rx op25-liq
 
+8. Icecast2 low-latency setups (optional)
+---------------------------------------
+Buffering may cause the stream to lag behind the metadata.
+To decrease latency for low-latency environments, such as 
+highspeed networks, edit /etc/icecast2/icecast.xml to 
+disable Icecast2 burst-on-connect and reduce burst-size.
+
+sudo vi /etc/icecast2/icecast.xml
+
+<!-- If enabled, this will provide a burst of data when a client
+	 first connects, thereby significantly reducing the startup
+	 time for listeners that do substantial buffering. However,
+	 it also significantly increases latency between the source
+	 client and listening client.  For low-latency setups, you
+	 might want to disable this. -->
+<burst-on-connect>0</burst-on-connect>
+<!-- same as burst-on-connect, but this allows for being more
+	 specific on how much to burst. Most people won't need to
+	 change from the default 64k. Applies to all mountpoints  -->
+<burst-size>0</burst-size>
