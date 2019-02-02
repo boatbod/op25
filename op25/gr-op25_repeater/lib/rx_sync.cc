@@ -136,6 +136,7 @@ void rx_sync::dmr_sync(const uint8_t bitbuf[], int& current_slot, bool& unmute) 
 	static const int slot_ids[] = {0, 1, 0, 0, 1, 1, 0, 1};
 	int tact;
 	int chan;
+	int lcss;
 	int fstype;
 	uint8_t tactbuf[sizeof(cach_tact_bits)];
 
@@ -143,13 +144,14 @@ void rx_sync::dmr_sync(const uint8_t bitbuf[], int& current_slot, bool& unmute) 
 		tactbuf[i] = bitbuf[cach_tact_bits[i]];
 	tact = hamming_7_4_decode[load_i(tactbuf, 7)];
 	chan = (tact>>2) & 1;
+	lcss = tact & 3;
 	d_shift_reg = (d_shift_reg << 1) + chan;
 	current_slot = slot_ids[d_shift_reg & 7];
 
-	uint64_t sync = load_reg64(bitbuf + (MODE_DATA[RX_TYPE_DMR].sync_offset << 1), MODE_DATA[RX_TYPE_DMR].sync_len);
-	if (check_frame_sync(DMR_VOICE_SYNC_MAGIC ^ sync, d_threshold, MODE_DATA[RX_TYPE_DMR].sync_len))
+	uint64_t sync = load_reg64(bitbuf + (MODE_DATA[RX_TYPE_DMR_VOICE].sync_offset << 1), MODE_DATA[RX_TYPE_DMR_VOICE].sync_len);
+	if (check_frame_sync(DMR_VOICE_SYNC_MAGIC ^ sync, d_threshold, MODE_DATA[RX_TYPE_DMR_VOICE].sync_len))
 		fstype = 1;
-	else if (check_frame_sync(DMR_IDLE_SYNC_MAGIC ^ sync, d_threshold, MODE_DATA[RX_TYPE_DMR].sync_len))
+	else if (check_frame_sync(DMR_DATA_SYNC_MAGIC ^ sync, d_threshold, MODE_DATA[RX_TYPE_DMR_DATA].sync_len))
 		fstype = 2;
 	else
 		fstype = 0;
@@ -354,7 +356,11 @@ void rx_sync::rx_sym(const uint8_t sym)
 			codeword(tmpcw, CODEWORD_P25P1, 0);  // 144 bits
 		}
 		break;
-	case RX_TYPE_DMR:
+
+	case RX_TYPE_DMR_DATA:  // data
+		dmr_sync(bit_ptr, current_slot, unmute);
+		break;
+	case RX_TYPE_DMR_VOICE: // voice
 		dmr_sync(bit_ptr, current_slot, unmute);
 		if (!unmute)
 			break;
