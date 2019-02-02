@@ -136,6 +136,10 @@ class channel(object):
                 sys.stderr.write('unrecognized plot type %s\n' % plot)
                 return
 
+    def kill(self):
+        for sink in self.kill_sink:
+            sink.kill()
+
 class rx_block (gr.top_block):
 
     # Initialize the receiver
@@ -176,6 +180,11 @@ class rx_block (gr.top_block):
         for chan in self.channels:
             sys.stderr.write('scan %s: error %d\n' % (chan.config['frequency'], chan.demod.get_freq_error()))
 
+    def kill(self):
+        for chan in self.channels:
+            chan.kill()
+            
+
 class rx_main(object):
     def __init__(self):
         def byteify(input):	# thx so
@@ -214,7 +223,12 @@ class rx_main(object):
             self.tb.start()
             while self.keep_running:
                 time.sleep(1)
+        except (KeyboardInterrupt):
+            self.tb.stop()
+            self.tb.kill()
         except:
+            self.tb.stop()
+            self.tb.kill()
             sys.stderr.write('main: exception occurred\n')
             sys.stderr.write('main: exception:\n%s\n' % traceback.format_exc())
 
