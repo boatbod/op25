@@ -252,6 +252,15 @@ void rx_sync::codeword(const uint8_t* cw, const enum codeword_types codeword_typ
 			fullrate_cw[i] = cw[i];
 		imbe_header_decode(fullrate_cw, u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7], E0, ET);
 		do_fullrate = true;
+		if (d_debug >= 10) {
+			packed_codeword p_cw;
+			imbe_pack(p_cw, u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7]);
+			fprintf(stderr, "%s IMBE %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x\n",
+					logts.get(),
+					p_cw[0], p_cw[1], p_cw[2], p_cw[3], p_cw[4], p_cw[5],
+				       	p_cw[6], p_cw[7], p_cw[8], p_cw[9], p_cw[10]);
+		}
+
 		break;
 	case CODEWORD_YSF_FULLRATE:	// 144 bits
 		for (int i=0; i<144; i++)
