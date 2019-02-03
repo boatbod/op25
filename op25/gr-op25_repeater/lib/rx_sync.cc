@@ -214,6 +214,12 @@ void rx_sync::codeword(const uint8_t* cw, const enum codeword_types codeword_typ
 	switch(codeword_type) {
 	case CODEWORD_DMR:
 		interleaver.process_vcw(cw, b, U);
+		if (d_debug >= 10) {
+			packed_codeword p_cw;
+			interleaver.pack_cw(p_cw, U);
+			fprintf(stderr, "%s AMBE %02x %02x %02x %02x %02x %02x %02x\n", logts.get(),
+			       	p_cw[0], p_cw[1], p_cw[2], p_cw[3], p_cw[4], p_cw[5], p_cw[6]);
+		}
 		if (mbe_dequantizeAmbeTone(&tone_mp[slot_id], U) == 0) {
 			do_tone = true;
 		} else if (b[0] < 120) { // TODO: handle Erasures/Frame Repeat
@@ -359,9 +365,11 @@ void rx_sync::rx_sym(const uint8_t sym)
 
 	case RX_TYPE_DMR_DATA:  // data
 		dmr_sync(bit_ptr, current_slot, unmute);
+		dmr.load_frame(symbol_ptr);
 		break;
 	case RX_TYPE_DMR_VOICE: // voice
 		dmr_sync(bit_ptr, current_slot, unmute);
+		dmr.load_frame(symbol_ptr);
 		if (!unmute)
 			break;
 		codeword(symbol_ptr+12, CODEWORD_DMR, current_slot);

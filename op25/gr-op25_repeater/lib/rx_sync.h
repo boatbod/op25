@@ -38,10 +38,12 @@
 
 #include "ysf_const.h"
 #include "dmr_const.h"
+#include "dmr_cai.h"
 #include "p25_frame.h"
 #include "op25_imbe_frame.h"
 #include "software_imbe_decoder.h"
 #include "op25_audio.h"
+#include "log_ts.h"
 
 namespace gr{
     namespace op25_repeater{
@@ -115,9 +117,11 @@ private:
 	mbe_tone tone_mp[2];
 	software_imbe_decoder d_software_decoder[2];
 	std::deque<int16_t> d_output_queue[2];
+	dmr_cai dmr;
 	bool d_stereo;
 	int d_debug;
 	op25_audio d_audio;
+	log_ts logts;
 };
 
     } // end namespace op25_repeater

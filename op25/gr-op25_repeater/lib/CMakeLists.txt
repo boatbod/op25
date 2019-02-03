@@ -63,6 +63,8 @@ list(APPEND op25_repeater_sources
     mbelib.c
     ambe_encoder.cc
     rx_sync.cc
+    hamming.cc
+    dmr_cai.cc
     op25_audio.cc
     CCITTChecksumReverse.cpp
 )
