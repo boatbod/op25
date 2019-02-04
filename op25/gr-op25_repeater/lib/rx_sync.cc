@@ -181,7 +181,8 @@ rx_sync::rx_sync(const char * options, int debug) :	// constructor
 	d_expires(0),
 	d_stereo(false),
 	d_debug(debug),
-	d_audio(options, debug)
+	d_audio(options, debug),
+	dmr(debug)
 {
 	mbe_initMbeParms (&cur_mp[0], &prev_mp[0], &enh_mp[0]);
 	mbe_initMbeParms (&cur_mp[1], &prev_mp[1], &enh_mp[1]);
