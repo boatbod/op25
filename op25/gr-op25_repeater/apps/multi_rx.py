@@ -121,6 +121,10 @@ class channel(object):
                 self.sinks.append(fft_sink_c())
                 self.demod.connect_complex('src', self.sinks[i])
                 self.kill_sink.append(self.sinks[i])
+                self.sinks[i].set_offset(self.device.offset)
+                self.sinks[i].set_center_freq(self.device.frequency)
+                self.sinks[i].set_relative_freq(self.device.frequency + self.device.offset - self.config['frequency'])
+                self.sinks[i].set_width(self.device.sample_rate)
             elif plot == 'constellation':
                 i = len(self.sinks)
                 assert config['demod_type'] == 'cqpsk'   ## constellation plot requires cqpsk demod type
