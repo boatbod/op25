@@ -34,14 +34,15 @@
 #include "dmr_const.h"
 #include "hamming.h"
 
-namespace gr{
-    namespace op25_repeater{
-
 dmr_cai::dmr_cai(int debug) :
 	d_shift_reg(0),
-	d_slot(0),
+	d_chan(0),
 	d_debug(debug)
 {
+	d_slot[0].set_debug(debug);
+	d_slot[0].set_chan(0);
+	d_slot[1].set_debug(debug);
+	d_slot[1].set_chan(1);
 	d_cach_sig.clear();
 	memset(d_frame, 0, sizeof(d_frame));
 }
@@ -53,7 +54,8 @@ int
 dmr_cai::load_frame(const uint8_t fr_sym[]) {
 	dibits_to_bits(d_frame, fr_sym, FRAME_SIZE >> 1);
 	extract_cach_fragment();
-	return d_slot;
+	d_slot[d_chan].load_slot(d_frame + 24);
+	return d_chan;
 }
 
 void
@@ -68,7 +70,7 @@ dmr_cai::extract_cach_fragment() {
 	chan = (tact>>2) & 1;
 	lcss = tact & 3;
 	d_shift_reg = (d_shift_reg << 1) + chan;
-	d_slot = slot_ids[d_shift_reg & 7];
+	d_chan = slot_ids[d_shift_reg & 7];
 
 	switch(lcss) {
 		case 0: // Single-fragment CSBK
@@ -143,11 +145,9 @@ dmr_cai::decode_shortLC(bit_vector& cw)
 			d2 |= slc[i+20];
 		}
 		
-		fprintf(stderr, "SLCO=0x%x, DATA=%02x %02x %02x\n", slco, d0, d1, d2);
+		if (d_debug >= 10)
+			fprintf(stderr, "SLCO=0x%x, DATA=%02x %02x %02x\n", slco, d0, d1, d2);
 	}
 
 	return true;
 }
-
-    } // end namespace op25_repeater
-} // end namespace gr

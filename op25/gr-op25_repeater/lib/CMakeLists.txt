@@ -65,6 +65,7 @@ list(APPEND op25_repeater_sources
     rx_sync.cc
     hamming.cc
     dmr_cai.cc
+    dmr_slot.cc
     op25_audio.cc
     CCITTChecksumReverse.cpp
 )

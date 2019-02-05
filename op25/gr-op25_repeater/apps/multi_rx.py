@@ -231,6 +231,7 @@ class rx_main(object):
             self.tb.stop()
             self.tb.kill()
         except:
+            self.lock()
             self.tb.stop()
             self.tb.kill()
             sys.stderr.write('main: exception occurred\n')

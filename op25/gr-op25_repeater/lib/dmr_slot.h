@@ -18,37 +18,38 @@
 // Software Foundation, Inc., 51 Franklin Street, Boston, MA
 // 02110-1301, USA.
 
-#ifndef INCLUDED_DMR_CAI_H
-#define INCLUDED_DMR_CAI_H
+#ifndef INCLUDED_DMR_SLOT_H
+#define INCLUDED_DMR_SLOT_H
 
 #include <stdint.h>
 #include <vector>
 
+#include "dmr_const.h"
 #include "dmr_slot.h"
 
 typedef std::vector<bool> bit_vector;
 
-class dmr_cai {
+class dmr_slot {
 public:
-	dmr_cai(int debug);
-	~dmr_cai();
-	int load_frame(const uint8_t fr_sym[]);
-	inline int chan() { return d_chan; };
+	dmr_slot();
+	~dmr_slot();
+	inline void set_debug(const int debug) { d_debug = debug; };
+	inline void set_chan(const int chan) { d_chan = chan; };
+	void load_slot(const uint8_t slot[]);
 
 private:
-	static const int FRAME_SIZE = 288; // frame length in bits
-	static const int CACH       =   0; // position of CACH in frame
+	static const int SLOT_SIZE  = 264; // bits
+	static const int PAYLOAD_L  =   0;
+	static const int PAYLOAD_R  = 156;
+	static const int SYNC_EMB   = 108;
+	static const int SLOT_L     =  98;
+	static const int SLOT_R     = 156;
 
-	uint8_t d_frame[FRAME_SIZE];       // array of bits comprising the current frame
-	dmr_slot d_slot[2];
-	bit_vector d_cach_sig;
-	int d_chan;
-	int d_shift_reg;
+	uint8_t d_slot[SLOT_SIZE];       // array of bits comprising the current slot
+	uint64_t d_type;
 	int d_debug;
-
-	void extract_cach_fragment();
-	bool decode_shortLC(bit_vector& cw);
+	int d_chan;
 
 };
 
-#endif /* INCLUDED_DMR_CAI_H */
+#endif /* INCLUDED_DMR_SLOT_H */

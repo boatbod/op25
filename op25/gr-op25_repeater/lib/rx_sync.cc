@@ -136,7 +136,6 @@ void rx_sync::dmr_sync(const uint8_t bitbuf[], int& current_slot, bool& unmute) 
 	static const int slot_ids[] = {0, 1, 0, 0, 1, 1, 0, 1};
 	int tact;
 	int chan;
-	int lcss;
 	int fstype;
 	uint8_t tactbuf[sizeof(cach_tact_bits)];
 
@@ -144,7 +143,6 @@ void rx_sync::dmr_sync(const uint8_t bitbuf[], int& current_slot, bool& unmute) 
 		tactbuf[i] = bitbuf[cach_tact_bits[i]];
 	tact = hamming_7_4_decode[load_i(tactbuf, 7)];
 	chan = (tact>>2) & 1;
-	lcss = tact & 3;
 	d_shift_reg = (d_shift_reg << 1) + chan;
 	current_slot = slot_ids[d_shift_reg & 7];
 
