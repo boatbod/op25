@@ -332,9 +332,14 @@ void rx_sync::rx_sym(const uint8_t sym)
 	d_rx_count ++;
 	if (sync_detected != RX_TYPE_NONE) {
 		if (d_current_type != sync_detected) {
-			d_current_type = sync_detected;
-			d_expires = d_symbol_count + MODE_DATA[d_current_type].expiration;
-			d_rx_count = 0;
+			if (((d_current_type == RX_TYPE_DMR_VOICE) && (sync_detected != RX_TYPE_DMR_DATA)) ||
+			    ((d_current_type == RX_TYPE_DMR_DATA) && (sync_detected != RX_TYPE_DMR_VOICE))) { 
+				d_current_type = sync_detected;
+				d_expires = d_symbol_count + MODE_DATA[d_current_type].expiration;
+				d_rx_count = 0;
+			} else {
+				d_current_type = sync_detected;
+			}
 		}
 		if (d_rx_count != MODE_DATA[d_current_type].sync_offset + (MODE_DATA[d_current_type].sync_len >> 1)) {
 			if (d_debug)
@@ -374,17 +379,13 @@ void rx_sync::rx_sym(const uint8_t sym)
 		}
 		break;
 
-#if 0
 	case RX_TYPE_DMR_DATA:  // data
 		dmr_sync(bit_ptr, current_slot, unmute);
-		dmr.load_frame(symbol_ptr);
+		//dmr.load_frame(symbol_ptr);
 		break;
-#endif
 	case RX_TYPE_DMR_VOICE: // voice
 		dmr_sync(bit_ptr, current_slot, unmute);
-#if 0
-		dmr.load_frame(symbol_ptr);
-#endif
+		//dmr.load_frame(symbol_ptr);
 		if (!unmute)
 			break;
 		codeword(symbol_ptr+12, CODEWORD_DMR, current_slot);
