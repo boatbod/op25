@@ -33,11 +33,13 @@
 #include "bit_utils.h"
 #include "dmr_const.h"
 #include "hamming.h"
+#include "golay2087.h"
 
 dmr_slot::dmr_slot() :
 	d_type(0LL)
 {
 	memset(d_slot, 0, sizeof(d_slot));
+	d_slot_type.clear();
 }
 
 dmr_slot::~dmr_slot() {
@@ -60,11 +62,33 @@ dmr_slot::load_slot(const uint8_t slot[]) {
 			break;
 	}
 
-	if (d_type == 0LL) // unknown sync type
-		return;
+	switch(d_type) {
+		case DMR_VOICE_SYNC_MAGIC:
+			break;
 
-	if (d_debug >= 10)
-		fprintf(stderr, "dmr_slot::load_slot(%s): chan=%d, type=%lx\n", (sync_rx) ? "SYN":"EMB", d_chan, d_type);
+		case DMR_DATA_SYNC_MAGIC:
+			decode_slot_type();
+			break;
+
+		default: // unknown type
+			return;
+	}
+}
+
+bool
+dmr_slot::decode_slot_type() {
+	d_slot_type.clear();
+
+	// deinterleave
+	for (int i = SLOT_L; i < SYNC_EMB; i++)
+		d_slot_type.push_back(d_slot[i]);
+	for (int i = SLOT_R; i < (SLOT_R + 10); i++)
+		d_slot_type.push_back(d_slot[i]);
+
+	// golay (20,8)
+	int errs = CGolay2087::decode(d_slot_type);
+
+	fprintf(stderr, "Slot CC=%x, Data Type=%x, errs=%d\n", get_cc(), get_data_type(), errs);
 }
 
 

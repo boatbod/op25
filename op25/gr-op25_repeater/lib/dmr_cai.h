@@ -47,7 +47,7 @@ private:
 	int d_debug;
 
 	void extract_cach_fragment();
-	bool decode_shortLC(bit_vector& cw);
+	bool decode_shortLC();
 
 };
 

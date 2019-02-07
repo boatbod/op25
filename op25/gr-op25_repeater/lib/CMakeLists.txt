@@ -64,6 +64,7 @@ list(APPEND op25_repeater_sources
     ambe_encoder.cc
     rx_sync.cc
     hamming.cc
+    golay2087.cc
     dmr_cai.cc
     dmr_slot.cc
     op25_audio.cc

@@ -88,14 +88,14 @@ dmr_cai::extract_cach_fragment() {
 		case 3: // Continue Short_LC
 			for (size_t i=0; i<sizeof(cach_payload_bits); i++)
 				d_cach_sig.push_back(d_frame[CACH + cach_payload_bits[i]]);
-				decode_shortLC(d_cach_sig);
+				decode_shortLC();
 			break;
 	}
 	
 }
 
 bool
-dmr_cai::decode_shortLC(bit_vector& cw)
+dmr_cai::decode_shortLC()
 {
 	bit_vector slc(68, false);
 
@@ -103,9 +103,9 @@ dmr_cai::decode_shortLC(bit_vector& cw)
 	int i, src;
 	for (i = 0; i < 67; i++) {
 		src = (i * 4) % 67;
-		slc[i] = cw[src];
+		slc[i] = d_cach_sig[src];
 	}
-	slc[i] = cw[i];
+	slc[i] = d_cach_sig[i];
 
 	// apply error correction
 	CHamming::decode17123(slc, 0);

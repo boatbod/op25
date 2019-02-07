@@ -35,6 +35,14 @@ public:
 	~dmr_slot();
 	inline void set_debug(const int debug) { d_debug = debug; };
 	inline void set_chan(const int chan) { d_chan = chan; };
+	inline uint8_t get_cc() { return 	(d_slot_type[0] << 3) + 
+						(d_slot_type[1] << 3) + 
+						(d_slot_type[2] << 1) + 
+						 d_slot_type[3]; };
+	inline uint8_t get_data_type() { return (d_slot_type[4] << 3) + 
+						(d_slot_type[5] << 3) + 
+						(d_slot_type[6] << 1) + 
+						 d_slot_type[7]; };
 	void load_slot(const uint8_t slot[]);
 
 private:
@@ -46,9 +54,12 @@ private:
 	static const int SLOT_R     = 156;
 
 	uint8_t d_slot[SLOT_SIZE];       // array of bits comprising the current slot
+	bit_vector d_slot_type;
 	uint64_t d_type;
 	int d_debug;
 	int d_chan;
+
+	bool decode_slot_type();
 
 };
 

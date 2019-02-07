@@ -146,6 +146,9 @@ void rx_sync::dmr_sync(const uint8_t bitbuf[], int& current_slot, bool& unmute) 
 	d_shift_reg = (d_shift_reg << 1) + chan;
 	current_slot = slot_ids[d_shift_reg & 7];
 
+	if (chan != current_slot)
+		fprintf(stderr, "DMR cach chan=%d, current_slot=%d\n", chan, current_slot);
+
 	uint64_t sync = load_reg64(bitbuf + (MODE_DATA[RX_TYPE_DMR_VOICE].sync_offset << 1), MODE_DATA[RX_TYPE_DMR_VOICE].sync_len);
 	if (check_frame_sync(DMR_VOICE_SYNC_MAGIC ^ sync, d_threshold, MODE_DATA[RX_TYPE_DMR_VOICE].sync_len))
 		fstype = 1;
@@ -371,13 +374,17 @@ void rx_sync::rx_sym(const uint8_t sym)
 		}
 		break;
 
+#if 0
 	case RX_TYPE_DMR_DATA:  // data
 		dmr_sync(bit_ptr, current_slot, unmute);
 		dmr.load_frame(symbol_ptr);
 		break;
+#endif
 	case RX_TYPE_DMR_VOICE: // voice
 		dmr_sync(bit_ptr, current_slot, unmute);
+#if 0
 		dmr.load_frame(symbol_ptr);
+#endif
 		if (!unmute)
 			break;
 		codeword(symbol_ptr+12, CODEWORD_DMR, current_slot);
