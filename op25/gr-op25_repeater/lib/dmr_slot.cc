@@ -88,7 +88,9 @@ dmr_slot::decode_slot_type() {
 	// golay (20,8)
 	int errs = CGolay2087::decode(d_slot_type);
 
-	fprintf(stderr, "Slot CC=%x, Data Type=%x, errs=%d\n", get_cc(), get_data_type(), errs);
+	if (d_debug >= 10) {
+		fprintf(stderr, "Slot CC=%x, Data Type=%x, errs=%d\n", get_cc(), get_data_type(), errs);
+	}
 }
 
 
