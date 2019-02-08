@@ -244,6 +244,9 @@ unsigned int CGolay2087::decode(bit_vector& data)
 	if (data.size() < 20)
 		return -1;
 
+	// routine has a bug and loop does not always terminate correctly
+	return -1;
+
 	unsigned int code = 0;
 	for (int i = 0; i < 20; i++) {
 		code <<= 1;

@@ -127,7 +127,7 @@ dmr_cai::decode_shortLC()
 
 	// extract useful data
 	if (d_debug >= 10) {
-		int slco, d0, d1, d2 = 0;
+		uint8_t slco, d0, d1, d2 = 0;
 		for (i = 0; i < 4; i++) {
 			slco <<= 1;
 			slco |= slc[i];
