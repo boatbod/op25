@@ -53,8 +53,7 @@ static const uint64_t DSTAR_FRAME_SYNC_MAGIC = 0x444445101440LL;  // expanded in
 enum rx_types {
 	RX_TYPE_NONE=0,
 	RX_TYPE_P25,
-	RX_TYPE_DMR_VOICE,
-	RX_TYPE_DMR_DATA,
+	RX_TYPE_DMR,
 	RX_TYPE_DSTAR,
 	RX_TYPE_YSF,
 	RX_N_TYPES
@@ -66,15 +65,25 @@ static const struct _mode_data {
 	int sync_offset;
 	int fragment_len;   // symbols
 	int expiration;
-	uint64_t sync;
 } MODE_DATA[RX_N_TYPES] = {
-	{"NONE",   0,0,0,0,0},
-	{"P25",    48,0,864,1728,   P25_FRAME_SYNC_MAGIC},
-	{"DMR VOICE",    48,66,144,1728,  DMR_VOICE_SYNC_MAGIC},
-	{"DMR DATA",    48,66,144,1728,  DMR_DATA_SYNC_MAGIC},
-	{"DSTAR",  48,72,96,2016*2, DSTAR_FRAME_SYNC_MAGIC},
-	{"YSF",    40,0,480,480*2,  YSF_FRAME_SYNC_MAGIC}
+	{"NONE",   0,0,0,0},
+	{"P25",    48,0,864,1728},
+	{"DMR",    48,66,144,1728},
+	{"DSTAR",  48,72,96,2016*2},
+	{"YSF",    40,0,480,480*2}
 };   // index order must match rx_types enum
+
+static const int KNOWN_MAGICS = 5;
+static const struct _sync_magic {
+	int type;
+	uint64_t magic;
+} SYNC_MAGIC[KNOWN_MAGICS] = {
+	{RX_TYPE_P25, P25_FRAME_SYNC_MAGIC},
+	{RX_TYPE_DMR, DMR_VOICE_SYNC_MAGIC},
+	{RX_TYPE_DMR, DMR_DATA_SYNC_MAGIC},
+	{RX_TYPE_DSTAR, DSTAR_FRAME_SYNC_MAGIC},
+	{RX_TYPE_YSF, YSF_FRAME_SYNC_MAGIC}
+}; // maps sync patterns to protocols
 
 enum codeword_types {
 	CODEWORD_P25P1,

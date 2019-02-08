@@ -149,10 +149,10 @@ void rx_sync::dmr_sync(const uint8_t bitbuf[], int& current_slot, bool& unmute) 
 	if (chan != current_slot)
 		fprintf(stderr, "DMR cach chan=%d, current_slot=%d\n", chan, current_slot);
 
-	uint64_t sync = load_reg64(bitbuf + (MODE_DATA[RX_TYPE_DMR_VOICE].sync_offset << 1), MODE_DATA[RX_TYPE_DMR_VOICE].sync_len);
-	if (check_frame_sync(DMR_VOICE_SYNC_MAGIC ^ sync, d_threshold, MODE_DATA[RX_TYPE_DMR_VOICE].sync_len))
+	uint64_t sync = load_reg64(bitbuf + (MODE_DATA[RX_TYPE_DMR].sync_offset << 1), MODE_DATA[RX_TYPE_DMR].sync_len);
+	if (check_frame_sync(DMR_VOICE_SYNC_MAGIC ^ sync, d_threshold, MODE_DATA[RX_TYPE_DMR].sync_len))
 		fstype = 1;
-	else if (check_frame_sync(DMR_DATA_SYNC_MAGIC ^ sync, d_threshold, MODE_DATA[RX_TYPE_DMR_DATA].sync_len))
+	else if (check_frame_sync(DMR_DATA_SYNC_MAGIC ^ sync, d_threshold, MODE_DATA[RX_TYPE_DMR].sync_len))
 		fstype = 2;
 	else
 		fstype = 0;
@@ -320,9 +320,9 @@ void rx_sync::rx_sym(const uint8_t sym)
 
 	d_symbol_count ++;
 	d_sync_reg = (d_sync_reg << 2) | (sym & 3);
-	for (int i = 1; i < RX_N_TYPES; i++) {
-		if (check_frame_sync(MODE_DATA[i].sync ^ d_sync_reg, (i == d_current_type) ? d_threshold : 0, MODE_DATA[i].sync_len)) {
-			sync_detected = (enum rx_types) i;
+	for (int i = 0; i < KNOWN_MAGICS; i++) {
+		if (check_frame_sync(SYNC_MAGIC[i].magic ^ d_sync_reg, (SYNC_MAGIC[i].type == d_current_type) ? d_threshold : 0, MODE_DATA[SYNC_MAGIC[i].type].sync_len)) {
+			sync_detected = (enum rx_types) SYNC_MAGIC[i].type;
 			break;
 		}
 	}
@@ -332,14 +332,9 @@ void rx_sync::rx_sym(const uint8_t sym)
 	d_rx_count ++;
 	if (sync_detected != RX_TYPE_NONE) {
 		if (d_current_type != sync_detected) {
-			if (((d_current_type == RX_TYPE_DMR_VOICE) && (sync_detected != RX_TYPE_DMR_DATA)) ||
-			    ((d_current_type == RX_TYPE_DMR_DATA) && (sync_detected != RX_TYPE_DMR_VOICE))) { 
-				d_current_type = sync_detected;
-				d_expires = d_symbol_count + MODE_DATA[d_current_type].expiration;
-				d_rx_count = 0;
-			} else {
-				d_current_type = sync_detected;
-			}
+			d_current_type = sync_detected;
+			d_expires = d_symbol_count + MODE_DATA[d_current_type].expiration;
+			d_rx_count = 0;
 		}
 		if (d_rx_count != MODE_DATA[d_current_type].sync_offset + (MODE_DATA[d_current_type].sync_len >> 1)) {
 			if (d_debug)
@@ -378,14 +373,9 @@ void rx_sync::rx_sym(const uint8_t sym)
 			codeword(tmpcw, CODEWORD_P25P1, 0);  // 144 bits
 		}
 		break;
-
-	case RX_TYPE_DMR_DATA:  // data
+	case RX_TYPE_DMR:
 		dmr_sync(bit_ptr, current_slot, unmute);
-		//dmr.load_frame(symbol_ptr);
-		break;
-	case RX_TYPE_DMR_VOICE: // voice
-		dmr_sync(bit_ptr, current_slot, unmute);
-		//dmr.load_frame(symbol_ptr);
+		dmr.load_frame(symbol_ptr);
 		if (!unmute)
 			break;
 		codeword(symbol_ptr+12, CODEWORD_DMR, current_slot);
