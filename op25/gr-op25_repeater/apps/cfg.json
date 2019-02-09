@@ -38,10 +38,10 @@
         {
             "args": "rtl=0", 
             "frequency": 460100000, 
-            "gains": "lna:49", 
+            "gains": "lna:39", 
             "name": "rtl0", 
             "offset": 0, 
-            "ppm": 38, 
+            "ppm": 0, 
             "rate": 1000000, 
             "tunable": false
         }
