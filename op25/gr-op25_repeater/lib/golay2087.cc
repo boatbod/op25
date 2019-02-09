@@ -226,16 +226,16 @@ unsigned int CGolay2087::getSyndrome1987(unsigned int pattern)
  */
 {
 	unsigned int aux = X18;
- 
+
 	if (pattern >= X11) {
 		while (pattern & MASK8) {
-			while ((aux & pattern) == 0) {
+			while (!(aux & pattern))
 				aux = aux >> 1;
-			}
-			pattern ^= (aux  / X11 * GENPOL);
+
+			pattern ^= (aux  / X11) * GENPOL;
 		}
 	}
-
+ 
 	return pattern;
 }
 
@@ -244,11 +244,8 @@ unsigned int CGolay2087::decode(bit_vector& data)
 	if (data.size() < 20)
 		return -1;
 
-	// routine has a bug and loop does not always terminate correctly
-	return -1;
-
 	unsigned int code = 0;
-	for (int i = 0; i < 20; i++) {
+	for (int i = 0; i < 19; i++) {		// parity bit ignored for table lookup
 		code <<= 1;
 		code |= data[i] & 0x1;
 	}
@@ -258,6 +255,7 @@ unsigned int CGolay2087::decode(bit_vector& data)
 
 	if (error_pattern != 0x00U) {
 		code ^= error_pattern;
+		code = (code << 1) | data[19];	// reinsert parity bit
 		for (int i = 19; i >= 0; i--) {
 			data[i] = code & 0x1;
 			code >>= 1;
@@ -278,8 +276,10 @@ void CGolay2087::encode(bit_vector& data)
 	}
 
 	unsigned int cksum = ENCODING_TABLE_2087[value];
+	unsigned int cksum_le = (((cksum & 0xff) << 4) | (cksum >> 12)); // swap Endian-ness and drop 4 unused bits
+	
 	for (int i = 19; i >= 8; i--) {
-		data[i] = cksum & 0x1;
-		cksum >>= 1;
+		data[i] = cksum_le & 0x1;
+		cksum_le >>= 1;
 	}
 }
