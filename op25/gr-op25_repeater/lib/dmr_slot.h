@@ -31,10 +31,9 @@ typedef std::vector<bool> bit_vector;
 
 class dmr_slot {
 public:
-	dmr_slot();
+	dmr_slot(const int chan, const int debug = 0);
 	~dmr_slot();
 	inline void set_debug(const int debug) { d_debug = debug; };
-	inline void set_chan(const int chan) { d_chan = chan; };
 	inline uint8_t get_cc() { return 	(d_slot_type[0] << 3) + 
 						(d_slot_type[1] << 3) + 
 						(d_slot_type[2] << 1) + 

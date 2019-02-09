@@ -35,8 +35,10 @@
 #include "hamming.h"
 #include "golay2087.h"
 
-dmr_slot::dmr_slot() :
-	d_type(0LL)
+dmr_slot::dmr_slot(const int chan, const int debug) :
+	d_chan(chan),
+	d_debug(debug),
+	d_type(0)
 {
 	memset(d_slot, 0, sizeof(d_slot));
 	d_slot_type.clear();
@@ -87,9 +89,52 @@ dmr_slot::decode_slot_type() {
 
 	// golay (20,8)
 	int errs = CGolay2087::decode(d_slot_type);
+	if (errs >= 4)
+		return false;
 
 	if (d_debug >= 10) {
-		fprintf(stderr, "Slot CC=%x, Data Type=%x, errs=%d\n", get_cc(), get_data_type(), errs);
+		fprintf(stderr, "Slot(%d), CC(%x), Data Type=%x, errs=%d\n", d_chan, get_cc(), get_data_type(), errs);
+	}
+
+	switch(get_data_type()) {
+		case 0x0: // PI header
+			break;
+		case 0x1: // Voice LC header
+			if (d_debug >= 5) {
+				fprintf(stderr, "Slot(%d), CC(%x), Voice LC\n", d_chan, get_cc());
+			}
+			break;
+		case 0x2: // Terminator with LC
+			if (d_debug >= 5) {
+				fprintf(stderr, "Slot(%d), CC(%x), Terminator LC\n", d_chan, get_cc());
+			}
+			break;
+		case 0x3: // CSBK
+			if (d_debug >= 5) {
+				fprintf(stderr, "Slot(%d), CC(%x), CSBK\n", d_chan, get_cc());
+			}
+			break;
+		case 0x4: // MBC
+			break;
+		case 0x5: // MBC continuation
+			break;
+		case 0x6: // Data header
+			break;
+		case 0x7: // Rate 1/2 data
+			break;
+		case 0x8: // Rate 3/4 data
+			break;
+		case 0x9: // Idle
+			if (d_debug >= 5) {
+				fprintf(stderr, "Slot(%d), CC(%x), Idle\n", d_chan, get_cc());
+			}
+			break;
+		case 0xa: // Rate 1 data
+			break;
+		case 0xb: // Unified Single Block data
+			break;
+		default:
+			break;
 	}
 }
 

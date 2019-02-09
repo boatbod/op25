@@ -35,14 +35,11 @@
 #include "hamming.h"
 
 dmr_cai::dmr_cai(int debug) :
+	d_debug(debug),
 	d_shift_reg(0),
 	d_chan(0),
-	d_debug(debug)
+	d_slot{dmr_slot(0, debug), dmr_slot(1, debug)} 
 {
-	d_slot[0].set_debug(debug);
-	d_slot[0].set_chan(0);
-	d_slot[1].set_debug(debug);
-	d_slot[1].set_chan(1);
 	d_cach_sig.clear();
 	memset(d_frame, 0, sizeof(d_frame));
 }
