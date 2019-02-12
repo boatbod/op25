@@ -33,6 +33,7 @@
 #include "bit_utils.h"
 #include "dmr_const.h"
 #include "hamming.h"
+#include "crc16.h"
 
 dmr_cai::dmr_cai(int debug) :
 	d_debug(debug),
@@ -58,18 +59,19 @@ dmr_cai::load_frame(const uint8_t fr_sym[]) {
 void
 dmr_cai::extract_cach_fragment() {
 	static const int slot_ids[] = {0, 1, 0, 0, 1, 1, 0, 1};
-	int tact, chan, lcss;
+	int tact, tact_at, tact_tc, tact_lcss;
 	uint8_t tactbuf[sizeof(cach_tact_bits)];
 
 	for (size_t i=0; i<sizeof(cach_tact_bits); i++)
 		tactbuf[i] = d_frame[CACH + cach_tact_bits[i]];
 	tact = hamming_7_4_decode[load_i(tactbuf, 7)];
-	chan = (tact>>2) & 1;
-	lcss = tact & 3;
-	d_shift_reg = (d_shift_reg << 1) + chan;
+	tact_at   = (tact>>3) & 1; // Access Type
+	tact_tc   = (tact>>2) & 1; // TDMA Channel
+	tact_lcss = tact & 3;      // Link Control Start/Stop
+	d_shift_reg = (d_shift_reg << 1) + tact_tc;
 	d_chan = slot_ids[d_shift_reg & 7];
 
-	switch(lcss) {
+	switch(tact_lcss) {
 		case 0: // Single-fragment CSBK
 			// TODO: do something useful
 			break;
@@ -94,7 +96,7 @@ dmr_cai::extract_cach_fragment() {
 bool
 dmr_cai::decode_shortLC()
 {
-	bit_vector slc(68, false);
+	bool slc[68];
 
 	// deinterleave
 	int i, src;
@@ -105,9 +107,9 @@ dmr_cai::decode_shortLC()
 	slc[i] = d_cach_sig[i];
 
 	// apply error correction
-	CHamming::decode17123(slc, 0);
-	CHamming::decode17123(slc, 17);
-	CHamming::decode17123(slc, 34);
+	CHamming::decode17123(slc + 0);
+	CHamming::decode17123(slc + 17);
+	CHamming::decode17123(slc + 34);
 
 	// parity check
 	for (i = 0; i < 17; i++) {
@@ -115,16 +117,22 @@ dmr_cai::decode_shortLC()
 			return false;
 	}
 
-	// remove hamming and parity bits and leave only 36 bits of Short LC
-	slc.erase(slc.begin()+46, slc.end());
-	slc.erase(slc.begin()+29, slc.begin()+29+5);
-	slc.erase(slc.begin()+12, slc.begin()+12+5);
+	// remove hamming and leave 36 bits of Short LC
+	for (i = 17; i < 29; i++) {
+		slc[i-5] = slc[i];
+	}
+	for (i = 34; i < 46; i++) {
+		slc[i-10] = slc[i];
+	}
 
-	// TODO validate CRC8
+	// validate CRC8
+	if (crc8((uint8_t*)slc, 36) != 0)
+		return false;
 
 	// extract useful data
 	if (d_debug >= 10) {
-		uint8_t slco, d0, d1, d2 = 0;
+		uint8_t slco, d0, d1, d2;
+		slco = 0; d0 = 0; d1 = 0; d2 = 0;
 		for (i = 0; i < 4; i++) {
 			slco <<= 1;
 			slco |= slc[i];

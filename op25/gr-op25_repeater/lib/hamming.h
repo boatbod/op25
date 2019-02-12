@@ -22,29 +22,25 @@
 #ifndef	Hamming_H
 #define	Hamming_H
 
-#include <vector>
-
-typedef std::vector<bool> bit_vector;
-
 class CHamming {
 public:
-	//static void encode15113_1(bool* d);
-	static int decode15113_1(bit_vector& d, int s);
+	static void encode15113_1(bool* d);
+	static bool decode15113_1(bool* d);
 
-	//static void encode15113_2(bool* d);
-	static int decode15113_2(bit_vector& d, int s);
+	static void encode15113_2(bool* d);
+	static bool decode15113_2(bool* d);
 
-	//static void encode1393(bool* d);
-	static int decode1393(bit_vector& d, int s);
+	static void encode1393(bool* d);
+	static bool decode1393(bool* d);
 
-	//static void encode1063(bool* d);
-	static int decode1063(bit_vector& d, int s);
+	static void encode1063(bool* d);
+	static bool decode1063(bool* d);
 
-	//static void encode16114(bool* d);
-	static int decode16114(bit_vector& d, int s);
+	static void encode16114(bool* d);
+	static bool decode16114(bool* d);
 
-	//static void encode17123(bool* d);
-	static int decode17123(bit_vector& d, int s);
+	static void encode17123(bool* d);
+	static bool decode17123(bool* d);
 };
 
 #endif

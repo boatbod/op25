@@ -26,8 +26,23 @@
 
 #include "dmr_const.h"
 #include "dmr_slot.h"
+#include "bptc19696.h"
 
 typedef std::vector<bool> bit_vector;
+
+static const uint8_t VOICE_LC_HEADER_CRC_MASK[]    = {1,0,0,1,0,1,1,0,1,0,0,1,0,1,1,0,1,0,0,1,0,1,1,0}; // 0x969696
+static const uint8_t TERMINATOR_WITH_LC_CRC_MASK[] = {1,0,0,1,1,0,0,1,1,0,0,1,1,0,0,1,1,0,0,1,1,0,0,1}; // 0x999999
+static const uint8_t PI_HEADER_CRC_MASK[]          = {0,1,1,0,1,0,0,1,0,1,1,0,1,0,0,1};                 // 0x6969
+static const uint8_t DATA_HEADER_CRC_MASK[]        = {1,1,0,0,1,1,0,0,1,1,0,0,1,1,0,0};                 // 0xCCCC
+static const uint8_t CSBK_CRC_MASK[]               = {1,0,1,0,0,1,0,1,1,0,1,0,0,1,0,1};                 // 0xA5A5
+
+static const unsigned int SLOT_SIZE                = 264; // size in bits
+static const unsigned int PAYLOAD_L                =   0; // starting position in bits
+static const unsigned int PAYLOAD_R                = 156;
+static const unsigned int SYNC_EMB                 = 108;
+static const unsigned int SLOT_L                   =  98;
+static const unsigned int SLOT_R                   = 156;
+
 
 class dmr_slot {
 public:
@@ -45,21 +60,16 @@ public:
 	void load_slot(const uint8_t slot[]);
 
 private:
-	static const int SLOT_SIZE  = 264; // bits
-	static const int PAYLOAD_L  =   0;
-	static const int PAYLOAD_R  = 156;
-	static const int SYNC_EMB   = 108;
-	static const int SLOT_L     =  98;
-	static const int SLOT_R     = 156;
-
 	uint8_t d_slot[SLOT_SIZE];       // array of bits comprising the current slot
 	bit_vector d_slot_type;
 	uint64_t d_type;
 	int d_debug;
 	int d_chan;
+	CBPTC19696 bptc;
 
 	bool decode_slot_type();
-
+	bool decode_csbk(uint8_t* csbk);
+	bool decode_vlch(uint8_t* vlch);
 };
 
 #endif /* INCLUDED_DMR_SLOT_H */

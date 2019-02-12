@@ -146,7 +146,7 @@ void rx_sync::dmr_sync(const uint8_t bitbuf[], int& current_slot, bool& unmute) 
 	d_shift_reg = (d_shift_reg << 1) + chan;
 	current_slot = slot_ids[d_shift_reg & 7];
 
-	if ((d_debug > 1) && (chan != current_slot)) {
+	if ((d_debug >= 10) && (chan != current_slot)) {
 		fprintf(stderr, "DMR cach chan=%d does not match current_slot=%d\n", chan, current_slot);
 	}
 
@@ -160,11 +160,11 @@ void rx_sync::dmr_sync(const uint8_t bitbuf[], int& current_slot, bool& unmute) 
 	if (fstype > 0)
 		d_expires = d_symbol_count + MODE_DATA[d_current_type].expiration;
 	if (fstype == 1) {
-		if (!d_unmute_until[current_slot] && d_debug > 5)
+		if (!d_unmute_until[current_slot] && d_debug >= 5)
 			fprintf(stderr, "unmute slot %d\n", current_slot);
 		d_unmute_until[current_slot] = d_symbol_count + MODE_DATA[d_current_type].expiration;
 	} else if (fstype == 2) {
-		if (d_unmute_until[current_slot] && d_debug > 5)
+		if (d_unmute_until[current_slot] && d_debug >= 5)
 			fprintf(stderr, "mute slot %d\n", current_slot);
 		d_unmute_until[current_slot] = 0;
 	}
@@ -338,7 +338,7 @@ void rx_sync::rx_sym(const uint8_t sym)
 			d_rx_count = 0;
 		}
 		if (d_rx_count != MODE_DATA[d_current_type].sync_offset + (MODE_DATA[d_current_type].sync_len >> 1)) {
-			if (d_debug > 1)
+			if (d_debug >= 10)
 				fprintf(stderr, "resync at count %d for protocol %s\n", d_rx_count, MODE_DATA[d_current_type].type);
 			sync_reset();
 			d_rx_count = MODE_DATA[d_current_type].sync_offset + (MODE_DATA[d_current_type].sync_len >> 1);
@@ -348,7 +348,7 @@ void rx_sync::rx_sym(const uint8_t sym)
 		d_expires = d_symbol_count + MODE_DATA[d_current_type].expiration;
 	}
 	if (d_symbol_count >= d_expires) {
-		if (d_debug > 1)
+		if (d_debug >= 10)
 			fprintf(stderr, "%s: timeout, symbol %d\n", MODE_DATA[d_current_type].type, d_symbol_count);
 		d_current_type = RX_TYPE_NONE;
 		return;
