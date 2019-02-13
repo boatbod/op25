@@ -296,7 +296,7 @@ pngen23(uint32_t& Pr)
  * \param u0-u7 Result output vectors
  */
 
-static inline void
+static inline size_t
 imbe_header_decode(const voice_codeword& cw, uint32_t& u0, uint32_t& u1, uint32_t& u2, uint32_t& u3, uint32_t& u4, uint32_t& u5, uint32_t& u6, uint32_t& u7, uint32_t& E0, uint32_t& ET)
 {
    ET = 0;
@@ -340,6 +340,7 @@ imbe_header_decode(const voice_codeword& cw, uint32_t& u0, uint32_t& u1, uint32_
 
    u7 = extract(cw, 137, 144);
    u7 <<= 1; /* so that bit0 is free (see note about BOT bit */
+   return errs;
 }
 
 /*

@@ -209,6 +209,7 @@ void rx_sync::codeword(const uint8_t* cw, const enum codeword_types codeword_typ
 	uint8_t tmp_codeword [144];
 	uint32_t E0, ET;
 	uint32_t u[8];
+	size_t errs = 0;
 	bool do_fullrate = false;
 	bool do_silence = false;
 	bool do_tone = false;
@@ -216,12 +217,12 @@ void rx_sync::codeword(const uint8_t* cw, const enum codeword_types codeword_typ
 
 	switch(codeword_type) {
 	case CODEWORD_DMR:
-		interleaver.process_vcw(cw, b, U);
+		errs = interleaver.process_vcw(cw, b, U);
 		if (d_debug >= 10) {
 			packed_codeword p_cw;
 			interleaver.pack_cw(p_cw, U);
-			fprintf(stderr, "%s AMBE %02x %02x %02x %02x %02x %02x %02x\n", logts.get(),
-			       	p_cw[0], p_cw[1], p_cw[2], p_cw[3], p_cw[4], p_cw[5], p_cw[6]);
+			fprintf(stderr, "%s AMBE %02x %02x %02x %02x %02x %02x %02x errs %lu\n", logts.get(),
+			       	p_cw[0], p_cw[1], p_cw[2], p_cw[3], p_cw[4], p_cw[5], p_cw[6], errs);
 		}
 		if (mbe_dequantizeAmbeTone(&tone_mp[slot_id], U) == 0) {
 			do_tone = true;
@@ -253,15 +254,15 @@ void rx_sync::codeword(const uint8_t* cw, const enum codeword_types codeword_typ
 	case CODEWORD_P25P1:	// 144 bits
 		for (int i=0; i<144; i++)
 			fullrate_cw[i] = cw[i];
-		imbe_header_decode(fullrate_cw, u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7], E0, ET);
+		errs = imbe_header_decode(fullrate_cw, u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7], E0, ET);
 		do_fullrate = true;
 		if (d_debug >= 10) {
 			packed_codeword p_cw;
 			imbe_pack(p_cw, u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7]);
-			fprintf(stderr, "%s IMBE %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x\n",
+			fprintf(stderr, "%s IMBE %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x errs %lu\n",
 					logts.get(),
 					p_cw[0], p_cw[1], p_cw[2], p_cw[3], p_cw[4], p_cw[5],
-				       	p_cw[6], p_cw[7], p_cw[8], p_cw[9], p_cw[10]);
+				       	p_cw[6], p_cw[7], p_cw[8], p_cw[9], p_cw[10], errs);
 		}
 
 		break;

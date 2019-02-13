@@ -596,11 +596,12 @@ p25p1_fdma::process_voice(const bit_vector& A)
 			uint32_t E0, ET;
 			uint32_t u[8];
 			char s[128];
+			size_t errs = 0;
 			imbe_deinterleave(A, cw, i);
 
 			if ((d_do_output && !d_do_audio_output) || (d_debug >= 10)) {
 				// recover 88-bit IMBE voice code word : only needed for logging or wireshark
-				imbe_header_decode(cw, u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7], E0, ET);
+				errs = imbe_header_decode(cw, u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7], E0, ET);
 			}
 
 			if (d_debug >= 10) {
@@ -609,7 +610,7 @@ p25p1_fdma::process_voice(const bit_vector& A)
 				sprintf(s,"%02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x",
 						p_cw[0], p_cw[1], p_cw[2], p_cw[3], p_cw[4], p_cw[5],
 					       	p_cw[6], p_cw[7], p_cw[8], p_cw[9], p_cw[10]);
-				fprintf(stderr, "%s IMBE %s\n", logts.get(), s); // print to log in one operation
+				fprintf(stderr, "%s IMBE %s errs %lu\n", logts.get(), s, errs); // print to log in one operation
 			}
 			if (d_do_audio_output) {
 				if (!d_do_nocrypt || !encrypted()) {

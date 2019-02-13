@@ -27,10 +27,10 @@ typedef std::vector<uint8_t> packed_codeword;
 
 class p25p2_vf {
 public:
-	void process_vcw(const uint8_t vf[], int* b, int* u = NULL);
+	size_t process_vcw(const uint8_t vf[], int* b, int* u = NULL);
 	void encode_vcw(uint8_t vf[], const int* b);
 	void encode_dstar(uint8_t result[72], const int b[9], bool alt_dstar_interleave);
-	void decode_dstar(const uint8_t codeword[72], int b[9], bool alt_dstar_interleave);
+	size_t decode_dstar(const uint8_t codeword[72], int b[9], bool alt_dstar_interleave);
 	void pack_cw(packed_codeword& cw, const int* u);
 private:
 	void extract_vcw(const uint8_t _vf[], int& _c0, int& _c1, int& _c2, int& _c3);
