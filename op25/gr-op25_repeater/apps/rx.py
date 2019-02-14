@@ -107,7 +107,7 @@ class p25_rx_block (gr.top_block):
         self.stream_url = ""
 
         self.src = None
-        if (not options.input) and (not options.audio) and (not options.audio_if):
+        if (not options.ifile) and (not options.input) and (not options.audio) and (not options.audio_if):
             # check if osmocom is accessible
             try:
                 import osmosdr
@@ -147,8 +147,8 @@ class p25_rx_block (gr.top_block):
         if options.audio_if:
             self.channel_rate = 96000
 
-        if options.ifile:
-            self.channel_rate = 96000	# TODO: fixme
+        # if options.ifile:
+        #     self.channel_rate = 96000	# TODO: fixme
 
         # setup (read-only) attributes
         self.symbol_rate = 4800
@@ -194,7 +194,8 @@ class p25_rx_block (gr.top_block):
         elif options.audio:
             self.open_audio(self.channel_rate, options.gain, options.audio_input)
         elif options.ifile:
-            self.open_ifile(self.channel_rate, options.gain, options.ifile, options.seek)
+            # self.open_ifile(self.channel_rate, options.gain, options.ifile, options.seek)
+            self.open_ifile2(self.channel_rate, options.ifile)
         else:
             pass
 
@@ -686,6 +687,12 @@ class p25_rx_block (gr.top_block):
         self.source = blocks.multiply_const_cc(gain)
         self.connect(ifile, throttle, self.source)
         self.__set_rx_from_audio(speed)
+
+    def open_ifile2(self, capture_rate, file_name):
+        source = blocks.file_source(gr.sizeof_gr_complex, file_name, True)
+        throttle = blocks.throttle(gr.sizeof_gr_complex, capture_rate)
+        self.connect(source, throttle)
+        self.__build_graph(throttle, capture_rate)
 
     def open_audio_c(self, capture_rate, gain, audio_input_filename):
         self.info = {

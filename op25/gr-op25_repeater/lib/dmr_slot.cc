@@ -41,6 +41,7 @@
 dmr_slot::dmr_slot(const int chan, const int debug) :
 	d_chan(chan),
 	d_debug(debug),
+	d_lc_valid(false),
 	d_type(0)
 {
 	memset(d_slot, 0, sizeof(d_slot));
@@ -182,8 +183,29 @@ dmr_slot::decode_vlch(uint8_t* vlch) {
 	for (int i = 0; i < 24; i++)
 		vlch[i+72] ^= VOICE_LC_HEADER_CRC_MASK[i];
 
-	//if (crc16(vlch, 96) != 0)
-	//	return false;
+	return decode_lc(vlch, VOICE_LC);
+}
 
-	return true;
+bool
+dmr_slot::decode_tlc(uint8_t* tlc) {
+	// Apply TLC mask
+	for (int i = 0; i < 24; i++)
+		tlc[i+72] ^= TERMINATOR_WITH_LC_CRC_MASK[i];
+	return decode_lc(tlc, TERM_LC);
+}
+
+bool
+dmr_slot::decode_lc(uint8_t* lc, lc_type type) {
+	// Convert bits to bytes and apply Reed-Solomon(12,9) error correction
+	d_lc.assign(12,0);
+	for (int i = 0; i < 96; i++) {
+		d_lc[i / 8] = (d_lc[i / 8] << 1) | lc[i];
+	}
+	int errs = rs12.decode(d_lc);
+
+	// Discard parity information and check results
+	d_lc.resize(9);
+	d_lc_valid = (errs >= 0) ? true : false; 
+
+	return d_lc_valid;
 }

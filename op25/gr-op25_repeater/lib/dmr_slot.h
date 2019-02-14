@@ -27,8 +27,10 @@
 #include "dmr_const.h"
 #include "dmr_slot.h"
 #include "bptc19696.h"
+#include "ezpwd/rs"
 
 typedef std::vector<bool> bit_vector;
+typedef std::vector<uint8_t> byte_vector;
 
 static const uint8_t VOICE_LC_HEADER_CRC_MASK[]    = {1,0,0,1,0,1,1,0,1,0,0,1,0,1,1,0,1,0,0,1,0,1,1,0}; // 0x969696
 static const uint8_t TERMINATOR_WITH_LC_CRC_MASK[] = {1,0,0,1,1,0,0,1,1,0,0,1,1,0,0,1,1,0,0,1,1,0,0,1}; // 0x999999
@@ -42,6 +44,12 @@ static const unsigned int PAYLOAD_R                = 156;
 static const unsigned int SYNC_EMB                 = 108;
 static const unsigned int SLOT_L                   =  98;
 static const unsigned int SLOT_R                   = 156;
+
+enum lc_type {
+	VOICE_LC,
+	TERM_LC,
+	EMBED_LC
+};
 
 
 class dmr_slot {
@@ -60,16 +68,21 @@ public:
 	void load_slot(const uint8_t slot[]);
 
 private:
-	uint8_t d_slot[SLOT_SIZE];       // array of bits comprising the current slot
+	uint8_t d_slot[SLOT_SIZE];	// array of bits comprising the current slot
 	bit_vector d_slot_type;
+	byte_vector d_lc;
+	bool d_lc_valid;
 	uint64_t d_type;
 	int d_debug;
 	int d_chan;
 	CBPTC19696 bptc;
+	ezpwd::RS<255,252> rs12;	// Reed-Solomon(12,9) for Link Control
 
 	bool decode_slot_type();
 	bool decode_csbk(uint8_t* csbk);
 	bool decode_vlch(uint8_t* vlch);
+	bool decode_tlc(uint8_t* tlc);
+	bool decode_lc(uint8_t* lc, lc_type type);
 };
 
 #endif /* INCLUDED_DMR_SLOT_H */
