@@ -507,6 +507,10 @@ int p25p2_tdma::handle_acch_frame(const uint8_t dibits[], bool fast)
 	if (rs_errs < 0)
 		return -1;
 
+	// Adjust FEC error counter to eliminate erasures
+	if (rs_errs >= Erasures.size())
+		rs_errs -= Erasures.size();
+
 	if (fast) {
 		j = 9;
 		len = 144;
