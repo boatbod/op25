@@ -9,7 +9,9 @@
             "if_rate": 24000, 
             "name": "p25", 
             "plot": "symbol", 
-            "symbol_rate": 4800
+            "symbol_rate": 4800,
+            "raw_output": "",
+            "raw_input": ""
         }, 
         {
             "demod_type": "fsk4", 
@@ -20,7 +22,9 @@
             "if_rate": 24000, 
             "name": "ysf", 
             "plot": "datascope", 
-            "symbol_rate": 4800
+            "symbol_rate": 4800,
+            "raw_output": "",
+            "raw_input": ""
         }, 
         {
             "demod_type": "fsk4", 
@@ -31,7 +35,9 @@
             "if_rate": 24000, 
             "name": "dmr", 
             "plot": "symbol", 
-            "symbol_rate": 4800
+            "symbol_rate": 4800,
+            "raw_output": "",
+            "raw_input": ""
         }
     ], 
     "devices": [

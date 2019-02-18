@@ -83,6 +83,9 @@ class channel(object):
         sys.stderr.write('channel (dev %s): %s\n' % (dev.name, config))
         self.device = dev
         self.name = config['name']
+        self.raw_sink = None
+        self.raw_file = None
+        self.throttle = None
         self.symbol_rate = _def_symbol_rate
         if 'symbol_rate' in config.keys():
             self.symbol_rate = config['symbol_rate']
@@ -178,7 +181,18 @@ class rx_block (gr.top_block):
                 continue
             chan = channel(cfg, dev, self.verbosity)
             self.channels.append(chan)
-            self.connect(dev.src, chan.demod, chan.decoder)
+            if (cfg.has_key("raw_input")) and (cfg['raw_input'] != ""):
+                sys.stderr.write("Reading raw symbols from file: %s\n" % cfg['raw_input'])
+                chan.raw_file = blocks.file_source(gr.sizeof_char, cfg['raw_input'], True)
+                chan.throttle = blocks.throttle(gr.sizeof_char, 4800)
+                self.connect(chan.raw_file, chan.throttle)
+                self.connect(chan.throttle, chan.decoder)
+            else:
+                self.connect(dev.src, chan.demod, chan.decoder)
+                if (cfg.has_key("raw_output")) and (cfg['raw_output'] != ""):
+                    sys.stderr.write("Saving raw symbols to file: %s\n" % cfg['raw_output'])
+                    chan.raw_sink = blocks.file_sink(gr.sizeof_char, cfg['raw_output'])
+                    self.connect(chan.demod, chan.raw_sink)
 
     def scan_channels(self):
         for chan in self.channels:
@@ -231,7 +245,7 @@ class rx_main(object):
             self.tb.stop()
             self.tb.kill()
         except:
-            self.lock()
+            #self.lock()
             self.tb.stop()
             self.tb.kill()
             sys.stderr.write('main: exception occurred\n')
