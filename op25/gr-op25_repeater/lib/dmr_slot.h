@@ -45,13 +45,6 @@ static const unsigned int SYNC_EMB                 = 108;
 static const unsigned int SLOT_L                   =  98;
 static const unsigned int SLOT_R                   = 156;
 
-enum lc_type {
-	VOICE_LC,
-	TERM_LC,
-	EMBED_LC
-};
-
-
 class dmr_slot {
 public:
 	dmr_slot(const int chan, const int debug = 0);
@@ -82,7 +75,14 @@ private:
 	bool decode_csbk(uint8_t* csbk);
 	bool decode_vlch(uint8_t* vlch);
 	bool decode_tlc(uint8_t* tlc);
-	bool decode_lc(uint8_t* lc, lc_type type);
+	bool decode_lc(uint8_t* lc, int* rs_errs = NULL);
+
+	inline uint8_t  get_lc_pf()      { return (d_lc[0] & 0x80) >> 7; };
+	inline uint8_t  get_lc_flco()    { return d_lc[0] & 0x3f; };
+	inline uint8_t  get_lc_fid()     { return d_lc[1]; };
+	inline uint8_t  get_lc_svcopt()  { return d_lc[2]; };
+	inline uint32_t get_lc_dstaddr() { return (d_lc[3] << 16) + (d_lc[4] << 8) + d_lc[5]; };
+	inline uint32_t get_lc_srcaddr() { return (d_lc[6] << 16) + (d_lc[7] << 8) + d_lc[8]; };
 };
 
 #endif /* INCLUDED_DMR_SLOT_H */

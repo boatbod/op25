@@ -98,7 +98,7 @@ dmr_slot::decode_slot_type() {
 		return false;
 
 	if (d_debug >= 10) {
-		fprintf(stderr, "Slot(%d), CC(%x), Data Type=%x, errs=%d\n", d_chan, get_cc(), get_data_type(), errs);
+		fprintf(stderr, "Slot(%d), CC(%x), Data Type=%x, gly_errs=%d\n", d_chan, get_cc(), get_data_type(), errs);
 	}
 
 	switch(get_data_type()) {
@@ -107,24 +107,26 @@ dmr_slot::decode_slot_type() {
 		}
 		case 0x1: { // Voice LC header
 			uint8_t vlch[96];
-			bptc.decode(d_slot, vlch);
-			rc = decode_vlch(vlch);
-
-			if (d_debug >= 5) {
-				fprintf(stderr, "Slot(%d), CC(%x), Voice LC\n", d_chan, get_cc());
-			}
+			if (bptc.decode(d_slot, vlch))
+				rc = decode_vlch(vlch);
+			else
+				rc = false;
 			break;
 		}
 		case 0x2: { // Terminator with LC
-			if (d_debug >= 5) {
-				fprintf(stderr, "Slot(%d), CC(%x), Terminator LC\n", d_chan, get_cc());
-			}
+			uint8_t tlc[96];
+			if (bptc.decode(d_slot, tlc))
+				rc = decode_tlc(tlc);
+			else
+				rc = false;
 			break;
 		}
 		case 0x3: { // CSBK
 			uint8_t csbk[96];
-			bptc.decode(d_slot, csbk);
-			rc = decode_csbk(csbk);
+			if (bptc.decode(d_slot, csbk))
+				rc = decode_csbk(csbk);
+			else
+				rc = false;
 		}
 		case 0x4: // MBC
 			break;
@@ -169,7 +171,7 @@ dmr_slot::decode_csbk(uint8_t* csbk) {
 	uint64_t csbk_data = extract(csbk, 16, 80);
 
 	if (d_debug >= 5) {
-		fprintf(stderr, "Slot(%d), CC(%x), CSBK LB(%d), PF(%d), CSBKO(%x), FID(%x), DATA(%08lx)\n", d_chan, get_cc(), csbk_lb, csbk_pf, csbk_o, csbk_fid, csbk_data);
+		fprintf(stderr, "Slot(%d), CC(%x), CSBK LB(%d), PF(%d), CSBKO(%02x), FID(%02x), DATA(%08lx)\n", d_chan, get_cc(), csbk_lb, csbk_pf, csbk_o, csbk_fid, csbk_data);
 	}
 
 	// TODO: add more known CSBKO opcodes
@@ -183,7 +185,18 @@ dmr_slot::decode_vlch(uint8_t* vlch) {
 	for (int i = 0; i < 24; i++)
 		vlch[i+72] ^= VOICE_LC_HEADER_CRC_MASK[i];
 
-	return decode_lc(vlch, VOICE_LC);
+	int rs_errs = 0;
+	bool rc = decode_lc(vlch, &rs_errs);
+
+	if (d_debug >= 5) {
+		if (rc)
+			fprintf(stderr, "Slot(%d), CC(%x), VOICE LC PF(%d), FLCO(%02x), FID(%02x), SVCOPT(%02X), DSTADDR(%06x), SRCADDR(%06x), rs_errs(%d)\n", 
+				d_chan, get_cc(), get_lc_pf(), get_lc_flco(), get_lc_fid(), get_lc_svcopt(), get_lc_dstaddr(), get_lc_srcaddr(), rs_errs);
+		else
+			fprintf(stderr, "Slot(%d), CC(%x), VOICE LC decode error, rs_errs(%d)\n", d_chan, get_cc(), rs_errs);
+	}
+
+	return rc;
 }
 
 bool
@@ -191,21 +204,42 @@ dmr_slot::decode_tlc(uint8_t* tlc) {
 	// Apply TLC mask
 	for (int i = 0; i < 24; i++)
 		tlc[i+72] ^= TERMINATOR_WITH_LC_CRC_MASK[i];
-	return decode_lc(tlc, TERM_LC);
+
+	int rs_errs = 0;
+	bool rc = decode_lc(tlc, &rs_errs);
+
+	if (d_debug >= 5) {
+		if (rc)
+			fprintf(stderr, "Slot(%d), CC(%x), TERM LC PF(%d), FLCO(%02x), FID(%02x), SVCOPT(%02X), DSTADDR(%06x), SRCADDR(%06x), rs_errs(%d)\n", 
+				d_chan, get_cc(), get_lc_pf(), get_lc_flco(), get_lc_fid(), get_lc_svcopt(), get_lc_dstaddr(), get_lc_srcaddr(), rs_errs);
+		else
+			fprintf(stderr, "Slot(%d), CC(%x), TERM LC decode failure, rs_errs(%d)\n", d_chan, get_cc(), rs_errs);
+	}
+	return rc;
 }
 
 bool
-dmr_slot::decode_lc(uint8_t* lc, lc_type type) {
+dmr_slot::decode_lc(uint8_t* lc, int* errs) {
 	// Convert bits to bytes and apply Reed-Solomon(12,9) error correction
 	d_lc.assign(12,0);
 	for (int i = 0; i < 96; i++) {
 		d_lc[i / 8] = (d_lc[i / 8] << 1) | lc[i];
 	}
-	int errs = rs12.decode(d_lc);
+	int rs_errs = rs12.decode(d_lc);
+
+	if (d_debug >=10) {
+		fprintf(stderr, "FULL LC: %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x, rs_errs(%d)\n",
+			d_lc[0], d_lc[1], d_lc[2], d_lc[3], d_lc[4], d_lc[5],
+			d_lc[6], d_lc[7], d_lc[7], d_lc[9], d_lc[10], d_lc[11],
+			rs_errs);
+	}
+
+	if (errs != NULL)
+		*errs = rs_errs;
 
 	// Discard parity information and check results
 	d_lc.resize(9);
-	d_lc_valid = (errs >= 0) ? true : false; 
+	d_lc_valid = (rs_errs >= 0) ? true : false; 
 
 	return d_lc_valid;
 }

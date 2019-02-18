@@ -72,7 +72,7 @@ dmr_cai::extract_cach_fragment() {
 	d_chan = slot_ids[d_shift_reg & 7];
 
 	switch(tact_lcss) {
-		case 0: // Single-fragment CSBK
+		case 0: // Begin CSBK
 			// TODO: do something useful
 			break;
 		case 1: // Begin Short_LC
@@ -80,11 +80,11 @@ dmr_cai::extract_cach_fragment() {
 			for (size_t i=0; i<sizeof(cach_payload_bits); i++)
 				d_cach_sig.push_back(d_frame[CACH + cach_payload_bits[i]]);
 			break;
-		case 2: // End Short_LC
+		case 2: // End Short_LC or CSBK
 			for (size_t i=0; i<sizeof(cach_payload_bits); i++)
 				d_cach_sig.push_back(d_frame[CACH + cach_payload_bits[i]]);
 			break;
-		case 3: // Continue Short_LC
+		case 3: // Continue Short_LC or CSBK
 			for (size_t i=0; i<sizeof(cach_payload_bits); i++)
 				d_cach_sig.push_back(d_frame[CACH + cach_payload_bits[i]]);
 				decode_shortLC();

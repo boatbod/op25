@@ -1,7 +1,7 @@
 /*
  *	 Copyright (C) 2012 by Ian Wraith
  *   Copyright (C) 2015 by Jonathan Naylor G4KLX
-
+ *
  *   Modifications of original code to work with OP25
  *   Copyright (C) 2019 by Graham J. Norbury
  *
@@ -43,7 +43,7 @@ CBPTC19696::~CBPTC19696()
 }
 
 // The main decode function
-void CBPTC19696::decode(const unsigned char* in, unsigned char* out)
+bool CBPTC19696::decode(const unsigned char* in, unsigned char* out)
 {
 	assert(in != NULL);
 	assert(out != NULL);
@@ -55,10 +55,12 @@ void CBPTC19696::decode(const unsigned char* in, unsigned char* out)
 	decodeDeInterleave();
 
 	// Error check
-	decodeErrorCheck();
+	bool rc = decodeErrorCheck();
 
 	// Extract Data
 	decodeExtractData(out);
+
+	return rc;
 }
 
 #if 0
@@ -110,7 +112,7 @@ void CBPTC19696::decodeDeInterleave()
 }
 	
 // Check each row with a Hamming (15,11,3) code and each column with a Hamming (13,9,3) code
-void CBPTC19696::decodeErrorCheck()
+bool CBPTC19696::decodeErrorCheck()
 {
 	bool fixing;
 	unsigned int count = 0U;
@@ -146,6 +148,8 @@ void CBPTC19696::decodeErrorCheck()
 
 		count++;
 	} while (fixing && count < 5U);
+
+	return !fixing;
 }
 
 // Extract the 96 bits of payload
