@@ -183,8 +183,8 @@ class rx_block (gr.top_block):
             self.channels.append(chan)
             if (cfg.has_key("raw_input")) and (cfg['raw_input'] != ""):
                 sys.stderr.write("Reading raw symbols from file: %s\n" % cfg['raw_input'])
-                chan.raw_file = blocks.file_source(gr.sizeof_char, cfg['raw_input'], True)
-                chan.throttle = blocks.throttle(gr.sizeof_char, 4800)
+                chan.raw_file = blocks.file_source(gr.sizeof_char, cfg['raw_input'], False)
+                chan.throttle = blocks.throttle(gr.sizeof_char, chan.symbol_rate)
                 self.connect(chan.raw_file, chan.throttle)
                 self.connect(chan.throttle, chan.decoder)
             else:
