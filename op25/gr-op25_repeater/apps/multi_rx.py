@@ -185,6 +185,7 @@ class rx_block (gr.top_block):
                 sys.stderr.write("Reading raw symbols from file: %s\n" % cfg['raw_input'])
                 chan.raw_file = blocks.file_source(gr.sizeof_char, cfg['raw_input'], False)
                 chan.throttle = blocks.throttle(gr.sizeof_char, chan.symbol_rate)
+                chan.throttle.set_max_noutput_items(chan.symbol_rate/50);
                 self.connect(chan.raw_file, chan.throttle)
                 self.connect(chan.throttle, chan.decoder)
             else:

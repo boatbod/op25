@@ -296,6 +296,7 @@ class p25_rx_block (gr.top_block):
                 self.toggle_mixer()
 
             if self.options.raw_symbols:
+                sys.stderr.write("Saving raw symbols to file: %s\n" % self.options.raw_symbols)
                 self.sink_sf = blocks.file_sink(gr.sizeof_char, self.options.raw_symbols)
                 self.connect(self.demod, self.sink_sf)
 
@@ -706,8 +707,10 @@ class p25_rx_block (gr.top_block):
         self.__build_graph(throttle, capture_rate)
 
     def open_symbols(self, symbol_rate, file_name):
+        sys.stderr.write("Reading raw symbols from file: %s\n" % self.options.symbols)
         source = blocks.file_source(gr.sizeof_char, file_name, False)
         throttle = blocks.throttle(gr.sizeof_char, symbol_rate)
+        throttle.set_max_noutput_items(symbol_rate/50);
         self.connect(source, throttle)
         self.__build_graph(throttle, symbol_rate)
 
