@@ -93,16 +93,21 @@ dmr_slot::decode_slot_type() {
 		d_slot_type.push_back(d_slot[i]);
 
 	// golay (20,8)
-	int errs = CGolay2087::decode(d_slot_type);
-	if (errs >= 4)
+	int gly_errs = CGolay2087::decode(d_slot_type);
+	if (gly_errs > 3) // only 3-bit errors are fully correctable
 		return false;
 
 	if (d_debug >= 10) {
-		fprintf(stderr, "Slot(%d), CC(%x), Data Type=%x, gly_errs=%d\n", d_chan, get_cc(), get_data_type(), errs);
+		fprintf(stderr, "Slot(%d), CC(%x), Data Type=%x, gly_errs=%d\n", d_chan, get_cc(), get_data_type(), gly_errs);
 	}
 
 	switch(get_data_type()) {
-		case 0x0: { // PI header
+		case 0x0: { // Privacy Information header
+			uint8_t pinf[96];
+			if (bptc.decode(d_slot, pinf))
+				rc = decode_pinf(pinf);
+			else
+				rc = false;
 			break;
 		}
 		case 0x1: { // Voice LC header
@@ -174,7 +179,7 @@ dmr_slot::decode_csbk(uint8_t* csbk) {
 		fprintf(stderr, "Slot(%d), CC(%x), CSBK LB(%d), PF(%d), CSBKO(%02x), FID(%02x), DATA(%08lx)\n", d_chan, get_cc(), csbk_lb, csbk_pf, csbk_o, csbk_fid, csbk_data);
 	}
 
-	// TODO: add more known CSBKO opcodes
+	// TODO: add known CSBKO opcodes
 
 	return true;
 }
@@ -187,14 +192,15 @@ dmr_slot::decode_vlch(uint8_t* vlch) {
 
 	int rs_errs = 0;
 	bool rc = decode_lc(vlch, &rs_errs);
+	if (!rc)
+		return false;
 
 	if (d_debug >= 5) {
-		if (rc)
-			fprintf(stderr, "Slot(%d), CC(%x), VOICE LC PF(%d), FLCO(%02x), FID(%02x), SVCOPT(%02X), DSTADDR(%06x), SRCADDR(%06x), rs_errs(%d)\n", 
-				d_chan, get_cc(), get_lc_pf(), get_lc_flco(), get_lc_fid(), get_lc_svcopt(), get_lc_dstaddr(), get_lc_srcaddr(), rs_errs);
-		else
-			fprintf(stderr, "Slot(%d), CC(%x), VOICE LC decode error, rs_errs(%d)\n", d_chan, get_cc(), rs_errs);
+		fprintf(stderr, "Slot(%d), CC(%x), VOICE LC PF(%d), FLCO(%02x), FID(%02x), SVCOPT(%02X), DSTADDR(%06x), SRCADDR(%06x), rs_errs(%d)\n", 
+			d_chan, get_cc(), get_lc_pf(), get_lc_flco(), get_lc_fid(), get_lc_svcopt(), get_lc_dstaddr(), get_lc_srcaddr(), rs_errs);
 	}
+
+	// TODO: add known FLCO opcodes
 
 	return rc;
 }
@@ -207,14 +213,16 @@ dmr_slot::decode_tlc(uint8_t* tlc) {
 
 	int rs_errs = 0;
 	bool rc = decode_lc(tlc, &rs_errs);
+	if (!rc)
+		return false;
 
 	if (d_debug >= 5) {
-		if (rc)
-			fprintf(stderr, "Slot(%d), CC(%x), TERM LC PF(%d), FLCO(%02x), FID(%02x), SVCOPT(%02X), DSTADDR(%06x), SRCADDR(%06x), rs_errs(%d)\n", 
-				d_chan, get_cc(), get_lc_pf(), get_lc_flco(), get_lc_fid(), get_lc_svcopt(), get_lc_dstaddr(), get_lc_srcaddr(), rs_errs);
-		else
-			fprintf(stderr, "Slot(%d), CC(%x), TERM LC decode failure, rs_errs(%d)\n", d_chan, get_cc(), rs_errs);
+		fprintf(stderr, "Slot(%d), CC(%x), TERM LC PF(%d), FLCO(%02x), FID(%02x), SVCOPT(%02X), DSTADDR(%06x), SRCADDR(%06x), rs_errs(%d)\n", 
+			d_chan, get_cc(), get_lc_pf(), get_lc_flco(), get_lc_fid(), get_lc_svcopt(), get_lc_dstaddr(), get_lc_srcaddr(), rs_errs);
 	}
+
+	// TODO: add known FLCO opcodes
+
 	return rc;
 }
 
@@ -242,4 +250,27 @@ dmr_slot::decode_lc(uint8_t* lc, int* errs) {
 	d_lc_valid = (rs_errs >= 0) ? true : false; 
 
 	return d_lc_valid;
+}
+
+bool
+dmr_slot::decode_pinf(uint8_t* pinf) {
+	// Apply PI mask and validate CRC
+	for (int i = 0; i < 16; i++)
+		pinf[i+80] ^= PI_HEADER_CRC_MASK[i];
+	if (crc16(pinf, 96) != 0)
+		return false;
+
+	// Convert bits to bytes and save PI information
+	d_pi.assign(10,0);
+	for (int i = 0; i < 80; i++) {
+		d_pi[i / 8] = (d_pi[i / 8] << 1) | pinf[i];
+	}
+
+	if (d_debug >= 5) {
+		fprintf(stderr, "Slot(%d), CC(%x), PI HEADER: %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x\n",
+			d_chan, get_cc(),
+			d_pi[0], d_pi[1], d_pi[2], d_pi[3], d_pi[4], d_pi[5], d_pi[6], d_pi[7], d_pi[8], d_pi[9]);
+	}
+
+	return true;
 }

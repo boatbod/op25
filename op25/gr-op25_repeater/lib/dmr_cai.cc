@@ -97,6 +97,7 @@ bool
 dmr_cai::decode_shortLC()
 {
 	bool slc[68];
+	bool hmg_result = true;
 
 	// deinterleave
 	int i, src;
@@ -107,9 +108,13 @@ dmr_cai::decode_shortLC()
 	slc[i] = d_cach_sig[i];
 
 	// apply error correction
-	CHamming::decode17123(slc + 0);
-	CHamming::decode17123(slc + 17);
-	CHamming::decode17123(slc + 34);
+	hmg_result &= CHamming::decode17123(slc + 0);
+	hmg_result &= CHamming::decode17123(slc + 17);
+	hmg_result &= CHamming::decode17123(slc + 34);
+
+	// check hamming results for unrecoverable errors
+	if (!hmg_result)
+		return false;
 
 	// parity check
 	for (i = 0; i < 17; i++) {
@@ -126,6 +131,7 @@ dmr_cai::decode_shortLC()
 	}
 
 	// validate CRC8
+	// are earlier checks even necessary as long as this passes?
 	if (crc8((uint8_t*)slc, 36) != 0)
 		return false;
 

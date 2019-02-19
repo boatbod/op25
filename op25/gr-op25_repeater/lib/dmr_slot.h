@@ -64,6 +64,7 @@ private:
 	uint8_t d_slot[SLOT_SIZE];	// array of bits comprising the current slot
 	bit_vector d_slot_type;
 	byte_vector d_lc;
+	byte_vector d_pi;
 	bool d_lc_valid;
 	uint64_t d_type;
 	int d_debug;
@@ -76,6 +77,7 @@ private:
 	bool decode_vlch(uint8_t* vlch);
 	bool decode_tlc(uint8_t* tlc);
 	bool decode_lc(uint8_t* lc, int* rs_errs = NULL);
+	bool decode_pinf(uint8_t* pinf);
 
 	inline uint8_t  get_lc_pf()      { return (d_lc[0] & 0x80) >> 7; };
 	inline uint8_t  get_lc_flco()    { return d_lc[0] & 0x3f; };
