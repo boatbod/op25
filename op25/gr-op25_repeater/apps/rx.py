@@ -107,7 +107,7 @@ class p25_rx_block (gr.top_block):
         self.stream_url = ""
 
         self.src = None
-        if (not options.ifile) and (not options.input) and (not options.audio) and (not options.audio_if):
+        if (not options.ifile) and (not options.input) and (not options.audio) and (not options.audio_if) and (not options.symbols):
             # check if osmocom is accessible
             try:
                 import osmosdr
@@ -146,9 +146,6 @@ class p25_rx_block (gr.top_block):
 
         if options.audio_if:
             self.channel_rate = 96000
-
-        # if options.ifile:
-        #     self.channel_rate = 96000	# TODO: fixme
 
         # setup (read-only) attributes
         self.symbol_rate = 4800
@@ -194,8 +191,9 @@ class p25_rx_block (gr.top_block):
         elif options.audio:
             self.open_audio(self.channel_rate, options.gain, options.audio_input)
         elif options.ifile:
-            # self.open_ifile(self.channel_rate, options.gain, options.ifile, options.seek)
             self.open_ifile2(self.channel_rate, options.ifile)
+	elif options.symbols:
+            self.open_symbols(self.symbol_rate, options.symbols)
         else:
             pass
 
@@ -257,6 +255,8 @@ class p25_rx_block (gr.top_block):
 
         if self.baseband_input:
             self.demod = p25_demodulator.p25_demod_fb(input_rate=capture_rate, excess_bw=self.options.excess_bw)
+	elif self.options.symbols:
+            self.demod = None
         else:	# complex input
             # local osc
             self.lo_freq = self.options.offset
@@ -279,22 +279,25 @@ class p25_rx_block (gr.top_block):
         self.decoder = p25_decoder.p25_decoder_sink_b(dest='audio', do_imbe=self.options.vocoder, num_ambe=num_ambe, wireshark_host=self.options.wireshark_host, udp_port=udp_port, do_msgq = True, msgq=self.rx_q, audio_output=self.options.audio_output, debug=self.options.verbosity, nocrypt=self.options.nocrypt)
 
         # connect it all up
-        self.connect(source, self.demod, self.decoder)
+	if self.options.symbols:
+            self.connect(source, self.decoder)
+        else:
+            self.connect(source, self.demod, self.decoder)
 
-        if self.options.plot_mode == 'constellation':
-            self.toggle_constellation()
-        elif self.options.plot_mode == 'symbol':
-            self.toggle_symbol()
-        elif self.options.plot_mode == 'fft':
-            self.toggle_fft()
-        elif self.options.plot_mode == 'datascope':
-            self.toggle_eye()
-        elif self.options.plot_mode == 'mixer':
-            self.toggle_mixer()
+            if self.options.plot_mode == 'constellation':
+                self.toggle_constellation()
+            elif self.options.plot_mode == 'symbol':
+                self.toggle_symbol()
+            elif self.options.plot_mode == 'fft':
+                self.toggle_fft()
+            elif self.options.plot_mode == 'datascope':
+                self.toggle_eye()
+            elif self.options.plot_mode == 'mixer':
+                self.toggle_mixer()
 
-        if self.options.raw_symbols:
-            self.sink_sf = blocks.file_sink(gr.sizeof_char, self.options.raw_symbols)
-            self.connect(self.demod, self.sink_sf)
+            if self.options.raw_symbols:
+                self.sink_sf = blocks.file_sink(gr.sizeof_char, self.options.raw_symbols)
+                self.connect(self.demod, self.sink_sf)
 
         logfile_workers = []
         if self.options.phase2_tdma:
@@ -361,8 +364,10 @@ class p25_rx_block (gr.top_block):
             rate = 6000
         else:
             rate = 4800
+
         self.set_sps(rate)
-        self.demod.set_omega(rate)
+	if not self.options.symbols:
+            self.demod.set_omega(rate)
 
     def set_sps(self, rate):
         self.sps = self.basic_rate / rate
@@ -377,7 +382,7 @@ class p25_rx_block (gr.top_block):
 
         if self.options.hamlib_model:
             self.hamlib.set_freq(freq)
-        elif params['center_frequency']:
+        elif (not self.options.symbols) and params['center_frequency']:
             relative_freq = center_freq - freq
             if abs(relative_freq + self.options.offset) > self.channel_rate / 2:
                 self.lo_freq = self.options.offset					# relative tune not possible
@@ -393,8 +398,10 @@ class p25_rx_block (gr.top_block):
                     self.lo_freq = self.options.offset					# relative tune unsuccessful
                     self.demod.set_relative_frequency(self.lo_freq)			# reset demod relative freq
                     self.set_freq(freq + offset)					# direct tune instead
-        else:
+        elif not self.options.symbols:
             self.set_freq(freq + offset)
+        else:
+            pass	# fake tuning when playing back symbols file
 
         self.configure_tdma(params)
         self.freq_update()
@@ -456,7 +463,8 @@ class p25_rx_block (gr.top_block):
         self.src.set_freq_corr(ppm)
 
     def set_freq_tune(self, val):
-        self.demod.set_relative_frequency(val + self.lo_freq)
+        if self.demod is not None:
+            self.demod.set_relative_frequency(val + self.lo_freq)
 
     def set_freq(self, target_freq):
         """
@@ -498,7 +506,10 @@ class p25_rx_block (gr.top_block):
         return True
 
     def toggle_plot(self, plot_type):
-        plot_off = 0;
+	if self.options.symbols:
+            return              # plots not supported when replacing symbol
+
+        plot_off = 0
         if (self.fft_sink is not None):
             self.toggle_fft()
             plot_off = 1
@@ -689,10 +700,16 @@ class p25_rx_block (gr.top_block):
         self.__set_rx_from_audio(speed)
 
     def open_ifile2(self, capture_rate, file_name):
-        source = blocks.file_source(gr.sizeof_gr_complex, file_name, True)
+        source = blocks.file_source(gr.sizeof_gr_complex, file_name, False)
         throttle = blocks.throttle(gr.sizeof_gr_complex, capture_rate)
         self.connect(source, throttle)
         self.__build_graph(throttle, capture_rate)
+
+    def open_symbols(self, symbol_rate, file_name):
+        source = blocks.file_source(gr.sizeof_char, file_name, False)
+        throttle = blocks.throttle(gr.sizeof_char, symbol_rate)
+        self.connect(source, throttle)
+        self.__build_graph(throttle, symbol_rate)
 
     def open_audio_c(self, capture_rate, gain, audio_input_filename):
         self.info = {
@@ -859,6 +876,7 @@ class rx_main(object):
         parser.add_option("-W", "--wireshark-host", type="string", default="127.0.0.1", help="Wireshark host")
         parser.add_option("-u", "--wireshark-port", type="int", default=23456, help="Wireshark udp port")
         parser.add_option("-r", "--raw-symbols", type="string", default=None, help="dump decoded symbols to file")
+        parser.add_option("--symbols", type="string", default="", help="playback symbols file (captured using -r)")
         parser.add_option("-R", "--rx-subdev-spec", type="subdev", default=(0, 0), help="select USRP Rx side A or B (default=A)")
         parser.add_option("-g", "--gain", type="eng_float", default=None, help="set USRP gain in dB (default is midpoint) or set audio gain")
         parser.add_option("-G", "--gain-mu", type="eng_float", default=0.025, help="gardner gain")
