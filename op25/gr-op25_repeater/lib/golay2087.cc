@@ -287,23 +287,29 @@ unsigned int CGolay2087::decode(bit_vector& data)
 		return -1;
 
 	unsigned int code = 0;
-	for (int i = 0; i < 19; i++) {		// parity bit ignored for table lookup
+	unsigned int parity_bit = data[19];			// save parity bit
+	for (int i = 0; i < 19; i++) {				// parity bit ignored for table lookup
 		code <<= 1;
 		code |= data[i] & 0x1;
 	}
 
 	unsigned int syndrome = getSyndrome1987(code);
 	unsigned int error_pattern = DECODING_TABLE_1987[syndrome];
+	unsigned int errs = 0;
 
 	if (error_pattern != 0x00U) {
 		code ^= error_pattern;
-		code = (code << 1) | data[19];	// reinsert parity bit
+		code = (code << 1) | parity_bit; 		// reinsert parity bit
+		errs = __builtin_popcount(error_pattern);	// save number of corrections identified
+		if (__builtin_popcount(code) & 0x1)		// fail if codeword has odd parity
+			errs = 4;
+
 		for (int i = 19; i >= 0; i--) {
 			data[i] = code & 0x1;
 			code >>= 1;
 		}
 	}
-	return __builtin_popcount(error_pattern);
+	return errs;
 }
 
 void CGolay2087::encode(bit_vector& data)
@@ -318,9 +324,11 @@ void CGolay2087::encode(bit_vector& data)
 	}
 
 	unsigned int cksum = ENCODING_TABLE_2087[value];
+	unsigned int cksum_le = (((cksum & 0xff) << 4) | (cksum >> 12)); // swap Endian-ness and drop 4 unused bits
+	
 	for (int i = 19; i >= 8; i--) {
-		data[i] = cksum & 0x1;
-		cksum >>= 1;
+		data[i] = cksum_le & 0x1;
+		cksum_le >>= 1;
 	}
 }
 
@@ -364,11 +372,10 @@ void CQR1676::encode(bit_vector& data)
 
 	// 7 bits data + 9 bits parity
 	unsigned int cksum = ENCODING_TABLE_1676[value];
-	unsigned int cksum_le = (((cksum & 0xff) << 8) | (cksum >> 8)); // swap Endian-ness
 
 	for (int i = 15; i >= 7; i--) {
-		data[i] = cksum_le & 0x1;
-		cksum_le >>= 1;
+		data[i] = cksum & 0x1;
+		cksum >>= 1;
 	}
 }
 
@@ -378,21 +385,26 @@ unsigned char CQR1676::decode(bit_vector& data)
 		return -1;
 
 	unsigned int code = 0;
-	for (int i = 0; i < 15; i++) {		// parity bit ignored for table lookup
+	unsigned int parity_bit = data[15];			// save parity bit
+	for (int i = 0; i < 15; i++) {				// parity bit ignored for table lookup
 		code <<= 1;
 		code |= data[i] & 0x1;
 	}
 
 	unsigned int syndrome = getSyndrome1576(code);
 	unsigned int error_pattern = DECODING_TABLE_1576[syndrome];
+	unsigned char errs = 0;
 
 	if (error_pattern != 0x00U) {
 		code ^= error_pattern;
-		code = (code << 1) | data[15];	// reinsert parity bit
+		code = (code << 1) | parity_bit; 		// reinsert parity bit
+		errs = __builtin_popcount(error_pattern);	// save number of corrections identified
+		if (__builtin_popcount(code) & 0x1)		// fail if codeword has odd parity
+			errs = 4;
 		for (int i = 15; i >= 0; i--) {
 			data[i] = code & 0x1;
 			code >>= 1;
 		}
 	}
-	return __builtin_popcount(error_pattern);
+	return errs;
 }
