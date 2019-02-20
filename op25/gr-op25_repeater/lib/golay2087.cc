@@ -318,11 +318,9 @@ void CGolay2087::encode(bit_vector& data)
 	}
 
 	unsigned int cksum = ENCODING_TABLE_2087[value];
-	unsigned int cksum_le = (((cksum & 0xff) << 4) | (cksum >> 12)); // swap Endian-ness and drop 4 unused bits
-	
 	for (int i = 19; i >= 8; i--) {
-		data[i] = cksum_le & 0x1;
-		cksum_le >>= 1;
+		data[i] = cksum & 0x1;
+		cksum >>= 1;
 	}
 }
 
