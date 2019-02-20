@@ -46,6 +46,7 @@ dmr_slot::dmr_slot(const int chan, const int debug) :
 {
 	memset(d_slot, 0, sizeof(d_slot));
 	d_slot_type.clear();
+	d_emb_sig.clear();
 }
 
 dmr_slot::~dmr_slot() {
@@ -55,19 +56,25 @@ void
 dmr_slot::load_slot(const uint8_t slot[]) {
 	memcpy(d_slot, slot, sizeof(d_slot));
 
-	bool sync_rx = false;
+	// Look to see if burst contain SYNC identifying it as Voice or Data
+	bool sync_rxd = false;
 	uint64_t sl_sync = load_reg64(d_slot + SYNC_EMB, 48);
 	switch(sl_sync) {
 		case DMR_VOICE_SYNC_MAGIC:
 			d_type = DMR_VOICE_SYNC_MAGIC;
-			sync_rx = true;
+			sync_rxd = true;
 			break;
 		case DMR_DATA_SYNC_MAGIC:
 			d_type = DMR_DATA_SYNC_MAGIC;
-			sync_rx = true;
+			sync_rxd = true;
 			break;
 	}
 
+	// All bursts not containing SYNC contain EMB instead
+	if (!sync_rxd)
+		decode_emb_sig();
+
+	// Voice or Data decision is based on most recent SYNC
 	switch(d_type) {
 		case DMR_VOICE_SYNC_MAGIC:
 			break;
@@ -98,7 +105,7 @@ dmr_slot::decode_slot_type() {
 		return false;
 
 	if (d_debug >= 10) {
-		fprintf(stderr, "Slot(%d), CC(%x), Data Type=%x, gly_errs=%d\n", d_chan, get_cc(), get_data_type(), gly_errs);
+		fprintf(stderr, "Slot(%d), CC(%x), Data Type=%x, gly_errs=%d\n", d_chan, get_slot_cc(), get_data_type(), gly_errs);
 	}
 
 	switch(get_data_type()) {
@@ -145,7 +152,7 @@ dmr_slot::decode_slot_type() {
 			break;
 		case 0x9: { // Idle
 			if (d_debug >= 5) {
-				fprintf(stderr, "Slot(%d), CC(%x), IDLE\n", d_chan, get_cc());
+				fprintf(stderr, "Slot(%d), CC(%x), IDLE\n", d_chan, get_slot_cc());
 			}
 			break;
 		}
@@ -176,7 +183,7 @@ dmr_slot::decode_csbk(uint8_t* csbk) {
 	uint64_t csbk_data = extract(csbk, 16, 80);
 
 	if (d_debug >= 5) {
-		fprintf(stderr, "Slot(%d), CC(%x), CSBK LB(%d), PF(%d), CSBKO(%02x), FID(%02x), DATA(%08lx)\n", d_chan, get_cc(), csbk_lb, csbk_pf, csbk_o, csbk_fid, csbk_data);
+		fprintf(stderr, "Slot(%d), CC(%x), CSBK LB(%d), PF(%d), CSBKO(%02x), FID(%02x), DATA(%08lx)\n", d_chan, get_slot_cc(), csbk_lb, csbk_pf, csbk_o, csbk_fid, csbk_data);
 	}
 
 	// TODO: add known CSBKO opcodes
@@ -197,7 +204,7 @@ dmr_slot::decode_vlch(uint8_t* vlch) {
 
 	if (d_debug >= 5) {
 		fprintf(stderr, "Slot(%d), CC(%x), VOICE LC PF(%d), FLCO(%02x), FID(%02x), SVCOPT(%02X), DSTADDR(%06x), SRCADDR(%06x), rs_errs(%d)\n", 
-			d_chan, get_cc(), get_lc_pf(), get_lc_flco(), get_lc_fid(), get_lc_svcopt(), get_lc_dstaddr(), get_lc_srcaddr(), rs_errs);
+			d_chan, get_slot_cc(), get_lc_pf(), get_lc_flco(), get_lc_fid(), get_lc_svcopt(), get_lc_dstaddr(), get_lc_srcaddr(), rs_errs);
 	}
 
 	// TODO: add known FLCO opcodes
@@ -218,7 +225,7 @@ dmr_slot::decode_tlc(uint8_t* tlc) {
 
 	if (d_debug >= 5) {
 		fprintf(stderr, "Slot(%d), CC(%x), TERM LC PF(%d), FLCO(%02x), FID(%02x), SVCOPT(%02X), DSTADDR(%06x), SRCADDR(%06x), rs_errs(%d)\n", 
-			d_chan, get_cc(), get_lc_pf(), get_lc_flco(), get_lc_fid(), get_lc_svcopt(), get_lc_dstaddr(), get_lc_srcaddr(), rs_errs);
+			d_chan, get_slot_cc(), get_lc_pf(), get_lc_flco(), get_lc_fid(), get_lc_svcopt(), get_lc_dstaddr(), get_lc_srcaddr(), rs_errs);
 	}
 
 	// TODO: add known FLCO opcodes
@@ -268,9 +275,32 @@ dmr_slot::decode_pinf(uint8_t* pinf) {
 
 	if (d_debug >= 5) {
 		fprintf(stderr, "Slot(%d), CC(%x), PI HEADER: %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x\n",
-			d_chan, get_cc(),
+			d_chan, get_slot_cc(),
 			d_pi[0], d_pi[1], d_pi[2], d_pi[3], d_pi[4], d_pi[5], d_pi[6], d_pi[7], d_pi[8], d_pi[9]);
 	}
+
+	return true;
+}
+
+bool
+dmr_slot::decode_emb_sig() {
+	bool rc = true;
+	d_emb_sig.clear();
+
+	// deinterleave
+	for (int i = SYNC_EMB; i < (SYNC_EMB + 8); i++)
+		d_emb_sig.push_back(d_slot[i]);
+	for (int i = (SLOT_R - 8); i < SLOT_R; i++)
+		d_emb_sig.push_back(d_slot[i]);
+
+	// quadratic residue
+	int qr_errs = CQR1676::decode(d_emb_sig);
+
+	if (d_debug >= 10) {
+		fprintf(stderr, "Slot(%d), CC(%x), PI(%d), EMB lcss(%x), qr_errs=%d\n", d_chan, get_emb_cc(), get_emb_pi(), get_emb_lcss(), qr_errs);
+	}
+
+
 
 	return true;
 }

@@ -50,7 +50,7 @@ public:
 	dmr_slot(const int chan, const int debug = 0);
 	~dmr_slot();
 	inline void set_debug(const int debug) { d_debug = debug; };
-	inline uint8_t get_cc() { return 	(d_slot_type[0] << 3) + 
+	inline uint8_t get_slot_cc() { return 	(d_slot_type[0] << 3) + 
 						(d_slot_type[1] << 3) + 
 						(d_slot_type[2] << 1) + 
 						 d_slot_type[3]; };
@@ -58,11 +58,19 @@ public:
 						(d_slot_type[5] << 3) + 
 						(d_slot_type[6] << 1) + 
 						 d_slot_type[7]; };
+	inline uint8_t get_emb_cc() { return 	(d_emb_sig[0] << 3) + 
+						(d_emb_sig[1] << 3) + 
+						(d_emb_sig[2] << 1) + 
+						 d_emb_sig[3]; };
+	inline uint8_t get_emb_pi() { return 	 d_emb_sig[4]; }; 
+	inline uint8_t get_emb_lcss() { return 	(d_emb_sig[5] << 1) +
+						 d_emb_sig[6]; }; 
 	void load_slot(const uint8_t slot[]);
 
 private:
 	uint8_t d_slot[SLOT_SIZE];	// array of bits comprising the current slot
 	bit_vector d_slot_type;
+	bit_vector d_emb_sig;
 	byte_vector d_lc;
 	byte_vector d_pi;
 	bool d_lc_valid;
@@ -78,6 +86,7 @@ private:
 	bool decode_tlc(uint8_t* tlc);
 	bool decode_lc(uint8_t* lc, int* rs_errs = NULL);
 	bool decode_pinf(uint8_t* pinf);
+	bool decode_emb_sig();
 
 	inline uint8_t  get_lc_pf()      { return (d_lc[0] & 0x80) >> 7; };
 	inline uint8_t  get_lc_flco()    { return d_lc[0] & 0x3f; };
