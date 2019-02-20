@@ -101,7 +101,7 @@ dmr_slot::decode_slot_type() {
 
 	// golay (20,8)
 	int gly_errs = CGolay2087::decode(d_slot_type);
-	if (gly_errs > 3) // only 3-bit errors are fully correctable
+	if ((gly_errs < 0) || (gly_errs > 3)) // only corrects 3-bit errors or less
 		return false;
 
 	if (d_debug >= 10) {
@@ -295,6 +295,8 @@ dmr_slot::decode_emb_sig() {
 
 	// quadratic residue
 	int qr_errs = CQR1676::decode(d_emb_sig);
+	if ((qr_errs < 0) || (qr_errs > 2))	// only corrects 2-bit errors or less
+		return false;
 
 	if (d_debug >= 10) {
 		fprintf(stderr, "Slot(%d), CC(%x), PI(%d), EMB lcss(%x), qr_errs=%d\n", d_chan, get_emb_cc(), get_emb_pi(), get_emb_lcss(), qr_errs);
