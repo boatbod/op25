@@ -42,7 +42,8 @@ dmr_slot::dmr_slot(const int chan, const int debug) :
 	d_chan(chan),
 	d_debug(debug),
 	d_lc_valid(false),
-	d_type(0)
+	d_type(0),
+	d_cc(0xf)
 {
 	memset(d_slot, 0, sizeof(d_slot));
 	d_slot_type.clear();
@@ -56,18 +57,17 @@ void
 dmr_slot::load_slot(const uint8_t slot[]) {
 	memcpy(d_slot, slot, sizeof(d_slot));
 
-	// Look to see if burst contain SYNC identifying it as Voice or Data
+	// Check to see if burst contains SYNC identifying it as Voice or Data
+	// SYNC pattern may not match exactly due to received bit errors
+	// but the question is how many bit errors is too many...
 	bool sync_rxd = false;
 	uint64_t sl_sync = load_reg64(d_slot + SYNC_EMB, 48);
-	switch(sl_sync) {
-		case DMR_VOICE_SYNC_MAGIC:
-			d_type = DMR_VOICE_SYNC_MAGIC;
+	for (int i = 0; i < DMR_SYNC_MAGICS_COUNT; i ++) {
+		if (__builtin_popcountll(sl_sync ^ DMR_SYNC_MAGICS[i]) <= DMR_SYNC_THRESHOLD) {
+			d_type = DMR_SYNC_MAGICS[i];
 			sync_rxd = true;
 			break;
-		case DMR_DATA_SYNC_MAGIC:
-			d_type = DMR_DATA_SYNC_MAGIC;
-			sync_rxd = true;
-			break;
+		}
 	}
 
 	// All bursts not containing SYNC contain EMB instead
@@ -76,10 +76,15 @@ dmr_slot::load_slot(const uint8_t slot[]) {
 
 	// Voice or Data decision is based on most recent SYNC
 	switch(d_type) {
-		case DMR_VOICE_SYNC_MAGIC:
+		case DMR_BS_VOICE_SYNC_MAGIC:
+		case DMR_MS_VOICE_SYNC_MAGIC:
+		case DMR_T1_VOICE_SYNC_MAGIC:
+		case DMR_T2_VOICE_SYNC_MAGIC:
+			// TODO: do voice decoding here rather than in rx_sync.cc
 			break;
 
-		case DMR_DATA_SYNC_MAGIC:
+		case DMR_BS_DATA_SYNC_MAGIC:
+		case DMR_MS_DATA_SYNC_MAGIC:
 			decode_slot_type();
 			break;
 
@@ -103,6 +108,8 @@ dmr_slot::decode_slot_type() {
 	int gly_errs = CGolay2087::decode(d_slot_type);
 	if ((gly_errs < 0) || (gly_errs > 3)) // only corrects 3-bit errors or less
 		return false;
+
+	d_cc = get_slot_cc();
 
 	if (d_debug >= 10) {
 		fprintf(stderr, "Slot(%d), CC(%x), Data Type=%x, gly_errs=%d\n", d_chan, get_slot_cc(), get_data_type(), gly_errs);
@@ -203,7 +210,7 @@ dmr_slot::decode_vlch(uint8_t* vlch) {
 		return false;
 
 	if (d_debug >= 5) {
-		fprintf(stderr, "Slot(%d), CC(%x), VOICE LC PF(%d), FLCO(%02x), FID(%02x), SVCOPT(%02X), DSTADDR(%06x), SRCADDR(%06x), rs_errs(%d)\n", 
+		fprintf(stderr, "Slot(%d), CC(%x), VOICE LC PF(%d), FLCO(%02x), FID(%02x), SVCOPT(%02X), DSTADDR(%06x), SRCADDR(%06x), rs_errs=%d\n", 
 			d_chan, get_slot_cc(), get_lc_pf(), get_lc_flco(), get_lc_fid(), get_lc_svcopt(), get_lc_dstaddr(), get_lc_srcaddr(), rs_errs);
 	}
 
@@ -224,7 +231,7 @@ dmr_slot::decode_tlc(uint8_t* tlc) {
 		return false;
 
 	if (d_debug >= 5) {
-		fprintf(stderr, "Slot(%d), CC(%x), TERM LC PF(%d), FLCO(%02x), FID(%02x), SVCOPT(%02X), DSTADDR(%06x), SRCADDR(%06x), rs_errs(%d)\n", 
+		fprintf(stderr, "Slot(%d), CC(%x), TERM LC PF(%d), FLCO(%02x), FID(%02x), SVCOPT(%02X), DSTADDR(%06x), SRCADDR(%06x), rs_errs=%d\n", 
 			d_chan, get_slot_cc(), get_lc_pf(), get_lc_flco(), get_lc_fid(), get_lc_svcopt(), get_lc_dstaddr(), get_lc_srcaddr(), rs_errs);
 	}
 
@@ -243,7 +250,7 @@ dmr_slot::decode_lc(uint8_t* lc, int* errs) {
 	int rs_errs = rs12.decode(d_lc);
 
 	if (d_debug >=10) {
-		fprintf(stderr, "FULL LC: %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x, rs_errs(%d)\n",
+		fprintf(stderr, "FULL LC: %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x, rs_errs=%d\n",
 			d_lc[0], d_lc[1], d_lc[2], d_lc[3], d_lc[4], d_lc[5],
 			d_lc[6], d_lc[7], d_lc[7], d_lc[9], d_lc[10], d_lc[11],
 			rs_errs);
@@ -293,9 +300,14 @@ dmr_slot::decode_emb_sig() {
 	for (int i = (SLOT_R - 8); i < SLOT_R; i++)
 		d_emb_sig.push_back(d_slot[i]);
 
-	// quadratic residue
+	// quadratic residue FEC
 	int qr_errs = CQR1676::decode(d_emb_sig);
 	if ((qr_errs < 0) || (qr_errs > 2))	// only corrects 2-bit errors or less
+		return false;
+
+	// validate correct color code received
+	// this is necessary because FEC can pass (errs <= 2) but data contains garbage
+	if (d_cc != get_emb_cc())
 		return false;
 
 	if (d_debug >= 10) {

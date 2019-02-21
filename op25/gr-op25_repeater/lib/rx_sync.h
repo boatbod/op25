@@ -73,14 +73,21 @@ static const struct _mode_data {
 	{"YSF",    40,0,480,480*2}
 };   // index order must match rx_types enum
 
-static const int KNOWN_MAGICS = 5;
+static const int KNOWN_MAGICS = 12;
 static const struct _sync_magic {
 	int type;
 	uint64_t magic;
 } SYNC_MAGIC[KNOWN_MAGICS] = {
 	{RX_TYPE_P25, P25_FRAME_SYNC_MAGIC},
-	{RX_TYPE_DMR, DMR_VOICE_SYNC_MAGIC},
-	{RX_TYPE_DMR, DMR_DATA_SYNC_MAGIC},
+	{RX_TYPE_DMR, DMR_BS_VOICE_SYNC_MAGIC},
+	{RX_TYPE_DMR, DMR_BS_DATA_SYNC_MAGIC},
+	{RX_TYPE_DMR, DMR_MS_VOICE_SYNC_MAGIC},
+	{RX_TYPE_DMR, DMR_MS_DATA_SYNC_MAGIC},
+	{RX_TYPE_DMR, DMR_MS_RC_SYNC_MAGIC},
+	{RX_TYPE_DMR, DMR_T1_VOICE_SYNC_MAGIC},
+	{RX_TYPE_DMR, DMR_T1_DATA_SYNC_MAGIC},
+	{RX_TYPE_DMR, DMR_T2_VOICE_SYNC_MAGIC},
+	{RX_TYPE_DMR, DMR_T2_DATA_SYNC_MAGIC},
 	{RX_TYPE_DSTAR, DSTAR_FRAME_SYNC_MAGIC},
 	{RX_TYPE_YSF, YSF_FRAME_SYNC_MAGIC}
 }; // maps sync patterns to protocols
