@@ -32,6 +32,18 @@
 typedef std::vector<bool> bit_vector;
 typedef std::vector<uint8_t> byte_vector;
 
+static const unsigned int DMR_SYNC_THRESHOLD       = 6;
+static const unsigned int DMR_SYNC_MAGICS_COUNT    = 9;
+static const uint64_t     DMR_SYNC_MAGICS[]        = {DMR_BS_VOICE_SYNC_MAGIC,
+						      DMR_BS_DATA_SYNC_MAGIC,
+						      DMR_MS_VOICE_SYNC_MAGIC,
+						      DMR_MS_DATA_SYNC_MAGIC,
+						      DMR_MS_RC_SYNC_MAGIC,
+						      DMR_T1_VOICE_SYNC_MAGIC,
+						      DMR_T1_DATA_SYNC_MAGIC,
+						      DMR_T2_VOICE_SYNC_MAGIC,
+						      DMR_T2_DATA_SYNC_MAGIC};
+
 static const uint8_t VOICE_LC_HEADER_CRC_MASK[]    = {1,0,0,1,0,1,1,0,1,0,0,1,0,1,1,0,1,0,0,1,0,1,1,0}; // 0x969696
 static const uint8_t TERMINATOR_WITH_LC_CRC_MASK[] = {1,0,0,1,1,0,0,1,1,0,0,1,1,0,0,1,1,0,0,1,1,0,0,1}; // 0x999999
 static const uint8_t PI_HEADER_CRC_MASK[]          = {0,1,1,0,1,0,0,1,0,1,1,0,1,0,0,1};                 // 0x6969
@@ -51,15 +63,15 @@ public:
 	~dmr_slot();
 	inline void set_debug(const int debug) { d_debug = debug; };
 	inline uint8_t get_slot_cc() { return 	(d_slot_type[0] << 3) + 
-						(d_slot_type[1] << 3) + 
+						(d_slot_type[1] << 2) + 
 						(d_slot_type[2] << 1) + 
 						 d_slot_type[3]; };
 	inline uint8_t get_data_type() { return (d_slot_type[4] << 3) + 
-						(d_slot_type[5] << 3) + 
+						(d_slot_type[5] << 2) + 
 						(d_slot_type[6] << 1) + 
 						 d_slot_type[7]; };
 	inline uint8_t get_emb_cc() { return 	(d_emb_sig[0] << 3) + 
-						(d_emb_sig[1] << 3) + 
+						(d_emb_sig[1] << 2) + 
 						(d_emb_sig[2] << 1) + 
 						 d_emb_sig[3]; };
 	inline uint8_t get_emb_pi() { return 	 d_emb_sig[4]; }; 
@@ -75,6 +87,7 @@ private:
 	byte_vector d_pi;
 	bool d_lc_valid;
 	uint64_t d_type;
+	uint8_t d_cc;
 	int d_debug;
 	int d_chan;
 	CBPTC19696 bptc;

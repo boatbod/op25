@@ -151,9 +151,9 @@ void rx_sync::dmr_sync(const uint8_t bitbuf[], int& current_slot, bool& unmute) 
 	}
 
 	uint64_t sync = load_reg64(bitbuf + (MODE_DATA[RX_TYPE_DMR].sync_offset << 1), MODE_DATA[RX_TYPE_DMR].sync_len);
-	if (check_frame_sync(DMR_VOICE_SYNC_MAGIC ^ sync, d_threshold, MODE_DATA[RX_TYPE_DMR].sync_len))
+	if (check_frame_sync(DMR_BS_VOICE_SYNC_MAGIC ^ sync, d_threshold, MODE_DATA[RX_TYPE_DMR].sync_len))
 		fstype = 1;
-	else if (check_frame_sync(DMR_DATA_SYNC_MAGIC ^ sync, d_threshold, MODE_DATA[RX_TYPE_DMR].sync_len))
+	else if (check_frame_sync(DMR_BS_DATA_SYNC_MAGIC ^ sync, d_threshold, MODE_DATA[RX_TYPE_DMR].sync_len))
 		fstype = 2;
 	else
 		fstype = 0;
