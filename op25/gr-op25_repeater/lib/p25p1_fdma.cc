@@ -335,16 +335,12 @@ p25p1_fdma::process_LDU2(const bit_vector& A)
 		ess_keyid = ((HB[j+1] & 0x0f) << 12) + (HB[j+2] << 6) + HB[j+3];			// 16 bit KeyId
 
 		if (d_debug >= 10) {
-			fprintf (stderr, "ESS: algid=%x, keyid=%x, mi=%02x %02x %02x %02x %02x %02x %02x %02x %02x",
+			fprintf (stderr, "ESS: algid=%x, keyid=%x, mi=%02x %02x %02x %02x %02x %02x %02x %02x %02x, rs_errs=%d\n",
 				 ess_algid, ess_keyid,
-				 ess_mi[0], ess_mi[1], ess_mi[2], ess_mi[3], ess_mi[4], ess_mi[5],ess_mi[6], ess_mi[7], ess_mi[8]);
+				 ess_mi[0], ess_mi[1], ess_mi[2], ess_mi[3], ess_mi[4], ess_mi[5],ess_mi[6], ess_mi[7], ess_mi[8],
+				 ec); 
 		}
 	}
-
-	if (d_debug >= 10) {
-		fprintf (stderr, "rs_errs=%d\n", ec);
-	}
-
 	process_voice(A);
 }
 
