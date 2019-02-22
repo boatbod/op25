@@ -70,13 +70,6 @@ public:
 						(d_slot_type[5] << 2) + 
 						(d_slot_type[6] << 1) + 
 						 d_slot_type[7]; };
-	inline uint8_t get_emb_cc() { return 	(d_emb_sig[0] << 3) + 
-						(d_emb_sig[1] << 2) + 
-						(d_emb_sig[2] << 1) + 
-						 d_emb_sig[3]; };
-	inline uint8_t get_emb_pi() { return 	 d_emb_sig[4]; }; 
-	inline uint8_t get_emb_lcss() { return 	(d_emb_sig[5] << 1) +
-						 d_emb_sig[6]; }; 
 	void load_slot(const uint8_t slot[]);
 
 private:
@@ -99,7 +92,7 @@ private:
 	bool decode_tlc(uint8_t* tlc);
 	bool decode_lc(uint8_t* lc, int* rs_errs = NULL);
 	bool decode_pinf(uint8_t* pinf);
-	bool decode_emb_sig();
+	bool decode_emb();
 
 	inline uint8_t  get_lc_pf()      { return (d_lc[0] & 0x80) >> 7; };
 	inline uint8_t  get_lc_flco()    { return d_lc[0] & 0x3f; };

@@ -72,7 +72,7 @@ dmr_slot::load_slot(const uint8_t slot[]) {
 
 	// All bursts not containing SYNC contain EMB instead
 	if (!sync_rxd)
-		decode_emb_sig();
+		decode_emb();
 
 	// Voice or Data decision is based on most recent SYNC
 	switch(d_type) {
@@ -115,7 +115,7 @@ dmr_slot::decode_slot_type() {
 		fprintf(stderr, "Slot(%d), CC(%x), Data Type=%x, gly_errs=%d\n", d_chan, get_slot_cc(), get_data_type(), gly_errs);
 	}
 
-	switch(get_data_type()) {
+	switch (get_data_type()) {
 		case 0x0: { // Privacy Information header
 			uint8_t pinf[96];
 			if (bptc.decode(d_slot, pinf))
@@ -290,28 +290,51 @@ dmr_slot::decode_pinf(uint8_t* pinf) {
 }
 
 bool
-dmr_slot::decode_emb_sig() {
-	bool rc = true;
-	d_emb_sig.clear();
+dmr_slot::decode_emb() {
+	bit_vector emb_sig;
 
 	// deinterleave
 	for (int i = SYNC_EMB; i < (SYNC_EMB + 8); i++)
-		d_emb_sig.push_back(d_slot[i]);
+		emb_sig.push_back(d_slot[i]);
 	for (int i = (SLOT_R - 8); i < SLOT_R; i++)
-		d_emb_sig.push_back(d_slot[i]);
+		emb_sig.push_back(d_slot[i]);
 
 	// quadratic residue FEC
-	int qr_errs = CQR1676::decode(d_emb_sig);
+	int qr_errs = CQR1676::decode(emb_sig);
 	if ((qr_errs < 0) || (qr_errs > 2))	// only corrects 2-bit errors or less
 		return false;
 
 	// validate correct color code received
-	// this is necessary because FEC can pass (errs <= 2) but data contains garbage
-	if (d_cc != get_emb_cc())
+	// this is necessary because FEC can pass even with garbage data
+	uint8_t emb_cc = (emb_sig[0] << 3) + (emb_sig[1] << 2) + (emb_sig[2] << 1) + emb_sig[3];
+	if (d_cc != emb_cc)
 		return false;
 
+	uint8_t emb_pi = emb_sig[4];
+	uint8_t emb_lcss = (emb_sig[5] << 1) + emb_sig[6];
+
+	switch (emb_lcss) {
+		case 0:	// Single-fragment LC
+			// TODO: do something useful
+			break;
+		case 1: // First fragment
+			d_emb_sig.clear();
+			for (size_t i=0; i<32; i++)
+				d_emb_sig.push_back(d_slot[SYNC_EMB + 8 + i]);
+			break;
+		case 2: // End LC
+			for (size_t i=0; i<32; i++)
+				d_emb_sig.push_back(d_slot[SYNC_EMB + 8 + i]);
+			break;
+		case 3: // Continue LC
+			for (size_t i=0; i<32; i++)
+				d_emb_sig.push_back(d_slot[SYNC_EMB + 8 + i]);
+			break;
+ 
+	}
+
 	if (d_debug >= 10) {
-		fprintf(stderr, "Slot(%d), CC(%x), PI(%d), EMB lcss(%x), qr_errs=%d\n", d_chan, get_emb_cc(), get_emb_pi(), get_emb_lcss(), qr_errs);
+		fprintf(stderr, "Slot(%d), CC(%x), PI(%d), EMB lcss(%x), qr_errs=%d\n", d_chan, emb_cc, emb_pi, emb_lcss, qr_errs);
 	}
 
 

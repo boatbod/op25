@@ -83,11 +83,11 @@ dmr_cai::extract_cach_fragment() {
 		case 2: // End Short_LC or CSBK
 			for (size_t i=0; i<sizeof(cach_payload_bits); i++)
 				d_cach_sig.push_back(d_frame[CACH + cach_payload_bits[i]]);
+			decode_shortLC();
 			break;
 		case 3: // Continue Short_LC or CSBK
 			for (size_t i=0; i<sizeof(cach_payload_bits); i++)
 				d_cach_sig.push_back(d_frame[CACH + cach_payload_bits[i]]);
-				decode_shortLC();
 			break;
 	}
 	
