@@ -24,6 +24,7 @@
 #include <stdint.h>
 #include <vector>
 
+#include "frame_sync_magics.h"
 #include "dmr_const.h"
 #include "dmr_slot.h"
 #include "bptc19696.h"

@@ -32,6 +32,7 @@
 #include "bit_utils.h"
 #include "check_frame_sync.h"
 
+#include "frame_sync_magics.h"
 #include "p25p2_vf.h"
 #include "mbelib.h"
 #include "ambe.h"
@@ -47,8 +48,6 @@
 
 namespace gr{
     namespace op25_repeater{
-
-static const uint64_t DSTAR_FRAME_SYNC_MAGIC = 0x444445101440LL;  // expanded into dibits
 
 enum rx_types {
 	RX_TYPE_NONE=0,

@@ -11,18 +11,7 @@
 #include <stdint.h>
 #include <fstream>
 
-static const uint64_t DMR_BS_VOICE_SYNC_MAGIC      = 0x755fd7df75f7LL;
-static const uint64_t DMR_BS_DATA_SYNC_MAGIC       = 0xdff57d75df5dLL;
-static const uint64_t DMR_MS_VOICE_SYNC_MAGIC      = 0x7f7d5dd57dfdLL;
-static const uint64_t DMR_MS_DATA_SYNC_MAGIC       = 0xd5d7f77fd757LL;
-static const uint64_t DMR_MS_RC_SYNC_MAGIC         = 0x77d55f7dfd77LL;
-static const uint64_t DMR_T1_VOICE_SYNC_MAGIC      = 0x5d577f7757ffLL;
-static const uint64_t DMR_T1_DATA_SYNC_MAGIC       = 0xf7fdd5ddfd55LL;
-static const uint64_t DMR_T2_VOICE_SYNC_MAGIC      = 0x7dffd5f55d5fLL;
-static const uint64_t DMR_T2_DATA_SYNC_MAGIC       = 0xd7557f5ff7f5LL;
-static const uint64_t DSTAR_FRAME_SYNC_MAGIC       = 0x444445101440LL; 
-static const uint64_t P25_FRAME_SYNC_MAGIC         = 0x5575F5FF77FFLL;
-static const uint64_t P25P2_FRAME_SYNC_MAGIC       = 0x575D57F7FFLL;   // only 40 bits
+#include "frame_sync_magics.h"
 
 static const int          SYNC_SIZE		   = 48; // 48 bits
 static const unsigned int SYNC_THRESHOLD	   = 6;  // up to 6 bit errorss
