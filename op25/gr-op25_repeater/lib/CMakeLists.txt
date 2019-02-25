@@ -83,15 +83,6 @@ target_link_libraries(gnuradio-op25_repeater ${Boost_LIBRARIES} ${GNURADIO_RUNTI
 set_target_properties(gnuradio-op25_repeater PROPERTIES DEFINE_SYMBOL "gnuradio_op25_repeater_EXPORTS")
 
 ########################################################################
-# Install built library files
-########################################################################
-install(TARGETS gnuradio-op25_repeater
-    LIBRARY DESTINATION lib${LIB_SUFFIX} # .so/.dylib file
-    ARCHIVE DESTINATION lib${LIB_SUFFIX} # .lib file
-    RUNTIME DESTINATION bin              # .dll file
-)
-
-########################################################################
 # Build and register unit test
 ########################################################################
 include(GrTest)
@@ -133,3 +124,23 @@ add_executable(op25-d2460 ${d2460_sources})
 target_link_libraries(op25-d2460 imbe_vocoder)
 
 add_subdirectory(imbe_vocoder)
+
+########################################################################
+# scan4sync utility
+########################################################################
+list(APPEND scan4sync_sources
+    ${CMAKE_CURRENT_SOURCE_DIR}/scan4sync.cc
+)
+
+add_executable(scan4sync ${scan4sync_sources})
+target_link_libraries(scan4sync)
+
+########################################################################
+# Install built library files
+########################################################################
+install(TARGETS gnuradio-op25_repeater scan4sync
+    LIBRARY DESTINATION lib${LIB_SUFFIX} # .so/.dylib file
+    ARCHIVE DESTINATION lib${LIB_SUFFIX} # .lib file
+    RUNTIME DESTINATION bin              # .dll file
+)
+
