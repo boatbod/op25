@@ -51,14 +51,48 @@ dmr_cai::~dmr_cai() {
 int
 dmr_cai::load_frame(const uint8_t fr_sym[]) {
 	dibits_to_bits(d_frame, fr_sym, FRAME_SIZE >> 1);
-	extract_cach_fragment();
-	d_slot[d_chan].load_slot(d_frame + 24);
+
+	// Check to see if burst contains SYNC identifying it as Voice or Data
+	// SYNC pattern may not match exactly due to received bit errors
+	// but the question is how many bit errors is too many...
+	bool sync_rxd = false;
+	uint64_t sl_sync = load_reg64(d_frame + SYNC_EMB + 24, 48);
+	for (int i = 0; i < DMR_SYNC_MAGICS_COUNT; i ++) {
+		if (__builtin_popcountll(sl_sync ^ DMR_SYNC_MAGICS[i]) <= DMR_SYNC_THRESHOLD) {
+			sl_sync = DMR_SYNC_MAGICS[i];
+			sync_rxd = true;
+			break;
+		}
+	}
+
+	// determine channel id either explicitly or incrementally
+	if (sync_rxd) {
+		switch(sl_sync) {
+			case DMR_BS_VOICE_SYNC_MAGIC:
+			case DMR_BS_DATA_SYNC_MAGIC:
+				extract_cach_fragment();
+				break;
+			case DMR_T1_VOICE_SYNC_MAGIC:
+				d_shift_reg = 0;
+				d_chan = 0;
+				break;
+			case DMR_T2_VOICE_SYNC_MAGIC:
+				d_shift_reg = 1;
+				d_chan = 1;
+				break;
+		}
+	} else {
+		sl_sync = 0;
+		d_shift_reg = (d_shift_reg << 1) + ((d_chan + 1) % 2);
+		d_chan = slot_ids[d_shift_reg & 7];	
+	}
+
+	d_slot[d_chan].load_slot(d_frame + 24, sl_sync);
 	return d_chan;
 }
 
 void
 dmr_cai::extract_cach_fragment() {
-	static const int slot_ids[] = {0, 1, 0, 0, 1, 1, 0, 1};
 	int tact, tact_at, tact_tc, tact_lcss;
 	uint8_t tactbuf[sizeof(cach_tact_bits)];
 

@@ -54,24 +54,13 @@ dmr_slot::~dmr_slot() {
 }
 
 void
-dmr_slot::load_slot(const uint8_t slot[]) {
+dmr_slot::load_slot(const uint8_t slot[], uint64_t sl_type) {
 	memcpy(d_slot, slot, sizeof(d_slot));
 
-	// Check to see if burst contains SYNC identifying it as Voice or Data
-	// SYNC pattern may not match exactly due to received bit errors
-	// but the question is how many bit errors is too many...
-	bool sync_rxd = false;
-	uint64_t sl_sync = load_reg64(d_slot + SYNC_EMB, 48);
-	for (int i = 0; i < DMR_SYNC_MAGICS_COUNT; i ++) {
-		if (__builtin_popcountll(sl_sync ^ DMR_SYNC_MAGICS[i]) <= DMR_SYNC_THRESHOLD) {
-			d_type = DMR_SYNC_MAGICS[i];
-			sync_rxd = true;
-			break;
-		}
-	}
-
-	// All bursts not containing SYNC contain EMB instead
-	if (!sync_rxd)
+	// Check if fresh Sync received
+	if (sl_type != 0)
+		d_type = sl_type;
+	else
 		decode_emb();
 
 	// Voice or Data decision is based on most recent SYNC

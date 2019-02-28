@@ -26,7 +26,6 @@
 
 #include "frame_sync_magics.h"
 #include "dmr_const.h"
-#include "dmr_slot.h"
 #include "bptc19696.h"
 #include "ezpwd/rs"
 
@@ -63,29 +62,21 @@ public:
 	dmr_slot(const int chan, const int debug = 0);
 	~dmr_slot();
 	inline void set_debug(const int debug) { d_debug = debug; };
-	inline uint8_t get_slot_cc() { return 	(d_slot_type[0] << 3) + 
-						(d_slot_type[1] << 2) + 
-						(d_slot_type[2] << 1) + 
-						 d_slot_type[3]; };
-	inline uint8_t get_data_type() { return (d_slot_type[4] << 3) + 
-						(d_slot_type[5] << 2) + 
-						(d_slot_type[6] << 1) + 
-						 d_slot_type[7]; };
-	void load_slot(const uint8_t slot[]);
+	void load_slot(const uint8_t slot[], uint64_t sl_type);
 
 private:
-	uint8_t d_slot[SLOT_SIZE];	// array of bits comprising the current slot
-	bit_vector d_slot_type;
+	uint8_t     d_slot[SLOT_SIZE];	// array of bits comprising the current slot
+	bit_vector  d_slot_type;
 	byte_vector d_emb;
-	byte_vector d_lc;
+	byte_vector d_lc;		// last received LC data
 	byte_vector d_pi;
-	bool d_lc_valid;
-	uint64_t d_type;
-	uint8_t d_cc;
-	int d_debug;
-	int d_chan;
-	CBPTC19696 bptc;
-	ezpwd::RS<255,252> rs12;	// Reed-Solomon(12,9) for Link Control
+	bool        d_lc_valid;		// flag indicating LC data is valid or not
+	uint64_t    d_type;
+	uint8_t     d_cc;
+	int         d_debug;
+	int         d_chan;
+	CBPTC19696  bptc;
+	ezpwd::RS<255,252> rs12;	// Reed-Solomon(12,9) object for Link Control decode
 
 	bool decode_slot_type();
 	bool decode_csbk(uint8_t* csbk);
@@ -96,12 +87,16 @@ private:
 	bool decode_emb();
 	bool decode_embedded_lc();
 
-	inline uint8_t  get_lc_pf()      { return (d_lc[0] & 0x80) >> 7; };
-	inline uint8_t  get_lc_flco()    { return d_lc[0] & 0x3f; };
-	inline uint8_t  get_lc_fid()     { return d_lc[1]; };
-	inline uint8_t  get_lc_svcopt()  { return d_lc[2]; };
-	inline uint32_t get_lc_dstaddr() { return (d_lc[3] << 16) + (d_lc[4] << 8) + d_lc[5]; };
-	inline uint32_t get_lc_srcaddr() { return (d_lc[6] << 16) + (d_lc[7] << 8) + d_lc[8]; };
+	inline uint8_t  get_lc_pf()      { return d_lc_valid ? ((d_lc[0] & 0x80) >> 7) : 0; };
+	inline uint8_t  get_lc_flco()    { return d_lc_valid ? (d_lc[0] & 0x3f) : 0; };
+	inline uint8_t  get_lc_fid()     { return d_lc_valid ? d_lc[1] : 0; };
+	inline uint8_t  get_lc_svcopt()  { return d_lc_valid ? d_lc[2] : 0; };
+	inline uint32_t get_lc_dstaddr() { return d_lc_valid ? ((d_lc[3] << 16) + (d_lc[4] << 8) + d_lc[5]) : 0; };
+	inline uint32_t get_lc_srcaddr() { return d_lc_valid ? ((d_lc[6] << 16) + (d_lc[7] << 8) + d_lc[8]) : 0; };
+
+	inline uint8_t  get_slot_cc()    { return (d_slot_type[0] << 3) + (d_slot_type[1] << 2) + (d_slot_type[2] << 1) + d_slot_type[3]; };
+	inline uint8_t  get_data_type()  { return (d_slot_type[4] << 3) + (d_slot_type[5] << 2) + (d_slot_type[6] << 1) + d_slot_type[7]; };
+
 };
 
 #endif /* INCLUDED_DMR_SLOT_H */

@@ -28,6 +28,8 @@
 
 typedef std::vector<bool> bit_vector;
 
+static const unsigned int slot_ids[] = {0, 1, 0, 0, 1, 1, 0, 1};
+
 class dmr_cai {
 public:
 	dmr_cai(int debug);
