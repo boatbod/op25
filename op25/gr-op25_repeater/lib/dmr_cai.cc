@@ -48,8 +48,8 @@ dmr_cai::dmr_cai(int debug) :
 dmr_cai::~dmr_cai() {
 }
 
-int
-dmr_cai::load_frame(const uint8_t fr_sym[]) {
+bool
+dmr_cai::load_frame(const uint8_t fr_sym[], bool& unmute) {
 	dibits_to_bits(d_frame, fr_sym, FRAME_SIZE >> 1);
 
 	// Check to see if burst contains SYNC identifying it as Voice or Data
@@ -66,9 +66,12 @@ dmr_cai::load_frame(const uint8_t fr_sym[]) {
 	}
 
 	// determine channel id either explicitly or incrementally
+	unmute = false;
 	if (sync_rxd) {
 		switch(sl_sync) {
 			case DMR_BS_VOICE_SYNC_MAGIC:
+				extract_cach_fragment();
+				break;
 			case DMR_BS_DATA_SYNC_MAGIC:
 				extract_cach_fragment();
 				break;
@@ -87,8 +90,10 @@ dmr_cai::load_frame(const uint8_t fr_sym[]) {
 		d_chan = slot_ids[d_shift_reg & 7];	
 	}
 
-	d_slot[d_chan].load_slot(d_frame + 24, sl_sync);
-	return d_chan;
+	// decode the slot data
+	unmute = d_slot[d_chan].load_slot(d_frame + 24, sl_sync);
+
+	return sync_rxd;
 }
 
 void

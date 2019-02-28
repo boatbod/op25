@@ -53,8 +53,9 @@ dmr_slot::dmr_slot(const int chan, const int debug) :
 dmr_slot::~dmr_slot() {
 }
 
-void
+bool
 dmr_slot::load_slot(const uint8_t slot[], uint64_t sl_type) {
+	bool is_voice_frame = false;
 	memcpy(d_slot, slot, sizeof(d_slot));
 
 	// Check if fresh Sync received
@@ -69,7 +70,7 @@ dmr_slot::load_slot(const uint8_t slot[], uint64_t sl_type) {
 		case DMR_MS_VOICE_SYNC_MAGIC:
 		case DMR_T1_VOICE_SYNC_MAGIC:
 		case DMR_T2_VOICE_SYNC_MAGIC:
-			// TODO: do voice decoding here rather than in rx_sync.cc
+			is_voice_frame = true;
 			break;
 
 		case DMR_BS_DATA_SYNC_MAGIC:
@@ -78,8 +79,9 @@ dmr_slot::load_slot(const uint8_t slot[], uint64_t sl_type) {
 			break;
 
 		default: // unknown type
-			return;
+			break;
 	}
+	return is_voice_frame;
 }
 
 bool

@@ -62,7 +62,7 @@ public:
 	dmr_slot(const int chan, const int debug = 0);
 	~dmr_slot();
 	inline void set_debug(const int debug) { d_debug = debug; };
-	void load_slot(const uint8_t slot[], uint64_t sl_type);
+	bool load_slot(const uint8_t slot[], uint64_t sl_type);
 
 private:
 	uint8_t     d_slot[SLOT_SIZE];	// array of bits comprising the current slot

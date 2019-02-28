@@ -34,7 +34,7 @@ class dmr_cai {
 public:
 	dmr_cai(int debug);
 	~dmr_cai();
-	int load_frame(const uint8_t fr_sym[]);
+	bool load_frame(const uint8_t fr_sym[], bool& unmute);
 	inline int chan() { return d_chan; };
 
 private:

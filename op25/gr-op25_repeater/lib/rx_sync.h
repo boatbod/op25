@@ -108,7 +108,6 @@ public:
 	~rx_sync();
 private:
 	void cbuf_insert(const uint8_t c);
-	void dmr_sync(const uint8_t bitbuf[], int& current_slot, bool& unmute);
 	void ysf_sync(const uint8_t dibitbuf[], bool& ysf_fullrate, bool& unmute);
 	void codeword(const uint8_t* cw, const enum codeword_types codeword_type, int slot_id);
 	void output(int16_t * samp_buf, const ssize_t slot_id);
