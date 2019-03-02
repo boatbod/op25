@@ -102,8 +102,8 @@ private:
 	inline uint8_t  get_rc()         { return d_rc_valid ? d_rc : 0; };
 	inline uint8_t  get_sb()         { return d_sb_valid ? d_sb : 0; };
 
-	inline uint8_t  get_slot_cc()    { return (d_slot_type[0] << 3) + (d_slot_type[1] << 2) + (d_slot_type[2] << 1) + d_slot_type[3]; };
-	inline uint8_t  get_data_type()  { return (d_slot_type[4] << 3) + (d_slot_type[5] << 2) + (d_slot_type[6] << 1) + d_slot_type[7]; };
+	inline uint8_t  get_slot_cc()    { return d_slot_type.size() ? ((d_slot_type[0] << 3) + (d_slot_type[1] << 2) + (d_slot_type[2] << 1) + d_slot_type[3]) : 0xf; };
+	inline uint8_t  get_data_type()  { return d_slot_type.size() ? ((d_slot_type[4] << 3) + (d_slot_type[5] << 2) + (d_slot_type[6] << 1) + d_slot_type[7]) : 0x9; };
 
 };
 

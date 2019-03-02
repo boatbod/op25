@@ -76,7 +76,7 @@ dmr_slot::load_slot(const uint8_t slot[], uint64_t sl_type) {
 		case DMR_T2_VOICE_SYNC_MAGIC:
 			is_voice_frame = true;
 			if (d_debug >= 5) {
-				fprintf(stderr, "Slot(%d), CC(%x), VOICE\n", d_chan, get_slot_cc());
+				fprintf(stderr, "Slot(%d), CC(%x), VOICE\n", d_chan, d_cc);
 			}
 			break;
 
@@ -104,10 +104,14 @@ dmr_slot::decode_slot_type() {
 
 	// golay (20,8)
 	int gly_errs = CGolay2087::decode(d_slot_type);
-	if ((gly_errs < 0) || (gly_errs > 3)) // only corrects 3-bit errors or less
+	if ((gly_errs < 0) || (gly_errs >= 3)) // only appears to reliably correct 2-bit errors or less
 		return false;
-
-	d_cc = get_slot_cc();
+	
+	uint8_t slot_cc = get_slot_cc();
+	if ((d_cc != slot_cc) && (d_cc == 0xf))
+		d_cc = slot_cc;
+	else if (d_cc != slot_cc)
+		return false;
 
 	if (d_debug >= 10) {
 		fprintf(stderr, "Slot(%d), CC(%x), Data Type=%x, gly_errs=%d\n", d_chan, get_slot_cc(), get_data_type(), gly_errs);
