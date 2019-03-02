@@ -69,8 +69,12 @@ private:
 	bit_vector  d_slot_type;
 	byte_vector d_emb;
 	byte_vector d_lc;		// last received LC data
+	uint8_t     d_rc;		// last received RC data
+	uint16_t    d_sb;		// last received SB data
 	byte_vector d_pi;
-	bool        d_lc_valid;		// flag indicating LC data is valid or not
+	bool        d_lc_valid;		// flag indicating if LC data is valid
+	bool        d_rc_valid;		// flag indicating if RC data is valid
+	bool        d_sb_valid;		// flag indicating if SB data is valid
 	uint64_t    d_type;
 	uint8_t     d_cc;
 	int         d_debug;
@@ -86,6 +90,7 @@ private:
 	bool decode_pinf(uint8_t* pinf);
 	bool decode_emb();
 	bool decode_embedded_lc();
+	bool decode_embedded_sbrc(bool _pi);
 
 	inline uint8_t  get_lc_pf()      { return d_lc_valid ? ((d_lc[0] & 0x80) >> 7) : 0; };
 	inline uint8_t  get_lc_flco()    { return d_lc_valid ? (d_lc[0] & 0x3f) : 0; };
@@ -93,6 +98,9 @@ private:
 	inline uint8_t  get_lc_svcopt()  { return d_lc_valid ? d_lc[2] : 0; };
 	inline uint32_t get_lc_dstaddr() { return d_lc_valid ? ((d_lc[3] << 16) + (d_lc[4] << 8) + d_lc[5]) : 0; };
 	inline uint32_t get_lc_srcaddr() { return d_lc_valid ? ((d_lc[6] << 16) + (d_lc[7] << 8) + d_lc[8]) : 0; };
+
+	inline uint8_t  get_rc()         { return d_rc_valid ? d_rc : 0; };
+	inline uint8_t  get_sb()         { return d_sb_valid ? d_sb : 0; };
 
 	inline uint8_t  get_slot_cc()    { return (d_slot_type[0] << 3) + (d_slot_type[1] << 2) + (d_slot_type[2] << 1) + d_slot_type[3]; };
 	inline uint8_t  get_data_type()  { return (d_slot_type[4] << 3) + (d_slot_type[5] << 2) + (d_slot_type[6] << 1) + d_slot_type[7]; };

@@ -42,6 +42,10 @@ dmr_slot::dmr_slot(const int chan, const int debug) :
 	d_chan(chan),
 	d_debug(debug),
 	d_lc_valid(false),
+	d_rc_valid(false),
+	d_sb_valid(false),
+	d_rc(0),
+	d_sb(0),
 	d_type(0),
 	d_cc(0xf)
 {
@@ -71,6 +75,9 @@ dmr_slot::load_slot(const uint8_t slot[], uint64_t sl_type) {
 		case DMR_T1_VOICE_SYNC_MAGIC:
 		case DMR_T2_VOICE_SYNC_MAGIC:
 			is_voice_frame = true;
+			if (d_debug >= 5) {
+				fprintf(stderr, "Slot(%d), CC(%x), VOICE\n", d_chan, get_slot_cc());
+			}
 			break;
 
 		case DMR_BS_DATA_SYNC_MAGIC:
@@ -313,7 +320,14 @@ dmr_slot::decode_emb() {
 			d_emb.clear();
 			for (size_t i=0; i<32; i++)
 				d_emb.push_back(d_slot[SYNC_EMB + 8 + i]);
-			// TODO: do BPTC decode
+			if (decode_embedded_sbrc(emb_pi)) {
+				if (d_debug >= 5) {
+					if (emb_pi)
+						fprintf(stderr, "Slot(%d), CC(%x), EMB RC(%x)\n", d_chan, emb_cc, get_rc());
+					else
+						fprintf(stderr, "Slot(%d), CC(%x), EMB SB(%03x)\n", d_chan, emb_cc, get_sb());
+				}
+			}
 			break;
 		case 1: // First fragment LC
 			d_emb.clear();
@@ -328,7 +342,6 @@ dmr_slot::decode_emb() {
 					fprintf(stderr, "Slot(%d), CC(%x), EMB LC PF(%d), FLCO(%02x), FID(%02x), SVCOPT(%02X), DSTADDR(%06x), SRCADDR(%06x)\n", 
 						d_chan, emb_cc, get_lc_pf(), get_lc_flco(), get_lc_fid(), get_lc_svcopt(), get_lc_dstaddr(), get_lc_srcaddr());
 				}
-
 			}
 			break;
 		case 3: // Continue LC
@@ -344,11 +357,12 @@ dmr_slot::decode_emb() {
 bool
 dmr_slot::decode_embedded_lc() {
 	byte_vector emb_data;
+	d_lc_valid = false;
+	d_lc.clear();
 
 	// The data is unpacked downwards in columns
 	bool data[128];
 	memset(data, 0, 128 * sizeof(bool));
-
 	unsigned int b = 0;
 	for (unsigned int a = 0; a < 128; a++) {
 		data[b] = d_emb[a];
@@ -387,8 +401,6 @@ dmr_slot::decode_embedded_lc() {
 		emb_data.push_back(data[a]);
 
 	// Convert 72 bits payload to 9 bytes LC
-	d_lc_valid = false;
-	d_lc.clear();
 	for (int i = 0; i < 72; i += 8)
 		d_lc.push_back((emb_data[i+0] << 7) + (emb_data[i+1] << 6) + (emb_data[i+2] << 5) + (emb_data[i+3] << 4) +
 			       (emb_data[i+4] << 3) + (emb_data[i+5] << 2) + (emb_data[i+6] << 1) +  emb_data[i+7]);
@@ -410,3 +422,62 @@ dmr_slot::decode_embedded_lc() {
 	return d_lc_valid;
 }
 
+bool
+dmr_slot::decode_embedded_sbrc(bool _pi) {
+	// Invalidate previous parameter values
+	if (_pi)
+		d_rc_valid = false;
+	else
+		d_sb_valid = false;
+
+	// De-interleave data and unpack downward in columns
+	bool data[32];
+	memset(data, 0, 32 * sizeof(bool));
+	unsigned int b = 0;
+	for (unsigned int a = 0; a < 32; a++) {
+		data[b] = d_emb[(a*17)%32];
+		b += 16;
+		if (b > 31)
+			b -= 31;
+	}
+
+	// Hamming (16,11,4) check first row only
+	if (!CHamming::decode16114(data)) {
+		return false;
+	}
+
+	// Parity and CRC checks depends on msg type
+	if (_pi) { // RC Info
+		for (int i = 0; i < 16; i++) {
+			if ((data[i + 0] ^ data[i + 16]) == 0) { // odd parity
+				return false;
+			}
+		}
+		if (crc7((uint8_t*)data, 11) != 0) {
+			return false;
+		}
+		d_rc = 0;
+		for (int i = 0; i < 4; i++)
+			d_rc = (d_rc << 1) + data[i];
+		d_rc_valid = true;
+		if (d_debug >=10) {
+			fprintf(stderr, "EMB RC: %x\n", get_rc());
+		}
+
+	} else { // SB Info
+		for (int i = 0; i < 16; i++) {
+			if ((data[i + 0] ^ data[i + 16]) != 0) { // even parity
+				return false;
+			}
+		}
+		d_sb = 0;
+		for (int i = 0; i < 11; i++)
+			d_sb = (d_sb << 1) + data[i];
+		d_sb_valid = true;
+		if (d_debug >=10) {
+			fprintf(stderr, "EMB SB: %03x\n", get_sb());
+		}
+	}
+
+	return true;
+}

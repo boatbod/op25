@@ -338,9 +338,24 @@ void rx_sync::rx_sym(const uint8_t sym)
 		if (dmr.load_frame(symbol_ptr, unmute))
 			d_expires = d_symbol_count + MODE_DATA[d_current_type].expiration;
 
-		// non-audio frames require no further processing
-		if (!unmute) 
+		// update audio timeout counters etc
+		if (unmute) {
+			if (!d_unmute_until[dmr.chan()])
+				if (d_debug >= 10) {
+					fprintf(stderr, "unmute channel(%d)\n", dmr.chan());
+				}
+			d_unmute_until[dmr.chan()] = d_symbol_count + MODE_DATA[d_current_type].expiration;
+		}
+		if (!unmute || (d_symbol_count >= d_unmute_until[dmr.chan()])) {
+			if (d_unmute_until[dmr.chan()]) {
+				d_unmute_until[dmr.chan()] = 0;
+				d_audio.send_audio_flag_channel(op25_audio::DRAIN, dmr.chan());
+				if (d_debug >= 10) {
+					fprintf(stderr, "mute channel(%d)\n", dmr.chan());
+				}
+			}
 			break;
+		}
 
 		codeword(symbol_ptr+12, CODEWORD_DMR, dmr.chan());
 		memcpy(tmpcw, symbol_ptr+48, 18);
