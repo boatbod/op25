@@ -132,48 +132,6 @@ void rx_sync::ysf_sync(const uint8_t dibitbuf[], bool& ysf_fullrate, bool& unmut
 		fprintf(stderr, "ysf_sync: muting audio: dt: %d, rc: %d\n", d_shift_reg, rc);
 }
 
-void rx_sync::dmr_sync(const uint8_t bitbuf[], int& current_slot, bool& unmute) {
-	static const int slot_ids[] = {0, 1, 0, 0, 1, 1, 0, 1};
-	int tact;
-	int chan;
-	int fstype;
-	uint8_t tactbuf[sizeof(cach_tact_bits)];
-
-	for (size_t i=0; i<sizeof(cach_tact_bits); i++)
-		tactbuf[i] = bitbuf[cach_tact_bits[i]];
-	tact = hamming_7_4_decode[load_i(tactbuf, 7)];
-	chan = (tact>>2) & 1;
-	d_shift_reg = (d_shift_reg << 1) + chan;
-	current_slot = slot_ids[d_shift_reg & 7];
-
-	if ((d_debug >= 10) && (chan != current_slot)) {
-		fprintf(stderr, "DMR cach chan=%d does not match current_slot=%d\n", chan, current_slot);
-	}
-
-	uint64_t sync = load_reg64(bitbuf + (MODE_DATA[RX_TYPE_DMR].sync_offset << 1), MODE_DATA[RX_TYPE_DMR].sync_len);
-	if (check_frame_sync(DMR_BS_VOICE_SYNC_MAGIC ^ sync, d_threshold, MODE_DATA[RX_TYPE_DMR].sync_len))
-		fstype = 1;
-	else if (check_frame_sync(DMR_BS_DATA_SYNC_MAGIC ^ sync, d_threshold, MODE_DATA[RX_TYPE_DMR].sync_len))
-		fstype = 2;
-	else
-		fstype = 0;
-	if (fstype > 0)
-		d_expires = d_symbol_count + MODE_DATA[d_current_type].expiration;
-	if (fstype == 1) {
-		if (!d_unmute_until[current_slot] && d_debug >= 5)
-			fprintf(stderr, "unmute slot %d\n", current_slot);
-		d_unmute_until[current_slot] = d_symbol_count + MODE_DATA[d_current_type].expiration;
-	} else if (fstype == 2) {
-		if (d_unmute_until[current_slot] && d_debug >= 5)
-			fprintf(stderr, "mute slot %d\n", current_slot);
-		d_unmute_until[current_slot] = 0;
-	}
-	if (d_unmute_until[current_slot] <= d_symbol_count) {
-		d_unmute_until[current_slot] = 0;
-	}
-	unmute = d_unmute_until[current_slot] > 0;
-}
-
 rx_sync::rx_sync(const char * options, int debug) :	// constructor
 	d_symbol_count(0),
 	d_sync_reg(0),
@@ -376,15 +334,34 @@ void rx_sync::rx_sym(const uint8_t sym)
 		}
 		break;
 	case RX_TYPE_DMR:
-		dmr_sync(bit_ptr, current_slot, unmute);
-		dmr.load_frame(symbol_ptr);
-		if (!unmute)
+		// frame with explicit sync resets expiration counter
+		if (dmr.load_frame(symbol_ptr, unmute))
+			d_expires = d_symbol_count + MODE_DATA[d_current_type].expiration;
+
+		// update audio timeout counters etc
+		if (unmute) {
+			if (!d_unmute_until[dmr.chan()])
+				if (d_debug >= 10) {
+					fprintf(stderr, "unmute channel(%d)\n", dmr.chan());
+				}
+			d_unmute_until[dmr.chan()] = d_symbol_count + MODE_DATA[d_current_type].expiration;
+		}
+		if (!unmute || (d_symbol_count >= d_unmute_until[dmr.chan()])) {
+			if (d_unmute_until[dmr.chan()]) {
+				d_unmute_until[dmr.chan()] = 0;
+				d_audio.send_audio_flag_channel(op25_audio::DRAIN, dmr.chan());
+				if (d_debug >= 10) {
+					fprintf(stderr, "mute channel(%d)\n", dmr.chan());
+				}
+			}
 			break;
-		codeword(symbol_ptr+12, CODEWORD_DMR, current_slot);
+		}
+
+		codeword(symbol_ptr+12, CODEWORD_DMR, dmr.chan());
 		memcpy(tmpcw, symbol_ptr+48, 18);
 		memcpy(tmpcw+18, symbol_ptr+90, 18);
-		codeword(tmpcw, CODEWORD_DMR, current_slot);
-		codeword(symbol_ptr+108, CODEWORD_DMR, current_slot);
+		codeword(tmpcw, CODEWORD_DMR, dmr.chan());
+		codeword(symbol_ptr+108, CODEWORD_DMR, dmr.chan());
 		break;
 	case RX_TYPE_DSTAR:
 		codeword(bit_ptr, CODEWORD_DSTAR, 0);   // 72 bits = 72 symbols

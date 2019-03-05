@@ -42,37 +42,31 @@ dmr_slot::dmr_slot(const int chan, const int debug) :
 	d_chan(chan),
 	d_debug(debug),
 	d_lc_valid(false),
+	d_rc_valid(false),
+	d_sb_valid(false),
+	d_rc(0),
+	d_sb(0),
 	d_type(0),
 	d_cc(0xf)
 {
 	memset(d_slot, 0, sizeof(d_slot));
 	d_slot_type.clear();
-	d_emb_sig.clear();
+	d_emb.clear();
 }
 
 dmr_slot::~dmr_slot() {
 }
 
-void
-dmr_slot::load_slot(const uint8_t slot[]) {
+bool
+dmr_slot::load_slot(const uint8_t slot[], uint64_t sl_type) {
+	bool is_voice_frame = false;
 	memcpy(d_slot, slot, sizeof(d_slot));
 
-	// Check to see if burst contains SYNC identifying it as Voice or Data
-	// SYNC pattern may not match exactly due to received bit errors
-	// but the question is how many bit errors is too many...
-	bool sync_rxd = false;
-	uint64_t sl_sync = load_reg64(d_slot + SYNC_EMB, 48);
-	for (int i = 0; i < DMR_SYNC_MAGICS_COUNT; i ++) {
-		if (__builtin_popcountll(sl_sync ^ DMR_SYNC_MAGICS[i]) <= DMR_SYNC_THRESHOLD) {
-			d_type = DMR_SYNC_MAGICS[i];
-			sync_rxd = true;
-			break;
-		}
-	}
-
-	// All bursts not containing SYNC contain EMB instead
-	if (!sync_rxd)
-		decode_emb_sig();
+	// Check if fresh Sync received
+	if (sl_type != 0)
+		d_type = sl_type;
+	else
+		decode_emb();
 
 	// Voice or Data decision is based on most recent SYNC
 	switch(d_type) {
@@ -80,7 +74,10 @@ dmr_slot::load_slot(const uint8_t slot[]) {
 		case DMR_MS_VOICE_SYNC_MAGIC:
 		case DMR_T1_VOICE_SYNC_MAGIC:
 		case DMR_T2_VOICE_SYNC_MAGIC:
-			// TODO: do voice decoding here rather than in rx_sync.cc
+			is_voice_frame = true;
+			if (d_debug >= 5) {
+				fprintf(stderr, "Slot(%d), CC(%x), VOICE\n", d_chan, d_cc);
+			}
 			break;
 
 		case DMR_BS_DATA_SYNC_MAGIC:
@@ -89,8 +86,9 @@ dmr_slot::load_slot(const uint8_t slot[]) {
 			break;
 
 		default: // unknown type
-			return;
+			break;
 	}
+	return is_voice_frame;
 }
 
 bool
@@ -106,16 +104,20 @@ dmr_slot::decode_slot_type() {
 
 	// golay (20,8)
 	int gly_errs = CGolay2087::decode(d_slot_type);
-	if ((gly_errs < 0) || (gly_errs > 3)) // only corrects 3-bit errors or less
+	if ((gly_errs < 0) || (gly_errs >= 3)) // only appears to reliably correct 2-bit errors or less
 		return false;
-
-	d_cc = get_slot_cc();
+	
+	uint8_t slot_cc = get_slot_cc();
+	if ((d_cc != slot_cc) && (d_cc == 0xf))
+		d_cc = slot_cc;
+	else if (d_cc != slot_cc)
+		return false;
 
 	if (d_debug >= 10) {
 		fprintf(stderr, "Slot(%d), CC(%x), Data Type=%x, gly_errs=%d\n", d_chan, get_slot_cc(), get_data_type(), gly_errs);
 	}
 
-	switch(get_data_type()) {
+	switch (get_data_type()) {
 		case 0x0: { // Privacy Information header
 			uint8_t pinf[96];
 			if (bptc.decode(d_slot, pinf))
@@ -252,7 +254,7 @@ dmr_slot::decode_lc(uint8_t* lc, int* errs) {
 	if (d_debug >=10) {
 		fprintf(stderr, "FULL LC: %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x, rs_errs=%d\n",
 			d_lc[0], d_lc[1], d_lc[2], d_lc[3], d_lc[4], d_lc[5],
-			d_lc[6], d_lc[7], d_lc[7], d_lc[9], d_lc[10], d_lc[11],
+			d_lc[6], d_lc[7], d_lc[8], d_lc[9], d_lc[10], d_lc[11],
 			rs_errs);
 	}
 
@@ -290,31 +292,196 @@ dmr_slot::decode_pinf(uint8_t* pinf) {
 }
 
 bool
-dmr_slot::decode_emb_sig() {
-	bool rc = true;
-	d_emb_sig.clear();
+dmr_slot::decode_emb() {
+	bit_vector emb_sig;
 
 	// deinterleave
 	for (int i = SYNC_EMB; i < (SYNC_EMB + 8); i++)
-		d_emb_sig.push_back(d_slot[i]);
+		emb_sig.push_back(d_slot[i]);
 	for (int i = (SLOT_R - 8); i < SLOT_R; i++)
-		d_emb_sig.push_back(d_slot[i]);
+		emb_sig.push_back(d_slot[i]);
 
 	// quadratic residue FEC
-	int qr_errs = CQR1676::decode(d_emb_sig);
+	int qr_errs = CQR1676::decode(emb_sig);
 	if ((qr_errs < 0) || (qr_errs > 2))	// only corrects 2-bit errors or less
 		return false;
 
 	// validate correct color code received
-	// this is necessary because FEC can pass (errs <= 2) but data contains garbage
-	if (d_cc != get_emb_cc())
+	// this is necessary because FEC can pass even with garbage data
+	uint8_t emb_cc = (emb_sig[0] << 3) + (emb_sig[1] << 2) + (emb_sig[2] << 1) + emb_sig[3];
+	if (d_cc != emb_cc)
 		return false;
 
+	uint8_t emb_pi = emb_sig[4];
+	uint8_t emb_lcss = (emb_sig[5] << 1) + emb_sig[6];
+
 	if (d_debug >= 10) {
-		fprintf(stderr, "Slot(%d), CC(%x), PI(%d), EMB lcss(%x), qr_errs=%d\n", d_chan, get_emb_cc(), get_emb_pi(), get_emb_lcss(), qr_errs);
+		fprintf(stderr, "Slot(%d), CC(%x), PI(%d), EMB lcss(%x), qr_errs=%d\n", d_chan, emb_cc, emb_pi, emb_lcss, qr_errs);
 	}
 
+	switch (emb_lcss) {
+		case 0:	// Single-fragment RC
+			d_emb.clear();
+			for (size_t i=0; i<32; i++)
+				d_emb.push_back(d_slot[SYNC_EMB + 8 + i]);
+			if (decode_embedded_sbrc(emb_pi)) {
+				if (d_debug >= 5) {
+					if (emb_pi)
+						fprintf(stderr, "Slot(%d), CC(%x), EMB RC(%x)\n", d_chan, emb_cc, get_rc());
+					else
+						fprintf(stderr, "Slot(%d), CC(%x), EMB SB(%03x)\n", d_chan, emb_cc, get_sb());
+				}
+			}
+			break;
+		case 1: // First fragment LC
+			d_emb.clear();
+			for (size_t i=0; i<32; i++)
+				d_emb.push_back(d_slot[SYNC_EMB + 8 + i]);
+			break;
+		case 2: // End LC
+			for (size_t i=0; i<32; i++)
+				d_emb.push_back(d_slot[SYNC_EMB + 8 + i]);
+			if (decode_embedded_lc()) {
+				if (d_debug >= 5) {
+					fprintf(stderr, "Slot(%d), CC(%x), EMB LC PF(%d), FLCO(%02x), FID(%02x), SVCOPT(%02X), DSTADDR(%06x), SRCADDR(%06x)\n", 
+						d_chan, emb_cc, get_lc_pf(), get_lc_flco(), get_lc_fid(), get_lc_svcopt(), get_lc_dstaddr(), get_lc_srcaddr());
+				}
+			}
+			break;
+		case 3: // Continue LC
+			for (size_t i=0; i<32; i++)
+				d_emb.push_back(d_slot[SYNC_EMB + 8 + i]);
+			break;
+ 
+	}
 
+	return true;
+}
+
+bool
+dmr_slot::decode_embedded_lc() {
+	byte_vector emb_data;
+	d_lc_valid = false;
+	d_lc.clear();
+
+	// The data is unpacked downwards in columns
+	bool data[128];
+	memset(data, 0, 128 * sizeof(bool));
+	unsigned int b = 0;
+	for (unsigned int a = 0; a < 128; a++) {
+		data[b] = d_emb[a];
+		b += 16;
+		if (b > 127)
+			b -= 127;
+	}
+
+	// Hamming (16,11,4) check each row except the last one
+	for (unsigned int a = 0; a < 112; a += 16) {
+		if (!CHamming::decode16114(data + a))
+			return false;
+	}
+
+	// Check parity bits
+	for (unsigned int a = 0; a < 16; a++) {
+		bool parity = data[a + 0] ^ data[a + 16] ^ data[a + 32] ^ data[a + 48] ^ data[a + 64] ^ data[a + 80] ^ data[a + 96] ^ data[a + 112];
+		if (parity)
+			return false;
+	}
+
+	// Extract 72 bits of payload
+	for (unsigned int a = 0; a < 11; a++)
+		emb_data.push_back(data[a]);
+	for (unsigned int a = 16; a < 27; a++)
+		emb_data.push_back(data[a]);
+	for (unsigned int a = 32; a < 42; a++)
+		emb_data.push_back(data[a]);
+	for (unsigned int a = 48; a < 58; a++)
+		emb_data.push_back(data[a]);
+	for (unsigned int a = 64; a < 74; a++)
+		emb_data.push_back(data[a]);
+	for (unsigned int a = 80; a < 90; a++)
+		emb_data.push_back(data[a]);
+	for (unsigned int a = 96; a < 106; a++)
+		emb_data.push_back(data[a]);
+
+	// Convert 72 bits payload to 9 bytes LC
+	for (int i = 0; i < 72; i += 8)
+		d_lc.push_back((emb_data[i+0] << 7) + (emb_data[i+1] << 6) + (emb_data[i+2] << 5) + (emb_data[i+3] << 4) +
+			       (emb_data[i+4] << 3) + (emb_data[i+5] << 2) + (emb_data[i+6] << 1) +  emb_data[i+7]);
+
+	// Extract 5 bit received CRC
+	uint16_t rxd_crc = (data[42] << 4) + (data[58] << 3) + (data[74] << 2) + (data[90] << 1) + data[106];
+
+	// Calculate LC CRC and compare with received value
+	uint16_t calc_crc = (d_lc[0] + d_lc[1] + d_lc[2] + d_lc[3] + d_lc[4] + d_lc[5] + d_lc[6] + d_lc[7] + d_lc[8]) % 31;
+	if (rxd_crc == calc_crc) {
+		d_lc_valid = true;
+		if (d_debug >=10) {
+			fprintf(stderr, "EMB LC: %02x %02x %02x %02x %02x %02x %02x %02x %02x\n",
+				d_lc[0], d_lc[1], d_lc[2], d_lc[3], d_lc[4], d_lc[5],
+				d_lc[6], d_lc[7], d_lc[8]);
+		}
+	}
+
+	return d_lc_valid;
+}
+
+bool
+dmr_slot::decode_embedded_sbrc(bool _pi) {
+	// Invalidate previous parameter values
+	if (_pi)
+		d_rc_valid = false;
+	else
+		d_sb_valid = false;
+
+	// De-interleave data and unpack downward in columns
+	bool data[32];
+	memset(data, 0, 32 * sizeof(bool));
+	unsigned int b = 0;
+	for (unsigned int a = 0; a < 32; a++) {
+		data[b] = d_emb[(a*17)%32];
+		b += 16;
+		if (b > 31)
+			b -= 31;
+	}
+
+	// Hamming (16,11,4) check first row only
+	if (!CHamming::decode16114(data)) {
+		return false;
+	}
+
+	// Parity and CRC checks depends on msg type
+	if (_pi) { // RC Info
+		for (int i = 0; i < 16; i++) {
+			if ((data[i + 0] ^ data[i + 16]) == 0) { // odd parity
+				return false;
+			}
+		}
+		if (crc7((uint8_t*)data, 11) != 0) {
+			return false;
+		}
+		d_rc = 0;
+		for (int i = 0; i < 4; i++)
+			d_rc = (d_rc << 1) + data[i];
+		d_rc_valid = true;
+		if (d_debug >=10) {
+			fprintf(stderr, "EMB RC: %x\n", get_rc());
+		}
+
+	} else { // SB Info
+		for (int i = 0; i < 16; i++) {
+			if ((data[i + 0] ^ data[i + 16]) != 0) { // even parity
+				return false;
+			}
+		}
+		d_sb = 0;
+		for (int i = 0; i < 11; i++)
+			d_sb = (d_sb << 1) + data[i];
+		d_sb_valid = true;
+		if (d_debug >=10) {
+			fprintf(stderr, "EMB SB: %03x\n", get_sb());
+		}
+	}
 
 	return true;
 }

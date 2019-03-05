@@ -28,11 +28,13 @@
 
 typedef std::vector<bool> bit_vector;
 
+static const unsigned int slot_ids[] = {0, 1, 0, 0, 1, 1, 0, 1};
+
 class dmr_cai {
 public:
 	dmr_cai(int debug);
 	~dmr_cai();
-	int load_frame(const uint8_t fr_sym[]);
+	bool load_frame(const uint8_t fr_sym[], bool& unmute);
 	inline int chan() { return d_chan; };
 
 private:

@@ -32,6 +32,7 @@
 #include "bit_utils.h"
 #include "check_frame_sync.h"
 
+#include "frame_sync_magics.h"
 #include "p25p2_vf.h"
 #include "mbelib.h"
 #include "ambe.h"
@@ -47,8 +48,6 @@
 
 namespace gr{
     namespace op25_repeater{
-
-static const uint64_t DSTAR_FRAME_SYNC_MAGIC = 0x444445101440LL;  // expanded into dibits
 
 enum rx_types {
 	RX_TYPE_NONE=0,
@@ -109,7 +108,6 @@ public:
 	~rx_sync();
 private:
 	void cbuf_insert(const uint8_t c);
-	void dmr_sync(const uint8_t bitbuf[], int& current_slot, bool& unmute);
 	void ysf_sync(const uint8_t dibitbuf[], bool& ysf_fullrate, bool& unmute);
 	void codeword(const uint8_t* cw, const enum codeword_types codeword_type, int slot_id);
 	void output(int16_t * samp_buf, const ssize_t slot_id);
