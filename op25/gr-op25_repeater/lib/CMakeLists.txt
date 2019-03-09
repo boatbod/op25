@@ -126,19 +126,25 @@ target_link_libraries(op25-d2460 imbe_vocoder)
 add_subdirectory(imbe_vocoder)
 
 ########################################################################
-# scan4sync utility
+# Utilities
 ########################################################################
 list(APPEND scan4sync_sources
     ${CMAKE_CURRENT_SOURCE_DIR}/scan4sync.cc
 )
 
+list(APPEND BER_sources
+    ${CMAKE_CURRENT_SOURCE_DIR}/BER.cc
+)
+
 add_executable(scan4sync ${scan4sync_sources})
+add_executable(BER ${BER_sources})
 target_link_libraries(scan4sync)
+target_link_libraries(BER)
 
 ########################################################################
 # Install built library files
 ########################################################################
-install(TARGETS gnuradio-op25_repeater scan4sync
+install(TARGETS gnuradio-op25_repeater scan4sync BER
     LIBRARY DESTINATION lib${LIB_SUFFIX} # .so/.dylib file
     ARCHIVE DESTINATION lib${LIB_SUFFIX} # .lib file
     RUNTIME DESTINATION bin              # .dll file
