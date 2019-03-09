@@ -63,13 +63,13 @@ int main (int argc, char* argv[]) {
 	// find starting sync in pattern file
 	size_t p_pos = 0;
 	size_t p_start = 0;
+	int cw_bits = 0;
 	while (p_pos < pattern.size()) {
+		cw_bits++;
 		cw = ((cw << 1) + pattern[p_pos]) & 0xffffffffffff;
-		if (test_sync(cw, s_errs)) {
-			if (p_pos >= (SYNC_SIZE - 1)) {
-				p_start = p_pos - SYNC_SIZE + 1;
-			}
-			printf("Pattern sync at %lu, errs %d\n", p_pos, s_errs);
+		if ((cw_bits >= SYNC_SIZE) && test_sync(cw, s_errs)) {
+			p_start = p_pos - SYNC_SIZE + 1;
+			printf("Pattern sync at %lu, errs %d\n", p_start, s_errs);
 			break;
 		}
 		p_pos++;
@@ -86,7 +86,6 @@ int main (int argc, char* argv[]) {
 	printf("Pattern file: %lu bits, Pattern length: %lu bits\n", pattern.size(), p_len);
 	printf("Symbols file: %lu bits\n", rx_syms.size());
 
-	int cw_bits;
 	size_t r_pos = 0;
 	size_t r_start = 0;
 	size_t r_len = rx_syms.size();
