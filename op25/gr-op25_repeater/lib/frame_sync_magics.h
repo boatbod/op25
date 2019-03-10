@@ -33,6 +33,7 @@ static const uint64_t DMR_T1_VOICE_SYNC_MAGIC  = 0x5d577f7757ffLL;
 static const uint64_t DMR_T1_DATA_SYNC_MAGIC   = 0xf7fdd5ddfd55LL;
 static const uint64_t DMR_T2_VOICE_SYNC_MAGIC  = 0x7dffd5f55d5fLL;
 static const uint64_t DMR_T2_DATA_SYNC_MAGIC   = 0xd7557f5ff7f5LL;
+static const uint64_t DMR_RESERVED_SYNC_MAGIC  = 0xdd7ff5d757ddLL;
 
 // P25
 static const uint64_t P25_FRAME_SYNC_MAGIC     = 0x5575F5FF77FFLL;
