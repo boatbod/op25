@@ -60,6 +60,7 @@ int main (int argc, char* argv[]) {
 		rx_syms.push_back((dibit >> 1) & 0x1);
 		rx_syms.push_back(dibit & 0x1);
 	}
+
 	// find starting sync in pattern file
 	size_t p_pos = 0;
 	size_t p_start = 0;
@@ -79,20 +80,32 @@ int main (int argc, char* argv[]) {
 		return 1;
 	}
 
-	// pattern must be an even multiple of frame size
+	// pattern ichunk must be an even multiple of frame size
 	size_t p_len = pattern.size() - p_start;
 	if (p_len % FRAME_SIZE)
 		p_len -= (p_len % FRAME_SIZE);
-	printf("Pattern file: %lu bits, Pattern length: %lu bits\n", pattern.size(), p_len);
+	printf("Pattern length: %lu bits\n", p_len);
 	printf("Symbols file: %lu bits\n", rx_syms.size());
 
 	size_t r_pos = 0;
 	size_t r_start = 0;
 	size_t r_len = rx_syms.size();
 	bool calculating = true;
-	size_t bit_errs = 0;
-	size_t bit_count = 0;
+
+	// stats
+	size_t total_bit_errs = 0;
+	size_t total_bit_count = 0;
+	double total_ber = 0;
+	size_t max_bit_errs = 0;
+	size_t max_bit_count = 0;
+	double max_ber = 0;
+
+	// run through received symbols chunk by chunk
 	do {
+		size_t chunk_bit_errs = 0;
+		size_t chunk_bit_count = 0;
+		double chunk_ber = 0;
+		
 		// find next sync in symbols file
 		cw = 0;
 		cw_bits = 0;
@@ -101,13 +114,11 @@ int main (int argc, char* argv[]) {
 			cw = ((cw << 1) + rx_syms[r_pos]) & 0xffffffffffff;
 			if ((cw_bits >= SYNC_SIZE) && test_sync(cw, s_errs)) {
 				r_start = r_pos - SYNC_SIZE + 1;
-				printf("Sync at %lu, sync errs %d\n", r_start, s_errs);
 				break;
 			}
 			r_pos++;
 		}
 		if ((r_pos >= r_len) || (p_len > (r_len - r_start))) {
-			printf("Symbol file processing complete\n");
 			calculating = false;
 			break;
 		}
@@ -116,19 +127,28 @@ int main (int argc, char* argv[]) {
 		p_pos = p_start;
 		while(p_pos < p_len) {
 			if (rx_syms[r_pos] ^ pattern[p_pos])
-				bit_errs++;
+				chunk_bit_errs++;
 			r_pos++;
 			p_pos++;
-			bit_count++;
+			chunk_bit_count++;
 		}
+		chunk_ber = 100 * (double)chunk_bit_errs / (double)chunk_bit_count;
+		printf("Pattern match (%lu) bit errs=%lu, BER=%lf%%\n", r_start, chunk_bit_errs, chunk_ber);
 
+		// Update totals
+		total_bit_count += chunk_bit_count;
+		total_bit_errs += chunk_bit_errs;
+		if (chunk_ber > max_ber) {
+			max_bit_errs = chunk_bit_errs;
+			max_bit_count = chunk_bit_count;
+			max_ber = chunk_ber;
+		}
 	} while (calculating);
 
-	double ber = 100 * (double)bit_errs / (double)bit_count;
-	printf("Total bits processed: %lu, Bit errors: %lu, BER: %lf%%\n", bit_count, bit_errs, ber);
-	
+	total_ber = 100 * (double)total_bit_errs / (double)total_bit_count;
+	printf("Max bit errs=%lu, Max BER=%lf%%\n", max_bit_errs, max_ber);
+	printf("Total bit errs=%lu, Total BER=%lf%%\n", total_bit_errs, total_ber);
 
     return 0;
-
 }
 
