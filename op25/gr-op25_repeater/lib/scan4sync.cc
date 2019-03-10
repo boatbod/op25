@@ -15,7 +15,7 @@
 
 static const int          SYNC_SIZE		   = 48; // 48 bits
 static const unsigned int SYNC_THRESHOLD	   = 6;  // up to 6 bit errorss
-static const unsigned int SYNC_MAGICS_COUNT    = 11;
+static const unsigned int SYNC_MAGICS_COUNT    = 12;
 static const uint64_t     SYNC_MAGICS[]        = {DMR_BS_VOICE_SYNC_MAGIC,
                                                   DMR_BS_DATA_SYNC_MAGIC,
                                                   DMR_MS_VOICE_SYNC_MAGIC,
@@ -25,6 +25,7 @@ static const uint64_t     SYNC_MAGICS[]        = {DMR_BS_VOICE_SYNC_MAGIC,
                                                   DMR_T1_DATA_SYNC_MAGIC,
                                                   DMR_T2_VOICE_SYNC_MAGIC,
                                                   DMR_T2_DATA_SYNC_MAGIC,
+                                                  DMR_RESERVED_SYNC_MAGIC,
                                                   DSTAR_FRAME_SYNC_MAGIC,
 						 P25_FRAME_SYNC_MAGIC};
 static const char         SYNCS[][25]          = {"DMR_BS_VOICE_SYNC",
@@ -36,6 +37,7 @@ static const char         SYNCS[][25]          = {"DMR_BS_VOICE_SYNC",
                                                   "DMR_T1_DATA_SYNC",
                                                   "DMR_T2_VOICE_SYNC",
                                                   "DMR_T2_DATA_SYNC",
+                                                  "DMR_RESERVED_SYNC",
 						  "DSTAR_FRAME_SYNC",
 						  "P25_FRAME_SYNC"};
 
