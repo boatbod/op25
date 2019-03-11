@@ -79,12 +79,9 @@ int main (int argc, char* argv[])
 		fpos++;
 
 		cw = ((cw << 1) + ((dibit >>1) & 0x1)) & 0xffffffffffff;
-		if (test_sync(cw, sync, s_errs))
-			printf("%s [%06lx] matched [%06lx] with %d errs at %lu bit 1\n", SYNCS[sync], SYNC_MAGICS[sync], cw, s_errs, fpos);
-
 		cw = ((cw << 1) + (dibit & 0x1)) & 0xffffffffffff;
 		if (test_sync(cw, sync, s_errs))
-			printf("%s [%06lx] matched [%06lx] with %d errs at %lu bit 0\n", SYNCS[sync], SYNC_MAGICS[sync], cw, s_errs, fpos);
+			printf("%s [%06lx] matched [%06lx] with %d errs at %lu\n", SYNCS[sync], SYNC_MAGICS[sync], cw, s_errs, fpos);
 
 	}
 
