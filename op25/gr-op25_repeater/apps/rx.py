@@ -831,8 +831,8 @@ class rx_main(object):
     def run(self):
         try:
             self.tb.start()
-            while self.keep_running:
-                time.sleep(1)
+            self.tb.wait()
+            sys.stderr.write('Flowgraph completed. Exiting\n')
         except:
             sys.stderr.write('main: exception occurred\n')
             sys.stderr.write('main: exception:\n%s\n' % traceback.format_exc())

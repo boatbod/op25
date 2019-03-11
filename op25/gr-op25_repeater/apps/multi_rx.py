@@ -240,8 +240,8 @@ class rx_main(object):
     def run(self):
         try:
             self.tb.start()
-            while self.keep_running:
-                time.sleep(1)
+            self.tb.wait()
+            sys.stderr.write('Flowgraph complete. Exiting\n')
         except (KeyboardInterrupt):
             self.tb.stop()
             self.tb.kill()
