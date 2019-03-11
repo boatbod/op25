@@ -11,7 +11,8 @@
             "plot": "symbol", 
             "symbol_rate": 4800,
             "raw_output": "",
-            "raw_input": ""
+            "raw_input": "",
+            "raw_seek": 0
         }, 
         {
             "demod_type": "fsk4", 
