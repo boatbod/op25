@@ -193,7 +193,7 @@ class p25_rx_block (gr.top_block):
         elif options.ifile:
             self.open_ifile2(self.channel_rate, options.ifile)
 	elif options.symbols:
-            self.open_symbols(self.symbol_rate, options.symbols)
+            self.open_symbols(self.symbol_rate, options.symbols, options.seek)
         else:
             pass
 
@@ -710,7 +710,7 @@ class p25_rx_block (gr.top_block):
         sys.stderr.write("Reading raw symbols from file: %s\n" % self.options.symbols)
         source = blocks.file_source(gr.sizeof_char, file_name, False)
         if file_seek > 0:
-            rc = ifile.seek(file_seek*4800, gr.SEEK_SET) # Seek in seconds (4800sps)
+            rc = source.seek(file_seek*4800, 0) # Seek in seconds (4800sps)
             assert rc == True
         throttle = blocks.throttle(gr.sizeof_char, symbol_rate)
         throttle.set_max_noutput_items(symbol_rate/50);
