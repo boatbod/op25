@@ -72,6 +72,7 @@ int main (int argc, char* argv[])
 
 	char dibit;
 	size_t fpos = 0;
+	size_t last_fpos = 0;
 	std::fstream file(argv[1], std::ios::in | std::ios::binary);
 	while (!file.eof())
 	{
@@ -80,8 +81,10 @@ int main (int argc, char* argv[])
 
 		cw = ((cw << 1) + ((dibit >>1) & 0x1)) & 0xffffffffffff;
 		cw = ((cw << 1) + (dibit & 0x1)) & 0xffffffffffff;
-		if (test_sync(cw, sync, s_errs))
-			printf("%s [%06lx] matched [%06lx] with %d errs at %lu\n", SYNCS[sync], SYNC_MAGICS[sync], cw, s_errs, fpos);
+		if (test_sync(cw, sync, s_errs)) {
+			printf("%s [%06lx] matched [%06lx] with %d errs at sym %lu (dist=%lu)\n", SYNCS[sync], SYNC_MAGICS[sync], cw, s_errs, fpos, fpos-last_fpos);
+			last_fpos = fpos;
+		}
 
 	}
 
