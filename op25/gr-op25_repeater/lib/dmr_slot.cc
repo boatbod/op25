@@ -217,11 +217,37 @@ dmr_slot::decode_csbk(uint8_t* csbk) {
 	uint8_t  csbk_fid  = extract(csbk, 8, 16);
 	uint64_t csbk_data = extract(csbk, 16, 80);
 
-	if (d_debug >= 5) {
-		fprintf(stderr, "Slot(%d), CC(%x), CSBK LB(%d), PF(%d), CSBKO(%02x), FID(%02x), DATA(%08lx)\n", d_chan, get_slot_cc(), csbk_lb, csbk_pf, csbk_o, csbk_fid, csbk_data);
-	}
+	// Known CSBKO opcodes
+	switch((csbk_o << 8) + csbk_fid) {
+		case 0x0106: { // MotoTRBO ConnectPlus Neighbors
+			uint8_t nb1 = extract(csbk, 18, 24);
+			uint8_t nb2 = extract(csbk, 26, 32);
+			uint8_t nb3 = extract(csbk, 34, 40);
+			uint8_t nb4 = extract(csbk, 42, 48);
+			uint8_t nb5 = extract(csbk, 50, 56);
+			if (d_debug >= 5) {
+				fprintf(stderr, "Slot(%d), CC(%x), CSBK LB(%d), PF(%d), CSBKO(%02x), FID(%02x), CONNECT PLUS NB1(%02x), NB2(%02x), NB3(%02x), NB4(%02x), NB5(%02x)\n", d_chan, get_slot_cc(), csbk_lb, csbk_pf, csbk_o, csbk_fid, nb1, nb2, nb3, nb4, nb5);
+			}
+			break;
+		}
 
-	// TODO: add known CSBKO opcodes
+		case 0x0306: { //MotoTRBO ConnectPlus Channel Grant
+			uint32_t srcAddr = extract(csbk, 16, 40);
+			uint32_t grpAddr = extract(csbk, 40, 64);
+			uint8_t  lcn     = extract(csbk, 64, 68);
+			uint8_t  tslot   = csbk[68];
+			if (d_debug >= 5) {
+				fprintf(stderr, "Slot(%d), CC(%x), CSBK LB(%d), PF(%d), CSBKO(%02x), FID(%02x), CONNECT PLUS GRANT srcAddr(%06x), grpAddr(%06x), LCN(%x), TS(%d)\n", d_chan, get_slot_cc(), csbk_lb, csbk_pf, csbk_o, csbk_fid, srcAddr, grpAddr, lcn, tslot);
+			}
+			break;
+		}
+
+		default: {
+			if (d_debug >= 5) {
+				fprintf(stderr, "Slot(%d), CC(%x), CSBK LB(%d), PF(%d), CSBKO(%02x), FID(%02x), DATA(%08lx)\n", d_chan, get_slot_cc(), csbk_lb, csbk_pf, csbk_o, csbk_fid, csbk_data);
+			}
+		}
+	}
 
 	return true;
 }
