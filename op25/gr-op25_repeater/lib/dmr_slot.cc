@@ -41,6 +41,7 @@
 dmr_slot::dmr_slot(const int chan, const int debug) :
 	d_chan(chan),
 	d_debug(debug),
+	d_mbc_state(DATA_INVALID),
 	d_lc_valid(false),
 	d_rc_valid(false),
 	d_sb_valid(false),
@@ -51,7 +52,9 @@ dmr_slot::dmr_slot(const int chan, const int debug) :
 {
 	memset(d_slot, 0, sizeof(d_slot));
 	d_slot_type.clear();
+	d_lc.clear();
 	d_emb.clear();
+	d_mbc.clear();
 }
 
 dmr_slot::~dmr_slot() {
@@ -69,17 +72,24 @@ dmr_slot::load_slot(const uint8_t slot[], uint64_t sl_type) {
 		decode_emb();
 
 	// Voice or Data decision is based on most recent SYNC
+	std::string v_type;
 	switch(d_type) {
 		case DMR_BS_VOICE_SYNC_MAGIC:
-		case DMR_MS_VOICE_SYNC_MAGIC:
-		case DMR_T1_VOICE_SYNC_MAGIC:
-		case DMR_T2_VOICE_SYNC_MAGIC:
+			v_type = "BS";
 			is_voice_frame = true;
-			if (d_debug >= 5) {
-				fprintf(stderr, "Slot(%d), CC(%x), VOICE\n", d_chan, d_cc);
-			}
 			break;
-
+		case DMR_MS_VOICE_SYNC_MAGIC:
+			v_type = "MS";
+			is_voice_frame = true;
+			break;
+		case DMR_T1_VOICE_SYNC_MAGIC:
+			v_type = "T1";
+			is_voice_frame = true;
+			break;
+		case DMR_T2_VOICE_SYNC_MAGIC:
+			v_type = "T2";
+			is_voice_frame = true;
+			break;
 		case DMR_BS_DATA_SYNC_MAGIC:
 		case DMR_MS_DATA_SYNC_MAGIC:
 			decode_slot_type();
@@ -87,6 +97,9 @@ dmr_slot::load_slot(const uint8_t slot[], uint64_t sl_type) {
 
 		default: // unknown type
 			break;
+	}
+	if (is_voice_frame && (d_debug >= 5)) {
+		fprintf(stderr, "Slot(%d), CC(%x), %s VOICE\n", d_chan, d_cc, v_type.c_str());
 	}
 	return is_voice_frame;
 }
@@ -102,9 +115,9 @@ dmr_slot::decode_slot_type() {
 	for (int i = SLOT_R; i < (SLOT_R + 10); i++)
 		d_slot_type.push_back(d_slot[i]);
 
-	// golay (20,8)
+	// golay (20,8) hamming-weight of 6 reliably corrects at most 2 bit-errors
 	int gly_errs = CGolay2087::decode(d_slot_type);
-	if ((gly_errs < 0) || (gly_errs >= 3)) // only appears to reliably correct 2-bit errors or less
+	if ((gly_errs < 0) || (gly_errs > 2))
 		return false;
 	
 	uint8_t slot_cc = get_slot_cc();
@@ -148,11 +161,24 @@ dmr_slot::decode_slot_type() {
 				rc = decode_csbk(csbk);
 			else
 				rc = false;
+			break;
 		}
-		case 0x4: // MBC
+		case 0x4: { // MBC header
+			uint8_t mbc[96];
+			if (bptc.decode(d_slot, mbc))
+				rc = decode_mbc_header(mbc);
+			else
+				rc = false;
 			break;
-		case 0x5: // MBC continuation
+		}
+		case 0x5: { // MBC continuation
+			uint8_t mbc[96];
+			if (bptc.decode(d_slot, mbc))
+				rc = decode_mbc_continue(mbc);
+			else
+				rc = false;
 			break;
+		}
 		case 0x6: // Data header
 			break;
 		case 0x7: // Rate 1/2 data
@@ -178,7 +204,7 @@ dmr_slot::decode_slot_type() {
 
 bool
 dmr_slot::decode_csbk(uint8_t* csbk) {
-	// Apply CSBK mask and validate CRC
+	// Apply mask and validate CRC
 	for (int i = 0; i < 16; i++)
 		csbk[i+80] ^= CSBK_CRC_MASK[i];
 	if (crc16(csbk, 96) != 0)
@@ -191,11 +217,106 @@ dmr_slot::decode_csbk(uint8_t* csbk) {
 	uint8_t  csbk_fid  = extract(csbk, 8, 16);
 	uint64_t csbk_data = extract(csbk, 16, 80);
 
-	if (d_debug >= 5) {
-		fprintf(stderr, "Slot(%d), CC(%x), CSBK LB(%d), PF(%d), CSBKO(%02x), FID(%02x), DATA(%08lx)\n", d_chan, get_slot_cc(), csbk_lb, csbk_pf, csbk_o, csbk_fid, csbk_data);
+	// Known CSBKO opcodes
+	switch((csbk_o << 8) + csbk_fid) {
+		case 0x0106: { // MotoTRBO ConnectPlus Neighbors
+			uint8_t nb1 = extract(csbk, 18, 24);
+			uint8_t nb2 = extract(csbk, 26, 32);
+			uint8_t nb3 = extract(csbk, 34, 40);
+			uint8_t nb4 = extract(csbk, 42, 48);
+			uint8_t nb5 = extract(csbk, 50, 56);
+			if (d_debug >= 5) {
+				fprintf(stderr, "Slot(%d), CC(%x), CSBK LB(%d), PF(%d), CSBKO(%02x), FID(%02x), CONNECT PLUS NB1(%02x), NB2(%02x), NB3(%02x), NB4(%02x), NB5(%02x)\n", d_chan, get_slot_cc(), csbk_lb, csbk_pf, csbk_o, csbk_fid, nb1, nb2, nb3, nb4, nb5);
+			}
+			break;
+		}
+
+		case 0x0306: { //MotoTRBO ConnectPlus Channel Grant
+			uint32_t srcAddr = extract(csbk, 16, 40);
+			uint32_t grpAddr = extract(csbk, 40, 64);
+			uint8_t  lcn     = extract(csbk, 64, 68);
+			uint8_t  tslot   = csbk[68];
+			if (d_debug >= 5) {
+				fprintf(stderr, "Slot(%d), CC(%x), CSBK LB(%d), PF(%d), CSBKO(%02x), FID(%02x), CONNECT PLUS GRANT srcAddr(%06x), grpAddr(%06x), LCN(%x), TS(%d)\n", d_chan, get_slot_cc(), csbk_lb, csbk_pf, csbk_o, csbk_fid, srcAddr, grpAddr, lcn, tslot);
+			}
+			break;
+		}
+
+		default: {
+			if (d_debug >= 5) {
+				fprintf(stderr, "Slot(%d), CC(%x), CSBK LB(%d), PF(%d), CSBKO(%02x), FID(%02x), DATA(%08lx)\n", d_chan, get_slot_cc(), csbk_lb, csbk_pf, csbk_o, csbk_fid, csbk_data);
+			}
+		}
 	}
 
-	// TODO: add known CSBKO opcodes
+	return true;
+}
+
+bool
+dmr_slot::decode_mbc_header(uint8_t* mbc) {
+	d_mbc_state = DATA_INVALID;
+
+	// Apply mask and validate CRC
+	for (int i = 0; i < 16; i++)
+		mbc[i+80] ^= MBC_HEADER_CRC_MASK[i];
+	if (crc16(mbc, 96) != 0) {
+		fprintf(stderr, "MBC Header CRC failure\n");
+		return false;
+	}
+
+	// Extract parameters
+	uint8_t  mbc_lb   = mbc[0] & 0x1;
+	uint8_t  mbc_pf   = mbc[1] & 0x1;
+	uint8_t  mbc_o    = extract(mbc, 2, 8);
+	uint8_t  mbc_fid  = extract(mbc, 8, 16);
+
+	// Save header and data, excluding last 16 bits of CRC
+	for (int i = 0; i < 80; i++) {
+		d_mbc.push_back(mbc[i]);
+	}
+	d_mbc_state = DATA_INCOMPLETE;
+
+	if (d_debug >= 5) {
+		fprintf(stderr, "Slot(%d), CC(%x), MBC HDR LB(%d), PF(%d), CSBKO(%02x), FID(%02x)\n", d_chan, get_slot_cc(), mbc_lb, mbc_pf, mbc_o, mbc_fid);
+	}
+
+	return true;
+}
+
+bool
+dmr_slot::decode_mbc_continue(uint8_t* mbc) {
+	// Can only continue if we have started accumulating MBC data
+	if (d_mbc_state != DATA_INCOMPLETE)
+		return false;
+
+	// Extract last block indicator
+	uint8_t  mbc_lb   = mbc[0] & 0x1;
+
+	// Save data excluding last block indicator bit
+	for (int i = 1; i < 96; i++) {
+		d_mbc.push_back(mbc[i]);
+	}
+
+	if (!mbc_lb) {
+		if (d_debug >= 5) {
+			fprintf(stderr, "Slot(%d), CC(%x), MBC CONT LB(%d)\n", d_chan, get_slot_cc(), mbc_lb);
+		}
+	} else {
+		// Validate CRC, excluding first 80 bits of header
+		if ((d_mbc.size() < 175) || 
+		    (crc16((uint8_t*)(d_mbc.data() + 80), d_mbc.size() - 80) != 0)) {
+			d_mbc_state = DATA_INVALID;
+			return false;
+		}
+		d_mbc.resize(d_mbc.size()-16); // discard trailing CRC
+		d_mbc_state = DATA_VALID;
+
+		if (d_debug >= 5) {
+			fprintf(stderr, "Slot(%d), CC(%x), MBC CONT LB(%d), data size=%lu\n", d_chan, get_slot_cc(), mbc_lb, d_mbc.size());
+		}
+
+		// TODO: do something useful with the MBC data
+	} 
 
 	return true;
 }

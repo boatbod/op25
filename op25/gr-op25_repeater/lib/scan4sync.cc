@@ -15,7 +15,7 @@
 
 static const int          SYNC_SIZE		   = 48; // 48 bits
 static const unsigned int SYNC_THRESHOLD	   = 6;  // up to 6 bit errorss
-static const unsigned int SYNC_MAGICS_COUNT    = 11;
+static const unsigned int SYNC_MAGICS_COUNT    = 12;
 static const uint64_t     SYNC_MAGICS[]        = {DMR_BS_VOICE_SYNC_MAGIC,
                                                   DMR_BS_DATA_SYNC_MAGIC,
                                                   DMR_MS_VOICE_SYNC_MAGIC,
@@ -25,6 +25,7 @@ static const uint64_t     SYNC_MAGICS[]        = {DMR_BS_VOICE_SYNC_MAGIC,
                                                   DMR_T1_DATA_SYNC_MAGIC,
                                                   DMR_T2_VOICE_SYNC_MAGIC,
                                                   DMR_T2_DATA_SYNC_MAGIC,
+                                                  DMR_RESERVED_SYNC_MAGIC,
                                                   DSTAR_FRAME_SYNC_MAGIC,
 						 P25_FRAME_SYNC_MAGIC};
 static const char         SYNCS[][25]          = {"DMR_BS_VOICE_SYNC",
@@ -36,6 +37,7 @@ static const char         SYNCS[][25]          = {"DMR_BS_VOICE_SYNC",
                                                   "DMR_T1_DATA_SYNC",
                                                   "DMR_T2_VOICE_SYNC",
                                                   "DMR_T2_DATA_SYNC",
+                                                  "DMR_RESERVED_SYNC",
 						  "DSTAR_FRAME_SYNC",
 						  "P25_FRAME_SYNC"};
 
@@ -70,6 +72,7 @@ int main (int argc, char* argv[])
 
 	char dibit;
 	size_t fpos = 0;
+	size_t last_fpos = 0;
 	std::fstream file(argv[1], std::ios::in | std::ios::binary);
 	while (!file.eof())
 	{
@@ -77,12 +80,11 @@ int main (int argc, char* argv[])
 		fpos++;
 
 		cw = ((cw << 1) + ((dibit >>1) & 0x1)) & 0xffffffffffff;
-		if (test_sync(cw, sync, s_errs))
-			printf("%s [%06lx] matched [%06lx] with %d errs at %lu bit 1\n", SYNCS[sync], SYNC_MAGICS[sync], cw, s_errs, fpos);
-
 		cw = ((cw << 1) + (dibit & 0x1)) & 0xffffffffffff;
-		if (test_sync(cw, sync, s_errs))
-			printf("%s [%06lx] matched [%06lx] with %d errs at %lu bit 0\n", SYNCS[sync], SYNC_MAGICS[sync], cw, s_errs, fpos);
+		if (test_sync(cw, sync, s_errs)) {
+			printf("%s [%06lx] matched [%06lx] with %d errs at sym %lu (dist=%lu)\n", SYNCS[sync], SYNC_MAGICS[sync], cw, s_errs, fpos, fpos-last_fpos);
+			last_fpos = fpos;
+		}
 
 	}
 

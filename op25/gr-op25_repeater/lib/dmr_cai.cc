@@ -175,28 +175,65 @@ dmr_cai::decode_shortLC()
 		return false;
 
 	// extract useful data
-	if (d_debug >= 10) {
-		uint8_t slco, d0, d1, d2;
-		slco = 0; d0 = 0; d1 = 0; d2 = 0;
-		for (i = 0; i < 4; i++) {
-			slco <<= 1;
-			slco |= slc[i];
+	uint8_t slco, d0, d1, d2;
+	slco = 0; d0 = 0; d1 = 0; d2 = 0;
+	for (i = 0; i < 4; i++) {
+		slco <<= 1;
+		slco |= slc[i];
+	}
+	for (i = 0; i < 8; i++) {
+		d0 <<= 1;
+		d0 |= slc[i+4];
+	}
+	for (i = 0; i < 8; i++) {
+		d1 <<= 1;
+		d1 |= slc[i+12];
+	}
+	for (i = 0; i < 8; i++) {
+		d2 <<= 1;
+		d2 |= slc[i+20];
+	}
+	switch(slco) {
+		case 0x0: { // Nul_Msg
+			if (d_debug >= 10)
+				fprintf(stderr, "SLCO=0x%x, NULL MSG\n", slco);
+			break;
 		}
-		for (i = 0; i < 8; i++) {
-			d0 <<= 1;
-			d0 |= slc[i+4];
+
+		case 0x1: { // Act_Updt
+			uint8_t ts1_act = d0 >> 4;
+			uint8_t ts2_act = d0 & 0xf;
+			if (d_debug >= 10)
+				fprintf(stderr, "SLCO=0x%x, ACTIVITY UPDATE TS1(%x), TS2(%x), HASH1(%02x), HASH2(%02x)\n", slco, ts1_act, ts2_act, d1, d2);
+			break;
 		}
-		for (i = 0; i < 8; i++) {
-			d1 <<= 1;
-			d1 |= slc[i+12];
+
+		case 0x2: { // Sys_Parms
+			uint8_t model = d0 >> 6;
+			//TODO: finish this decode section
+			break;
 		}
-		for (i = 0; i < 8; i++) {
-			d2 <<= 1;
-			d2 |= slc[i+20];
+
+		case 0x9: { // Connect Plus Voice Channel
+			uint16_t netId = (d0 << 4) + (d1 >> 4);
+			uint8_t siteId = ((d1 & 0xf) << 4) + (d2 >> 4);
+			if (d_debug >= 10)
+				fprintf(stderr, "SLCO=0x%x, CONNECT PLUS VOICE CHANNEL netId(%03x), siteId(%02x)\n", slco, netId, siteId);
+			break;
 		}
-		
-		if (d_debug >= 10)
-			fprintf(stderr, "SLCO=0x%x, DATA=%02x %02x %02x\n", slco, d0, d1, d2);
+
+		case 0xa: { // Connect Plus Control Channel
+			uint16_t netId = (d0 << 4) + (d1 >> 4);
+			uint8_t siteId = ((d1 & 0xf) << 4) + (d2 >> 4);
+			if (d_debug >= 10)
+				fprintf(stderr, "SLCO=0x%x, CONNECT PLUS CONTROL CHANNEL netId(%03x), siteId(%02x)\n", slco, netId, siteId);
+			break;
+		}
+
+		default: {
+			if (d_debug >= 10)
+				fprintf(stderr, "SLCO=0x%x, DATA=%02x %02x %02x\n", slco, d0, d1, d2);
+		}
 	}
 
 	return true;

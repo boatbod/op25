@@ -184,6 +184,8 @@ class rx_block (gr.top_block):
             if (cfg.has_key("raw_input")) and (cfg['raw_input'] != ""):
                 sys.stderr.write("Reading raw symbols from file: %s\n" % cfg['raw_input'])
                 chan.raw_file = blocks.file_source(gr.sizeof_char, cfg['raw_input'], False)
+                if (cfg.has_key("raw_seek")) and (cfg['raw_seek'] != 0):
+                    chan.raw_file.seek(int(cfg['raw_seek']) * 4800, 0)
                 chan.throttle = blocks.throttle(gr.sizeof_char, chan.symbol_rate)
                 chan.throttle.set_max_noutput_items(chan.symbol_rate/50);
                 self.connect(chan.raw_file, chan.throttle)
@@ -240,8 +242,8 @@ class rx_main(object):
     def run(self):
         try:
             self.tb.start()
-            while self.keep_running:
-                time.sleep(1)
+            self.tb.wait()
+            sys.stderr.write('Flowgraph complete. Exiting\n')
         except (KeyboardInterrupt):
             self.tb.stop()
             self.tb.kill()

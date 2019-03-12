@@ -85,7 +85,7 @@ bool p25_framer::nid_codeword(uint64_t acc) {
 	acc |= acc_parity;
 
 	// check if bch decode unsuccessful
-	if ((ec < 0) || (ec > 10)) {
+	if ((ec < 0) || (ec > 4)) { // hamming distance = 10, so max 4 correctable errors
 		return false;
 	}
 
@@ -101,10 +101,6 @@ bool p25_framer::nid_codeword(uint64_t acc) {
 	// Drop empty NIDs
 	if ((nid_word >> 1) == 0)
 		return false;
-
-	// Report high ec values
-	if ((ec > 8) && (d_debug >= 10))
-		fprintf(stderr, "p25_framer::nid_codeword: nid=%016lx, ec=%d\n", nid_word, ec);
 
 	// Validate duid and parity bit (TIA-102-BAAC)
 	if (((duid == 0) || (duid == 3) || (duid == 7) || (duid == 12) || (duid == 15)) && !parity)

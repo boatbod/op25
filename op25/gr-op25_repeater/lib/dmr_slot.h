@@ -32,6 +32,8 @@
 typedef std::vector<bool> bit_vector;
 typedef std::vector<uint8_t> byte_vector;
 
+enum data_state { DATA_INVALID = 0, DATA_VALID, DATA_INCOMPLETE };
+
 static const unsigned int DMR_SYNC_THRESHOLD       = 6;
 static const unsigned int DMR_SYNC_MAGICS_COUNT    = 9;
 static const uint64_t     DMR_SYNC_MAGICS[]        = {DMR_BS_VOICE_SYNC_MAGIC,
@@ -49,6 +51,7 @@ static const uint8_t TERMINATOR_WITH_LC_CRC_MASK[] = {1,0,0,1,1,0,0,1,1,0,0,1,1,
 static const uint8_t PI_HEADER_CRC_MASK[]          = {0,1,1,0,1,0,0,1,0,1,1,0,1,0,0,1};                 // 0x6969
 static const uint8_t DATA_HEADER_CRC_MASK[]        = {1,1,0,0,1,1,0,0,1,1,0,0,1,1,0,0};                 // 0xCCCC
 static const uint8_t CSBK_CRC_MASK[]               = {1,0,1,0,0,1,0,1,1,0,1,0,0,1,0,1};                 // 0xA5A5
+static const uint8_t MBC_HEADER_CRC_MASK[]         = {1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0};                 // 0xAAAA
 
 static const unsigned int SLOT_SIZE                = 264; // size in bits
 static const unsigned int PAYLOAD_L                =   0; // starting position in bits
@@ -67,11 +70,13 @@ public:
 private:
 	uint8_t     d_slot[SLOT_SIZE];	// array of bits comprising the current slot
 	bit_vector  d_slot_type;
-	byte_vector d_emb;
+	byte_vector d_emb;		// last received Embedded data
+	byte_vector d_mbc;		// last received MBC data
 	byte_vector d_lc;		// last received LC data
 	uint8_t     d_rc;		// last received RC data
 	uint16_t    d_sb;		// last received SB data
 	byte_vector d_pi;
+	data_state  d_mbc_state;
 	bool        d_lc_valid;		// flag indicating if LC data is valid
 	bool        d_rc_valid;		// flag indicating if RC data is valid
 	bool        d_sb_valid;		// flag indicating if SB data is valid
@@ -84,6 +89,8 @@ private:
 
 	bool decode_slot_type();
 	bool decode_csbk(uint8_t* csbk);
+	bool decode_mbc_header(uint8_t* csbk);
+	bool decode_mbc_continue(uint8_t* csbk);
 	bool decode_vlch(uint8_t* vlch);
 	bool decode_tlc(uint8_t* tlc);
 	bool decode_lc(uint8_t* lc, int* rs_errs = NULL);

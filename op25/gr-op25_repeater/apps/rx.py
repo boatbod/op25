@@ -193,7 +193,7 @@ class p25_rx_block (gr.top_block):
         elif options.ifile:
             self.open_ifile2(self.channel_rate, options.ifile)
 	elif options.symbols:
-            self.open_symbols(self.symbol_rate, options.symbols)
+            self.open_symbols(self.symbol_rate, options.symbols, options.seek)
         else:
             pass
 
@@ -706,9 +706,12 @@ class p25_rx_block (gr.top_block):
         self.connect(source, throttle)
         self.__build_graph(throttle, capture_rate)
 
-    def open_symbols(self, symbol_rate, file_name):
+    def open_symbols(self, symbol_rate, file_name, file_seek):
         sys.stderr.write("Reading raw symbols from file: %s\n" % self.options.symbols)
         source = blocks.file_source(gr.sizeof_char, file_name, False)
+        if file_seek > 0:
+            rc = source.seek(file_seek*4800, 0) # Seek in seconds (4800sps)
+            assert rc == True
         throttle = blocks.throttle(gr.sizeof_char, symbol_rate)
         throttle.set_max_noutput_items(symbol_rate/50);
         self.connect(source, throttle)
@@ -826,13 +829,18 @@ class rx_main(object):
 
     def process_qmsg(self, msg):
         if self.tb.process_qmsg(msg):
+            #self.tb.stop()
             self.keep_running = False
 
     def run(self):
         try:
             self.tb.start()
-            while self.keep_running:
-                time.sleep(1)
+            if self.options.symbols:
+                self.tb.wait()
+            else:
+                while self.keep_running:
+                    time.sleep(1)
+            sys.stderr.write('Flowgraph completed. Exiting\n')
         except:
             sys.stderr.write('main: exception occurred\n')
             sys.stderr.write('main: exception:\n%s\n' % traceback.format_exc())
@@ -863,7 +871,7 @@ class rx_main(object):
         parser.add_option("-f", "--frequency", type="eng_float", default=0.0, help="USRP center frequency", metavar="Hz")
         parser.add_option("-F", "--ifile", type="string", default=None, help="read input from complex capture file")
         parser.add_option("-H", "--hamlib-model", type="int", default=None, help="specify model for hamlib")
-        parser.add_option("-s", "--seek", type="int", default=0, help="ifile seek in K")
+        parser.add_option("-s", "--seek", type="int", default=0, help="ifile seek in K, symbols file seek in seconds")
         parser.add_option("-l", "--terminal-type", type="string", default='curses', help="'curses' or udp port or 'http:host:port'")
         parser.add_option("-L", "--logfile-workers", type="int", default=None, help="number of demodulators to instantiate")
         parser.add_option("-M", "--metacfg", type="string", default=None, help="Icecast Metadata Config File")
