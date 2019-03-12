@@ -829,12 +829,17 @@ class rx_main(object):
 
     def process_qmsg(self, msg):
         if self.tb.process_qmsg(msg):
-            self.tb.stop()
+            #self.tb.stop()
+            self.keep_running = False
 
     def run(self):
         try:
             self.tb.start()
-            self.tb.wait()
+            if self.options.symbols:
+                self.tb.wait()
+            else:
+                while self.keep_running:
+                    time.sleep(1)
             sys.stderr.write('Flowgraph completed. Exiting\n')
         except:
             sys.stderr.write('main: exception occurred\n')
