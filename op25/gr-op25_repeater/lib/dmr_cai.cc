@@ -210,7 +210,30 @@ dmr_cai::decode_shortLC()
 
 		case 0x2: { // Sys_Parms
 			uint8_t model = d0 >> 6;
-			//TODO: finish this decode section
+			uint8_t reg = (d1 >> 1) & 0x1;
+			uint16_t cs_ctr = ((d1 << 8) + d2) & 0x1ff;
+			uint16_t net;
+			uint16_t site;
+			switch(model) {
+				case 0x0: // tiny
+					net = ((d0 << 3) + (d1 >> 5)) & 0x1ff;
+					site = (d1 >> 2) & 0x7;
+					break;
+				case 0x1: // small
+					net = ((d0 << 1) + (d1 >> 7)) & 0x7f;
+					site = (d1 >> 2) & 0x1f;
+					break;
+				case 0x2: // large
+					net = (d0 >> 2) & 0xf;
+					site = ((d0 << 6) + (d1 >> 2)) & 0xff;
+					break;
+				case 0x3: // huge
+					net = (d0 >> 5) & 0x3;
+					site = ((d0 << 6) + (d1 >> 2)) & 0x3f;
+					break;
+			}
+			if (d_debug >= 10)
+				fprintf(stderr, "SLCO=0x%x, C_SYS_PARM model(%d), net(%x), size(%x), reg(%d), cs_ctr(%x)\n", slco, model, net, site, reg, cs_ctr);
 			break;
 		}
 
@@ -227,6 +250,13 @@ dmr_cai::decode_shortLC()
 			uint8_t siteId = ((d1 & 0xf) << 4) + (d2 >> 4);
 			if (d_debug >= 10)
 				fprintf(stderr, "SLCO=0x%x, CONNECT PLUS CONTROL CHANNEL netId(%03x), siteId(%02x)\n", slco, netId, siteId);
+			break;
+		}
+
+		case 0xf: { // Capacity Plus
+			uint8_t lcn = d1 & 0xf;
+			if (d_debug >= 10)
+				fprintf(stderr, "SLCO=0x%x, CAPACITY PLUS REST CHANNEL lcn(%x)\n", slco, lcn);
 			break;
 		}
 
