@@ -46,6 +46,10 @@ int main (int argc, char* argv[]) {
 	// read in pattern file
 	pattern.clear();
 	std::fstream p_file(argv[1], std::ios::in | std::ios::binary);
+	if ( (p_file.rdstate() & std::ifstream::failbit ) != 0 ) {
+		printf("Error opening pattern file: %s\n", argv[1]);
+		return 1;
+	}
 	while (!p_file.eof()) {
 		p_file.read((&dibit), 1);
 		pattern.push_back((dibit >> 1) & 0x1);
@@ -55,6 +59,10 @@ int main (int argc, char* argv[]) {
 	// read in received symbols file
 	rx_syms.clear();
 	std::fstream r_file(argv[2], std::ios::in | std::ios::binary);
+	if ( (r_file.rdstate() & std::ifstream::failbit ) != 0 ) {
+		printf("Error opening symbol file: %s\n", argv[2]);
+		return 1;
+	}
 	while (!r_file.eof()) {
 		r_file.read((&dibit), 1);
 		rx_syms.push_back((dibit >> 1) & 0x1);
@@ -134,6 +142,13 @@ int main (int argc, char* argv[]) {
 		}
 		chunk_ber = 100 * (double)chunk_bit_errs / (double)chunk_bit_count;
 		printf("Pattern match (%lu) bit errs=%lu, BER=%lf%%\n", r_start, chunk_bit_errs, chunk_ber);
+		// Check for excessive BER and attempt to resync
+		// usually this means pattern and capture file got out of step with each other
+		if (chunk_ber > 5) {
+			printf("High BER >5.0 detected. Discarding current frame and attempting resync.\n");
+			r_pos = r_start + 2;
+			continue;
+		}
 
 		// Update totals
 		total_bit_count += chunk_bit_count;
@@ -143,6 +158,7 @@ int main (int argc, char* argv[]) {
 			max_bit_count = chunk_bit_count;
 			max_ber = chunk_ber;
 		}
+
 	} while (calculating);
 
 	total_ber = 100 * (double)total_bit_errs / (double)total_bit_count;
