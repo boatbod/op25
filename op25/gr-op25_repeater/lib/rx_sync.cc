@@ -144,7 +144,7 @@ rx_sync::rx_sync(const char * options, int debug, bool do_msgq, gr::msg_queue::s
 	d_do_msgq(do_msgq),
 	d_msg_queue(queue),
 	d_audio(options, debug),
-	dmr(debug)
+	dmr(debug, do_msgq, queue)
 {
 	mbe_initMbeParms (&cur_mp[0], &prev_mp[0], &enh_mp[0]);
 	mbe_initMbeParms (&cur_mp[1], &prev_mp[1], &enh_mp[1]);

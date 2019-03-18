@@ -38,9 +38,11 @@
 #include "bptc19696.h"
 #include "crc16.h"
 
-dmr_slot::dmr_slot(const int chan, const int debug) :
+dmr_slot::dmr_slot(const int chan, const int debug, bool do_msgq, gr::msg_queue::sptr queue) :
 	d_chan(chan),
 	d_debug(debug),
+	d_do_msgq(do_msgq),
+	d_msg_queue(queue),
 	d_mbc_state(DATA_INVALID),
 	d_lc_valid(false),
 	d_rc_valid(false),

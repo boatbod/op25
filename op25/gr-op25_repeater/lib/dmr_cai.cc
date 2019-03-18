@@ -35,11 +35,13 @@
 #include "hamming.h"
 #include "crc16.h"
 
-dmr_cai::dmr_cai(int debug) :
+dmr_cai::dmr_cai(int debug, bool do_msgq, gr::msg_queue::sptr queue) :
 	d_debug(debug),
+	d_do_msgq(do_msgq),
+	d_msg_queue(queue),
 	d_shift_reg(0),
 	d_chan(0),
-	d_slot{dmr_slot(0, debug), dmr_slot(1, debug)} 
+	d_slot{dmr_slot(0, debug, do_msgq, queue), dmr_slot(1, debug, do_msgq, queue)} 
 {
 	d_cach_sig.clear();
 	memset(d_frame, 0, sizeof(d_frame));
@@ -256,7 +258,7 @@ dmr_cai::decode_shortLC()
 		case 0xf: { // Capacity Plus
 			uint8_t lcn = d1 & 0xf;
 			if (d_debug >= 10)
-				fprintf(stderr, "SLCO=0x%x, CAPACITY PLUS REST CHANNEL lcn(%x)\n", slco, lcn);
+				fprintf(stderr, "SLCO=0x%x, CAPACITY PLUS REST CHANNEL LCN(%x)\n", slco, lcn);
 			break;
 		}
 

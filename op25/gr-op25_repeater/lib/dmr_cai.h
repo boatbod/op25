@@ -23,6 +23,7 @@
 
 #include <stdint.h>
 #include <vector>
+#include <gnuradio/msg_queue.h>
 
 #include "dmr_slot.h"
 
@@ -32,7 +33,7 @@ static const unsigned int slot_ids[] = {0, 1, 0, 0, 1, 1, 0, 1};
 
 class dmr_cai {
 public:
-	dmr_cai(int debug);
+	dmr_cai(int debug, bool do_msgq, gr::msg_queue::sptr queue);
 	~dmr_cai();
 	bool load_frame(const uint8_t fr_sym[], bool& unmute);
 	inline int chan() { return d_chan; };
@@ -47,6 +48,8 @@ private:
 	int d_chan;
 	int d_shift_reg;
 	int d_debug;
+	bool d_do_msgq;
+	gr::msg_queue::sptr d_msg_queue;
 
 	void extract_cach_fragment();
 	bool decode_shortLC();
