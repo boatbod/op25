@@ -100,7 +100,7 @@ class channel(object):
                          if_rate = config['if_rate'],
                          symbol_rate = self.symbol_rate)
         q = gr.msg_queue(1)
-        self.decoder = op25_repeater.frame_assembler(config['destination'], verbosity, q)
+        self.decoder = op25_repeater.frame_assembler(config['destination'], verbosity, False, q)
 
         self.kill_sink = []
 

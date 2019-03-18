@@ -28,6 +28,7 @@
 #include <iostream>
 #include <deque>
 #include <assert.h>
+#include <gnuradio/msg_queue.h>
 
 #include "bit_utils.h"
 #include "check_frame_sync.h"
@@ -104,7 +105,7 @@ class rx_sync {
 public:
 	void rx_sym(const uint8_t sym);
 	void sync_reset(void);
-	rx_sync(const char * options, int debug);
+	rx_sync(const char * options, int debug, bool do_msgq, gr::msg_queue::sptr queue);
 	~rx_sync();
 private:
 	void cbuf_insert(const uint8_t c);
@@ -132,6 +133,8 @@ private:
 	software_imbe_decoder d_software_decoder[2];
 	std::deque<int16_t> d_output_queue[2];
 	dmr_cai dmr;
+	bool d_do_msgq;
+	gr::msg_queue::sptr d_msg_queue;
 	bool d_stereo;
 	int d_debug;
 	op25_audio d_audio;

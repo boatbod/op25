@@ -132,7 +132,7 @@ void rx_sync::ysf_sync(const uint8_t dibitbuf[], bool& ysf_fullrate, bool& unmut
 		fprintf(stderr, "ysf_sync: muting audio: dt: %d, rc: %d\n", d_shift_reg, rc);
 }
 
-rx_sync::rx_sync(const char * options, int debug) :	// constructor
+rx_sync::rx_sync(const char * options, int debug, bool do_msgq, gr::msg_queue::sptr queue) :	// constructor
 	d_symbol_count(0),
 	d_sync_reg(0),
 	d_cbuf_idx(0),
@@ -141,6 +141,8 @@ rx_sync::rx_sync(const char * options, int debug) :	// constructor
 	d_expires(0),
 	d_stereo(false),
 	d_debug(debug),
+	d_do_msgq(do_msgq),
+	d_msg_queue(queue),
 	d_audio(options, debug),
 	dmr(debug)
 {
