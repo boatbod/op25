@@ -63,7 +63,7 @@ static const unsigned int SLOT_R                   = 156;
 
 class dmr_slot {
 public:
-	dmr_slot(const int chan, const int debug, bool do_msgq, gr::msg_queue::sptr queue);
+	dmr_slot(const int chan, const int debug, int msgq_id, gr::msg_queue::sptr queue);
 	~dmr_slot();
 	inline void set_debug(const int debug) { d_debug = debug; };
 	bool load_slot(const uint8_t slot[], uint64_t sl_type);
@@ -83,13 +83,14 @@ private:
 	bool        d_sb_valid;		// flag indicating if SB data is valid
 	uint64_t    d_type;
 	uint8_t     d_cc;
-	bool        d_do_msgq;
+	bool        d_msgq_id;
 	int         d_debug;
 	int         d_chan;
 	CBPTC19696  bptc;
 	ezpwd::RS<255,252> rs12;	// Reed-Solomon(12,9) object for Link Control decode
 	gr::msg_queue::sptr d_msg_queue;
 
+	void send_msg(const std::string& m_buf, const int m_type);
 	bool decode_slot_type();
 	bool decode_csbk(uint8_t* csbk);
 	bool decode_mbc_header(uint8_t* csbk);

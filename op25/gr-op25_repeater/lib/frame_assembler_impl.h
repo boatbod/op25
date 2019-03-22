@@ -41,7 +41,7 @@ namespace gr {
     {
      private:
         int d_debug;
-	bool d_do_msgq;
+	int d_msgq_id;
 	gr::msg_queue::sptr d_msg_queue;
         rx_sync d_sync;
 
@@ -54,7 +54,7 @@ namespace gr {
  public:
 
      public:
-      frame_assembler_impl(const char* options, int debug, bool do_msgq, gr::msg_queue::sptr queue);
+      frame_assembler_impl(const char* options, int debug, int msgq_id, gr::msg_queue::sptr queue);
       ~frame_assembler_impl();
 
       // Where all the action really happens

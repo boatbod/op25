@@ -44,10 +44,10 @@ namespace gr {
     }
 
     frame_assembler::sptr
-    frame_assembler::make(const char* options, int debug, bool do_msgq, gr::msg_queue::sptr queue)
+    frame_assembler::make(const char* options, int debug, int msgq_id, gr::msg_queue::sptr queue)
     {
       return gnuradio::get_initial_sptr
-        (new frame_assembler_impl(options, debug, do_msgq, queue));
+        (new frame_assembler_impl(options, debug, msgq_id, queue));
     }
 
     /*
@@ -67,13 +67,13 @@ static const int MAX_IN = 1;	// maximum number of input streams
 /*
  * The private constructor
  */
-    frame_assembler_impl::frame_assembler_impl(const char* options, int debug, bool do_msgq, gr::msg_queue::sptr queue)
+    frame_assembler_impl::frame_assembler_impl(const char* options, int debug, int msgq_id, gr::msg_queue::sptr queue)
       : gr::block("frame_assembler",
 		   gr::io_signature::make (MIN_IN, MAX_IN, sizeof (char)),
 		   gr::io_signature::make (0, 0, 0)),
-	d_do_msgq(do_msgq),
+	d_msgq_id(msgq_id),
 	d_msg_queue(queue),
-	d_sync(options, debug, do_msgq, queue)
+	d_sync(options, debug, msgq_id, queue)
 {
 }
 

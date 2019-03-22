@@ -80,7 +80,7 @@ class device(object):
         self.offset = config['offset']
 
 class channel(object):
-    def __init__(self, config, dev, verbosity, do_msgq, rx_q):
+    def __init__(self, config, dev, verbosity, msgq_id, rx_q):
         sys.stderr.write('channel (dev %s): %s\n' % (dev.name, config))
         self.device = dev
         self.name = config['name']
@@ -100,8 +100,7 @@ class channel(object):
                          offset = dev.offset,
                          if_rate = config['if_rate'],
                          symbol_rate = self.symbol_rate)
-        q = gr.msg_queue(1)
-        self.decoder = op25_repeater.frame_assembler(config['destination'], verbosity, do_msgq, rx_q)
+        self.decoder = op25_repeater.frame_assembler(config['destination'], verbosity, msgq_id, rx_q)
 
         self.kill_sink = []
 
@@ -157,7 +156,6 @@ class rx_block (gr.top_block):
         gr.top_block.__init__(self)
         self.device_id_by_name = {}
 
-        self.do_msgq = True
         self.trunking = None
         self.rx_q = gr.msg_queue(100)
         if config.has_key("trunking"):
@@ -180,7 +178,6 @@ class rx_block (gr.top_block):
             self.trunking = None
 
         if self.trunking is not None:
-            self.do_msgq = True
             self.trunk_rx = self.trunking.rx_ctl(frequency_set = self.change_freq, debug = self.verbosity )
             self.du_watcher = du_queue_watcher(self.rx_q, self.trunk_rx.process_qmsg)
             sys.stderr.write("Enabled trunking module: %s\n" % config['module'])
@@ -206,7 +203,11 @@ class rx_block (gr.top_block):
             if dev is None:
                 sys.stderr.write('* * * Frequency %d not within spectrum band of any device - ignoring!\n' % cfg['frequency'])
                 continue
-            chan = channel(cfg, dev, self.verbosity, self.do_msgq, self.rx_q)
+            if self.trunking is not None:
+                msgq_id = len(self.channels)
+            else:
+                msgq_id = -1
+            chan = channel(cfg, dev, self.verbosity, msgq_id, self.rx_q)
             self.channels.append(chan)
             if (cfg.has_key("raw_input")) and (cfg['raw_input'] != ""):
                 sys.stderr.write("Reading raw symbols from file: %s\n" % cfg['raw_input'])

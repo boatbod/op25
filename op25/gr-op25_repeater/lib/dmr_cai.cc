@@ -30,24 +30,34 @@
 
 #include "dmr_cai.h"
 
+#include "op25_msg_types.h"
 #include "bit_utils.h"
 #include "dmr_const.h"
 #include "hamming.h"
 #include "crc16.h"
 
-dmr_cai::dmr_cai(int debug, bool do_msgq, gr::msg_queue::sptr queue) :
+dmr_cai::dmr_cai(int debug, int msgq_id, gr::msg_queue::sptr queue) :
 	d_debug(debug),
-	d_do_msgq(do_msgq),
+	d_msgq_id(msgq_id),
 	d_msg_queue(queue),
 	d_shift_reg(0),
 	d_chan(0),
-	d_slot{dmr_slot(0, debug, do_msgq, queue), dmr_slot(1, debug, do_msgq, queue)} 
+	d_slot{dmr_slot(0, debug, msgq_id, queue), dmr_slot(1, debug, msgq_id, queue)} 
 {
 	d_cach_sig.clear();
 	memset(d_frame, 0, sizeof(d_frame));
 }
 
 dmr_cai::~dmr_cai() {
+}
+
+void
+dmr_cai::send_msg(const std::string& m_buf, const int m_type) {
+	if ((d_msgq_id < 0) || (d_msg_queue->full_p()))
+		return;
+
+	gr::message::sptr msg = gr::message::make_from_string(m_buf, m_type, (d_msgq_id << 1), PROTOCOL_DMR);
+	d_msg_queue->insert_tail(msg);
 }
 
 bool
@@ -195,6 +205,15 @@ dmr_cai::decode_shortLC()
 		d2 <<= 1;
 		d2 |= slc[i+20];
 	}
+
+	// send up the stack for further processing
+	std::string slc_msg(3,0);
+	slc_msg[0] = d0;
+	slc_msg[1] = d1;
+	slc_msg[2] = d2;
+	send_msg(slc_msg, M_DMR_CACH_SLC);
+
+	// decode a little further for logging purposes
 	switch(slco) {
 		case 0x0: { // Nul_Msg
 			if (d_debug >= 10)

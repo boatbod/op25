@@ -30,6 +30,7 @@
 
 #include "dmr_cai.h"
 
+#include "op25_msg_types.h"
 #include "op25_yank.h"
 #include "bit_utils.h"
 #include "dmr_const.h"
@@ -38,10 +39,10 @@
 #include "bptc19696.h"
 #include "crc16.h"
 
-dmr_slot::dmr_slot(const int chan, const int debug, bool do_msgq, gr::msg_queue::sptr queue) :
+dmr_slot::dmr_slot(const int chan, const int debug, int msgq_id, gr::msg_queue::sptr queue) :
 	d_chan(chan),
 	d_debug(debug),
-	d_do_msgq(do_msgq),
+	d_msgq_id(msgq_id),
 	d_msg_queue(queue),
 	d_mbc_state(DATA_INVALID),
 	d_lc_valid(false),
@@ -60,6 +61,15 @@ dmr_slot::dmr_slot(const int chan, const int debug, bool do_msgq, gr::msg_queue:
 }
 
 dmr_slot::~dmr_slot() {
+}
+
+void
+dmr_slot::send_msg(const std::string& m_buf, const int m_type) {
+	if ((d_msgq_id < 0) || (d_msg_queue->full_p()))
+		return;
+
+	gr::message::sptr msg = gr::message::make_from_string(m_buf, m_type, ((d_msgq_id << 1) + (d_chan & 0x1)), PROTOCOL_DMR);
+	d_msg_queue->insert_tail(msg);
 }
 
 bool
@@ -212,7 +222,14 @@ dmr_slot::decode_csbk(uint8_t* csbk) {
 	if (crc16(csbk, 96) != 0)
 		return false;
 
-	// Extract parameters
+	// pack and send up the stack
+	std::string csbk_msg(10,0);
+	for (int i = 0; i < 80; i++) {
+		csbk_msg[i/8] = (csbk_msg[i/8] << 1) + csbk[i];
+	}
+	send_msg(csbk_msg, M_DMR_SLOT_CSBK);
+
+	// Extract parameters for logging purposes
 	uint8_t  csbk_lb   = csbk[0] & 0x1;
 	uint8_t  csbk_pf   = csbk[1] & 0x1;
 	uint8_t  csbk_o    = extract(csbk, 2, 8);
@@ -294,8 +311,8 @@ dmr_slot::decode_mbc_continue(uint8_t* mbc) {
 	// Extract last block indicator
 	uint8_t  mbc_lb   = mbc[0] & 0x1;
 
-	// Save data excluding last block indicator bit
-	for (int i = 1; i < 96; i++) {
+	// Save data including last block indicator bit
+	for (int i = 0; i < 96; i++) {
 		d_mbc.push_back(mbc[i]);
 	}
 
@@ -317,7 +334,12 @@ dmr_slot::decode_mbc_continue(uint8_t* mbc) {
 			fprintf(stderr, "Slot(%d), CC(%x), MBC CONT LB(%d), data size=%lu\n", d_chan, get_slot_cc(), mbc_lb, d_mbc.size());
 		}
 
-		// TODO: do something useful with the MBC data
+		// pack MBC and send up the stack
+		std::string mbc_msg(d_mbc.size()/8,0);
+		for (int i = 0; i < d_mbc.size(); i++) {
+			mbc_msg[i/8] = (mbc_msg[i/8] << 1) + d_mbc[i];
+		}
+		send_msg(mbc_msg, M_DMR_SLOT_MBC);
 	} 
 
 	return true;
@@ -333,6 +355,13 @@ dmr_slot::decode_vlch(uint8_t* vlch) {
 	bool rc = decode_lc(vlch, &rs_errs);
 	if (!rc)
 		return false;
+
+	// send up the stack
+	std::string lc_msg(12,0);
+	for (int i = 0; i < 12; i++) {
+		lc_msg[i] = d_lc[i];
+	}
+	send_msg(lc_msg, M_DMR_SLOT_VLC);
 
 	if (d_debug >= 5) {
 		fprintf(stderr, "Slot(%d), CC(%x), VOICE LC PF(%d), FLCO(%02x), FID(%02x), SVCOPT(%02X), DSTADDR(%06x), SRCADDR(%06x), rs_errs=%d\n", 
@@ -354,6 +383,13 @@ dmr_slot::decode_tlc(uint8_t* tlc) {
 	bool rc = decode_lc(tlc, &rs_errs);
 	if (!rc)
 		return false;
+
+	// send up the stack
+	std::string lc_msg(12,0);
+	for (int i = 0; i < 12; i++) {
+		lc_msg[i] = d_lc[i];
+	}
+	send_msg(lc_msg, M_DMR_SLOT_TLC);
 
 	if (d_debug >= 5) {
 		fprintf(stderr, "Slot(%d), CC(%x), TERM LC PF(%d), FLCO(%02x), FID(%02x), SVCOPT(%02X), DSTADDR(%06x), SRCADDR(%06x), rs_errs=%d\n", 
@@ -404,6 +440,13 @@ dmr_slot::decode_pinf(uint8_t* pinf) {
 	for (int i = 0; i < 80; i++) {
 		d_pi[i / 8] = (d_pi[i / 8] << 1) | pinf[i];
 	}
+
+	// send up the stack
+	std::string pi_msg(10,0);
+	for (int i = 0; i < 10; i++) {
+		pi_msg[i] = d_pi[i];
+	}
+	send_msg(pi_msg, M_DMR_SLOT_PI);
 
 	if (d_debug >= 5) {
 		fprintf(stderr, "Slot(%d), CC(%x), PI HEADER: %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x\n",
@@ -539,6 +582,14 @@ dmr_slot::decode_embedded_lc() {
 	uint16_t calc_crc = (d_lc[0] + d_lc[1] + d_lc[2] + d_lc[3] + d_lc[4] + d_lc[5] + d_lc[6] + d_lc[7] + d_lc[8]) % 31;
 	if (rxd_crc == calc_crc) {
 		d_lc_valid = true;
+
+		// send up the stack
+		std::string lc_msg(9,0);
+		for (int i = 0; i < 9; i++) {
+			lc_msg[i] = d_lc[i];
+		}
+		send_msg(lc_msg, M_DMR_SLOT_ELC);
+
 		if (d_debug >=10) {
 			fprintf(stderr, "EMB LC: %02x %02x %02x %02x %02x %02x %02x %02x %02x\n",
 				d_lc[0], d_lc[1], d_lc[2], d_lc[3], d_lc[4], d_lc[5],
@@ -587,6 +638,12 @@ dmr_slot::decode_embedded_sbrc(bool _pi) {
 		for (int i = 0; i < 4; i++)
 			d_rc = (d_rc << 1) + data[i];
 		d_rc_valid = true;
+
+		// send up the stack
+		std::string rc_msg(1,0);
+		rc_msg[0] = d_rc;
+		send_msg(rc_msg, M_DMR_SLOT_ERC);
+
 		if (d_debug >=10) {
 			fprintf(stderr, "EMB RC: %x\n", get_rc());
 		}
@@ -601,6 +658,13 @@ dmr_slot::decode_embedded_sbrc(bool _pi) {
 		for (int i = 0; i < 11; i++)
 			d_sb = (d_sb << 1) + data[i];
 		d_sb_valid = true;
+
+		// send up the stack
+		std::string sb_msg(2,0);
+		sb_msg[0] = (d_sb >> 8) & 0xff;
+		sb_msg[1] = d_sb & 0xff;
+		send_msg(sb_msg, M_DMR_SLOT_ESB);
+
 		if (d_debug >=10) {
 			fprintf(stderr, "EMB SB: %03x\n", get_sb());
 		}

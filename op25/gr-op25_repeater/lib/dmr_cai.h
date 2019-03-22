@@ -33,7 +33,7 @@ static const unsigned int slot_ids[] = {0, 1, 0, 0, 1, 1, 0, 1};
 
 class dmr_cai {
 public:
-	dmr_cai(int debug, bool do_msgq, gr::msg_queue::sptr queue);
+	dmr_cai(int debug, int msgq_id, gr::msg_queue::sptr queue);
 	~dmr_cai();
 	bool load_frame(const uint8_t fr_sym[], bool& unmute);
 	inline int chan() { return d_chan; };
@@ -48,12 +48,12 @@ private:
 	int d_chan;
 	int d_shift_reg;
 	int d_debug;
-	bool d_do_msgq;
+	int d_msgq_id;
 	gr::msg_queue::sptr d_msg_queue;
 
 	void extract_cach_fragment();
 	bool decode_shortLC();
-
+	void send_msg(const std::string& m_buf, const int m_type);
 };
 
 #endif /* INCLUDED_DMR_CAI_H */
