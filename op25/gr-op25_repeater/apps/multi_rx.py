@@ -165,7 +165,8 @@ class rx_block (gr.top_block):
         self.configure_channels(config['channels'])
 
     def configure_trunking(self, config):
-        if config.has_key("module") and (config['module'] == ""):
+        if ((config.has_key("module") and (config['module'] == "")) or 
+            (config.has_key("chans") and (config['chans'] == ""))):
             return
 
         tk_mod = config['module']
@@ -174,11 +175,11 @@ class rx_block (gr.top_block):
         try:
             self.trunking = importlib.import_module(tk_mod)
         except:
-            sys.stderr.write("Error: unable to import trunking module: %s\n" % config['module'])
+            sys.stderr.write("Error: unable to import trunking module: %s\n%s\n" % (config['module'], sys.exc_info()[1]))
             self.trunking = None
 
         if self.trunking is not None:
-            self.trunk_rx = self.trunking.rx_ctl(frequency_set = self.change_freq, debug = self.verbosity )
+            self.trunk_rx = self.trunking.rx_ctl(frequency_set = self.change_freq, debug = self.verbosity, chans = config['chans'])
             self.du_watcher = du_queue_watcher(self.rx_q, self.trunk_rx.process_qmsg)
             sys.stderr.write("Enabled trunking module: %s\n" % config['module'])
 

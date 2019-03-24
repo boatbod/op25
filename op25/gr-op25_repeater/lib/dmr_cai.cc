@@ -207,10 +207,11 @@ dmr_cai::decode_shortLC()
 	}
 
 	// send up the stack for further processing
-	std::string slc_msg(3,0);
-	slc_msg[0] = d0;
-	slc_msg[1] = d1;
-	slc_msg[2] = d2;
+	std::string slc_msg(4,0);
+        slc_msg[0] = slco;
+	slc_msg[1] = d0;
+	slc_msg[2] = d1;
+	slc_msg[3] = d2;
 	send_msg(slc_msg, M_DMR_CACH_SLC);
 
 	// decode a little further for logging purposes
