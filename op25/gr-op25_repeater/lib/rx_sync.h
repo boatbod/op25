@@ -108,6 +108,7 @@ public:
 	rx_sync(const char * options, int debug, int msgq_id, gr::msg_queue::sptr queue);
 	~rx_sync();
 private:
+	void sync_timeout();
 	void cbuf_insert(const uint8_t c);
 	void ysf_sync(const uint8_t dibitbuf[], bool& ysf_fullrate, bool& unmute);
 	void codeword(const uint8_t* cw, const enum codeword_types codeword_type, int slot_id);

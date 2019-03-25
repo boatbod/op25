@@ -35,6 +35,8 @@ static const int M_P25_UI_REQ    = -2;
 static const int M_P25_JSON_DATA = -3;
 
 // DMR Messages
+static const int M_DMR_TIMEOUT   = -1;
+
 static const int M_DMR_CACH_SLC  = 0;
 static const int M_DMR_CACH_CSBK = 1;
 static const int M_DMR_SLOT_PI   = 2;

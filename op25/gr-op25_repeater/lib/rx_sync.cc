@@ -46,6 +46,7 @@
 #include "op25_imbe_frame.h"
 #include "software_imbe_decoder.h"
 #include "op25_audio.h"
+#include "op25_msg_types.h"
 
 namespace gr{
     namespace op25_repeater{
@@ -157,6 +158,15 @@ rx_sync::~rx_sync()	// destructor
 {
 }
 
+void rx_sync::sync_timeout()
+{
+	if ((d_msgq_id < 0) || (d_msg_queue->full_p()))
+	return;
+
+	std::string m_buf;
+	gr::message::sptr msg = gr::message::make_from_string(m_buf, M_DMR_TIMEOUT, (d_msgq_id << 1), PROTOCOL_DMR);
+	d_msg_queue->insert_tail(msg);
+}
 
 void rx_sync::codeword(const uint8_t* cw, const enum codeword_types codeword_type, int slot_id) {
 	static const int x=4;
@@ -312,6 +322,7 @@ void rx_sync::rx_sym(const uint8_t sym)
 		if (d_debug >= 10)
 			fprintf(stderr, "%s: timeout, symbol %d\n", MODE_DATA[d_current_type].type, d_symbol_count);
 		d_current_type = RX_TYPE_NONE;
+		sync_timeout();
 		return;
 	}
 	if (d_rx_count < MODE_DATA[d_current_type].fragment_len)
