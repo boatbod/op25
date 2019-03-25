@@ -143,6 +143,14 @@ class channel(object):
                 sys.stderr.write('unrecognized plot type %s\n' % plot)
                 return
 
+    def set_freq(self, freq):
+        if not self.demod.set_relative_frequency(self.device.frequency + self.device.offset - freq):
+            if self.verbosity:
+                sys.stderr.write("%f Unable to tune %s to frequency %f\n" % (time.time(), self.name, (freq/1e6)))
+        for sink in self.sinks:
+            if sink.name() == "fft_sink_c":
+                sink.set_relative_freq(self.device.frequency + self.device.offset - freq)
+
     def kill(self):
         for sink in self.kill_sink:
             sink.kill()
@@ -231,8 +239,18 @@ class rx_block (gr.top_block):
             sys.stderr.write('scan %s: error %d\n' % (chan.config['frequency'], chan.demod.get_freq_error()))
 
     def change_freq(self, params):
-        # TODO: just a stub for now; eventually needs to do something useful!
-	pass
+        chan = None
+        for _chan in self.channels:
+            if _chan.name == params['tuner']:
+                chan = _chan
+                break
+
+        if chan is None:
+            if self.verbosity:
+                sys.stderr.write("%f No %s channel available for tuning\n" % (time.time(), params['tuner']))
+            return
+
+        return chan.set_freq(params['freq'])
 
     def kill(self):
         for chan in self.channels:
