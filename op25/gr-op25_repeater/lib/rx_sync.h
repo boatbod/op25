@@ -42,6 +42,7 @@
 #include "dmr_const.h"
 #include "dmr_cai.h"
 #include "p25_frame.h"
+#include "op25_timer.h"
 #include "op25_imbe_frame.h"
 #include "software_imbe_decoder.h"
 #include "op25_audio.h"
@@ -116,6 +117,7 @@ private:
 	static const int CBUF_SIZE=864;
 	static const int NSAMP_OUTPUT = 160;
 
+	op25_timer sync_timer;
 	unsigned int d_symbol_count;
 	uint64_t d_sync_reg;
 	uint8_t d_cbuf[CBUF_SIZE*2];

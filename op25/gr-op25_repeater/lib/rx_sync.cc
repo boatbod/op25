@@ -144,6 +144,7 @@ rx_sync::rx_sync(const char * options, int debug, int msgq_id, gr::msg_queue::sp
 	d_debug(debug),
 	d_msgq_id(msgq_id),
 	d_msg_queue(queue),
+	sync_timer(op25_timer(1000000)),
 	d_audio(options, debug),
 	dmr(debug, msgq_id, queue)
 {
@@ -151,6 +152,7 @@ rx_sync::rx_sync(const char * options, int debug, int msgq_id, gr::msg_queue::sp
 	mbe_initMbeParms (&cur_mp[1], &prev_mp[1], &enh_mp[1]);
 	mbe_initToneParms (&tone_mp[0]);
 	mbe_initToneParms (&tone_mp[1]);
+	sync_timer.reset();
 	sync_reset();
 }
 
@@ -166,6 +168,8 @@ void rx_sync::sync_timeout()
 	std::string m_buf;
 	gr::message::sptr msg = gr::message::make_from_string(m_buf, M_DMR_TIMEOUT, (d_msgq_id << 1), PROTOCOL_DMR);
 	d_msg_queue->insert_tail(msg);
+
+	sync_timer.reset();
 }
 
 void rx_sync::codeword(const uint8_t* cw, const enum codeword_types codeword_type, int slot_id) {
@@ -299,8 +303,12 @@ void rx_sync::rx_sym(const uint8_t sym)
 		}
 	}
 	cbuf_insert(sym);
-	if (d_current_type == RX_TYPE_NONE && sync_detected == RX_TYPE_NONE)
+	if (d_current_type == RX_TYPE_NONE && sync_detected == RX_TYPE_NONE) {
+		if (sync_timer.expired()) {
+			sync_timeout();
+		}
 		return;
+        }
 	d_rx_count ++;
 	if (sync_detected != RX_TYPE_NONE) {
 		if (d_current_type != sync_detected) {

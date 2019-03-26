@@ -32,7 +32,6 @@
 #include <string.h>
 #include <errno.h>
 #include <vector>
-#include <sys/time.h>
 #include "bch.h"
 #include "op25_imbe_frame.h"
 #include "p25_frame.h"
@@ -190,6 +189,7 @@ block_deinterleave(bit_vector& bv, unsigned int start, uint8_t* buf)
 }
 
 p25p1_fdma::p25p1_fdma(const op25_audio& udp, int debug, bool do_imbe, bool do_output, bool do_msgq, gr::msg_queue::sptr queue, std::deque<int16_t> &output_queue, bool do_audio_output, bool do_nocrypt) :
+        qtimer(op25_timer(TIMEOUT_THRESHOLD)),
         op25audio(udp),
 	write_bufp(0),
 	d_debug(debug),
@@ -206,7 +206,6 @@ p25p1_fdma::p25p1_fdma(const op25_audio& udp, int debug, bool do_imbe, bool do_o
 	vf_tgid(0),
 	p1voice_decode((debug > 0), udp, output_queue)
 {
-	gettimeofday(&last_qtime, 0);
 }
 
 void 
@@ -227,7 +226,7 @@ p25p1_fdma::process_duid(uint32_t const duid, uint32_t const nac, const uint8_t*
 	}
 	gr::message::sptr msg = gr::message::make_from_string(std::string(wbuf, p), duid, 0, 0);
 	d_msg_queue->insert_tail(msg);
-	gettimeofday(&last_qtime, 0);
+	qtimer.reset();
 }
 
 void
@@ -644,8 +643,7 @@ p25p1_fdma::process_voice(const bit_vector& A)
 void
 p25p1_fdma::reset_timer()
 {
-	//update last_qtime with current time
-	gettimeofday(&last_qtime, 0);
+	qtimer.reset();
 }
 
 void p25p1_fdma::send_msg(const std::string msg_str, long msg_type)
@@ -721,23 +719,15 @@ p25p1_fdma::rx_sym (const uint8_t *syms, int nsyms)
   }
   if (d_do_msgq && !d_msg_queue->full_p()) {
     // check for timeout
-    gettimeofday(&currtime, 0);
-    int64_t diff_usec = currtime.tv_usec - last_qtime.tv_usec;
-    int64_t diff_sec  = currtime.tv_sec  - last_qtime.tv_sec ;
-    if (diff_usec < 0) {
-      diff_usec += 1000000;
-      diff_sec  -= 1;
-    }
-    diff_usec += diff_sec * 1000000;
-    if (diff_usec >= TIMEOUT_THRESHOLD) {
+    if (qtimer.expired()) {
       if (d_debug > 10)
-        fprintf(stderr, "%010lu.%06lu p25p1_fdma::rx_sym() timeout\n", currtime.tv_sec, currtime.tv_usec);
+        fprintf(stderr, "%s p25p1_fdma::rx_sym() timeout\n", logts.get());
 
       if (d_do_audio_output) {
         op25audio.send_audio_flag(op25_audio::DRAIN);
       }
 
-      gettimeofday(&last_qtime, 0);
+      qtimer.reset();
       gr::message::sptr msg = gr::message::make(-1, 0, 0);
       d_msg_queue->insert_tail(msg);
     }
