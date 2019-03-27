@@ -26,6 +26,7 @@
 #include <gnuradio/msg_queue.h>
 
 #include "dmr_slot.h"
+#include "log_ts.h"
 
 typedef std::vector<bool> bit_vector;
 
@@ -50,6 +51,7 @@ private:
 	int d_debug;
 	int d_msgq_id;
 	gr::msg_queue::sptr d_msg_queue;
+	log_ts logts;
 
 	void extract_cach_fragment();
 	bool decode_shortLC();

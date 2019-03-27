@@ -111,7 +111,7 @@ dmr_slot::load_slot(const uint8_t slot[], uint64_t sl_type) {
 			break;
 	}
 	if (is_voice_frame && (d_debug >= 10)) {
-		fprintf(stderr, "Slot(%d), CC(%x), %s VOICE\n", d_chan, d_cc, v_type.c_str());
+		fprintf(stderr, "%s Slot(%d), CC(%x), %s VOICE\n", logts.get(d_msgq_id), d_chan, d_cc, v_type.c_str());
 	}
 	return is_voice_frame;
 }
@@ -139,7 +139,7 @@ dmr_slot::decode_slot_type() {
 		return false;
 
 	if (d_debug >= 10) {
-		fprintf(stderr, "Slot(%d), CC(%x), Data Type=%x, gly_errs=%d\n", d_chan, get_slot_cc(), get_data_type(), gly_errs);
+		fprintf(stderr, "%s Slot(%d), CC(%x), Data Type=%x, gly_errs=%d\n", logts.get(d_msgq_id), d_chan, get_slot_cc(), get_data_type(), gly_errs);
 	}
 
 	switch (get_data_type()) {
@@ -199,7 +199,7 @@ dmr_slot::decode_slot_type() {
 			break;
 		case 0x9: { // Idle
 			if (d_debug >= 10) {
-				fprintf(stderr, "Slot(%d), CC(%x), IDLE\n", d_chan, get_slot_cc());
+				fprintf(stderr, "%s Slot(%d), CC(%x), IDLE\n", logts.get(d_msgq_id), d_chan, get_slot_cc());
 			}
 			break;
 		}
@@ -245,7 +245,7 @@ dmr_slot::decode_csbk(uint8_t* csbk) {
 			uint8_t nb4 = extract(csbk, 42, 48);
 			uint8_t nb5 = extract(csbk, 50, 56);
 			if (d_debug >= 10) {
-				fprintf(stderr, "Slot(%d), CC(%x), CSBK LB(%d), PF(%d), CSBKO(%02x), FID(%02x), CONNECT PLUS NB1(%02x), NB2(%02x), NB3(%02x), NB4(%02x), NB5(%02x)\n", d_chan, get_slot_cc(), csbk_lb, csbk_pf, csbk_o, csbk_fid, nb1, nb2, nb3, nb4, nb5);
+				fprintf(stderr, "%s Slot(%d), CC(%x), CSBK LB(%d), PF(%d), CSBKO(%02x), FID(%02x), CONNECT PLUS NB1(%02x), NB2(%02x), NB3(%02x), NB4(%02x), NB5(%02x)\n", logts.get(d_msgq_id), d_chan, get_slot_cc(), csbk_lb, csbk_pf, csbk_o, csbk_fid, nb1, nb2, nb3, nb4, nb5);
 			}
 			break;
 		}
@@ -256,14 +256,14 @@ dmr_slot::decode_csbk(uint8_t* csbk) {
 			uint8_t  lcn     = extract(csbk, 64, 68);
 			uint8_t  tslot   = csbk[68];
 			if (d_debug >= 10) {
-				fprintf(stderr, "Slot(%d), CC(%x), CSBK LB(%d), PF(%d), CSBKO(%02x), FID(%02x), CONNECT PLUS GRANT srcAddr(%06x), grpAddr(%06x), LCN(%x), TS(%d)\n", d_chan, get_slot_cc(), csbk_lb, csbk_pf, csbk_o, csbk_fid, srcAddr, grpAddr, lcn, tslot);
+				fprintf(stderr, "%s Slot(%d), CC(%x), CSBK LB(%d), PF(%d), CSBKO(%02x), FID(%02x), CONNECT PLUS GRANT srcAddr(%06x), grpAddr(%06x), LCN(%x), TS(%d)\n", logts.get(d_msgq_id), d_chan, get_slot_cc(), csbk_lb, csbk_pf, csbk_o, csbk_fid, srcAddr, grpAddr, lcn, tslot);
 			}
 			break;
 		}
 
 		default: {
 			if (d_debug >= 10) {
-				fprintf(stderr, "Slot(%d), CC(%x), CSBK LB(%d), PF(%d), CSBKO(%02x), FID(%02x), DATA(%08lx)\n", d_chan, get_slot_cc(), csbk_lb, csbk_pf, csbk_o, csbk_fid, csbk_data);
+				fprintf(stderr, "%s Slot(%d), CC(%x), CSBK LB(%d), PF(%d), CSBKO(%02x), FID(%02x), DATA(%08lx)\n", logts.get(d_msgq_id), d_chan, get_slot_cc(), csbk_lb, csbk_pf, csbk_o, csbk_fid, csbk_data);
 			}
 		}
 	}
@@ -279,7 +279,7 @@ dmr_slot::decode_mbc_header(uint8_t* mbc) {
 	for (int i = 0; i < 16; i++)
 		mbc[i+80] ^= MBC_HEADER_CRC_MASK[i];
 	if (crc16(mbc, 96) != 0) {
-		fprintf(stderr, "MBC Header CRC failure\n");
+		fprintf(stderr, "%s MBC Header CRC failure\n", logts.get(d_msgq_id));
 		return false;
 	}
 
@@ -296,7 +296,7 @@ dmr_slot::decode_mbc_header(uint8_t* mbc) {
 	d_mbc_state = DATA_INCOMPLETE;
 
 	if (d_debug >= 10) {
-		fprintf(stderr, "Slot(%d), CC(%x), MBC HDR LB(%d), PF(%d), CSBKO(%02x), FID(%02x)\n", d_chan, get_slot_cc(), mbc_lb, mbc_pf, mbc_o, mbc_fid);
+		fprintf(stderr, "%s Slot(%d), CC(%x), MBC HDR LB(%d), PF(%d), CSBKO(%02x), FID(%02x)\n", logts.get(d_msgq_id), d_chan, get_slot_cc(), mbc_lb, mbc_pf, mbc_o, mbc_fid);
 	}
 
 	return true;
@@ -318,7 +318,7 @@ dmr_slot::decode_mbc_continue(uint8_t* mbc) {
 
 	if (!mbc_lb) {
 		if (d_debug >= 10) {
-			fprintf(stderr, "Slot(%d), CC(%x), MBC CONT LB(%d)\n", d_chan, get_slot_cc(), mbc_lb);
+			fprintf(stderr, "%s Slot(%d), CC(%x), MBC CONT LB(%d)\n", logts.get(d_msgq_id), d_chan, get_slot_cc(), mbc_lb);
 		}
 	} else {
 		// Validate CRC, excluding first 80 bits of header
@@ -331,7 +331,7 @@ dmr_slot::decode_mbc_continue(uint8_t* mbc) {
 		d_mbc_state = DATA_VALID;
 
 		if (d_debug >= 10) {
-			fprintf(stderr, "Slot(%d), CC(%x), MBC CONT LB(%d), data size=%lu\n", d_chan, get_slot_cc(), mbc_lb, d_mbc.size());
+			fprintf(stderr, "%s Slot(%d), CC(%x), MBC CONT LB(%d), data size=%lu\n", logts.get(d_msgq_id), d_chan, get_slot_cc(), mbc_lb, d_mbc.size());
 		}
 
 		// pack MBC and send up the stack
@@ -364,8 +364,7 @@ dmr_slot::decode_vlch(uint8_t* vlch) {
 	send_msg(lc_msg, M_DMR_SLOT_VLC);
 
 	if (d_debug >= 10) {
-		fprintf(stderr, "Slot(%d), CC(%x), VOICE LC PF(%d), FLCO(%02x), FID(%02x), SVCOPT(%02X), DSTADDR(%06x), SRCADDR(%06x), rs_errs=%d\n", 
-			d_chan, get_slot_cc(), get_lc_pf(), get_lc_flco(), get_lc_fid(), get_lc_svcopt(), get_lc_dstaddr(), get_lc_srcaddr(), rs_errs);
+		fprintf(stderr, "%s Slot(%d), CC(%x), VOICE LC PF(%d), FLCO(%02x), FID(%02x), SVCOPT(%02X), DSTADDR(%06x), SRCADDR(%06x), rs_errs=%d\n",  logts.get(d_msgq_id),	d_chan, get_slot_cc(), get_lc_pf(), get_lc_flco(), get_lc_fid(), get_lc_svcopt(), get_lc_dstaddr(), get_lc_srcaddr(), rs_errs);
 	}
 
 	// TODO: add known FLCO opcodes
@@ -392,8 +391,7 @@ dmr_slot::decode_tlc(uint8_t* tlc) {
 	send_msg(lc_msg, M_DMR_SLOT_TLC);
 
 	if (d_debug >= 10) {
-		fprintf(stderr, "Slot(%d), CC(%x), TERM LC PF(%d), FLCO(%02x), FID(%02x), SVCOPT(%02X), DSTADDR(%06x), SRCADDR(%06x), rs_errs=%d\n", 
-			d_chan, get_slot_cc(), get_lc_pf(), get_lc_flco(), get_lc_fid(), get_lc_svcopt(), get_lc_dstaddr(), get_lc_srcaddr(), rs_errs);
+		fprintf(stderr, "%s Slot(%d), CC(%x), TERM LC PF(%d), FLCO(%02x), FID(%02x), SVCOPT(%02X), DSTADDR(%06x), SRCADDR(%06x), rs_errs=%d\n", logts.get(d_msgq_id), d_chan, get_slot_cc(), get_lc_pf(), get_lc_flco(), get_lc_fid(), get_lc_svcopt(), get_lc_dstaddr(), get_lc_srcaddr(), rs_errs);
 	}
 
 	// TODO: add known FLCO opcodes
@@ -411,7 +409,8 @@ dmr_slot::decode_lc(uint8_t* lc, int* errs) {
 	int rs_errs = rs12.decode(d_lc);
 
 	if (d_debug >=10) {
-		fprintf(stderr, "FULL LC: %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x, rs_errs=%d\n",
+		fprintf(stderr, "%s FULL LC: %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x, rs_errs=%d\n",
+			logts.get(d_msgq_id),
 			d_lc[0], d_lc[1], d_lc[2], d_lc[3], d_lc[4], d_lc[5],
 			d_lc[6], d_lc[7], d_lc[8], d_lc[9], d_lc[10], d_lc[11],
 			rs_errs);
@@ -449,8 +448,8 @@ dmr_slot::decode_pinf(uint8_t* pinf) {
 	send_msg(pi_msg, M_DMR_SLOT_PI);
 
 	if (d_debug >= 10) {
-		fprintf(stderr, "Slot(%d), CC(%x), PI HEADER: %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x\n",
-			d_chan, get_slot_cc(),
+		fprintf(stderr, "%s Slot(%d), CC(%x), PI HEADER: %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x\n",
+			logts.get(d_msgq_id), d_chan, get_slot_cc(),
 			d_pi[0], d_pi[1], d_pi[2], d_pi[3], d_pi[4], d_pi[5], d_pi[6], d_pi[7], d_pi[8], d_pi[9]);
 	}
 
@@ -482,7 +481,7 @@ dmr_slot::decode_emb() {
 	uint8_t emb_lcss = (emb_sig[5] << 1) + emb_sig[6];
 
 	if (d_debug >= 10) {
-		fprintf(stderr, "Slot(%d), CC(%x), PI(%d), EMB lcss(%x), qr_errs=%d\n", d_chan, emb_cc, emb_pi, emb_lcss, qr_errs);
+		fprintf(stderr, "%s Slot(%d), CC(%x), PI(%d), EMB lcss(%x), qr_errs=%d\n", logts.get(d_msgq_id), d_chan, emb_cc, emb_pi, emb_lcss, qr_errs);
 	}
 
 	switch (emb_lcss) {
@@ -493,9 +492,9 @@ dmr_slot::decode_emb() {
 			if (decode_embedded_sbrc(emb_pi)) {
 				if (d_debug >= 10) {
 					if (emb_pi)
-						fprintf(stderr, "Slot(%d), CC(%x), EMB RC(%x)\n", d_chan, emb_cc, get_rc());
+						fprintf(stderr, "%s Slot(%d), CC(%x), EMB RC(%x)\n", logts.get(d_msgq_id), d_chan, emb_cc, get_rc());
 					else
-						fprintf(stderr, "Slot(%d), CC(%x), EMB SB(%03x)\n", d_chan, emb_cc, get_sb());
+						fprintf(stderr, "%s Slot(%d), CC(%x), EMB SB(%03x)\n", logts.get(d_msgq_id), d_chan, emb_cc, get_sb());
 				}
 			}
 			break;
@@ -509,8 +508,7 @@ dmr_slot::decode_emb() {
 				d_emb.push_back(d_slot[SYNC_EMB + 8 + i]);
 			if (decode_embedded_lc()) {
 				if (d_debug >= 10) {
-					fprintf(stderr, "Slot(%d), CC(%x), EMB LC PF(%d), FLCO(%02x), FID(%02x), SVCOPT(%02X), DSTADDR(%06x), SRCADDR(%06x)\n", 
-						d_chan, emb_cc, get_lc_pf(), get_lc_flco(), get_lc_fid(), get_lc_svcopt(), get_lc_dstaddr(), get_lc_srcaddr());
+					fprintf(stderr, "%s Slot(%d), CC(%x), EMB LC PF(%d), FLCO(%02x), FID(%02x), SVCOPT(%02X), DSTADDR(%06x), SRCADDR(%06x)\n",  logts.get(d_msgq_id), d_chan, emb_cc, get_lc_pf(), get_lc_flco(), get_lc_fid(), get_lc_svcopt(), get_lc_dstaddr(), get_lc_srcaddr());
 				}
 			}
 			break;
@@ -591,9 +589,9 @@ dmr_slot::decode_embedded_lc() {
 		send_msg(lc_msg, M_DMR_SLOT_ELC);
 
 		if (d_debug >=10) {
-			fprintf(stderr, "EMB LC: %02x %02x %02x %02x %02x %02x %02x %02x %02x\n",
-				d_lc[0], d_lc[1], d_lc[2], d_lc[3], d_lc[4], d_lc[5],
-				d_lc[6], d_lc[7], d_lc[8]);
+			fprintf(stderr, "%s EMB LC: %02x %02x %02x %02x %02x %02x %02x %02x %02x\n",
+				logts.get(d_msgq_id),
+				d_lc[0], d_lc[1], d_lc[2], d_lc[3], d_lc[4], d_lc[5], d_lc[6], d_lc[7], d_lc[8]);
 		}
 	}
 
@@ -645,7 +643,7 @@ dmr_slot::decode_embedded_sbrc(bool _pi) {
 		send_msg(rc_msg, M_DMR_SLOT_ERC);
 
 		if (d_debug >=10) {
-			fprintf(stderr, "EMB RC: %x\n", get_rc());
+			fprintf(stderr, "%s EMB RC: %x\n", logts.get(d_msgq_id), get_rc());
 		}
 
 	} else { // SB Info
@@ -666,7 +664,7 @@ dmr_slot::decode_embedded_sbrc(bool _pi) {
 		send_msg(sb_msg, M_DMR_SLOT_ESB);
 
 		if (d_debug >=10) {
-			fprintf(stderr, "EMB SB: %03x\n", get_sb());
+			fprintf(stderr, "%s EMB SB: %03x\n", logts.get(d_msgq_id), get_sb());
 		}
 	}
 

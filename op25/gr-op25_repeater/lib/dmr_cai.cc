@@ -218,7 +218,7 @@ dmr_cai::decode_shortLC()
 	switch(slco) {
 		case 0x0: { // Nul_Msg
 			if (d_debug >= 10)
-				fprintf(stderr, "SLCO=0x%x, NULL MSG\n", slco);
+				fprintf(stderr, "%s SLCO=0x%x, NULL MSG\n", logts.get(d_msgq_id), slco);
 			break;
 		}
 
@@ -226,7 +226,7 @@ dmr_cai::decode_shortLC()
 			uint8_t ts1_act = d0 >> 4;
 			uint8_t ts2_act = d0 & 0xf;
 			if (d_debug >= 10)
-				fprintf(stderr, "SLCO=0x%x, ACTIVITY UPDATE TS1(%x), TS2(%x), HASH1(%02x), HASH2(%02x)\n", slco, ts1_act, ts2_act, d1, d2);
+				fprintf(stderr, "%s SLCO=0x%x, ACTIVITY UPDATE TS1(%x), TS2(%x), HASH1(%02x), HASH2(%02x)\n", logts.get(d_msgq_id), slco, ts1_act, ts2_act, d1, d2);
 			break;
 		}
 
@@ -255,7 +255,7 @@ dmr_cai::decode_shortLC()
 					break;
 			}
 			if (d_debug >= 10)
-				fprintf(stderr, "SLCO=0x%x, C_SYS_PARM model(%d), net(%x), size(%x), reg(%d), cs_ctr(%x)\n", slco, model, net, site, reg, cs_ctr);
+				fprintf(stderr, "%s SLCO=0x%x, C_SYS_PARM model(%d), net(%x), size(%x), reg(%d), cs_ctr(%x)\n", logts.get(d_msgq_id), slco, model, net, site, reg, cs_ctr);
 			break;
 		}
 
@@ -263,7 +263,7 @@ dmr_cai::decode_shortLC()
 			uint16_t netId = (d0 << 4) + (d1 >> 4);
 			uint8_t siteId = ((d1 & 0xf) << 4) + (d2 >> 4);
 			if (d_debug >= 10)
-				fprintf(stderr, "SLCO=0x%x, CONNECT PLUS VOICE CHANNEL netId(%03x), siteId(%02x)\n", slco, netId, siteId);
+				fprintf(stderr, "%s SLCO=0x%x, CONNECT PLUS VOICE CHANNEL netId(%03x), siteId(%02x)\n", logts.get(d_msgq_id), slco, netId, siteId);
 			break;
 		}
 
@@ -271,20 +271,20 @@ dmr_cai::decode_shortLC()
 			uint16_t netId = (d0 << 4) + (d1 >> 4);
 			uint8_t siteId = ((d1 & 0xf) << 4) + (d2 >> 4);
 			if (d_debug >= 10)
-				fprintf(stderr, "SLCO=0x%x, CONNECT PLUS CONTROL CHANNEL netId(%03x), siteId(%02x)\n", slco, netId, siteId);
+				fprintf(stderr, "%s SLCO=0x%x, CONNECT PLUS CONTROL CHANNEL netId(%03x), siteId(%02x)\n", logts.get(d_msgq_id), slco, netId, siteId);
 			break;
 		}
 
 		case 0xf: { // Capacity Plus
 			uint8_t lcn = d1 & 0xf;
 			if (d_debug >= 10)
-				fprintf(stderr, "SLCO=0x%x, CAPACITY PLUS REST CHANNEL LCN(%x)\n", slco, lcn);
+				fprintf(stderr, "%s SLCO=0x%x, CAPACITY PLUS REST CHANNEL LCN(%x)\n", logts.get(d_msgq_id), slco, lcn);
 			break;
 		}
 
 		default: {
 			if (d_debug >= 10)
-				fprintf(stderr, "SLCO=0x%x, DATA=%02x %02x %02x\n", slco, d0, d1, d2);
+				fprintf(stderr, "%s SLCO=0x%x, DATA=%02x %02x %02x\n", logts.get(d_msgq_id), slco, d0, d1, d2);
 		}
 	}
 

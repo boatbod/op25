@@ -29,6 +29,7 @@
 #include "dmr_const.h"
 #include "bptc19696.h"
 #include "ezpwd/rs"
+#include "log_ts.h"
 
 typedef std::vector<bool> bit_vector;
 typedef std::vector<uint8_t> byte_vector;
@@ -86,6 +87,7 @@ private:
 	bool        d_msgq_id;
 	int         d_debug;
 	int         d_chan;
+        log_ts      logts;
 	CBPTC19696  bptc;
 	ezpwd::RS<255,252> rs12;	// Reed-Solomon(12,9) object for Link Control decode
 	gr::msg_queue::sptr d_msg_queue;

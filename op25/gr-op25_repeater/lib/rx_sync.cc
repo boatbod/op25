@@ -130,7 +130,7 @@ void rx_sync::ysf_sync(const uint8_t dibitbuf[], bool& ysf_fullrate, bool& unmut
 		break;
 	}
 	if (d_debug > 5 && !unmute)
-		fprintf(stderr, "ysf_sync: muting audio: dt: %d, rc: %d\n", d_shift_reg, rc);
+		fprintf(stderr, "%s ysf_sync: muting audio: dt: %d, rc: %d\n", logts.get(d_msgq_id), d_shift_reg, rc);
 }
 
 rx_sync::rx_sync(const char * options, int debug, int msgq_id, gr::msg_queue::sptr queue) :	// constructor
@@ -195,7 +195,7 @@ void rx_sync::codeword(const uint8_t* cw, const enum codeword_types codeword_typ
 		if (d_debug >= 10) {
 			packed_codeword p_cw;
 			interleaver.pack_cw(p_cw, U);
-			fprintf(stderr, "%s AMBE %02x %02x %02x %02x %02x %02x %02x errs %lu\n", logts.get(),
+			fprintf(stderr, "%s AMBE %02x %02x %02x %02x %02x %02x %02x errs %lu\n", logts.get(d_msgq_id),
 			       	p_cw[0], p_cw[1], p_cw[2], p_cw[3], p_cw[4], p_cw[5], p_cw[6], errs);
 		}
 		if (mbe_dequantizeAmbeTone(&tone_mp[slot_id], U) == 0) {
@@ -234,7 +234,7 @@ void rx_sync::codeword(const uint8_t* cw, const enum codeword_types codeword_typ
 			packed_codeword p_cw;
 			imbe_pack(p_cw, u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7]);
 			fprintf(stderr, "%s IMBE %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x errs %lu\n",
-					logts.get(),
+					logts.get(d_msgq_id),
 					p_cw[0], p_cw[1], p_cw[2], p_cw[3], p_cw[4], p_cw[5],
 				       	p_cw[6], p_cw[7], p_cw[8], p_cw[9], p_cw[10], errs);
 		}
@@ -318,7 +318,7 @@ void rx_sync::rx_sym(const uint8_t sym)
 		}
 		if (d_rx_count != MODE_DATA[d_current_type].sync_offset + (MODE_DATA[d_current_type].sync_len >> 1)) {
 			if (d_debug >= 10)
-				fprintf(stderr, "resync at count %d for protocol %s (expected count %d)\n", d_rx_count, MODE_DATA[d_current_type].type, (MODE_DATA[d_current_type].sync_offset + (MODE_DATA[d_current_type].sync_len >> 1)));
+				fprintf(stderr, "%s resync at count %d for protocol %s (expected count %d)\n", logts.get(d_msgq_id), d_rx_count, MODE_DATA[d_current_type].type, (MODE_DATA[d_current_type].sync_offset + (MODE_DATA[d_current_type].sync_len >> 1)));
 			sync_reset();
 			d_rx_count = MODE_DATA[d_current_type].sync_offset + (MODE_DATA[d_current_type].sync_len >> 1);
 		} else {
@@ -328,7 +328,7 @@ void rx_sync::rx_sym(const uint8_t sym)
 	}
 	if (d_symbol_count >= d_expires) {
 		if (d_debug >= 10)
-			fprintf(stderr, "%s: timeout, symbol %d\n", MODE_DATA[d_current_type].type, d_symbol_count);
+			fprintf(stderr, "%s %s: timeout, symbol %d\n", logts.get(d_msgq_id), MODE_DATA[d_current_type].type, d_symbol_count);
 		d_current_type = RX_TYPE_NONE;
 		sync_timeout();
 		return;
@@ -363,7 +363,7 @@ void rx_sync::rx_sym(const uint8_t sym)
 		if (unmute) {
 			if (!d_unmute_until[dmr.chan()])
 				if (d_debug >= 10) {
-					fprintf(stderr, "unmute channel(%d)\n", dmr.chan());
+					fprintf(stderr, "%s unmute channel(%d)\n", logts.get(d_msgq_id), dmr.chan());
 				}
 			d_unmute_until[dmr.chan()] = d_symbol_count + MODE_DATA[d_current_type].expiration;
 		}
@@ -372,7 +372,7 @@ void rx_sync::rx_sym(const uint8_t sym)
 				d_unmute_until[dmr.chan()] = 0;
 				d_audio.send_audio_flag_channel(op25_audio::DRAIN, dmr.chan());
 				if (d_debug >= 10) {
-					fprintf(stderr, "mute channel(%d)\n", dmr.chan());
+					fprintf(stderr, "%s mute channel(%d)\n", logts.get(d_msgq_id), dmr.chan());
 				}
 			}
 			break;
