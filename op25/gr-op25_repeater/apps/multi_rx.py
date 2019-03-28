@@ -82,8 +82,11 @@ class device(object):
 class channel(object):
     def __init__(self, config, dev, verbosity, msgq_id, rx_q):
         sys.stderr.write('channel (dev %s): %s\n' % (dev.name, config))
+        self.verbosity = verbosity
         self.device = dev
         self.name = config['name']
+        self.frequency = config['frequency']
+        self.msgq_id = msgq_id
         self.raw_sink = None
         self.raw_file = None
         self.throttle = None
@@ -96,7 +99,7 @@ class channel(object):
                          demod_type = config['demod_type'],
                          filter_type = config['filter_type'],
                          excess_bw = config['excess_bw'],
-                         relative_freq = dev.frequency + dev.offset - config['frequency'],
+                         relative_freq = dev.frequency + dev.offset - self.frequency,
                          offset = dev.offset,
                          if_rate = config['if_rate'],
                          symbol_rate = self.symbol_rate)
@@ -144,12 +147,20 @@ class channel(object):
                 return
 
     def set_freq(self, freq):
+        if self.frequency == freq:
+            return
+        old_freq = self.frequency
+        self.frequency = freq
         if not self.demod.set_relative_frequency(self.device.frequency + self.device.offset - freq):
+            self.demod.set_relative_frequency(self.device.frequency + self.device.offset - old_freq)
+            self.frequency = old_freq
             if self.verbosity:
-                sys.stderr.write("%f Unable to tune %s to frequency %f\n" % (time.time(), self.name, (freq/1e6)))
+                sys.stderr.write("%f [%d] Unable to tune %s to frequency %f\n" % (time.time(), self.msgq_id, self.name, (freq/1e6)))
         for sink in self.sinks:
             if sink.name() == "fft_sink_c":
                 sink.set_relative_freq(self.device.frequency + self.device.offset - freq)
+        if self.verbosity >= 9:
+            sys.stderr.write("%f [%d] Tuning to frequency %f\n" % (time.time(), self.msgq_id, (freq/1e6)))
 
     def kill(self):
         for sink in self.kill_sink:
@@ -313,10 +324,12 @@ class rx_main(object):
             sys.stderr.write('Flowgraph complete. Exiting\n')
         except (KeyboardInterrupt):
             self.tb.stop()
+            time.sleep(1)
             self.tb.kill()
         except:
             #self.lock()
             self.tb.stop()
+            time.sleep(1)
             self.tb.kill()
             sys.stderr.write('main: exception occurred\n')
             sys.stderr.write('main: exception:\n%s\n' % traceback.format_exc())
