@@ -22,12 +22,12 @@
 #define INCLUDED_OP25_REPEATER_P25P1_FDMA_H
 
 #include <gnuradio/msg_queue.h>
-#include <sys/time.h>
 #include <deque>
 
 #include "ezpwd/rs"
 
 #include "log_ts.h"
+#include "op25_timer.h"
 #include "op25_audio.h"
 #include "p25_framer.h"
 #include "p25p1_voice_encode.h"
@@ -72,7 +72,7 @@ namespace gr {
 	gr::msg_queue::sptr d_msg_queue;
 	std::deque<int16_t> &output_queue;
 	p25_framer* framer;
-	struct timeval last_qtime;
+        op25_timer qtimer;
         p25p1_voice_decode p1voice_decode;
         const op25_audio& op25audio;
 	log_ts logts;

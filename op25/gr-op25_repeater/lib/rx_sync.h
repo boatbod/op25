@@ -28,6 +28,7 @@
 #include <iostream>
 #include <deque>
 #include <assert.h>
+#include <gnuradio/msg_queue.h>
 
 #include "bit_utils.h"
 #include "check_frame_sync.h"
@@ -41,6 +42,7 @@
 #include "dmr_const.h"
 #include "dmr_cai.h"
 #include "p25_frame.h"
+#include "op25_timer.h"
 #include "op25_imbe_frame.h"
 #include "software_imbe_decoder.h"
 #include "op25_audio.h"
@@ -104,9 +106,10 @@ class rx_sync {
 public:
 	void rx_sym(const uint8_t sym);
 	void sync_reset(void);
-	rx_sync(const char * options, int debug);
+	rx_sync(const char * options, int debug, int msgq_id, gr::msg_queue::sptr queue);
 	~rx_sync();
 private:
+	void sync_timeout();
 	void cbuf_insert(const uint8_t c);
 	void ysf_sync(const uint8_t dibitbuf[], bool& ysf_fullrate, bool& unmute);
 	void codeword(const uint8_t* cw, const enum codeword_types codeword_type, int slot_id);
@@ -114,6 +117,7 @@ private:
 	static const int CBUF_SIZE=864;
 	static const int NSAMP_OUTPUT = 160;
 
+	op25_timer sync_timer;
 	unsigned int d_symbol_count;
 	uint64_t d_sync_reg;
 	uint8_t d_cbuf[CBUF_SIZE*2];
@@ -132,6 +136,8 @@ private:
 	software_imbe_decoder d_software_decoder[2];
 	std::deque<int16_t> d_output_queue[2];
 	dmr_cai dmr;
+	int d_msgq_id;
+	gr::msg_queue::sptr d_msg_queue;
 	bool d_stereo;
 	int d_debug;
 	op25_audio d_audio;

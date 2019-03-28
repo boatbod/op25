@@ -30,22 +30,34 @@
 
 #include "dmr_cai.h"
 
+#include "op25_msg_types.h"
 #include "bit_utils.h"
 #include "dmr_const.h"
 #include "hamming.h"
 #include "crc16.h"
 
-dmr_cai::dmr_cai(int debug) :
+dmr_cai::dmr_cai(int debug, int msgq_id, gr::msg_queue::sptr queue) :
 	d_debug(debug),
+	d_msgq_id(msgq_id),
+	d_msg_queue(queue),
 	d_shift_reg(0),
 	d_chan(0),
-	d_slot{dmr_slot(0, debug), dmr_slot(1, debug)} 
+	d_slot{dmr_slot(0, debug, msgq_id, queue), dmr_slot(1, debug, msgq_id, queue)} 
 {
 	d_cach_sig.clear();
 	memset(d_frame, 0, sizeof(d_frame));
 }
 
 dmr_cai::~dmr_cai() {
+}
+
+void
+dmr_cai::send_msg(const std::string& m_buf, const int m_type) {
+	if ((d_msgq_id < 0) || (d_msg_queue->full_p()))
+		return;
+
+	gr::message::sptr msg = gr::message::make_from_string(m_buf, m_type, (d_msgq_id << 1), PROTOCOL_DMR);
+	d_msg_queue->insert_tail(msg);
 }
 
 bool
@@ -193,10 +205,20 @@ dmr_cai::decode_shortLC()
 		d2 <<= 1;
 		d2 |= slc[i+20];
 	}
+
+	// send up the stack for further processing
+	std::string slc_msg(4,0);
+        slc_msg[0] = slco;
+	slc_msg[1] = d0;
+	slc_msg[2] = d1;
+	slc_msg[3] = d2;
+	send_msg(slc_msg, M_DMR_CACH_SLC);
+
+	// decode a little further for logging purposes
 	switch(slco) {
 		case 0x0: { // Nul_Msg
 			if (d_debug >= 10)
-				fprintf(stderr, "SLCO=0x%x, NULL MSG\n", slco);
+				fprintf(stderr, "%s SLCO=0x%x, NULL MSG\n", logts.get(d_msgq_id), slco);
 			break;
 		}
 
@@ -204,13 +226,36 @@ dmr_cai::decode_shortLC()
 			uint8_t ts1_act = d0 >> 4;
 			uint8_t ts2_act = d0 & 0xf;
 			if (d_debug >= 10)
-				fprintf(stderr, "SLCO=0x%x, ACTIVITY UPDATE TS1(%x), TS2(%x), HASH1(%02x), HASH2(%02x)\n", slco, ts1_act, ts2_act, d1, d2);
+				fprintf(stderr, "%s SLCO=0x%x, ACTIVITY UPDATE TS1(%x), TS2(%x), HASH1(%02x), HASH2(%02x)\n", logts.get(d_msgq_id), slco, ts1_act, ts2_act, d1, d2);
 			break;
 		}
 
 		case 0x2: { // Sys_Parms
 			uint8_t model = d0 >> 6;
-			//TODO: finish this decode section
+			uint8_t reg = (d1 >> 1) & 0x1;
+			uint16_t cs_ctr = ((d1 << 8) + d2) & 0x1ff;
+			uint16_t net;
+			uint16_t site;
+			switch(model) {
+				case 0x0: // tiny
+					net = ((d0 << 3) + (d1 >> 5)) & 0x1ff;
+					site = (d1 >> 2) & 0x7;
+					break;
+				case 0x1: // small
+					net = ((d0 << 1) + (d1 >> 7)) & 0x7f;
+					site = (d1 >> 2) & 0x1f;
+					break;
+				case 0x2: // large
+					net = (d0 >> 2) & 0xf;
+					site = ((d0 << 6) + (d1 >> 2)) & 0xff;
+					break;
+				case 0x3: // huge
+					net = (d0 >> 5) & 0x3;
+					site = ((d0 << 6) + (d1 >> 2)) & 0x3f;
+					break;
+			}
+			if (d_debug >= 10)
+				fprintf(stderr, "%s SLCO=0x%x, C_SYS_PARM model(%d), net(%x), size(%x), reg(%d), cs_ctr(%x)\n", logts.get(d_msgq_id), slco, model, net, site, reg, cs_ctr);
 			break;
 		}
 
@@ -218,7 +263,7 @@ dmr_cai::decode_shortLC()
 			uint16_t netId = (d0 << 4) + (d1 >> 4);
 			uint8_t siteId = ((d1 & 0xf) << 4) + (d2 >> 4);
 			if (d_debug >= 10)
-				fprintf(stderr, "SLCO=0x%x, CONNECT PLUS VOICE CHANNEL netId(%03x), siteId(%02x)\n", slco, netId, siteId);
+				fprintf(stderr, "%s SLCO=0x%x, CONNECT PLUS VOICE CHANNEL netId(%03x), siteId(%02x)\n", logts.get(d_msgq_id), slco, netId, siteId);
 			break;
 		}
 
@@ -226,13 +271,20 @@ dmr_cai::decode_shortLC()
 			uint16_t netId = (d0 << 4) + (d1 >> 4);
 			uint8_t siteId = ((d1 & 0xf) << 4) + (d2 >> 4);
 			if (d_debug >= 10)
-				fprintf(stderr, "SLCO=0x%x, CONNECT PLUS CONTROL CHANNEL netId(%03x), siteId(%02x)\n", slco, netId, siteId);
+				fprintf(stderr, "%s SLCO=0x%x, CONNECT PLUS CONTROL CHANNEL netId(%03x), siteId(%02x)\n", logts.get(d_msgq_id), slco, netId, siteId);
+			break;
+		}
+
+		case 0xf: { // Capacity Plus
+			uint8_t lcn = d1 & 0xf;
+			if (d_debug >= 10)
+				fprintf(stderr, "%s SLCO=0x%x, CAPACITY PLUS REST CHANNEL LCN(%x)\n", logts.get(d_msgq_id), slco, lcn);
 			break;
 		}
 
 		default: {
 			if (d_debug >= 10)
-				fprintf(stderr, "SLCO=0x%x, DATA=%02x %02x %02x\n", slco, d0, d1, d2);
+				fprintf(stderr, "%s SLCO=0x%x, DATA=%02x %02x %02x\n", logts.get(d_msgq_id), slco, d0, d1, d2);
 		}
 	}
 

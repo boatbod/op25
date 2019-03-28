@@ -52,5 +52,8 @@
             "rate": 1000000, 
             "tunable": false
         }
-    ]
+    ],
+    "trunking": {
+        "module": ""
+    }
 }

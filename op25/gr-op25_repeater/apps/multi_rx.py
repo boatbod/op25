@@ -26,6 +26,7 @@ import time
 import json
 import traceback
 import osmosdr
+import importlib
 
 from gnuradio import audio, eng_notation, gr, gru, filter, blocks, fft, analog, digital
 from gnuradio.eng_option import eng_option
@@ -79,7 +80,7 @@ class device(object):
         self.offset = config['offset']
 
 class channel(object):
-    def __init__(self, config, dev, verbosity):
+    def __init__(self, config, dev, verbosity, msgq_id, rx_q):
         sys.stderr.write('channel (dev %s): %s\n' % (dev.name, config))
         self.device = dev
         self.name = config['name']
@@ -99,8 +100,7 @@ class channel(object):
                          offset = dev.offset,
                          if_rate = config['if_rate'],
                          symbol_rate = self.symbol_rate)
-        q = gr.msg_queue(1)
-        self.decoder = op25_repeater.frame_assembler(config['destination'], verbosity, q)
+        self.decoder = op25_repeater.frame_assembler(config['destination'], verbosity, msgq_id, rx_q)
 
         self.kill_sink = []
 
@@ -143,6 +143,14 @@ class channel(object):
                 sys.stderr.write('unrecognized plot type %s\n' % plot)
                 return
 
+    def set_freq(self, freq):
+        if not self.demod.set_relative_frequency(self.device.frequency + self.device.offset - freq):
+            if self.verbosity:
+                sys.stderr.write("%f Unable to tune %s to frequency %f\n" % (time.time(), self.name, (freq/1e6)))
+        for sink in self.sinks:
+            if sink.name() == "fft_sink_c":
+                sink.set_relative_freq(self.device.frequency + self.device.offset - freq)
+
     def kill(self):
         for sink in self.kill_sink:
             sink.kill()
@@ -155,8 +163,33 @@ class rx_block (gr.top_block):
         self.verbosity = verbosity
         gr.top_block.__init__(self)
         self.device_id_by_name = {}
+
+        self.trunking = None
+        self.rx_q = gr.msg_queue(100)
+        if config.has_key("trunking"):
+            self.configure_trunking(config['trunking'])
+
         self.configure_devices(config['devices'])
         self.configure_channels(config['channels'])
+
+    def configure_trunking(self, config):
+        if ((config.has_key("module") and (config['module'] == "")) or 
+            (config.has_key("chans") and (config['chans'] == ""))):
+            return
+
+        tk_mod = config['module']
+        if tk_mod.endswith('.py'):
+            tk_mod = tk_mod[:-3]
+        try:
+            self.trunking = importlib.import_module(tk_mod)
+        except:
+            sys.stderr.write("Error: unable to import trunking module: %s\n%s\n" % (config['module'], sys.exc_info()[1]))
+            self.trunking = None
+
+        if self.trunking is not None:
+            self.trunk_rx = self.trunking.rx_ctl(frequency_set = self.change_freq, debug = self.verbosity, chans = config['chans'])
+            self.du_watcher = du_queue_watcher(self.rx_q, self.trunk_rx.process_qmsg)
+            sys.stderr.write("Enabled trunking module: %s\n" % config['module'])
 
     def configure_devices(self, config):
         self.devices = []
@@ -179,7 +212,11 @@ class rx_block (gr.top_block):
             if dev is None:
                 sys.stderr.write('* * * Frequency %d not within spectrum band of any device - ignoring!\n' % cfg['frequency'])
                 continue
-            chan = channel(cfg, dev, self.verbosity)
+            if self.trunking is not None:
+                msgq_id = len(self.channels)
+            else:
+                msgq_id = -1
+            chan = channel(cfg, dev, self.verbosity, msgq_id, self.rx_q)
             self.channels.append(chan)
             if (cfg.has_key("raw_input")) and (cfg['raw_input'] != ""):
                 sys.stderr.write("Reading raw symbols from file: %s\n" % cfg['raw_input'])
@@ -201,10 +238,40 @@ class rx_block (gr.top_block):
         for chan in self.channels:
             sys.stderr.write('scan %s: error %d\n' % (chan.config['frequency'], chan.demod.get_freq_error()))
 
+    def change_freq(self, params):
+        chan = None
+        for _chan in self.channels:
+            if _chan.name == params['tuner']:
+                chan = _chan
+                break
+
+        if chan is None:
+            if self.verbosity:
+                sys.stderr.write("%f No %s channel available for tuning\n" % (time.time(), params['tuner']))
+            return
+
+        return chan.set_freq(params['freq'])
+
     def kill(self):
         for chan in self.channels:
             chan.kill()
-            
+
+# data unit receive queue
+#
+class du_queue_watcher(threading.Thread):
+
+    def __init__(self, msgq,  callback, **kwds):
+        threading.Thread.__init__ (self, **kwds)
+        self.setDaemon(1)
+        self.msgq = msgq
+        self.callback = callback
+        self.keep_running = True
+        self.start()
+
+    def run(self):
+        while(self.keep_running):
+            msg = self.msgq.delete_head()
+            self.callback(msg)
 
 class rx_main(object):
     def __init__(self):

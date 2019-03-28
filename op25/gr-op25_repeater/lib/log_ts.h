@@ -27,7 +27,7 @@ class log_ts
 {
 private:
 	struct timeval curr_time;
-	char log_ts[20];
+	char log_ts[30];
 
 public:
 	inline const char* get()
@@ -39,6 +39,16 @@ public:
 
 		return log_ts;
 	}	
+
+	inline const char* get(const int id)
+	{
+		if (gettimeofday(&curr_time, 0) == 0)
+		    sprintf(log_ts, "%010lu.%06lu [%d]", curr_time.tv_sec, curr_time.tv_usec, id);
+		else
+		    sprintf(log_ts, "[%d]", id);
+
+		return log_ts;
+	}
 };
 
 #endif // INCLUDED_LOG_TS_H
