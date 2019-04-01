@@ -140,6 +140,14 @@ class p25_rx_block (gr.top_block):
             if options.freq_corr:
                 self.src.set_freq_corr(options.freq_corr)
 
+            if options.gain_mode is not None:
+                if options.gain_mode:
+                    self.src.set_gain_mode(True, 0)
+                else:
+                    self.src.set_gain_mode(False, 0)
+                sys.stderr.write("Osmocom driver gain_mode: %s\n" % self.src.get_gain_mode())
+
+
         if options.audio:
             self.channel_rate = 48000
             self.baseband_input = True
@@ -890,6 +898,7 @@ class rx_main(object):
         parser.add_option("--symbols", type="string", default="", help="playback symbols file (captured using -r)")
         parser.add_option("-R", "--rx-subdev-spec", type="subdev", default=(0, 0), help="select USRP Rx side A or B (default=A)")
         parser.add_option("-g", "--gain", type="eng_float", default=None, help="set USRP gain in dB (default is midpoint) or set audio gain")
+        parser.add_option("--gain-mode", type="int", help="Control SDR AGC with set_gain_mode()")
         parser.add_option("-G", "--gain-mu", type="eng_float", default=0.025, help="gardner gain")
         parser.add_option("-N", "--gains", type="string", default=None, help="gain settings")
         parser.add_option("-O", "--audio-output", type="string", default="default", help="audio output device name")
