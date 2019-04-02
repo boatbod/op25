@@ -54,6 +54,18 @@
         }
     ],
     "trunking": {
-        "module": ""
+        "module": "",
+        "chans": [
+            {
+                "lcn": 1,
+                "frequency": 111222222,
+                "cc": 0
+            },
+            {
+                "lcn": 2,
+                "frequency": 111333333,
+                "cc": 0
+            }
+        ]
     }
 }
