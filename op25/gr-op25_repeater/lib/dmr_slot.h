@@ -84,7 +84,7 @@ private:
 	bool        d_sb_valid;		// flag indicating if SB data is valid
 	uint64_t    d_type;
 	uint8_t     d_cc;
-	bool        d_msgq_id;
+	int         d_msgq_id;
 	int         d_debug;
 	int         d_chan;
         log_ts      logts;

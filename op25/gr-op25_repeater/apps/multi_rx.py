@@ -90,6 +90,8 @@ class channel(object):
         self.raw_sink = None
         self.raw_file = None
         self.throttle = None
+        self.sinks = []
+        self.kill_sink = []
         self.symbol_rate = _def_symbol_rate
         if 'symbol_rate' in config.keys():
             self.symbol_rate = config['symbol_rate']
@@ -105,12 +107,9 @@ class channel(object):
                          symbol_rate = self.symbol_rate)
         self.decoder = op25_repeater.frame_assembler(config['destination'], verbosity, msgq_id, rx_q)
 
-        self.kill_sink = []
-
-        if 'plot' not in config.keys():
+        if ('plot' not in config.keys()) or (config['plot'] == ""):
             return
 
-        self.sinks = []
         for plot in config['plot'].split(','):
             # fixme: allow multiple complex consumers (fft and constellation currently mutually exclusive)
             if plot == 'datascope':
@@ -176,6 +175,7 @@ class rx_block (gr.top_block):
         self.device_id_by_name = {}
 
         self.trunking = None
+        self.du_watcher = None
         self.rx_q = gr.msg_queue(100)
         if config.has_key("trunking"):
             self.configure_trunking(config['trunking'])
@@ -225,6 +225,7 @@ class rx_block (gr.top_block):
                 continue
             if self.trunking is not None:
                 msgq_id = len(self.channels)
+                self.trunk_rx.add_receiver(msgq_id)
             else:
                 msgq_id = -1
             chan = channel(cfg, dev, self.verbosity, msgq_id, self.rx_q)
@@ -284,6 +285,9 @@ class du_queue_watcher(threading.Thread):
             msg = self.msgq.delete_head()
             self.callback(msg)
 
+    def kill(self):
+        self.keep_running = False
+
 class rx_main(object):
     def __init__(self):
         def byteify(input):	# thx so
@@ -324,12 +328,9 @@ class rx_main(object):
             sys.stderr.write('Flowgraph complete. Exiting\n')
         except (KeyboardInterrupt):
             self.tb.stop()
-            time.sleep(1)
             self.tb.kill()
         except:
-            #self.lock()
             self.tb.stop()
-            time.sleep(1)
             self.tb.kill()
             sys.stderr.write('main: exception occurred\n')
             sys.stderr.write('main: exception:\n%s\n' % traceback.format_exc())
