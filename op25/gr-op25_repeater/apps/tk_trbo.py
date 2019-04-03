@@ -51,17 +51,23 @@ class dmr_receiver:
         self.current_chan = 0
         self.rest_lcn = 0
 
+    def post_init(self):
+        if self.msgq_id == 0: # first receiver only
+            if self.debug >= 1:
+                sys.stderr.write("%f [%d] Waiting for sync sequence\n" % (time.time(), self.msgq_id))
+            self.current_chan == 0
+            self.frequency_set({'tuner': self.msgq_id,
+                                'freq': self.chans[self.chan_list[0]].frequency,
+                                'slot': 0})
+
     def find_freq(self, lcn):
         if self.chans.has_key(lcn):
             return self.chans[lcn].frequency
         else:
             return (None, None)
 
-    def find_next_chan(self, current_chan):
-        num_chans = len(self.chan_list)
-        next_chan = current_chan + 1
-        if next_chan >= num_chans:
-            next_chan = 0
+    def find_next_chan(self):
+        next_chan = (self.current_chan + 1) % len(self.chan_list)
         return next_chan
 
     def process_qmsg(self, msg):
@@ -79,10 +85,11 @@ class dmr_receiver:
 
                 if self.cc_timeouts >= CC_HUNT_TIMEOUTS:
                     if self.debug >= 1:
-                        sys.stderr.write("%f [%d] Searching for control channel\n" % (time.time(), self.msgq_id))
+                        sys.stderr.write("%f [%d] Waiting for sync sequence\n" % (time.time(), self.msgq_id))
                     self.cc_timeouts = 0
-                    next_ch = self.find_next_chan(self.current_chan)
-                    self.frequency_set({'tuner': 'trunk',
+                    self.current_state = self.states.IDLE
+                    next_ch = self.find_next_chan()
+                    self.frequency_set({'tuner': self.msgq_id,
                                         'freq': self.chans[self.chan_list[next_ch]].frequency,
                                         'slot': 0})
                     self.current_chan = next_ch
@@ -143,6 +150,7 @@ class dmr_receiver:
             if self.trbo_type < 0:
                 self.trbo_type = 1
                 sys.stderr.write("%f [%d] TRBO_TYPE SET TO CONNECT PLUS\n" % (time.time(), self.msgq_id))
+            self.current_state=self.states.VC
             if self.debug >= 9:
                 sys.stderr.write("%f [%d] CONNECT PLUS VOICE CHANNEL: netId(%d), siteId(%d)\n" % (time.time(), self.msgq_id, netId, siteId))
         elif slco == 10: # Connect Plus Control Channel
@@ -151,6 +159,7 @@ class dmr_receiver:
             if self.trbo_type < 0:
                 self.trbo_type = 1
                 sys.stderr.write("%f [%d] TRBO_TYPE SET TO CONNECT PLUS\n" % (time.time(), self.msgq_id))
+            self.current_state=self.states.CC
             if self.debug >= 9:
                 sys.stderr.write("%f [%d] CONNECT PLUS CONTROL CHANNEL: netId(%d), siteId(%d)\n" % (time.time(), self.msgq_id, netId, siteId))
         elif slco == 15: # Capacity Plus Channel
@@ -188,9 +197,10 @@ class dmr_receiver:
 
             freq = self.find_freq(lcn)
             if freq is not None:
-                self.frequency_set({'tuner': 'voice',
+                self.frequency_set({'tuner': 1,
                                     'freq': freq,
                                     'slot': slot})
+                self.receivers[1].current_state = self.receivers[1].states.SRCH
 
         elif (op == 59) and (fid == 16): # CapacityPlus Sys/Sites/TS
             fl   =  (ord(m_buf[2]) >> 6)
@@ -217,6 +227,10 @@ class rx_ctl(object):
         for _chan in chans:
             self.chans[_chan['lcn']] = dmr_chan(debug, _chan['lcn'], _chan['frequency'])
             sys.stderr.write("%f Configuring channel lcn(%d), freq(%f), cc(%d)\n" % (time.time(), _chan['lcn'], (_chan['frequency']/1e6), _chan['cc']))
+
+    def post_init(self):
+        for rx_id in self.receivers:
+            self.receivers[rx_id].post_init()
 
     def add_receiver(self, msgq_id):
         self.receivers[msgq_id] = dmr_receiver(msgq_id, self.frequency_set, self.chans, self.debug)

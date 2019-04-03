@@ -183,6 +183,9 @@ class rx_block (gr.top_block):
         self.configure_devices(config['devices'])
         self.configure_channels(config['channels'])
 
+        if self.trunking is not None: # post-initialization after channels and devices created
+            self.trunk_rx.post_init()
+
     def configure_trunking(self, config):
         if ((config.has_key("module") and (config['module'] == "")) or 
             (config.has_key("chans") and (config['chans'] == ""))):
@@ -251,17 +254,13 @@ class rx_block (gr.top_block):
             sys.stderr.write('scan %s: error %d\n' % (chan.config['frequency'], chan.demod.get_freq_error()))
 
     def change_freq(self, params):
-        chan = None
-        for _chan in self.channels:
-            if _chan.name == params['tuner']:
-                chan = _chan
-                break
-
-        if chan is None:
+        tuner = params['tuner']
+        if (tuner < 0) or (tuner > len(self.channels)):
             if self.verbosity:
                 sys.stderr.write("%f No %s channel available for tuning\n" % (time.time(), params['tuner']))
             return
 
+        chan = self.channels[tuner]
         return chan.set_freq(params['freq'])
 
     def kill(self):
