@@ -261,6 +261,8 @@ class rx_block (gr.top_block):
             return
 
         chan = self.channels[tuner]
+        if params.has_key('state'):
+            self.trunk_rx.receivers[tuner].current_state = params['state']
         return chan.set_freq(params['freq'])
 
     def kill(self):

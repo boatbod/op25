@@ -199,8 +199,8 @@ class dmr_receiver:
             if freq is not None:
                 self.frequency_set({'tuner': 1,
                                     'freq': freq,
-                                    'slot': slot})
-                self.receivers[1].current_state = self.receivers[1].states.SRCH
+                                    'slot': slot,
+                                    'state': self.states.SRCH})
 
         elif (op == 59) and (fid == 16): # CapacityPlus Sys/Sites/TS
             fl   =  (ord(m_buf[2]) >> 6)
