@@ -41,6 +41,7 @@ namespace gr {
     }
 
     void frame_assembler_impl::set_slotid(int slotid) {
+      d_sync.set_slot_mask(slotid);
     }
 
     frame_assembler::sptr

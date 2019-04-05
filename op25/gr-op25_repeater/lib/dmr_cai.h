@@ -38,6 +38,7 @@ public:
 	~dmr_cai();
 	bool load_frame(const uint8_t fr_sym[], bool& unmute);
 	inline int chan() { return d_chan; };
+	inline void set_slot_mask(int mask);
 
 private:
 	static const int FRAME_SIZE = 288; // frame length in bits
@@ -46,6 +47,7 @@ private:
 	uint8_t d_frame[FRAME_SIZE];       // array of bits comprising the current frame
 	dmr_slot d_slot[2];
 	bit_vector d_cach_sig;
+	int d_slot_mask;
 	int d_chan;
 	int d_shift_reg;
 	int d_debug;

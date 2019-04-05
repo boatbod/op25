@@ -134,6 +134,7 @@ void rx_sync::ysf_sync(const uint8_t dibitbuf[], bool& ysf_fullrate, bool& unmut
 }
 
 rx_sync::rx_sync(const char * options, int debug, int msgq_id, gr::msg_queue::sptr queue) :	// constructor
+	d_slot_mask(3),
 	d_symbol_count(0),
 	d_sync_reg(0),
 	d_cbuf_idx(0),
@@ -294,6 +295,9 @@ void rx_sync::rx_sym(const uint8_t sym)
 	uint8_t tmpcw[144];
 	bool ysf_fullrate;
 
+        if (d_slot_mask & 0x4) // Setting bit 3 of slot mask disables framing for idle receiver 
+		return;
+
 	d_symbol_count ++;
 	d_sync_reg = (d_sync_reg << 2) | (sym & 3);
 	for (int i = 0; i < KNOWN_MAGICS; i++) {
@@ -360,7 +364,7 @@ void rx_sync::rx_sym(const uint8_t sym)
 			d_expires = d_symbol_count + MODE_DATA[d_current_type].expiration;
 
 		// update audio timeout counters etc
-		if (unmute) {
+		if (unmute && ((dmr.chan() + 1) & d_slot_mask)) {
 			if (!d_unmute_until[dmr.chan()])
 				if (d_debug >= 10) {
 					fprintf(stderr, "%s unmute channel(%d)\n", logts.get(d_msgq_id), dmr.chan());

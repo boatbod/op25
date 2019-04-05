@@ -108,6 +108,8 @@ public:
 	void sync_reset(void);
 	rx_sync(const char * options, int debug, int msgq_id, gr::msg_queue::sptr queue);
 	~rx_sync();
+
+	inline void set_slot_mask(int mask) { d_slot_mask = mask; };
 private:
 	void sync_timeout();
 	void cbuf_insert(const uint8_t c);
@@ -127,6 +129,7 @@ private:
 	int d_rx_count;
 	unsigned int d_expires;
 	int d_shift_reg;
+	int d_slot_mask;
 	unsigned int d_unmute_until[2];
 	p25p2_vf interleaver;
 	mbe_parms cur_mp[2];

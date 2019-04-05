@@ -147,7 +147,7 @@ class channel(object):
 
     def set_freq(self, freq):
         if self.frequency == freq:
-            return
+            return True
         old_freq = self.frequency
         self.frequency = freq
         if not self.demod.set_relative_frequency(self.device.frequency + self.device.offset - freq):
@@ -155,11 +155,16 @@ class channel(object):
             self.frequency = old_freq
             if self.verbosity:
                 sys.stderr.write("%f [%d] Unable to tune %s to frequency %f\n" % (time.time(), self.msgq_id, self.name, (freq/1e6)))
+            return False
         for sink in self.sinks:
             if sink.name() == "fft_sink_c":
                 sink.set_relative_freq(self.device.frequency + self.device.offset - freq)
         if self.verbosity >= 9:
             sys.stderr.write("%f [%d] Tuning to frequency %f\n" % (time.time(), self.msgq_id, (freq/1e6)))
+        return True
+
+    def set_slot(self, slot):
+        self.decoder.set_slotid(slot)
 
     def kill(self):
         for sink in self.kill_sink:
@@ -201,7 +206,7 @@ class rx_block (gr.top_block):
             self.trunking = None
 
         if self.trunking is not None:
-            self.trunk_rx = self.trunking.rx_ctl(frequency_set = self.change_freq, debug = self.verbosity, chans = config['chans'])
+            self.trunk_rx = self.trunking.rx_ctl(frequency_set = self.change_freq, slot_set = self.set_slot, debug = self.verbosity, chans = config['chans'])
             self.du_watcher = du_queue_watcher(self.rx_q, self.trunk_rx.process_qmsg)
             sys.stderr.write("Enabled trunking module: %s\n" % config['module'])
 
@@ -261,9 +266,23 @@ class rx_block (gr.top_block):
             return
 
         chan = self.channels[tuner]
+        if not chan.set_freq(params['freq']):
+            chan.set_slot(0)
+            return False
+        
+        if params.has_key('slot'):
+            chan.set_slot(params['slot'])
+
         if params.has_key('state'):
             self.trunk_rx.receivers[tuner].current_state = params['state']
-        return chan.set_freq(params['freq'])
+
+        return True
+
+    def set_slot(self, slot):
+        tuner = params['tuner']
+        chan = self.channels[tuner]
+        if params.has_key('slot'):
+            chan.set_slot(params['slot'])
 
     def kill(self):
         for chan in self.channels:

@@ -68,6 +68,7 @@ public:
 	~dmr_slot();
 	inline void set_debug(const int debug) { d_debug = debug; };
 	bool load_slot(const uint8_t slot[], uint64_t sl_type);
+	inline void set_slot_mask(int mask) { d_slot_mask = mask; };
 
 private:
 	uint8_t     d_slot[SLOT_SIZE];	// array of bits comprising the current slot
@@ -87,6 +88,7 @@ private:
 	int         d_msgq_id;
 	int         d_debug;
 	int         d_chan;
+	int         d_slot_mask;
         log_ts      logts;
 	CBPTC19696  bptc;
 	ezpwd::RS<255,252> rs12;	// Reed-Solomon(12,9) object for Link Control decode

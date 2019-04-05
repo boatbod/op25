@@ -25,6 +25,7 @@ import time
 import json
 
 CC_HUNT_TIMEOUTS = 3
+VC_HUNT_TIMEOUTS = 3
 
 class dmr_chan:
     def __init__(self, debug=0, lcn=0, freq=0):
@@ -33,7 +34,7 @@ class dmr_chan:
         self.frequency = freq
 
 class dmr_receiver:
-    def __init__(self, msgq_id, frequency_set=None, chans={}, debug=0):
+    def __init__(self, msgq_id, frequency_set=None, slot_set=None, chans={}, debug=0):
         class _states(object):
             IDLE = 0
             CC   = 1
@@ -43,22 +44,27 @@ class dmr_receiver:
         self.states = _states
         self.current_state = self.states.IDLE
         self.frequency_set = frequency_set
+        self.slot_set = slot_set
         self.msgq_id = msgq_id
         self.debug = debug
         self.cc_timeouts = 0
+        self.vc_timeouts = 0
         self.chans = chans
         self.chan_list = self.chans.keys()
         self.current_chan = 0
         self.rest_lcn = 0
 
     def post_init(self):
-        if self.msgq_id == 0: # first receiver only
-            if self.debug >= 1:
-                sys.stderr.write("%f [%d] Waiting for sync sequence\n" % (time.time(), self.msgq_id))
-            self.current_chan == 0
-            self.frequency_set({'tuner': self.msgq_id,
-                                'freq': self.chans[self.chan_list[0]].frequency,
-                                'slot': 0})
+        if self.debug >= 1:
+            sys.stderr.write("%f [%d] Waiting for sync sequence\n" % (time.time(), self.msgq_id))
+        if self.msgq_id == 0:
+            slot = 0
+        else:
+            slot = 4
+        self.current_chan == 0
+        self.frequency_set({'tuner': self.msgq_id,
+                            'freq': self.chans[self.chan_list[0]].frequency,
+                            'slot': slot})
 
     def find_freq(self, lcn):
         if self.chans.has_key(lcn):
@@ -94,11 +100,16 @@ class dmr_receiver:
                                         'slot': 0})
                     self.current_chan = next_ch
             else:
-                pass
+                self.vc_timeouts += 1
+                if self.vc_timeouts >= VC_SYNC_TIMEOUTS:
+                    self.vc_timeouts = 0
+                    self.current_state = self.states.IDLE
+                    self.slot_set({'tuner': 0,'slot': 4}) # cease framing voice channel until next grant received
             return
         elif m_type >= 0: # Receiving a PDU means sync must be present
             if self.msgq_id == 0:
                 self.cc_timeouts = 0
+                self.vc_timeouts = 0
 
         # log received message
         if self.debug >= 9:
@@ -166,6 +177,7 @@ class dmr_receiver:
             lcn = d1
             if self.trbo_type < 0:
                 self.trbo_type = 0
+                self.slot_set({'tuner': 0,'slot': 3})
                 sys.stderr.write("%f [%d] TRBO_TYPE SET TO CAPACITY PLUS\n" % (time.time(), self.msgq_id))
             self.rest_lcn = d1
             if self.debug >= 9:
@@ -199,7 +211,7 @@ class dmr_receiver:
             if freq is not None:
                 self.frequency_set({'tuner': 1,
                                     'freq': freq,
-                                    'slot': slot,
+                                    'slot': (slot + 1),
                                     'state': self.states.SRCH})
 
         elif (op == 59) and (fid == 16): # CapacityPlus Sys/Sites/TS
@@ -218,8 +230,9 @@ class dmr_receiver:
             pass
 
 class rx_ctl(object):
-    def __init__(self, debug=0, frequency_set=None, chans=None):
+    def __init__(self, debug=0, frequency_set=None, slot_set=None, chans=None):
         self.frequency_set = frequency_set
+        self.slot_set = slot_set
         self.debug = debug
         self.receivers = {}
 
@@ -233,7 +246,7 @@ class rx_ctl(object):
             self.receivers[rx_id].post_init()
 
     def add_receiver(self, msgq_id):
-        self.receivers[msgq_id] = dmr_receiver(msgq_id, self.frequency_set, self.chans, self.debug)
+        self.receivers[msgq_id] = dmr_receiver(msgq_id, self.frequency_set, self.slot_set, self.chans, self.debug)
 
     def process_qmsg(self, msg):
         if msg.arg2() != 1: # discard anything not DMR
