@@ -25,7 +25,7 @@ import time
 import json
 
 CC_HUNT_TIMEOUTS = 3
-VC_HUNT_TIMEOUTS = 3
+VC_SYNC_TIMEOUTS = 3
 
 class dmr_chan:
     def __init__(self, debug=0, lcn=0, freq=0):
