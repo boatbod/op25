@@ -278,7 +278,7 @@ class rx_block (gr.top_block):
 
         return True
 
-    def set_slot(self, slot):
+    def set_slot(self, params):
         tuner = params['tuner']
         chan = self.channels[tuner]
         if params.has_key('slot'):
