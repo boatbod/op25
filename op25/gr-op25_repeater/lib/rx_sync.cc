@@ -64,6 +64,21 @@ void rx_sync::sync_reset(void) {
 	d_unmute_until[1] = 0;
 }
 
+void rx_sync::set_slot_mask(int mask) {
+	if (mask == d_slot_mask)
+		return;
+
+	if (d_debug >= 10) {
+		fprintf(stderr, "%s rx_sync::set_slot_mask: current(%d), new(%d)\n", logts.get(d_msgq_id), d_slot_mask, mask);
+	}
+
+	if (d_slot_mask == 4) {
+		sync_timer.reset();
+		sync_reset();
+	}
+	d_slot_mask = mask;
+}
+
 static int ysf_decode_fich(const uint8_t src[100], uint8_t dest[32]) {   // input is 100 dibits, result is 32 bits
 // return -1 on decode error, else 0
 	static const int pc[] = {0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1};

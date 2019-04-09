@@ -106,10 +106,10 @@ class rx_sync {
 public:
 	void rx_sym(const uint8_t sym);
 	void sync_reset(void);
+	void set_slot_mask(int mask);
 	rx_sync(const char * options, int debug, int msgq_id, gr::msg_queue::sptr queue);
 	~rx_sync();
 
-	inline void set_slot_mask(int mask) { d_slot_mask = mask; };
 private:
 	void sync_timeout();
 	void cbuf_insert(const uint8_t c);
