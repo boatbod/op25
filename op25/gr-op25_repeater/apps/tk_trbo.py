@@ -50,6 +50,7 @@ class dmr_receiver:
         self.debug = debug
         self.cc_timeouts = 0
         self.vc_timeouts = 0
+        self.vc_srch_start = None
         self.chans = chans
         self.chan_list = self.chans.keys()
         self.current_chan = 0
@@ -62,14 +63,14 @@ class dmr_receiver:
             slot = 0
         else:
             slot = 4
-        self.current_chan == 0
         self.frequency_set({'tuner': self.msgq_id,
                             'freq': self.chans[self.chan_list[0]].frequency,
-                            'slot': slot})
+                            'slot': slot,
+                            'chan': 0})
 
     def find_freq(self, lcn):
         if self.chans.has_key(lcn):
-            return self.chans[lcn].frequency
+            return (self.chan_list.index(lcn), self.chans[lcn].frequency)
         else:
             return (None, None)
 
@@ -78,13 +79,10 @@ class dmr_receiver:
         return next_chan
 
     def tune_next_chan(self):
-        self.current_state = self.states.IDLE
         next_ch = self.find_next_chan()
         self.frequency_set({'tuner': self.msgq_id,
                             'freq': self.chans[self.chan_list[next_ch]].frequency,
-                            'slot': 0})
-        self.current_chan = next_ch
- 
+                            'chan': next_ch})
 
     def process_qmsg(self, msg):
         if msg.arg2() != 1: # discard anything not DMR
@@ -99,15 +97,30 @@ class dmr_receiver:
             if self.debug >= 1:
                 sys.stderr.write("%f [%d] Timeout waiting for sync sequence\n" % (time.time(), self.msgq_id))
 
-            if self.msgq_id == 0:
+            if self.msgq_id == 0: # primary channel
                 self.cc_timeouts += 1
                 if self.cc_timeouts >= CC_HUNT_TIMEOUTS:
                     self.cc_timeouts = 0
+                    self.current_state = self.states.IDLE
                     self.tune_next_chan()
-            else:
+            else:                 # secondary (voice) channel
                 self.vc_timeouts += 1
+
+                # Crude voice channel lcn search; better than nothing, but not by much!
+                if self.current_state == self.states.SRCH:
+                    if self.vc_srch_start is None:
+                        self.vc_srch_start = self.current_chan
+                    self.vc_timeouts = 0
+                    self.tune_next_chan()
+                    if self.current_chan == self.vc_srch_start:
+                        self.current_state = self.states.IDLE
+                        self.vc_srch_start = None
+                        self.vc_timeouts += 1
+
+                # Turn off voice channel after hitting timeout threshold. TODO: tie this in to when the grants cease
                 if self.vc_timeouts >= VC_SYNC_TIMEOUTS:
                     self.vc_timeouts = 0
+                    self.vc_srch_start = None
                     self.current_state = self.states.IDLE
                     self.slot_set({'tuner': 1,'slot': 4}) # cease framing voice channel until next grant received
             return
@@ -151,6 +164,7 @@ class dmr_receiver:
             if self.debug >= 1:
                 sys.stderr.write("%f [%d] Looking for control channel\n" % (time.time(), self.msgq_id))
             self.cc_timeouts = 0
+            self.current_state = self.states.IDLE
             self.tune_next_chan()
 
     def rx_CACH_SLC(self, m_buf):
@@ -177,6 +191,7 @@ class dmr_receiver:
                 self.current_state=self.states.VC
             else:
                 self.current_state=self.states.IDLE
+                self.tune_next_chan()
             if self.debug >= 9:
                 sys.stderr.write("%f [%d] CONNECT PLUS VOICE CHANNEL: netId(%d), siteId(%d)\n" % (time.time(), self.msgq_id, netId, siteId))
         elif slco == 10: # Connect Plus Control Channel
@@ -186,9 +201,9 @@ class dmr_receiver:
                 self.trbo_type = 1
                 sys.stderr.write("%f [%d] TRBO_TYPE SET TO CONNECT PLUS\n" % (time.time(), self.msgq_id))
             if self.msgq_id == 0:
-                self.current_state=self.states.CC
+                self.current_state=self.states.CC # found the control channel
             else:
-                self.current_state=self.states.IDLE
+                self.current_state=self.states.VC # treat control channel like voice channel
             if self.debug >= 9:
                 sys.stderr.write("%f [%d] CONNECT PLUS CONTROL CHANNEL: netId(%d), siteId(%d)\n" % (time.time(), self.msgq_id, netId, siteId))
         elif slco == 15: # Capacity Plus Channel
@@ -209,7 +224,7 @@ class dmr_receiver:
         op  = ord(m_buf[0]) & 0x3f
         fid = ord(m_buf[1])
 
-        if (op == 1) and (fid == 6):     # ConnectPlus Neighbors
+        if (op == 1) and (fid == 6) and (self.current_state == self.states.CC):     # ConnectPlus Neighbors (control channel only)
             nb1 = ord(m_buf[2]) & 0x3f
             nb2 = ord(m_buf[3]) & 0x3f
             nb3 = ord(m_buf[4]) & 0x3f
@@ -217,24 +232,22 @@ class dmr_receiver:
             nb5 = ord(m_buf[6]) & 0x3f
             if self.debug >= 9:
                 sys.stderr.write("%f [%d] CONNECT PLUS NEIGHBOR SITES: %d, %d, %d, %d, %d\n" % (time.time(), self.msgq_id, nb1, nb2, nb3, nb4, nb5))
-        elif (op == 3) and (fid == 6):   # ConnectPlus Channel Grant
+        elif (op == 3) and (fid == 6) and (self.current_state == self.states.CC):   # ConnectPlus Channel Grant (control channel only)
             src_addr = (ord(m_buf[2]) << 16) + (ord(m_buf[3]) << 8) + ord(m_buf[4])
             grp_addr = (ord(m_buf[5]) << 16) + (ord(m_buf[6]) << 8) + ord(m_buf[7])
             lcn      = (ord(m_buf[8]) >> 4)
             slot     = (ord(m_buf[8]) >> 3) & 0x1 
-            if self.debug >= 9:
-                sys.stderr.write("%f [%d] CONNECT PLUS CHANNEL GRANT: grpAddr(%06x), srcAddr(%06x), lcn(%d), slot(%d)\n" % (time.time(), self.msgq_id, grp_addr, src_addr, lcn, slot))
-
-            freq = self.find_freq(lcn)
+            chan, freq = self.find_freq(lcn)
             if freq is not None:
                 if self.debug >= 9:
-                    sys.stderr.write("%f [%d] CONNECT PLUS CHANNEL GRANT: tune voice frequency(%f)\n" % (time.time(), self.msgq_id, (freq/1e6)))
+                    sys.stderr.write("%f [%d] CONNECT PLUS CHANNEL GRANT: grpAddr(%06x), srcAddr(%06x), lcn(%d), slot(%d), chan(%d), freq(%f)\n" % (time.time(), self.msgq_id, grp_addr, src_addr, lcn, slot, chan, (freq/1e6)))
                 self.frequency_set({'tuner': 1,
                                     'freq': freq,
                                     'slot': (slot + 1),
+                                    'chan': chan,
                                     'state': self.states.SRCH})
             elif self.debug >=9:
-                sys.stderr.write("%f [%d] CONNECT PLUS CHANNEL GRANT: unable to find frequency for lcn(%d)\n" % (time.time(), self.msgq_id, lcn))
+                sys.stderr.write("%f [%d] CONNECT PLUS CHANNEL GRANT: grpAddr(%06x), srcAddr(%06x), unknown lcn(%d), slot(%d)\n" % (time.time(), self.msgq_id, grp_addr, src_addr, lcn, slot))
 
         elif (op == 59) and (fid == 16): # CapacityPlus Sys/Sites/TS
             fl   =  (ord(m_buf[2]) >> 6)
