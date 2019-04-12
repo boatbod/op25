@@ -283,6 +283,10 @@ class rx_block (gr.top_block):
         if params.has_key('state'):
             self.trunk_rx.receivers[tuner].current_state = params['state']
 
+        if params.has_key('type'):
+            self.trunk_rx.receivers[tuner].current_type = params['type']
+
+
         return True
 
     def set_slot(self, params):
