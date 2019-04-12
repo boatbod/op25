@@ -266,7 +266,7 @@ class rx_block (gr.top_block):
             return False
 
         if ((self.trunk_rx.receivers[tuner].current_state == self.trunk_rx.receivers[tuner].states.SRCH) and
-            (params.has_key('chan')) and (self.trunk_rx.receivers[tuner].vc_srch_start == params['chan'])):
+            (params.has_key('chan')) and (self.trunk_rx.receivers[tuner].start_chan == params['chan'])):
             return True # voice channel lcn search
 
         chan = self.channels[tuner]
