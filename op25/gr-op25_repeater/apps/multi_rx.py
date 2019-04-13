@@ -233,19 +233,23 @@ class rx_block (gr.top_block):
             if dev_id < len(self.devices):
                 return self.devices[dev_id]
             
-        for dev in self.devices:
-            d = abs(chan['frequency'] - dev.frequency)
-            nf = dev.sample_rate / 2
-            if d + 6250 <= nf:
-                return dev
+        if chan.has_key('frequency') and (chan['frequency'] != ""):
+            for dev in self.devices:
+                d = abs(chan['frequency'] - dev.frequency)
+                nf = dev.sample_rate / 2
+                if d + 6250 <= nf:
+                    return dev
         return None
 
     def configure_channels(self, config):
         self.channels = []
         for cfg in config:
             dev = self.find_device(cfg)
-            if dev is None:
-                sys.stderr.write('* * * Frequency %d not within spectrum band of any device - ignoring!\n' % cfg['frequency'])
+            if (dev is None) and cfg.has_key('frequency'):
+                sys.stderr.write("* * * Frequency %d not within spectrum band of any device - ignoring!\n" % cfg['frequency'])
+                continue
+            elif dev is None:
+                sys.stderr.write("* * * Channel '%s' not attached to any device - ignoring!\n" % cfg['name'])
                 continue
             elif dev.tunable:
                 for ch in self.channels:
