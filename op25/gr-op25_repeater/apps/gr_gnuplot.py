@@ -42,7 +42,7 @@ BAL_AVG  = 0.05
 FFT_BINS = 512
 
 class wrap_gp(object):
-	def __init__(self, sps=_def_sps):
+	def __init__(self, sps=_def_sps, plot_name=""):
 		self.sps = sps
 		self.center_freq = 0.0
 		self.relative_freq = 0.0
@@ -59,6 +59,10 @@ class wrap_gp(object):
 		self.sequence = 0
 		self.output_dir = None
 		self.filename = None
+                if plot_name == "":
+                        self.plot_name = ""
+                else:
+			self.plot_name = plot_name + " "
 
 		self.attach_gp()
 
@@ -178,15 +182,15 @@ class wrap_gp(object):
 			h+= 'set size square\n'
 			h+= 'set xrange [-1:1]\n'
 			h+= 'set yrange [-1:1]\n'
-                        h+= 'set title "Constellation"\n'
+                        h+= 'set title "%sConstellation"\n' % self.plot_name
 		elif mode == 'eye':
 			h+= background
 			h+= 'set yrange [-4:4]\n'
-                        h+= 'set title "Datascope"\n'
+                        h+= 'set title "%sDatascope"\n' % self.plot_name
 		elif mode == 'symbol':
 			h+= background
 			h+= 'set yrange [-4:4]\n'
-                        h+= 'set title "Symbol"\n'
+                        h+= 'set title "%sSymbol"\n' % self.plot_name
 		elif mode == 'fft' or mode == 'mixer':
 			h+= 'unset arrow; unset title\n'
 			h+= 'set xrange [%f:%f]\n' % (self.freqs[0], self.freqs[len(self.freqs)-1])
@@ -195,13 +199,13 @@ class wrap_gp(object):
                         h+= 'set grid\n'
 			h+= 'set yrange [-100:0]\n'
 			if mode == 'mixer':	# mixer
-                                h+= 'set title "Mixer: balance %3.0f (smaller is better)"\n' % (np.abs(self.avg_sum_pwr * 1000))
+                                h+= 'set title "%sMixer: balance %3.0f (smaller is better)"\n' % (self.plot_name, (np.abs(self.avg_sum_pwr * 1000)))
 			else:			# fft
-                                h+= 'set title "Spectrum"\n'
+                                h+= 'set title "%sSpectrum"\n' % self.plot_name
 				if self.center_freq:
 					arrow_pos = (self.center_freq - self.relative_freq) / 1e6
 					h+= 'set arrow from %f, graph 0 to %f, graph 1 nohead\n' % (arrow_pos, arrow_pos)
-					h+= 'set title "Spectrum: tuned to %f Mhz"\n' % arrow_pos
+					h+= 'set title "%sSpectrum: tuned to %f Mhz"\n' % (self.plot_name, arrow_pos)
 		dat = '%splot %s\n%s' % (h, ','.join(plots), s)
 		self.gp.poll()
 		if self.gp.returncode is None:	# make sure gnuplot is still running 
@@ -228,14 +232,14 @@ class wrap_gp(object):
 class eye_sink_f(gr.sync_block):
     """
     """
-    def __init__(self, debug = _def_debug, sps = _def_sps ):
+    def __init__(self, debug = _def_debug, sps = _def_sps, plot_name = ""):
         gr.sync_block.__init__(self,
             name="eye_sink_f",
             in_sig=[np.float32],
             out_sig=None)
         self.debug = debug
         self.sps = sps * _def_sps_mult
-        self.gnuplot = wrap_gp(sps=self.sps)
+        self.gnuplot = wrap_gp(sps=self.sps, plot_name=plot_name)
 
     def set_sps(self, sps):
         self.sps = sps * _def_sps_mult
@@ -252,13 +256,13 @@ class eye_sink_f(gr.sync_block):
 class constellation_sink_c(gr.sync_block):
     """
     """
-    def __init__(self, debug = _def_debug):
+    def __init__(self, debug = _def_debug, plot_name = ""):
         gr.sync_block.__init__(self,
             name="constellation_sink_c",
             in_sig=[np.complex64],
             out_sig=None)
         self.debug = debug
-        self.gnuplot = wrap_gp()
+        self.gnuplot = wrap_gp(plot_name=plot_name)
 
     def work(self, input_items, output_items):
         in0 = input_items[0]
@@ -271,13 +275,13 @@ class constellation_sink_c(gr.sync_block):
 class fft_sink_c(gr.sync_block):
     """
     """
-    def __init__(self, debug = _def_debug):
+    def __init__(self, debug = _def_debug, plot_name = ""):
         gr.sync_block.__init__(self,
             name="fft_sink_c",
             in_sig=[np.complex64],
             out_sig=None)
         self.debug = debug
-        self.gnuplot = wrap_gp()
+        self.gnuplot = wrap_gp(plot_name=plot_name)
         self.skip = 0
 
     def work(self, input_items, output_items):
@@ -307,13 +311,13 @@ class fft_sink_c(gr.sync_block):
 class mixer_sink_c(gr.sync_block):
     """
     """
-    def __init__(self, debug = _def_debug):
+    def __init__(self, debug = _def_debug, plot_name = ""):
         gr.sync_block.__init__(self,
             name="mixer_sink_c",
             in_sig=[np.complex64],
             out_sig=None)
         self.debug = debug
-        self.gnuplot = wrap_gp()
+        self.gnuplot = wrap_gp(plot_name=plot_name)
 
     def work(self, input_items, output_items):
         in0 = input_items[0]
@@ -326,13 +330,13 @@ class mixer_sink_c(gr.sync_block):
 class symbol_sink_f(gr.sync_block):
     """
     """
-    def __init__(self, debug = _def_debug):
+    def __init__(self, debug = _def_debug, plot_name = ""):
         gr.sync_block.__init__(self,
             name="symbol_sink_f",
             in_sig=[np.float32],
             out_sig=None)
         self.debug = debug
-        self.gnuplot = wrap_gp()
+        self.gnuplot = wrap_gp(plot_name=plot_name)
 
     def work(self, input_items, output_items):
         in0 = input_items[0]
