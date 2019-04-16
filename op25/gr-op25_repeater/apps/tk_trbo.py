@@ -26,7 +26,7 @@ import json
 
 CC_HUNT_TIMEOUTS = 3
 VC_SYNC_TIMEOUTS = 3
-TGID_HOLD_TIME   = 2000
+TGID_HOLD_TIME   = 2.0 # seconds to wait until releasing tgid after last GRANT message
 
 class dmr_chan:
     def __init__(self, debug=0, lcn=0, freq=0):
@@ -80,15 +80,14 @@ class dmr_receiver:
             if freq is not None:
                 if self.debug >= 9:
                     sys.stderr.write("%f [%d] CONNECT PLUS CHANNEL GRANT: srcAddr(%06x), grpAddr(%06x), lcn(%d), slot(%d), freq(%f)\n" % (time.time(), self.msgq_id, src_addr, grp_addr, lcn, slot, (freq/1e6)))
-                if grp_addr in self.active_tgids:
-                    if lcn != self.active_tgids[grp_addr]:
-                        self.frequency_set({'tuner': 1,
-                                            'freq': freq,
-                                            'slot': (slot + 1),
-                                            'chan': chan,
-                                            'state': self.states.SRCH,
-                                            'type': self.current_type})
-                self.active_tgids[grp_addr] = lcn
+                if (grp_addr not in self.active_tgids) or ((grp_addr in self.active_tgids) and (lcn != self.active_tgids[grp_addr])):
+                    self.frequency_set({'tuner': 1,
+                                        'freq': freq,
+                                        'slot': (slot + 1),
+                                        'chan': chan,
+                                        'state': self.states.SRCH,
+                                        'type': self.current_type})
+                    self.active_tgids[grp_addr] = lcn
                 self.chans[lcn].grant_time = time.time()
             elif self.debug >=9:
                 sys.stderr.write("%f [%d] CONNECT PLUS CHANNEL GRANT: srcAddr(%06x), grpAddr(%06x), unknown lcn(%d), slot(%d)\n" % (time.time(), self.msgq_id, src_addr, grp_addr, lcn, slot))
