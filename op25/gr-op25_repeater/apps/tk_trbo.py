@@ -338,13 +338,15 @@ class rx_ctl(object):
             self.receivers[m_rxid].process_qmsg(msg)
 
     def check_expired_grants(self):
-        for tgid in self.receivers[0].active_tgids:
-            lcn = self.receivers[0].active_tgids[tgid]
-            if (self.chans[lcn].grant_time + TGID_HOLD_TIME) < time.time():
+        for tgid in list(self.receivers[0].active_tgids):
+            act_lcn = self.receivers[0].active_tgids[tgid]
+            act_time = self.chans[act_lcn].grant_time
+            if (act_time + TGID_HOLD_TIME) < time.time():
                 self.receivers[0].active_tgids.pop(tgid, None)
                 if self.receivers[0].current_type > 0: # turn off voice channel receiver for Connect Plus systems
+                    sys.stderr.write("%f check_expired_grants(): shutting off voice channel lcn(%d)\n" % (time.time(), act_lcn))
                     self.receivers[1].vc_timeouts = 0
                     self.receivers[1].start_chan = None
-                    self.receivers[1].current_state = self.states.IDLE
+                    self.receivers[1].current_state = self.receivers[1].states.IDLE
                     self.slot_set({'tuner': 1,'slot': 4})
 
