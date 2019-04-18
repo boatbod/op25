@@ -58,8 +58,12 @@ void rx_sync::cbuf_insert(const uint8_t c) {
 }
 
 void rx_sync::sync_reset(void) {
+	d_symbol_count = 0;
+	d_rx_count = 0;
 	d_threshold = 0;
 	d_shift_reg = 0;
+	d_sync_reg = 0;
+	d_expires = 0;
 	d_unmute_until[0] = 0;
 	d_unmute_until[1] = 0;
 }
