@@ -58,14 +58,24 @@ void rx_sync::cbuf_insert(const uint8_t c) {
 }
 
 void rx_sync::sync_reset(void) {
+	// Sync counters and registers reset
 	d_symbol_count = 0;
 	d_rx_count = 0;
 	d_threshold = 0;
 	d_shift_reg = 0;
 	d_sync_reg = 0;
 	d_expires = 0;
-	d_unmute_until[0] = 0;
-	d_unmute_until[1] = 0;
+
+	// Audio reset
+	for (int chan = 0; chan <= 1; chan++) {
+		if (d_unmute_until[chan]) {
+			d_unmute_until[chan] = 0;
+			d_audio.send_audio_flag_channel(op25_audio::DRAIN, chan);
+			if (d_debug >= 10) {
+				fprintf(stderr, "%s mute channel(%d)\n", logts.get(d_msgq_id), chan);
+			}
+		}
+	}
 }
 
 void rx_sync::set_slot_mask(int mask) {
