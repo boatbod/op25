@@ -43,4 +43,5 @@ TODO:
 - beef up trunking code and handle missing features such as whilelist/blacklist/priority
 - implement a terminal so you can see what is going on without needing to run the logs at high levels of debug
 - improve the FSK4 demodulator so it can be used with TDMA simplex and TRBO Capacity Plus burst transmissions.
+- improve the audio decode so that audio playback is independent of slot number rather than left/right channel.
 
