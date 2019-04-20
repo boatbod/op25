@@ -357,9 +357,7 @@ class socket_audio(object):
 				elif len_b > 0:
 					data_b = in_b[0]
 
-			if (((flag_a == 0) and (flag_b == 0)) or
-			    ((flag_a == 0) and ((in_b is None) or (flag_b == 1))) or 
-			    ((flag_b == 0) and ((in_a is None) or (flag_a == 1)))):
+			if (flag_a == 0) or (flag_b == 0):
 				rc = self.pcm.drain()
 				continue
 
