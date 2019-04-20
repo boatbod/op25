@@ -37,5 +37,10 @@ If you want to hear audio, you will also need to start an audio server in a sepa
 
 Known Issues & Limitations
 --------------------------
-At present, tk_trbo.py does not attempt to do any blacklisting or whitelisting of group addresses (tgids) and won't even attempt to stay on the same tgid if a second voice grant appears while the first is still active.  Up to this point, most effort has focussed on implementing protocol decode building blocks, tuning logic and mapping of LCN addresses into physical frequencies.  More work is required before it is ready to be used on anything but low traffic systems. 
+At present, tk_trbo.py does not attempt to do any blacklisting, whitelisting or priority of group addresses (tgids).  It will attempt to stay on the same tgid for the duration of the voice call + 2 seconds 'hold time' even if a second voice grant appears while the first is still active.  Up to this point, most effort has focussed on implementing protocol decode building blocks, tuning logic and mapping of LCN addresses into physical frequencies.
+
+TODO:
+- beef up trunking code and handle missing features such as whilelist/blacklist/priority
+- implement a terminal so you can see what is going on without needing to run the logs at high levels of debug
+- improve the FSK4 demodulator so it can be used with TDMA simplex and TRBO Capacity Plus burst transmissions.
 
