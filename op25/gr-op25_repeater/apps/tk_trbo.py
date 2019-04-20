@@ -24,16 +24,22 @@ import sys
 import time
 import json
 
-CC_HUNT_TIMEOUTS = 3
-VC_SYNC_TIMEOUTS = 3
+CC_HUNT_TIMEOUTS = 3   # number of sync timeouts to wait until control channel hunt
+VC_SRCH_TIME     = 3.0 # seconds to wait from VC tuning until hunt
 TGID_HOLD_TIME   = 2.0 # seconds to wait until releasing tgid after last GRANT message
 
 class dmr_chan:
     def __init__(self, debug=0, lcn=0, freq=0):
+        class _grant_info(object):
+            grant_time = 0
+            grp_addr = None
+            src_addr = None
         self.debug = debug
         self.lcn = lcn
         self.frequency = freq
-        self.grant_time = 0
+        self.slot = []
+        self.slot.append(_grant_info)
+        self.slot.append(_grant_info)
 
 class dmr_receiver:
     def __init__(self, msgq_id, frequency_set=None, slot_set=None, chans={}, debug=0):
@@ -51,13 +57,12 @@ class dmr_receiver:
         self.msgq_id = msgq_id
         self.debug = debug
         self.cc_timeouts = 0
-        self.vc_timeouts = 0
-        self.start_chan = None
         self.chans = chans
         self.chan_list = self.chans.keys()
         self.current_chan = 0
         self.rest_lcn = 0
         self.active_tgids = {}
+        self.tune_time = 0
 
     def post_init(self):
         if self.debug >= 1:
@@ -69,7 +74,8 @@ class dmr_receiver:
         self.frequency_set({'tuner': self.msgq_id,
                             'freq': self.chans[self.chan_list[0]].frequency,
                             'slot': slot,
-                            'chan': 0})
+                            'chan': 0,
+                            'time': time.time()})
 
     def process_grant(self, m_buf):
             src_addr = (ord(m_buf[2]) << 16) + (ord(m_buf[3]) << 8) + ord(m_buf[4])
@@ -78,17 +84,21 @@ class dmr_receiver:
             slot     = (ord(m_buf[8]) >> 3) & 0x1 
             chan, freq = self.find_freq(lcn)
             if freq is not None:
+                lcn_sl = (lcn << 1) + slot
                 if self.debug >= 9:
                     sys.stderr.write("%f [%d] CONNECT PLUS CHANNEL GRANT: srcAddr(%06x), grpAddr(%06x), lcn(%d), slot(%d), freq(%f)\n" % (time.time(), self.msgq_id, src_addr, grp_addr, lcn, slot, (freq/1e6)))
-                if (grp_addr not in self.active_tgids) or ((grp_addr in self.active_tgids) and (lcn != self.active_tgids[grp_addr])):
+                if (grp_addr not in self.active_tgids) or ((grp_addr in self.active_tgids) and (lcn_sl != self.active_tgids[grp_addr])):
                     self.frequency_set({'tuner': 1,
                                         'freq': freq,
                                         'slot': (slot + 1),
                                         'chan': chan,
                                         'state': self.states.SRCH,
-                                        'type': self.current_type})
-                    self.active_tgids[grp_addr] = lcn
-                self.chans[lcn].grant_time = time.time()
+                                        'type': self.current_type,
+                                        'time': time.time()})
+                    self.active_tgids[grp_addr] = lcn_sl
+                self.chans[lcn].slot[slot].grant_time = time.time()
+                self.chans[lcn].slot[slot].grp_addr = grp_addr
+                self.chans[lcn].slot[slot].src_addr = src_addr
             elif self.debug >=9:
                 sys.stderr.write("%f [%d] CONNECT PLUS CHANNEL GRANT: srcAddr(%06x), grpAddr(%06x), unknown lcn(%d), slot(%d)\n" % (time.time(), self.msgq_id, src_addr, grp_addr, lcn, slot))
 
@@ -106,7 +116,8 @@ class dmr_receiver:
         next_ch = self.find_next_chan()
         self.frequency_set({'tuner': self.msgq_id,
                             'freq': self.chans[self.chan_list[next_ch]].frequency,
-                            'chan': next_ch})
+                            'chan': next_ch,
+                            'time': time.time()})
 
     def process_qmsg(self, msg):
         if msg.arg2() != 1: # discard anything not DMR
@@ -121,37 +132,23 @@ class dmr_receiver:
             if self.debug >= 1:
                 sys.stderr.write("%f [%d] Timeout waiting for sync sequence\n" % (time.time(), self.msgq_id))
 
-            if self.msgq_id == 0: # primary channel
+            if self.msgq_id == 0: # primary/control channel
                 self.cc_timeouts += 1
                 if self.cc_timeouts >= CC_HUNT_TIMEOUTS:
                     self.cc_timeouts = 0
                     self.current_state = self.states.IDLE
                     self.tune_next_chan()
-            else:                 # secondary (voice) channel
-                self.vc_timeouts += 1
+                    return
+            else:                 # secondary/voice channel
+                pass
 
-                # Crude voice channel lcn search; better than nothing, but not by much!
-                if self.current_state == self.states.SRCH:
-                    if self.start_chan is None:
-                        self.start_chan = self.current_chan
-                    self.vc_timeouts = 0
-                    self.tune_next_chan()
-                    if self.current_chan == self.start_chan:
-                        self.current_state = self.states.IDLE
-                        self.start_chan = None
-                        self.vc_timeouts += 1
-
-                # Turn off voice channel after hitting timeout threshold.
-                if self.vc_timeouts >= VC_SYNC_TIMEOUTS:
-                    self.vc_timeouts = 0
-                    self.start_chan = None
-                    self.current_state = self.states.IDLE
-                    self.slot_set({'tuner': 1,'slot': 4}) # cease framing voice channel until next grant received
-            return
         elif m_type >= 0: # Receiving a PDU means sync must be present
             if self.msgq_id == 0:
                 self.cc_timeouts = 0
-                self.vc_timeouts = 0
+
+        # If voice channel not identified, begin LCN search
+        if (self.msgq_id > 0) and (self.current_state == self.states.SRCH) and (self.tune_time + VC_SRCH_TIME < time.time()):
+            self.tune_next_chan()
 
         # log received message
         if self.debug >= 9:
@@ -338,15 +335,16 @@ class rx_ctl(object):
             self.receivers[m_rxid].process_qmsg(msg)
 
     def check_expired_grants(self):
+        cur_time = time.time()
         for tgid in list(self.receivers[0].active_tgids):
-            act_lcn = self.receivers[0].active_tgids[tgid]
-            act_time = self.chans[act_lcn].grant_time
-            if (act_time + TGID_HOLD_TIME) < time.time():
+            act_lcn = self.receivers[0].active_tgids[tgid] >> 1
+            act_slot = self.receivers[0].active_tgids[tgid] & 1
+
+            if (self.chans[act_lcn].slot[act_slot].grant_time + TGID_HOLD_TIME) < cur_time:
                 self.receivers[0].active_tgids.pop(tgid, None)
                 if self.receivers[0].current_type > 0: # turn off voice channel receiver for Connect Plus systems
-                    sys.stderr.write("%f check_expired_grants(): shutting off voice channel lcn(%d)\n" % (time.time(), act_lcn))
+                    sys.stderr.write("%f check_expired_grants(): shutting off voice channel lcn(%d), slot(%d)\n" % (time.time(), act_lcn, act_slot))
                     self.receivers[1].vc_timeouts = 0
-                    self.receivers[1].start_chan = None
                     self.receivers[1].current_state = self.receivers[1].states.IDLE
                     self.slot_set({'tuner': 1,'slot': 4})
 

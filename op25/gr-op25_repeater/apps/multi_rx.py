@@ -293,10 +293,6 @@ class rx_block (gr.top_block):
                 sys.stderr.write("%f No %s channel available for tuning\n" % (time.time(), params['tuner']))
             return False
 
-        if ((self.trunk_rx.receivers[tuner].current_state == self.trunk_rx.receivers[tuner].states.SRCH) and
-            (params.has_key('chan')) and (self.trunk_rx.receivers[tuner].start_chan == params['chan'])):
-            return True # voice channel lcn search
-
         chan = self.channels[tuner]
         if not chan.set_freq(params['freq']):
             chan.set_slot(0)
@@ -314,6 +310,8 @@ class rx_block (gr.top_block):
         if params.has_key('type'):
             self.trunk_rx.receivers[tuner].current_type = params['type']
 
+        if params.has_key('time'):
+            self.trunk_rx.receivers[tuner].tune_time = params['time']
 
         return True
 
