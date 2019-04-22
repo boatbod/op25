@@ -151,7 +151,7 @@ class dmr_receiver:
             self.tune_next_chan()
 
         # log received message
-        if self.debug >= 9:
+        if self.debug >= 10:
             d_buf = "0x"
             for byte in m_buf:
                 d_buf += format(ord(byte),"02x")
@@ -250,7 +250,7 @@ class dmr_receiver:
             nb3 = ord(m_buf[4]) & 0x3f
             nb4 = ord(m_buf[5]) & 0x3f
             nb5 = ord(m_buf[6]) & 0x3f
-            if self.debug >= 9:
+            if self.debug >= 10:
                 sys.stderr.write("%f [%d] CONNECT PLUS NEIGHBOR SITES: %d, %d, %d, %d, %d\n" % (time.time(), self.msgq_id, nb1, nb2, nb3, nb4, nb5))
 
         elif (op == 3) and (fid == 6) and (self.msgq_id == 0): # ConnectPlus Channel Grant (control channel only)
