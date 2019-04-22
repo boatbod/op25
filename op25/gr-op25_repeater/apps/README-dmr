@@ -33,7 +33,7 @@ Much like op25's rx.py, multi_rx.py is best started using a shell script.
      ./multi_rx.py -v 10 -c dmr_rtl_example.json 2> stderr.2
 
 If you want to hear audio, you will also need to start an audio server in a separate terminal window.
-     ./audio.py -2 -u 23466
+     ./audio.py -u 23466
 
 Known Issues & Limitations
 --------------------------
@@ -43,5 +43,4 @@ TODO:
 - beef up trunking code and handle missing features such as whilelist/blacklist/priority
 - implement a terminal so you can see what is going on without needing to run the logs at high levels of debug
 - improve the FSK4 demodulator so it can be used with TDMA simplex and TRBO Capacity Plus burst transmissions.
-- improve the audio decode so that audio playback is independent of slot number rather than left/right channel.
 
