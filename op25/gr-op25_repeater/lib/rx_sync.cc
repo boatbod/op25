@@ -170,7 +170,7 @@ rx_sync::rx_sync(const char * options, int debug, int msgq_id, gr::msg_queue::sp
 	d_current_type(RX_TYPE_NONE),
 	d_rx_count(0),
 	d_expires(0),
-	d_stereo(false),
+	d_stereo(true),
 	d_debug(debug),
 	d_msgq_id(msgq_id),
 	d_msg_queue(queue),
@@ -178,6 +178,9 @@ rx_sync::rx_sync(const char * options, int debug, int msgq_id, gr::msg_queue::sp
 	d_audio(options, debug),
 	dmr(debug, msgq_id, queue)
 {
+	if (msgq_id >= 0)
+		d_stereo = false; // single channel audio for trunking
+
 	mbe_initMbeParms (&cur_mp[0], &prev_mp[0], &enh_mp[0]);
 	mbe_initMbeParms (&cur_mp[1], &prev_mp[1], &enh_mp[1]);
 	mbe_initToneParms (&tone_mp[0]);
@@ -309,10 +312,10 @@ void rx_sync::codeword(const uint8_t* cw, const enum codeword_types codeword_typ
 }
 
 void rx_sync::output(int16_t * samp_buf, const ssize_t slot_id) {
-	if (!d_stereo) {
+	if (d_stereo) 
 		d_audio.send_audio_channel(samp_buf, NSAMP_OUTPUT * sizeof(int16_t), slot_id);
-		return;
-	}
+	else
+		d_audio.send_audio(samp_buf, NSAMP_OUTPUT * sizeof(int16_t));
 }
 
 void rx_sync::rx_sym(const uint8_t sym)
