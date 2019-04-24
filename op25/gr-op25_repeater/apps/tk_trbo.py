@@ -68,14 +68,9 @@ class dmr_receiver:
         if self.debug >= 1:
             sys.stderr.write("%f [%d] Initializing DMR receiver\n" % (time.time(), self.msgq_id))
         if self.msgq_id == 0:
-            slot = 0
+            self.tune_next_chan(msgq_id=0, chan=0, slot=0)
         else:
-            slot = 4
-        self.frequency_set({'tuner': self.msgq_id,
-                            'freq': self.chans[self.chan_list[0]].frequency,
-                            'slot': slot,
-                            'chan': 0,
-                            'time': time.time()})
+            self.tune_next_chan(msgq_id=1, chan=0, slot=4)
 
     def process_grant(self, m_buf):
             src_addr = (ord(m_buf[2]) << 16) + (ord(m_buf[3]) << 8) + ord(m_buf[4])
@@ -88,6 +83,8 @@ class dmr_receiver:
                 if self.debug >= 9:
                     sys.stderr.write("%f [%d] CONNECT PLUS CHANNEL GRANT: srcAddr(%06x), grpAddr(%06x), lcn(%d), slot(%d), freq(%f)\n" % (time.time(), self.msgq_id, src_addr, grp_addr, lcn, slot, (freq/1e6)))
                 if (grp_addr not in self.active_tgids) or ((grp_addr in self.active_tgids) and (lcn_sl != self.active_tgids[grp_addr])):
+                    if self.debug >= 1:
+                        sys.stderr.write("%f [%d] Voice update:  tg(%d), freq(%f), slot(%d), lcn(%d)\n" % (time.time(), self.msgq_id, grp_addr, (freq/1e6), slot, lcn))
                     self.frequency_set({'tuner': 1,
                                         'freq': freq,
                                         'slot': (slot + 1),
@@ -112,12 +109,27 @@ class dmr_receiver:
         next_chan = (self.current_chan + 1) % len(self.chan_list)
         return next_chan
 
-    def tune_next_chan(self):
-        next_ch = self.find_next_chan()
-        self.frequency_set({'tuner': self.msgq_id,
-                            'freq': self.chans[self.chan_list[next_ch]].frequency,
-                            'chan': next_ch,
-                            'time': time.time()})
+    def tune_next_chan(self, msgq_id=None, chan=None, slot=None):
+        if chan is not None:
+            next_ch = chan
+        else:
+            next_ch = self.find_next_chan()
+        
+        tune_params = {'tuner': self.msgq_id,
+                       'freq': self.chans[self.chan_list[next_ch]].frequency,
+                       'chan': next_ch,
+                       'time': time.time()}
+
+        if msgq_id is not None:
+            tune_params['tuner'] = msgq_id
+
+        if slot is not None:
+            tune_params['slot'] = slot
+
+        self.frequency_set(tune_params)
+
+        if (self.msgq_id == 0) and (self.debug >= 1):
+            sys.stderr.write("%f [%d] Searching for control channel: lcn(%d), freq(%f)\n" % (time.time(), self.msgq_id, self.chan_list[self.current_chan], (self.chans[self.chan_list[self.current_chan]].frequency/1e6)))
 
     def process_qmsg(self, msg):
         if msg.arg2() != 1: # discard anything not DMR
@@ -129,7 +141,7 @@ class dmr_receiver:
         m_buf = msg.to_string()
 
         if m_type == -1:  # Sync Timeout
-            if self.debug >= 1:
+            if self.debug >= 9:
                 sys.stderr.write("%f [%d] Timeout waiting for sync sequence\n" % (time.time(), self.msgq_id))
 
             if self.msgq_id == 0: # primary/control channel
@@ -157,7 +169,7 @@ class dmr_receiver:
                 d_buf += format(ord(byte),"02x")
             sys.stderr.write("%f [%d] DMR PDU: lcn(%d), state(%d), type(%d), slot(%d), data(%s)\n" % (time.time(), self.msgq_id, self.chan_list[self.current_chan], self.current_state, m_type, m_slot, d_buf))
 
-	if m_type == 0: # CACH SLC
+	if m_type == 0:   # CACH SLC
             self.rx_CACH_SLC(m_buf)
         elif m_type == 1: # CACH CSBK
             pass
@@ -207,7 +219,8 @@ class dmr_receiver:
             siteId = ((d1 & 0xf) << 4) + (d2 >> 4)
             if self.current_type < 0:
                 self.current_type = 1
-                sys.stderr.write("%f [%d] TRBO_TYPE SET TO CONNECT PLUS\n" % (time.time(), self.msgq_id))
+                if self.debug >= 2:
+                    sys.stderr.write("%f [%d] System type is TRBO Connect Plus\n" % (time.time(), self.msgq_id))
             # Sometimes only a voice channel exists and no control channel is present.  It's probably better to lock
             # on to a voice channel and wait for it to either dissapear or become a control channel rather than aimlessly
             # cycling the tuning looking for the non-existent control channel.
@@ -219,11 +232,16 @@ class dmr_receiver:
             siteId = ((d1 & 0xf) << 4) + (d2 >> 4)
             if self.current_type < 0:
                 self.current_type = 1
-                sys.stderr.write("%f [%d] TRBO_TYPE SET TO CONNECT PLUS\n" % (time.time(), self.msgq_id))
+                if self.debug >= 2:
+                    sys.stderr.write("%f [%d] System type is TRBO Connect Plus\n" % (time.time(), self.msgq_id))
             if self.msgq_id == 0:
-                self.current_state=self.states.CC # Found control channel
+                if self.current_state != self.states.CC:
+                    self.current_state=self.states.CC # Found control channel
+                    if self.debug >= 1:
+                        sys.stderr.write("%f [%d] Found control channel: lcn(%d), freq(%f)\n" % (time.time(), self.msgq_id, self.chan_list[self.current_chan], (self.chans[self.chan_list[self.current_chan]].frequency/1e6)))
             else:
-                self.current_state=self.states.VC # Control channel can also carry voice
+                if self.current_state != self.states.VC:
+                    self.current_state=self.states.VC # Control channel can also carry voice
             if self.debug >= 9:
                 sys.stderr.write("%f [%d] CONNECT PLUS CONTROL CHANNEL: state(%d), netId(%d), siteId(%d)\n" % (time.time(), self.msgq_id, self.current_state, netId, siteId))
         elif slco == 15: # Capacity Plus Channel
@@ -231,7 +249,8 @@ class dmr_receiver:
             if self.current_type < 0:
                 self.current_type = 0
                 self.slot_set({'tuner': 0,'slot': 3})
-                sys.stderr.write("%f [%d] TRBO_TYPE SET TO CAPACITY PLUS\n" % (time.time(), self.msgq_id))
+                if self.debug >= 2:
+                    sys.stderr.write("%f [%d] System type is TRBO Connect Plus\n" % (time.time(), self.msgq_id))
             self.rest_lcn = d1
             if self.debug >= 9:
                 sys.stderr.write("%f [%d] CAPACITY PLUS REST CHANNEL: lcn(%d)\n" % (time.time(), self.msgq_id, lcn))
@@ -343,7 +362,8 @@ class rx_ctl(object):
             if (self.chans[act_lcn].slot[act_slot].grant_time + TGID_HOLD_TIME) < cur_time:
                 self.receivers[0].active_tgids.pop(tgid, None)
                 if self.receivers[0].current_type > 0: # turn off voice channel receiver for Connect Plus systems
-                    sys.stderr.write("%f check_expired_grants(): shutting off voice channel lcn(%d), slot(%d)\n" % (time.time(), act_lcn, act_slot))
+                    if self.debug >=2:
+                        sys.stderr.write("%f Shutting off voice channel lcn(%d), slot(%d)\n" % (time.time(), act_lcn, act_slot))
                     self.receivers[1].vc_timeouts = 0
                     self.receivers[1].current_state = self.receivers[1].states.IDLE
                     self.slot_set({'tuner': 1,'slot': 4})
