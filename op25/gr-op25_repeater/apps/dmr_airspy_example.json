@@ -3,7 +3,7 @@
         {
             "device": "airspy0",
             "demod_type": "fsk4", 
-            "destination": "udp://127.0.0.1:23456", 
+            "destination": "", 
             "excess_bw": 0.2, 
             "filter_type": "rrc", 
             "if_rate": 24000, 
