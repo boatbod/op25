@@ -116,7 +116,7 @@ private:
 	inline uint32_t get_lc_srcaddr() { return d_lc_valid ? ((d_lc[6] << 16) + (d_lc[7] << 8) + d_lc[8]) : 0; };
 
 	inline uint8_t  get_pi_algid()   { return d_pi_valid ? d_pi[0] : 0; };
-	inline uint16_t get_pi_keyid()   { return d_pi_valid ? ((d_pi[1] << 8) + d_pi[2]) : 0; };
+	inline uint8_t  get_pi_keyid()   { return d_pi_valid ? d_pi[2] : 0; };
 	inline uint32_t get_pi_mi()      { return d_pi_valid ? ((d_pi[3] << 24) + (d_pi[4] << 16) + (d_pi[5] << 8) + d_pi[6]) : 0; };
 	inline uint32_t get_pi_dstaddr() { return d_pi_valid ? ((d_pi[7] << 16) + (d_pi[8] << 8) + d_pi[9]) : 0; };
 

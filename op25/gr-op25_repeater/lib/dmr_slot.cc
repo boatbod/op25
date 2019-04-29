@@ -453,7 +453,7 @@ dmr_slot::decode_pinf(uint8_t* pinf) {
 	send_msg(pi_msg, M_DMR_SLOT_PI);
 
 	if (d_debug >= 10) {
-		fprintf(stderr, "%s Slot(%d), CC(%x), PI HEADER: ALGID(%02x), KEYID(%04x), MI(%08x), DSTADDR(%06x)\n",
+		fprintf(stderr, "%s Slot(%d), CC(%x), PI HEADER: ALGID(%02x), KEYID(%02x), MI(%08x), DSTADDR(%06x)\n",
 			logts.get(d_msgq_id), d_chan, get_slot_cc(), get_pi_algid(), get_pi_keyid(), get_pi_mi(), get_pi_dstaddr());
 	}
 
