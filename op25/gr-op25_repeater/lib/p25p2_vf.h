@@ -62,7 +62,7 @@ inline
 void p25p2_vf::unpack_cw(const packed_codeword& cw, int* u)
 {
 	u[0] = ((cw[0] & 0xff) << 4) + ((cw[1] & 0xf0) >> 4);
-	u[1] = ((cw[1] & 0x0f) << 4) + (cw[2] & 0xff);
+	u[1] = ((cw[1] & 0x0f) << 8) + (cw[2] & 0xff);
 	u[2] = ((cw[3] & 0xff) << 3) + ((cw[4] & 0xe0) >> 5);
 	u[3] = ((cw[4] & 0x1f) << 9) + ((cw[5] & 0xff) << 1) + ((cw[6] & 0x80) >> 7);
 }
