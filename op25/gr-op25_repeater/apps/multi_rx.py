@@ -112,7 +112,7 @@ class channel(object):
         self.decoder = op25_repeater.frame_assembler(config['destination'], verbosity, msgq_id, rx_q)
 
         if config.has_key('key') and (config['key'] != ""):
-            self.set_key(config['key'])
+            self.set_key(int(config['key'], 0))
 
         if ('plot' not in config.keys()) or (config['plot'] == ""):
             return
