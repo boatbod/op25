@@ -57,6 +57,7 @@ namespace gr {
     void p25p2_queue_msg(int duid);
     void set_xormask(const char*p) ;
     void set_slotid(int slotid) ;
+    void set_slotkey(int key) ;
 	typedef std::vector<bool> bit_vector;
 	std::deque<int16_t> output_queue;
 
