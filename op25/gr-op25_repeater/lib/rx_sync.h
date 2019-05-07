@@ -107,6 +107,7 @@ public:
 	void rx_sym(const uint8_t sym);
 	void sync_reset(void);
 	void set_slot_mask(int mask);
+	void set_xor_mask(int mask);
 	rx_sync(const char * options, int debug, int msgq_id, gr::msg_queue::sptr queue);
 	~rx_sync();
 
@@ -145,6 +146,7 @@ private:
 	int d_debug;
 	op25_audio d_audio;
 	log_ts logts;
+	uint16_t d_xor_mask;
 };
 
     } // end namespace op25_repeater

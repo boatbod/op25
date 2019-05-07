@@ -93,6 +93,13 @@ void rx_sync::set_slot_mask(int mask) {
 	d_slot_mask = mask;
 }
 
+void rx_sync::set_xor_mask(int mask) {
+	if (d_debug >= 10) {
+		fprintf(stderr, "%s rx_sync::set_xor_mask: current(%d), new(%d)\n", logts.get(d_msgq_id), d_xor_mask, mask);
+	}
+	d_xor_mask = mask;
+}
+
 static int ysf_decode_fich(const uint8_t src[100], uint8_t dest[32]) {   // input is 100 dibits, result is 32 bits
 // return -1 on decode error, else 0
 	static const int pc[] = {0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1};
@@ -163,6 +170,7 @@ void rx_sync::ysf_sync(const uint8_t dibitbuf[], bool& ysf_fullrate, bool& unmut
 }
 
 rx_sync::rx_sync(const char * options, int debug, int msgq_id, gr::msg_queue::sptr queue) :	// constructor
+	d_xor_mask(0),
 	d_slot_mask(3),
 	d_symbol_count(0),
 	d_sync_reg(0),
@@ -220,17 +228,30 @@ void rx_sync::codeword(const uint8_t* cw, const enum codeword_types codeword_typ
 	bool do_fullrate = false;
 	bool do_silence = false;
 	bool do_tone = false;
+	packed_codeword p_cw;
 	voice_codeword fullrate_cw(voice_codeword_sz);
 
 	switch(codeword_type) {
 	case CODEWORD_DMR:
 		errs = interleaver.process_vcw(cw, b, U);
+		interleaver.pack_cw(p_cw, U);
 		if (d_debug >= 10) {
-			packed_codeword p_cw;
-			interleaver.pack_cw(p_cw, U);
 			fprintf(stderr, "%s AMBE %02x %02x %02x %02x %02x %02x %02x errs %lu\n", logts.get(d_msgq_id),
 			       	p_cw[0], p_cw[1], p_cw[2], p_cw[3], p_cw[4], p_cw[5], p_cw[6], errs);
 		}
+		if (d_xor_mask) {
+			for (int i = 0; i <= 6; i++)
+				p_cw[i]   ^= (d_xor_mask >> ((i + 1) % 2) * 8);
+			interleaver.unpack_cw(p_cw, U);
+			interleaver.unpack_b(b, U);
+			interleaver.pack_cw(p_cw, U);
+
+			if (d_debug >= 10) {
+				fprintf(stderr, "%s ambe %02x %02x %02x %02x %02x %02x %02x errs %lu\n", logts.get(d_msgq_id),
+			       		p_cw[0], p_cw[1], p_cw[2], p_cw[3], p_cw[4], p_cw[5], p_cw[6], errs);
+			}
+		}
+
 		if (mbe_dequantizeAmbeTone(&tone_mp[slot_id], U) == 0) {
 			do_tone = true;
 		} else if (b[0] < 120) { // TODO: handle Erasures/Frame Repeat

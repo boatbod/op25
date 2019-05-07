@@ -111,6 +111,9 @@ class channel(object):
                          symbol_rate = self.symbol_rate)
         self.decoder = op25_repeater.frame_assembler(config['destination'], verbosity, msgq_id, rx_q)
 
+        if config.has_key('key') and (config['key'] != ""):
+            self.set_key(config['key'])
+
         if ('plot' not in config.keys()) or (config['plot'] == ""):
             return
 
@@ -175,6 +178,9 @@ class channel(object):
 
     def set_slot(self, slot):
         self.decoder.set_slotid(slot)
+
+    def set_key(self, key):
+        self.decoder.set_slotkey(key)
 
     def kill(self):
         for sink in self.kill_sink:
