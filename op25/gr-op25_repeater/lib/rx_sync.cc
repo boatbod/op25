@@ -240,8 +240,10 @@ void rx_sync::codeword(const uint8_t* cw, const enum codeword_types codeword_typ
 			       	p_cw[0], p_cw[1], p_cw[2], p_cw[3], p_cw[4], p_cw[5], p_cw[6], errs);
 		}
 		if (d_xor_mask) {
+			uint8_t skipped_bits = p_cw[1] & 0xf0;
 			for (int i = 0; i <= 6; i++)
 				p_cw[i]   ^= (d_xor_mask >> ((i + 1) % 2) * 8);
+			p_cw[1] = (p_cw[1] & 0x0f) + skipped_bits;
 			interleaver.unpack_cw(p_cw, U);
 			interleaver.unpack_b(b, U);
 			interleaver.pack_cw(p_cw, U);
