@@ -235,7 +235,7 @@ void rx_sync::codeword(const uint8_t* cw, const enum codeword_types codeword_typ
 	case CODEWORD_DMR:
 		errs = interleaver.process_vcw(cw, b, U);
 		interleaver.pack_cw(p_cw, U);
-		if (d_debug >= 10) {
+		if (d_debug >= 9) {
 			fprintf(stderr, "%s AMBE %02x %02x %02x %02x %02x %02x %02x errs %lu\n", logts.get(d_msgq_id),
 			       	p_cw[0], p_cw[1], p_cw[2], p_cw[3], p_cw[4], p_cw[5], p_cw[6], errs);
 		}
@@ -248,7 +248,7 @@ void rx_sync::codeword(const uint8_t* cw, const enum codeword_types codeword_typ
 			interleaver.unpack_b(b, U);
 			interleaver.pack_cw(p_cw, U);
 
-			if (d_debug >= 10) {
+			if (d_debug >= 9) {
 				fprintf(stderr, "%s ambe %02x %02x %02x %02x %02x %02x %02x errs %lu\n", logts.get(d_msgq_id),
 			       		p_cw[0], p_cw[1], p_cw[2], p_cw[3], p_cw[4], p_cw[5], p_cw[6], errs);
 			}

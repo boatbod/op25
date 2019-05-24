@@ -174,7 +174,7 @@ class dmr_receiver:
         elif m_type == 1: # CACH CSBK
             pass
         elif m_type == 2: # SLOT PI
-            pass
+            self.rx_SLOT_PI(m_slot, m_buf)
         elif m_type == 3: # SLOT VLC
             self.rx_SLOT_VLC(m_slot, m_buf)
         elif m_type == 4: # SLOT TLC
@@ -322,6 +322,15 @@ class dmr_receiver:
             sys.stderr.write("%f [%d] VOICE EMB LC: slot(%d), flco(%02x), fid(%02x), svcopt(%02x), srcAddr(%06x), grpAddr(%06x)\n" % (time.time(), self.msgq_id, m_slot, flco, fid, svcopt, srcaddr, dstaddr))
 
         # TODO: handle flco
+
+
+    def rx_SLOT_PI(m_slot, m_buf):
+        algid   = ord(m_buf[0])
+        keyid   = ord(m_buf[2])
+        mi      = (ord(m_buf[3]) << 24) + (ord(m_buf[4]) << 16) + (ord(m_buf[5]) << 8) + ord(m_buf[6])
+        dstaddr = (ord(m_buf[7]) << 16) + (ord(m_buf[8]) << 8) + ord(m_buf[9])
+        if self.debug >= 9:
+            sys.stderr.write("%f [%d] PI HEADER: slot(%d), algId(%02x), keyId(%02x), mi(%08x), grpAddr(%06x)\n" % (time.time(), self.msgq_id, m_slot, algid, keyid, mi, dstaddr))
 
 
 class rx_ctl(object):
