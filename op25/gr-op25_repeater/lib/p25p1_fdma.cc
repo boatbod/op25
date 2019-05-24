@@ -611,7 +611,7 @@ p25p1_fdma::process_voice(const bit_vector& A)
 				errs = imbe_header_decode(cw, u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7], E0, ET);
 			}
 
-			if (d_debug >= 10) {
+			if (d_debug >= 9) {
 				packed_codeword p_cw;
 				imbe_pack(p_cw, u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7]);
 				sprintf(s,"%02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x",
