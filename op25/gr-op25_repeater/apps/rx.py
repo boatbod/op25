@@ -492,6 +492,7 @@ class p25_rx_block (gr.top_block):
         self.target_freq = target_freq
         tune_freq = target_freq + self.options.calibration + self.options.offset + self.options.fine_tune
         r = self.src.set_center_freq(tune_freq)
+        self.demod.reset()      # reset gardner-costas loop
 
         if self.fft_sink:
             self.fft_sink.set_center_freq(target_freq)
@@ -511,7 +512,6 @@ class p25_rx_block (gr.top_block):
             return False
         self.options.fine_tune += tune_incr;
         self.set_freq(self.target_freq)
-        self.demod.reset()      # reset gardner-costas loop
         return True
 
     def toggle_plot(self, plot_type):
