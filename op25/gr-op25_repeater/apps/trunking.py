@@ -169,7 +169,9 @@ class trunked_system (object):
             return None
         if 'tdma' not in self.freq_table[table]:
             return None
-        return channel & 1
+        if self.freq_table[table]['tdma'] < 2:
+            return None
+        return channel & 1 # TODO: this isn't going to work with more than 2 slots per channel!
 
 # return frequency in Hz
     def channel_id_to_frequency(self, id):
@@ -922,13 +924,13 @@ class rx_ctl (object):
 
             fmt = (header >> 72) & 0x1f
             sap = (header >> 64) & 0x3f
-            src = (header >> 48) & 0xffffff
+            src = (header >> 32) & 0xffffff
             if fmt != 0x17: # only Extended Format MBT presently supported
                 return
 
             opcode = (header >> 16) & 0x3f
             if self.debug > 10:
-                sys.stderr.write('type %d at %f state %d len %d/%d opcode %x [%x/%x]\n' %(type, time.time(), self.current_state, len(s1), len(s2), opcode, header,mbt_data))
+                sys.stderr.write('type %d at %f state %d len %d/%d opcode %x [%0x/%0x]\n' %(type, time.time(), self.current_state, len(s1), len(s2), opcode, header,mbt_data))
             updated += self.trunked_systems[nac].decode_mbt_data(opcode, src, header << 16, mbt_data << 32)
 
         if nac != self.current_nac:
