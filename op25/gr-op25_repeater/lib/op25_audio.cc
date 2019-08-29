@@ -238,7 +238,7 @@ ssize_t op25_audio::send_audio_flag_channel(const udpFlagEnumType udp_flag, ssiz
         // 16 bit little endian encoding
         audio_flag[0] = (udp_flag & 0x00ff);
         audio_flag[1] = ((udp_flag & 0xff00) >> 8);
-        return do_send(audio_flag, 2, d_audio_port+slot_id, true);
+        return do_send(audio_flag, 2, d_audio_port + slot_id*2, true);
 }
 
 ssize_t op25_audio::send_audio_flag(const op25_audio::udpFlagEnumType udp_flag) const

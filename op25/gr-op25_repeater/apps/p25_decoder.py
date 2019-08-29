@@ -128,6 +128,9 @@ class p25_decoder_sink_b(gr.hier_block2):
     def set_slotid(self, slot, index=0):
         self.p25_decoders[index].set_slotid(slot)
 
+    def set_slotkey(self, key, index=0):
+        self.p25_decoders[index].set_slotkey(key)
+
     def set_output(self, filename, index=0):
         if self.dest != 'wav':
             return

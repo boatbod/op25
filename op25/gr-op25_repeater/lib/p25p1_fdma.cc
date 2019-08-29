@@ -606,12 +606,12 @@ p25p1_fdma::process_voice(const bit_vector& A)
 			size_t errs = 0;
 			imbe_deinterleave(A, cw, i);
 
-			if ((d_do_output && !d_do_audio_output) || (d_debug >= 10)) {
+			if ((d_do_output && !d_do_audio_output) || (d_debug >= 9)) {
 				// recover 88-bit IMBE voice code word : only needed for logging or wireshark
 				errs = imbe_header_decode(cw, u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7], E0, ET);
 			}
 
-			if (d_debug >= 10) {
+			if (d_debug >= 9) {
 				packed_codeword p_cw;
 				imbe_pack(p_cw, u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7]);
 				sprintf(s,"%02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x",

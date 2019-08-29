@@ -14,6 +14,12 @@ sudo apt-get update
 sudo apt-get build-dep gnuradio
 sudo apt-get install gnuradio gnuradio-dev gr-osmosdr librtlsdr-dev libuhd-dev  libhackrf-dev libitpp-dev libpcap-dev cmake git swig build-essential pkg-config doxygen python-numpy python-waitress python-requests
 
+if [ ! -f /etc/modprobe.d/blacklist-rtl.conf ]; then
+	echo ====== installing blacklist-rtl.conf
+	echo ====== please reboot before running op25
+	sudo install -m 0644 ./blacklist-rtl.conf /etc/modprobe.d/
+fi
+
 mkdir build
 cd build
 cmake ../

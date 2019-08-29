@@ -1,0 +1,63 @@
+{
+    "channels": [
+        {
+            "device": "airspy0",
+            "demod_type": "fsk4", 
+            "destination": "", 
+            "excess_bw": 0.2, 
+            "filter_type": "rrc", 
+            "if_rate": 24000, 
+            "name": "CC", 
+            "plot": "fft", 
+            "symbol_rate": 4800
+        },
+        {
+            "device": "airspy0",
+            "demod_type": "fsk4", 
+            "destination": "udp://127.0.0.1:23466", 
+            "excess_bw": 0.2, 
+            "filter_type": "rrc", 
+            "if_rate": 24000, 
+            "name": "VC", 
+            "plot": "fft", 
+            "symbol_rate": 4800
+        }
+    ], 
+    "devices": [
+        {
+            "args": "airspy", 
+            "frequency": 461500000, 
+            "gains": "LNA:15,MIX:15,IF:8", 
+            "name": "airspy0", 
+            "offset": 0, 
+            "ppm": 0, 
+            "rate": 6000000, 
+            "tunable": false
+        }
+    ],
+    "trunking": {
+        "module": "tk_trbo.py",
+        "chans": [
+            {
+                "lcn": 1,
+                "frequency": 461300000,
+                "cc": 5
+            },
+            {
+                "lcn": 2,
+                "frequency": 461800000,
+                "cc": 5
+            },
+            {
+                "lcn": 3,
+                "frequency": 463225000,
+                "cc": 5
+            },
+            {
+                "lcn": 4,
+                "frequency": 463787500,
+                "cc": 5
+            }
+        ]
+    }
+}

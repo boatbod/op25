@@ -12,7 +12,8 @@ set("log.level", 1)
 set("frame.audio.samplerate", 8000)
 
 input = mksafe(input.external(buffer=0.02, channels=2, samplerate=8000, restart_on_error=false, "./audio.py -s"))
-
+# Consider increasing the buffer value on slow systems such as RPi3. e.g. buffer=0.25
+# Longer buffer results in less choppy audio but at the expense of increased latency.
 
 # LOCAL AUDIO
 # Uncomment the appropriate line below to enable local sound

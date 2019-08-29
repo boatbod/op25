@@ -1,0 +1,73 @@
+{
+    "channels": [
+        {
+            "device": "rtl_0",
+            "demod_type": "fsk4", 
+            "destination": "", 
+            "excess_bw": 0.2, 
+            "filter_type": "rrc", 
+            "if_rate": 24000, 
+            "name": "CC", 
+            "plot": "fft", 
+            "symbol_rate": 4800
+        },
+        {
+            "device": "rtl_1",
+            "demod_type": "fsk4", 
+            "destination": "udp://127.0.0.1:23466", 
+            "excess_bw": 0.2, 
+            "filter_type": "rrc", 
+            "if_rate": 24000, 
+            "name": "VC", 
+            "plot": "fft", 
+            "symbol_rate": 4800
+        }
+    ], 
+    "devices": [
+        {
+            "args": "rtl=0", 
+            "frequency": 461300000, 
+            "gains": "LNA:39", 
+            "name": "rtl_0", 
+            "offset": 0, 
+            "ppm": 0, 
+            "rate": 960000, 
+            "tunable": true
+        },
+        {
+            "args": "rtl=1", 
+            "frequency": 462000000, 
+            "gains": "LNA:39", 
+            "name": "rtl_1", 
+            "offset": 0, 
+            "ppm": 0, 
+            "rate": 960000, 
+            "tunable": true
+        }
+    ],
+    "trunking": {
+        "module": "tk_trbo.py",
+        "chans": [
+            {
+                "lcn": 1,
+                "frequency": 461300000,
+                "cc": 5
+            },
+            {
+                "lcn": 2,
+                "frequency": 461800000,
+                "cc": 5
+            },
+            {
+                "lcn": 3,
+                "frequency": 463225000,
+                "cc": 5
+            },
+            {
+                "lcn": 4,
+                "frequency": 463787500,
+                "cc": 5
+            }
+        ]
+    }
+}

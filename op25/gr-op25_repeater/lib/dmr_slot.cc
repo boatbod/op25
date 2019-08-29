@@ -41,6 +41,7 @@
 
 dmr_slot::dmr_slot(const int chan, const int debug, int msgq_id, gr::msg_queue::sptr queue) :
 	d_chan(chan),
+	d_slot_mask(3),
 	d_debug(debug),
 	d_msgq_id(msgq_id),
 	d_msg_queue(queue),
@@ -48,6 +49,7 @@ dmr_slot::dmr_slot(const int chan, const int debug, int msgq_id, gr::msg_queue::
 	d_lc_valid(false),
 	d_rc_valid(false),
 	d_sb_valid(false),
+	d_pi_valid(false),
 	d_rc(0),
 	d_sb(0),
 	d_type(0),
@@ -431,14 +433,17 @@ dmr_slot::decode_pinf(uint8_t* pinf) {
 	// Apply PI mask and validate CRC
 	for (int i = 0; i < 16; i++)
 		pinf[i+80] ^= PI_HEADER_CRC_MASK[i];
-	if (crc16(pinf, 96) != 0)
+	if (crc16(pinf, 96) != 0) {
+		d_pi_valid = false;
 		return false;
+	}
 
 	// Convert bits to bytes and save PI information
 	d_pi.assign(10,0);
 	for (int i = 0; i < 80; i++) {
 		d_pi[i / 8] = (d_pi[i / 8] << 1) | pinf[i];
 	}
+	d_pi_valid = true;
 
 	// send up the stack
 	std::string pi_msg(10,0);
@@ -448,9 +453,8 @@ dmr_slot::decode_pinf(uint8_t* pinf) {
 	send_msg(pi_msg, M_DMR_SLOT_PI);
 
 	if (d_debug >= 10) {
-		fprintf(stderr, "%s Slot(%d), CC(%x), PI HEADER: %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x\n",
-			logts.get(d_msgq_id), d_chan, get_slot_cc(),
-			d_pi[0], d_pi[1], d_pi[2], d_pi[3], d_pi[4], d_pi[5], d_pi[6], d_pi[7], d_pi[8], d_pi[9]);
+		fprintf(stderr, "%s Slot(%d), CC(%x), PI HEADER: ALGID(%02x), KEYID(%02x), MI(%08x), DSTADDR(%06x)\n",
+			logts.get(d_msgq_id), d_chan, get_slot_cc(), get_pi_algid(), get_pi_keyid(), get_pi_mi(), get_pi_dstaddr());
 	}
 
 	return true;

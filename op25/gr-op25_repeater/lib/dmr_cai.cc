@@ -42,6 +42,7 @@ dmr_cai::dmr_cai(int debug, int msgq_id, gr::msg_queue::sptr queue) :
 	d_msg_queue(queue),
 	d_shift_reg(0),
 	d_chan(0),
+	d_slot_mask(3),
 	d_slot{dmr_slot(0, debug, msgq_id, queue), dmr_slot(1, debug, msgq_id, queue)} 
 {
 	d_cach_sig.clear();
@@ -49,6 +50,13 @@ dmr_cai::dmr_cai(int debug, int msgq_id, gr::msg_queue::sptr queue) :
 }
 
 dmr_cai::~dmr_cai() {
+}
+
+void
+dmr_cai::set_slot_mask(int mask) {
+	d_slot_mask = mask;
+	d_slot[0].set_slot_mask(mask);
+	d_slot[1].set_slot_mask(mask);
 }
 
 void

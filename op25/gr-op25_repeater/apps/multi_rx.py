@@ -56,6 +56,7 @@ class device(object):
         speeds = [250000, 1000000, 1024000, 1800000, 1920000, 2000000, 2048000, 2400000, 2560000]
 
         self.name = config['name']
+        self.tunable = config['tunable']
 
         sys.stderr.write('device: %s\n' % config)
         if config['args'].startswith('rtl') and config['rate'] not in speeds:
@@ -82,11 +83,19 @@ class device(object):
 class channel(object):
     def __init__(self, config, dev, verbosity, msgq_id, rx_q):
         sys.stderr.write('channel (dev %s): %s\n' % (dev.name, config))
-        self.device = dev
+        self.verbosity = verbosity
         self.name = config['name']
+        self.device = dev
+        if config.has_key('frequency') and (config['frequency'] != ""):
+            self.frequency = config['frequency']
+        else:
+            self.frequency = self.device.frequency
+        self.msgq_id = msgq_id
         self.raw_sink = None
         self.raw_file = None
         self.throttle = None
+        self.sinks = []
+        self.kill_sink = []
         self.symbol_rate = _def_symbol_rate
         if 'symbol_rate' in config.keys():
             self.symbol_rate = config['symbol_rate']
@@ -96,47 +105,47 @@ class channel(object):
                          demod_type = config['demod_type'],
                          filter_type = config['filter_type'],
                          excess_bw = config['excess_bw'],
-                         relative_freq = dev.frequency + dev.offset - config['frequency'],
+                         relative_freq = dev.frequency + dev.offset - self.frequency,
                          offset = dev.offset,
                          if_rate = config['if_rate'],
                          symbol_rate = self.symbol_rate)
         self.decoder = op25_repeater.frame_assembler(config['destination'], verbosity, msgq_id, rx_q)
 
-        self.kill_sink = []
+        if config.has_key('key') and (config['key'] != ""):
+            self.set_key(int(config['key'], 0))
 
-        if 'plot' not in config.keys():
+        if ('plot' not in config.keys()) or (config['plot'] == ""):
             return
 
-        self.sinks = []
         for plot in config['plot'].split(','):
             # fixme: allow multiple complex consumers (fft and constellation currently mutually exclusive)
             if plot == 'datascope':
                 assert config['demod_type'] == 'fsk4'   ## datascope plot requires fsk4 demod type
-                sink = eye_sink_f(sps=config['if_rate'] / self.symbol_rate)
+                sink = eye_sink_f(plot_name=self.name, sps=config['if_rate'] / self.symbol_rate)
                 self.demod.connect_bb('symbol_filter', sink)
                 self.kill_sink.append(sink)
             elif plot == 'symbol':
-                sink = symbol_sink_f()
+                sink = symbol_sink_f(plot_name=self.name)
                 self.demod.connect_float(sink)
                 self.kill_sink.append(sink)
             elif plot == 'fft':
                 i = len(self.sinks)
-                self.sinks.append(fft_sink_c())
+                self.sinks.append(fft_sink_c(plot_name=self.name))
                 self.demod.connect_complex('src', self.sinks[i])
                 self.kill_sink.append(self.sinks[i])
                 self.sinks[i].set_offset(self.device.offset)
                 self.sinks[i].set_center_freq(self.device.frequency)
-                self.sinks[i].set_relative_freq(self.device.frequency + self.device.offset - self.config['frequency'])
+                self.sinks[i].set_relative_freq(self.device.frequency + self.device.offset - self.frequency)
                 self.sinks[i].set_width(self.device.sample_rate)
             elif plot == 'constellation':
                 i = len(self.sinks)
                 assert config['demod_type'] == 'cqpsk'   ## constellation plot requires cqpsk demod type
-                self.sinks.append(constellation_sink_c())
+                self.sinks.append(constellation_sink_c(plot_name=self.name))
                 self.demod.connect_complex('diffdec', self.sinks[i])
                 self.kill_sink.append(self.sinks[i])
             elif plot == 'mixer':
                 i = len(self.sinks)
-                self.sinks.append(mixer_sink_c())
+                self.sinks.append(mixer_sink_c(plot_name=self.name))
                 self.demod.connect_complex('mixer', self.sinks[i])
                 self.kill_sink.append(self.sinks[i])
             else:
@@ -144,12 +153,34 @@ class channel(object):
                 return
 
     def set_freq(self, freq):
-        if not self.demod.set_relative_frequency(self.device.frequency + self.device.offset - freq):
-            if self.verbosity:
-                sys.stderr.write("%f Unable to tune %s to frequency %f\n" % (time.time(), self.name, (freq/1e6)))
+        if self.frequency == freq:
+            return True
+        old_freq = self.frequency
+        self.frequency = freq
+        if not self.demod.set_relative_frequency(self.device.frequency + self.device.offset - freq): # First attempt relative tune
+            if self.device.tunable:                                                                  # then hard tune if allowed
+                self.device.src.set_center_freq(self.frequency)
+                self.device.frequency = self.frequency
+                self.demod.set_relative_frequency(self.device.frequency + self.device.offset - freq)
+            else:                                                                                    # otherwise fail and reset to prev freq
+                self.demod.set_relative_frequency(self.device.frequency + self.device.offset - old_freq)
+                self.frequency = old_freq
+                if self.verbosity:
+                    sys.stderr.write("%f [%d] Unable to tune %s to frequency %f\n" % (time.time(), self.msgq_id, self.name, (freq/1e6)))
+                return False
         for sink in self.sinks:
             if sink.name() == "fft_sink_c":
+                sink.set_center_freq(self.device.frequency)
                 sink.set_relative_freq(self.device.frequency + self.device.offset - freq)
+        if self.verbosity >= 9:
+            sys.stderr.write("%f [%d] Tuning to frequency %f\n" % (time.time(), self.msgq_id, (freq/1e6)))
+        return True
+
+    def set_slot(self, slot):
+        self.decoder.set_slotid(slot)
+
+    def set_key(self, key):
+        self.decoder.set_slotkey(key)
 
     def kill(self):
         for sink in self.kill_sink:
@@ -165,12 +196,16 @@ class rx_block (gr.top_block):
         self.device_id_by_name = {}
 
         self.trunking = None
+        self.du_watcher = None
         self.rx_q = gr.msg_queue(100)
         if config.has_key("trunking"):
             self.configure_trunking(config['trunking'])
 
         self.configure_devices(config['devices'])
         self.configure_channels(config['channels'])
+
+        if self.trunking is not None: # post-initialization after channels and devices created
+            self.trunk_rx.post_init()
 
     def configure_trunking(self, config):
         if ((config.has_key("module") and (config['module'] == "")) or 
@@ -187,7 +222,7 @@ class rx_block (gr.top_block):
             self.trunking = None
 
         if self.trunking is not None:
-            self.trunk_rx = self.trunking.rx_ctl(frequency_set = self.change_freq, debug = self.verbosity, chans = config['chans'])
+            self.trunk_rx = self.trunking.rx_ctl(frequency_set = self.change_freq, slot_set = self.set_slot, debug = self.verbosity, chans = config['chans'])
             self.du_watcher = du_queue_watcher(self.rx_q, self.trunk_rx.process_qmsg)
             sys.stderr.write("Enabled trunking module: %s\n" % config['module'])
 
@@ -198,22 +233,41 @@ class rx_block (gr.top_block):
             self.devices.append(device(cfg))
 
     def find_device(self, chan):
-        for dev in self.devices:
-            d = abs(chan['frequency'] - dev.frequency)
-            nf = dev.sample_rate / 2
-            if d + 6250 <= nf:
-                return dev
+        if chan.has_key('device') and (chan['device'] != "") and (self.device_id_by_name.has_key(chan['device'])):
+            dev_id = self.device_id_by_name[chan['device']]
+            sys.stderr.write("DEVICE ID=%d\n" % dev_id)
+            if dev_id < len(self.devices):
+                return self.devices[dev_id]
+            
+        if chan.has_key('frequency') and (chan['frequency'] != ""):
+            for dev in self.devices:
+                d = abs(chan['frequency'] - dev.frequency)
+                nf = dev.sample_rate / 2
+                if d + 6250 <= nf:
+                    return dev
         return None
 
     def configure_channels(self, config):
         self.channels = []
         for cfg in config:
             dev = self.find_device(cfg)
-            if dev is None:
-                sys.stderr.write('* * * Frequency %d not within spectrum band of any device - ignoring!\n' % cfg['frequency'])
+            if (dev is None) and cfg.has_key('frequency'):
+                sys.stderr.write("* * * Frequency %d not within spectrum band of any device - ignoring!\n" % cfg['frequency'])
                 continue
+            elif dev is None:
+                sys.stderr.write("* * * Channel '%s' not attached to any device - ignoring!\n" % cfg['name'])
+                continue
+            elif dev.tunable:
+                for ch in self.channels:
+                    if ch.device == dev:
+                        sys.stderr.write("* * * Channel '%s' cannot share a tunable device - ignoring!\n" % cfg['name'])
+                        dev = None
+                        break
+                if dev == None:
+                    continue    
             if self.trunking is not None:
                 msgq_id = len(self.channels)
+                self.trunk_rx.add_receiver(msgq_id)
             else:
                 msgq_id = -1
             chan = channel(cfg, dev, self.verbosity, msgq_id, self.rx_q)
@@ -239,18 +293,39 @@ class rx_block (gr.top_block):
             sys.stderr.write('scan %s: error %d\n' % (chan.config['frequency'], chan.demod.get_freq_error()))
 
     def change_freq(self, params):
-        chan = None
-        for _chan in self.channels:
-            if _chan.name == params['tuner']:
-                chan = _chan
-                break
-
-        if chan is None:
+        tuner = params['tuner']
+        if (tuner < 0) or (tuner > len(self.channels)):
             if self.verbosity:
                 sys.stderr.write("%f No %s channel available for tuning\n" % (time.time(), params['tuner']))
-            return
+            return False
 
-        return chan.set_freq(params['freq'])
+        chan = self.channels[tuner]
+        if not chan.set_freq(params['freq']):
+            chan.set_slot(0)
+            return False
+        
+        if params.has_key('slot'):
+            chan.set_slot(params['slot'])
+
+        if params.has_key('chan'):
+            self.trunk_rx.receivers[tuner].current_chan = params['chan']
+
+        if params.has_key('state'):
+            self.trunk_rx.receivers[tuner].current_state = params['state']
+
+        if params.has_key('type'):
+            self.trunk_rx.receivers[tuner].current_type = params['type']
+
+        if params.has_key('time'):
+            self.trunk_rx.receivers[tuner].tune_time = params['time']
+
+        return True
+
+    def set_slot(self, params):
+        tuner = params['tuner']
+        chan = self.channels[tuner]
+        if params.has_key('slot'):
+            chan.set_slot(params['slot'])
 
     def kill(self):
         for chan in self.channels:
@@ -272,6 +347,9 @@ class du_queue_watcher(threading.Thread):
         while(self.keep_running):
             msg = self.msgq.delete_head()
             self.callback(msg)
+
+    def kill(self):
+        self.keep_running = False
 
 class rx_main(object):
     def __init__(self):
@@ -315,7 +393,6 @@ class rx_main(object):
             self.tb.stop()
             self.tb.kill()
         except:
-            #self.lock()
             self.tb.stop()
             self.tb.kill()
             sys.stderr.write('main: exception occurred\n')

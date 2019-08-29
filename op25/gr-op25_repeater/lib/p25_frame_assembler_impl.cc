@@ -56,6 +56,9 @@ namespace gr {
 	p2tdma.set_slotid(slotid);
     }
 
+    void p25_frame_assembler_impl::set_slotkey(int key) {
+    }
+
     p25_frame_assembler::sptr
     p25_frame_assembler::make(const char* udp_host, int port, int debug, bool do_imbe, bool do_output, bool do_msgq, gr::msg_queue::sptr queue, bool do_audio_output, bool do_phase2_tdma, bool do_nocrypt)
     {

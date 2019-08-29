@@ -1,7 +1,2 @@
 "Sysname"	"Control Channel List"	"Offset"	"NAC"	"Modulation"	"TGID Tags File"	"Whitelist"	"Blacklist"	"Center Frequency"
-"Tompkins"	"859.8875"	"0"	"0x1e0"	"CQPSK"	"tompkins.tsv"	"55801,55802"		
-"Cortland"	"454.05"	"0"	"0x4e1"	"CQPSK"				
-"Onondaga"	"460.5"	"0"	"0x2a0"	"CQPSK"	"onondaga.tsv"			
-"Cayuga"	"460.4125"	"0"	"0x2a8"	"CQPSK"	"onondaga.tsv"			
-"Ontario"	"769.55625,769.85625,770.10625"	"0"	"0x47f"	"CQPSK"	"ontario.tsv"			
-"NYSEG"	"152.0225"	"0"	"0x260"	"C4FM"	"nyseg.tsv"			
+"P25 SYSTEM"	"876.54320"	"0"	"0"	"cqpsk"	""	""	""	""

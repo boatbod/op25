@@ -68,6 +68,7 @@ public:
 	~dmr_slot();
 	inline void set_debug(const int debug) { d_debug = debug; };
 	bool load_slot(const uint8_t slot[], uint64_t sl_type);
+	inline void set_slot_mask(int mask) { d_slot_mask = mask; };
 
 private:
 	uint8_t     d_slot[SLOT_SIZE];	// array of bits comprising the current slot
@@ -82,11 +83,13 @@ private:
 	bool        d_lc_valid;		// flag indicating if LC data is valid
 	bool        d_rc_valid;		// flag indicating if RC data is valid
 	bool        d_sb_valid;		// flag indicating if SB data is valid
+	bool        d_pi_valid;		// flag indicating if PI data is valid
 	uint64_t    d_type;
 	uint8_t     d_cc;
-	bool        d_msgq_id;
+	int         d_msgq_id;
 	int         d_debug;
 	int         d_chan;
+	int         d_slot_mask;
         log_ts      logts;
 	CBPTC19696  bptc;
 	ezpwd::RS<255,252> rs12;	// Reed-Solomon(12,9) object for Link Control decode
@@ -111,6 +114,11 @@ private:
 	inline uint8_t  get_lc_svcopt()  { return d_lc_valid ? d_lc[2] : 0; };
 	inline uint32_t get_lc_dstaddr() { return d_lc_valid ? ((d_lc[3] << 16) + (d_lc[4] << 8) + d_lc[5]) : 0; };
 	inline uint32_t get_lc_srcaddr() { return d_lc_valid ? ((d_lc[6] << 16) + (d_lc[7] << 8) + d_lc[8]) : 0; };
+
+	inline uint8_t  get_pi_algid()   { return d_pi_valid ? d_pi[0] : 0; };
+	inline uint8_t  get_pi_keyid()   { return d_pi_valid ? d_pi[2] : 0; };
+	inline uint32_t get_pi_mi()      { return d_pi_valid ? ((d_pi[3] << 24) + (d_pi[4] << 16) + (d_pi[5] << 8) + d_pi[6]) : 0; };
+	inline uint32_t get_pi_dstaddr() { return d_pi_valid ? ((d_pi[7] << 16) + (d_pi[8] << 8) + d_pi[9]) : 0; };
 
 	inline uint8_t  get_rc()         { return d_rc_valid ? d_rc : 0; };
 	inline uint8_t  get_sb()         { return d_sb_valid ? d_sb : 0; };
