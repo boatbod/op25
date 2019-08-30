@@ -681,6 +681,8 @@ class rx_ctl (object):
     def set_frequency(self, params):
         frequency = params['freq']
         if frequency and self.frequency_set:
+            if self.debug > 10:
+                sys.stderr.write("%f set_frequency(%s)\n" % (time.time(), frequency))
             self.frequency_set(params)
 
     def do_metadata(self, state, tgid, tag):
