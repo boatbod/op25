@@ -384,6 +384,7 @@ class p25_rx_block (gr.top_block):
             self.eye_sink.set_sps(self.sps)
 
     def change_freq(self, params):
+        prev_freq = self.last_freq_params['freq']
         self.last_freq_params = params
         freq = params['freq']
         offset = params['offset']
@@ -411,6 +412,9 @@ class p25_rx_block (gr.top_block):
             self.set_freq(freq + offset)
         else:
             pass	# fake tuning when playing back symbols file
+
+        if prev_freq != freq: # purge receive queue when changing frequency
+            self.rx_q.flush()
 
         self.configure_tdma(params)
         self.freq_update()
