@@ -27,6 +27,7 @@ class log_ts
 {
 private:
 	struct timeval curr_time;
+	double tstamp;
 	char log_ts[30];
 
 public:
@@ -48,6 +49,16 @@ public:
 		    sprintf(log_ts, "[%d]", id);
 
 		return log_ts;
+	}
+
+	inline double get_ts()
+	{
+		if (gettimeofday(&curr_time, 0) == 0)
+			tstamp = curr_time.tv_sec + (curr_time.tv_usec / 1e6);
+		else
+			tstamp = 0;
+
+		return tstamp;
 	}
 };
 

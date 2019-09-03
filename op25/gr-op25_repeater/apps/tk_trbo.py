@@ -21,6 +21,7 @@
 #
 
 import sys
+import ctypes
 import time
 import json
 
@@ -132,13 +133,10 @@ class dmr_receiver:
             sys.stderr.write("%f [%d] Searching for control channel: lcn(%d), freq(%f)\n" % (time.time(), self.msgq_id, self.chan_list[self.current_chan], (self.chans[self.chan_list[self.current_chan]].frequency/1e6)))
 
     def process_qmsg(self, msg):
-        if msg.arg2() != 1: # discard anything not DMR
-            return
-
-        m_type = int(msg.type())
-        m_slot = int(msg.arg1()) & 0x1
-        m_proto = int(msg.arg2())
-        m_buf = msg.to_string()
+        m_type = ctypes.c_int16(msg.type() & 0xffff).value  # lower 16 bits of msg.type() is signed message type
+        m_slot = int(msg.arg1()) & 0x1                      # message slot id
+        m_ts   = float(msg.arg2())                          # message sender timestamp
+        m_buf = msg.to_string()                             # message data
 
         if m_type == -1:  # Sync Timeout
             if self.debug >= 9:
@@ -353,7 +351,8 @@ class rx_ctl(object):
         self.receivers[msgq_id] = dmr_receiver(msgq_id, self.frequency_set, self.slot_set, self.chans, self.debug)
 
     def process_qmsg(self, msg):
-        if msg.arg2() != 1: # discard anything not DMR
+        m_proto = ctypes.c_int16(msg.type() >> 16).value  # upper 16 bits of msg.type() is signed protocol
+        if m_proto != 1: # DMR m_proto=1
             return
 
         self.check_expired_grants()

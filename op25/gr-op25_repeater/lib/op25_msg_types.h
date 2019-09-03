@@ -22,33 +22,33 @@
 #define INCLUDED_OP25_MSG_TYPES_H
 
 // Protocols
-static const int PROTOCOL_P25 = 0;
-static const int PROTOCOL_DMR = 1;
+static const int16_t PROTOCOL_P25 = 0;
+static const int16_t PROTOCOL_DMR = 1;
 
 // Msg Types (protocol specific)
 
 // P25 Messages
 //   message types < 0 are special
 //   message types >= 0 are based on DUID (0 thru 15)
-static const int M_P25_TIMEOUT   = -1;
-static const int M_P25_UI_REQ    = -2;
-static const int M_P25_JSON_DATA = -3;
+static const int16_t M_P25_TIMEOUT   = -1;
+static const int16_t M_P25_UI_REQ    = -2;
+static const int16_t M_P25_JSON_DATA = -3;
 
 // DMR Messages
-static const int M_DMR_TIMEOUT   = -1;
+static const int16_t M_DMR_TIMEOUT   = -1;
 
-static const int M_DMR_CACH_SLC  = 0;
-static const int M_DMR_CACH_CSBK = 1;
-static const int M_DMR_SLOT_PI   = 2;
-static const int M_DMR_SLOT_VLC  = 3;
-static const int M_DMR_SLOT_TLC  = 4;
-static const int M_DMR_SLOT_CSBK = 5;
-static const int M_DMR_SLOT_MBC  = 6;
-static const int M_DMR_SLOT_ELC  = 7;
-static const int M_DMR_SLOT_ERC  = 8;
-static const int M_DMR_SLOT_ESB  = 9;
+static const int16_t M_DMR_CACH_SLC  = 0;
+static const int16_t M_DMR_CACH_CSBK = 1;
+static const int16_t M_DMR_SLOT_PI   = 2;
+static const int16_t M_DMR_SLOT_VLC  = 3;
+static const int16_t M_DMR_SLOT_TLC  = 4;
+static const int16_t M_DMR_SLOT_CSBK = 5;
+static const int16_t M_DMR_SLOT_MBC  = 6;
+static const int16_t M_DMR_SLOT_ELC  = 7;
+static const int16_t M_DMR_SLOT_ERC  = 8;
+static const int16_t M_DMR_SLOT_ESB  = 9;
 
-
+inline long get_msg_type(const int16_t proto, const int16_t msg) { return ((uint32_t)proto << 16) | ((uint32_t)msg & 0xffff); }
 
 #endif /* INCLUDED_OP25_MSG_TYPES_H */
 

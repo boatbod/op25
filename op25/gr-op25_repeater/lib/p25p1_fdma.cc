@@ -33,6 +33,7 @@
 #include <errno.h>
 #include <vector>
 #include "bch.h"
+#include "op25_msg_types.h"
 #include "op25_imbe_frame.h"
 #include "p25_frame.h"
 #include "p25_framer.h"
@@ -224,8 +225,7 @@ p25p1_fdma::process_duid(uint32_t const duid, uint32_t const nac, const uint8_t*
 		memcpy(&wbuf[p], buf, len);	// copy data
 		p += len;
 	}
-	gr::message::sptr msg = gr::message::make_from_string(std::string(wbuf, p), duid, 0, 0);
-	d_msg_queue->insert_tail(msg);
+	send_msg(std::string(wbuf, p), duid);
 	qtimer.reset();
 }
 
@@ -651,7 +651,7 @@ void p25p1_fdma::send_msg(const std::string msg_str, long msg_type)
 	if (!d_do_msgq || d_msg_queue->full_p())
 		return;
 
-	gr::message::sptr msg = gr::message::make_from_string(msg_str, msg_type, 0, 0);
+	gr::message::sptr msg = gr::message::make_from_string(msg_str, get_msg_type(PROTOCOL_P25, msg_type), 0, logts.get_ts());
 	d_msg_queue->insert_tail(msg);
 }
 
@@ -728,7 +728,7 @@ p25p1_fdma::rx_sym (const uint8_t *syms, int nsyms)
       }
 
       qtimer.reset();
-      gr::message::sptr msg = gr::message::make(-1, 0, 0);
+      gr::message::sptr msg = gr::message::make(get_msg_type(PROTOCOL_P25, M_P25_TIMEOUT), 0, logts.get_ts());
       d_msg_queue->insert_tail(msg);
     }
   }

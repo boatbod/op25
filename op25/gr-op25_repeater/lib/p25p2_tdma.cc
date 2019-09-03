@@ -27,6 +27,7 @@
 #include <errno.h>
 #include <sys/time.h>
 
+#include "op25_msg_types.h"
 #include "p25p2_duid.h"
 #include "p25p2_sync.h"
 #include "p25p2_tdma.h"
@@ -624,6 +625,8 @@ int p25p2_tdma::handle_frame(void)
 	for (int i=0; i<sizeof(dibits); i++)
 		dibits[i] = p2framer.d_frame_body[i*2+1] + (p2framer.d_frame_body[i*2] << 1);
 	rc = handle_packet(dibits);
+	if (rc > -1)
+		send_msg(std::string(2, 0xff), rc);
 	return rc;
 }
 
@@ -727,6 +730,6 @@ void p25p2_tdma::send_msg(const std::string msg_str, long msg_type)
 	if (!d_do_msgq || d_msg_queue->full_p())
 		return;
 
-	gr::message::sptr msg = gr::message::make_from_string(msg_str, msg_type, 0, 0);
+	gr::message::sptr msg = gr::message::make_from_string(msg_str, get_msg_type(PROTOCOL_P25, msg_type), 0, logts.get_ts());
 	d_msg_queue->insert_tail(msg);
 }

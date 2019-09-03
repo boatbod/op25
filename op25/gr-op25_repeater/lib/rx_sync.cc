@@ -207,7 +207,7 @@ void rx_sync::sync_timeout()
 	return;
 
 	std::string m_buf;
-	gr::message::sptr msg = gr::message::make_from_string(m_buf, M_DMR_TIMEOUT, (d_msgq_id << 1), PROTOCOL_DMR);
+	gr::message::sptr msg = gr::message::make_from_string(m_buf, get_msg_type(PROTOCOL_DMR, M_DMR_TIMEOUT), (d_msgq_id << 1), logts.get_ts());
 	d_msg_queue->insert_tail(msg);
 
 	sync_timer.reset();
