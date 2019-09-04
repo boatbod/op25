@@ -144,3 +144,6 @@ class p25_decoder_sink_b(gr.hier_block2):
 
     def set_scaler_k(self, k, index=0):
         self.scaler[index].set_k(k)
+
+    def reset_timer(self, index=0):
+        self.p25_decoders[index].reset_timer()

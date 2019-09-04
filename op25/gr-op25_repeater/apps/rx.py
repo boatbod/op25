@@ -412,6 +412,7 @@ class p25_rx_block (gr.top_block):
         else:
             pass	# fake tuning when playing back symbols file
 
+        self.decoder.reset_timer()
         self.configure_tdma(params)
         self.freq_update()
 
