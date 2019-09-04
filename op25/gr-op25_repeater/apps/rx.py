@@ -384,35 +384,37 @@ class p25_rx_block (gr.top_block):
             self.eye_sink.set_sps(self.sps)
 
     def change_freq(self, params):
+        last_freq = self.last_freq_params['freq']
         self.last_freq_params = params
         freq = params['freq']
         offset = params['offset']
         center_freq = params['center_frequency']
 
-        if self.options.hamlib_model:
-            self.hamlib.set_freq(freq)
-        elif (not self.options.symbols) and params['center_frequency']:
-            relative_freq = center_freq - freq
-            if abs(relative_freq + self.options.offset) > self.channel_rate / 2:
-                self.lo_freq = self.options.offset					# relative tune not possible
-                self.demod.set_relative_frequency(self.lo_freq)				# reset demod relative freq
-                self.set_freq(freq + offset)						# direct tune instead
-            else:    
-                self.lo_freq = self.options.offset + relative_freq
-                if self.demod.set_relative_frequency(self.lo_freq):			# relative tune successful
-                    self.set_freq(center_freq + offset)
-                    if self.fft_sink:
-                        self.fft_sink.set_relative_freq(relative_freq)
-                else:
-                    self.lo_freq = self.options.offset					# relative tune unsuccessful
-                    self.demod.set_relative_frequency(self.lo_freq)			# reset demod relative freq
-                    self.set_freq(freq + offset)					# direct tune instead
-        elif not self.options.symbols:
-            self.set_freq(freq + offset)
-        else:
-            pass	# fake tuning when playing back symbols file
+        if freq != last_freq:								# ignore requests to tune to same freq
+            if self.options.hamlib_model:
+                self.hamlib.set_freq(freq)
+            elif (not self.options.symbols) and params['center_frequency']:
+                relative_freq = center_freq - freq
+                if abs(relative_freq + self.options.offset) > self.channel_rate / 2:
+                    self.lo_freq = self.options.offset					# relative tune not possible
+                    self.demod.set_relative_frequency(self.lo_freq)				# reset demod relative freq
+                    self.set_freq(freq + offset)						# direct tune instead
+                else:    
+                    self.lo_freq = self.options.offset + relative_freq
+                    if self.demod.set_relative_frequency(self.lo_freq):			# relative tune successful
+                        self.set_freq(center_freq + offset)
+                        if self.fft_sink:
+                            self.fft_sink.set_relative_freq(relative_freq)
+                    else:
+                        self.lo_freq = self.options.offset					# relative tune unsuccessful
+                        self.demod.set_relative_frequency(self.lo_freq)			# reset demod relative freq
+                        self.set_freq(freq + offset)					# direct tune instead
+            elif not self.options.symbols:
+                self.set_freq(freq + offset)
+            else:
+                pass	# fake tuning when playing back symbols file
+            self.decoder.reset_timer()
 
-        self.decoder.reset_timer()
         self.configure_tdma(params)
         self.freq_update()
 
