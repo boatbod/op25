@@ -75,11 +75,13 @@ private:
 	bit_vector  d_slot_type;
 	byte_vector d_emb;		// last received Embedded data
 	byte_vector d_mbc;		// last received MBC data
+	byte_vector d_pdp;		// last received PDP data
 	byte_vector d_lc;		// last received LC data
 	uint8_t     d_rc;		// last received RC data
 	uint16_t    d_sb;		// last received SB data
 	byte_vector d_pi;
 	data_state  d_mbc_state;
+	data_state  d_pdp_state;
 	bool        d_lc_valid;		// flag indicating if LC data is valid
 	bool        d_rc_valid;		// flag indicating if RC data is valid
 	bool        d_sb_valid;		// flag indicating if SB data is valid
@@ -100,6 +102,8 @@ private:
 	bool decode_csbk(uint8_t* csbk);
 	bool decode_mbc_header(uint8_t* csbk);
 	bool decode_mbc_continue(uint8_t* csbk);
+	bool decode_pdp_header(uint8_t* csbk);
+	bool decode_pdp_data(uint8_t* csbk);
 	bool decode_vlch(uint8_t* vlch);
 	bool decode_tlc(uint8_t* tlc);
 	bool decode_lc(uint8_t* lc, int* rs_errs = NULL);

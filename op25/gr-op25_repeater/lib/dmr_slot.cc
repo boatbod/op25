@@ -46,6 +46,7 @@ dmr_slot::dmr_slot(const int chan, const int debug, int msgq_id, gr::msg_queue::
 	d_msgq_id(msgq_id),
 	d_msg_queue(queue),
 	d_mbc_state(DATA_INVALID),
+	d_pdp_state(DATA_INVALID),
 	d_lc_valid(false),
 	d_rc_valid(false),
 	d_sb_valid(false),
@@ -60,6 +61,7 @@ dmr_slot::dmr_slot(const int chan, const int debug, int msgq_id, gr::msg_queue::
 	d_lc.clear();
 	d_emb.clear();
 	d_mbc.clear();
+	d_pdp.clear();
 }
 
 dmr_slot::~dmr_slot() {
@@ -193,9 +195,19 @@ dmr_slot::decode_slot_type() {
 				rc = false;
 			break;
 		}
-		case 0x6: // Data header
+		case 0x6: // Packet Data Protocol header
+			uint8_t dhdr[96];
+			if (bptc.decode(d_slot, dhdr))
+				rc = decode_pdp_header(dhdr);
+			else
+				rc = false;
 			break;
 		case 0x7: // Rate 1/2 data
+			uint8_t pdp[96];
+			if (bptc.decode(d_slot, pdp))
+				rc = decode_pdp_data(pdp);
+			else
+				rc = false;
 			break;
 		case 0x8: // Rate 3/4 data
 			break;
@@ -345,6 +357,53 @@ dmr_slot::decode_mbc_continue(uint8_t* mbc) {
 	} 
 
 	return true;
+}
+
+bool
+dmr_slot::decode_pdp_header(uint8_t* dhdr) {
+	d_pdp_state = DATA_INVALID;
+
+	// Apply mask and validate CRC
+	for (int i = 0; i < 16; i++)
+		dhdr[i+80] ^= DATA_HEADER_CRC_MASK[i];
+	if (crc16(dhdr, 96) != 0) {
+		fprintf(stderr, "%s PDP Header CRC failure\n", logts.get(d_msgq_id));
+		return false;
+	}
+
+	// Extract parameters
+	uint8_t  pdp_gf   = dhdr[0] & 0x1;
+	uint8_t  pdp_dpf  = extract(dhdr, 4, 8);
+	uint8_t  pdp_sap  = extract(dhdr, 8, 12);
+
+	// Convert bits to bytes for debugging purposes
+	d_pdp.assign(10,0);
+	for (int i = 0; i < 96; i++) {
+		d_pdp[i / 8] = (d_pdp[i / 8] << 1) | dhdr[i];
+	}
+
+	d_mbc_state = DATA_INCOMPLETE;
+
+	if (d_debug >= 10) {
+		fprintf(stderr, "%s Slot(%d), CC(%x), PDP HDR GF(%01x), DPF(%02x), SAP(%01x) : %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x\n", logts.get(d_msgq_id), d_chan, get_slot_cc(), pdp_gf, pdp_dpf, pdp_sap,
+			d_pdp[0], d_pdp[1], d_pdp[2], d_pdp[3], d_pdp[4], d_pdp[5], d_pdp[6], d_pdp[7], d_pdp[8], d_pdp[9]);
+	}
+
+	return true;
+}
+
+bool
+dmr_slot::decode_pdp_data(uint8_t* pdp) {
+
+	// Convert bits to bytes for debugging purposes
+	d_pdp.assign(10,0);
+	for (int i = 0; i < 96; i++) {
+		d_pdp[i / 8] = (d_pdp[i / 8] << 1) | pdp[i];
+	}
+
+	if (d_debug >= 10) {
+		fprintf(stderr, "%s Slot(%d), CC(%x), PDP RATE 1/2 DATA FRAGMENT     : %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x\n", logts.get(d_msgq_id), d_chan, get_slot_cc(), d_pdp[0], d_pdp[1], d_pdp[2], d_pdp[3], d_pdp[4], d_pdp[5], d_pdp[6], d_pdp[7], d_pdp[8], d_pdp[9]);
+	}
 }
 
 bool
