@@ -46,11 +46,15 @@ dmr_slot::dmr_slot(const int chan, const int debug, int msgq_id, gr::msg_queue::
 	d_msgq_id(msgq_id),
 	d_msg_queue(queue),
 	d_mbc_state(DATA_INVALID),
+	d_dhdr_state(DATA_INVALID),
 	d_pdp_state(DATA_INVALID),
 	d_lc_valid(false),
 	d_rc_valid(false),
 	d_sb_valid(false),
 	d_pi_valid(false),
+	d_dhdr_valid(false),
+	d_pdp_bf(0),
+	d_pdp_poc(0),
 	d_rc(0),
 	d_sb(0),
 	d_type(0),
@@ -61,6 +65,7 @@ dmr_slot::dmr_slot(const int chan, const int debug, int msgq_id, gr::msg_queue::
 	d_lc.clear();
 	d_emb.clear();
 	d_mbc.clear();
+	d_dhdr.clear();
 	d_pdp.clear();
 }
 
@@ -361,7 +366,15 @@ dmr_slot::decode_mbc_continue(uint8_t* mbc) {
 
 bool
 dmr_slot::decode_pdp_header(uint8_t* dhdr) {
-	d_pdp_state = DATA_INVALID;
+	if (d_dhdr_state != DATA_INCOMPLETE) {
+		d_dhdr_state = DATA_INVALID;
+		d_dhdr_valid = false;
+		d_dhdr.clear();
+		d_pdp_state = DATA_INVALID;
+		d_pdp.clear();
+		d_pdp_bf = 0;
+		d_pdp_poc = 0;
+	}
 
 	// Apply mask and validate CRC
 	for (int i = 0; i < 16; i++)
@@ -371,22 +384,57 @@ dmr_slot::decode_pdp_header(uint8_t* dhdr) {
 		return false;
 	}
 
-	// Extract parameters
-	uint8_t  pdp_gf   = dhdr[0] & 0x1;
-	uint8_t  pdp_dpf  = extract(dhdr, 4, 8);
-	uint8_t  pdp_sap  = extract(dhdr, 8, 12);
+	if (d_dhdr_state == DATA_INVALID) { // first data header received is always standard format
+		// Extract parameters
+		uint8_t  pdp_gf   = dhdr[0] & 0x1;
+		uint8_t  pdp_dpf  = extract(dhdr, 4, 8);
+		uint8_t  pdp_sap  = extract(dhdr, 8, 12);
+		uint8_t  pdp_poc  = extract(dhdr, 12, 16);
+		uint8_t  pdp_bf   = extract(dhdr, 65, 72);
 
-	// Convert bits to bytes for debugging purposes
-	d_pdp.assign(10,0);
-	for (int i = 0; i < 96; i++) {
-		d_pdp[i / 8] = (d_pdp[i / 8] << 1) | dhdr[i];
+		// Convert bits to bytes and save all except CRC for later
+		d_dhdr.assign(10, 0);
+		for (int i = 0; i < 80; i++) {
+			d_dhdr[i / 8] = (d_dhdr[i / 8] << 1) | dhdr[i];
+		}
+		d_pdp_bf = pdp_bf;
+		d_pdp_poc = pdp_poc;
+		d_dhdr_valid = true;
+
+		if (pdp_sap == 9)           // SAP=9 indicates proprietary format header
+			d_dhdr_state = DATA_INCOMPLETE;
+		else
+			d_dhdr_state = DATA_VALID;
+
+		if (d_debug >= 10) {
+			fprintf(stderr, "%s Slot(%d), CC(%x), PDP HDR1 GF(%01x), DPF(%01x), SAP(%01x), POC(%01x), BF(%02x) : %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x\n", logts.get(d_msgq_id), d_chan, get_slot_cc(), pdp_gf, pdp_dpf, pdp_sap, pdp_poc, pdp_bf,
+				d_dhdr[0], d_dhdr[1], d_dhdr[2], d_dhdr[3], d_dhdr[4], d_dhdr[5], d_dhdr[6], d_dhdr[7], d_dhdr[8], d_dhdr[9]);
+		}
 	}
+	else {                              // subsequent data header allowed if previous was proprietary format
+		// Extract parameters
+		uint8_t  pdp_sap  = extract(dhdr, 0, 4);
+		uint8_t  pdp_dpf  = extract(dhdr, 4, 8);
+		uint8_t  pdp_mfid = extract(dhdr, 8, 16);
 
-	d_mbc_state = DATA_INCOMPLETE;
+		d_pdp_bf--;
 
-	if (d_debug >= 10) {
-		fprintf(stderr, "%s Slot(%d), CC(%x), PDP HDR GF(%01x), DPF(%02x), SAP(%01x) : %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x\n", logts.get(d_msgq_id), d_chan, get_slot_cc(), pdp_gf, pdp_dpf, pdp_sap,
-			d_pdp[0], d_pdp[1], d_pdp[2], d_pdp[3], d_pdp[4], d_pdp[5], d_pdp[6], d_pdp[7], d_pdp[8], d_pdp[9]);
+		// Convert bits to bytes and save all except CRC for later
+		int offset = d_dhdr.size();
+		d_dhdr.insert(d_dhdr.end(), 10, 0);
+		for (int i = 0; i < 80; i++) {
+			d_dhdr[offset + (i / 8)] = (d_dhdr[offset + (i / 8)] << 1) | dhdr[i];
+		}
+
+		if (pdp_sap == 9)           // SAP=9 indicates proprietary format header
+			d_dhdr_state = DATA_INCOMPLETE;
+		else
+			d_dhdr_state = DATA_VALID;
+
+		if (d_debug >= 10) {
+			fprintf(stderr, "%s Slot(%d), CC(%x), PDP HDR2 DPF(%01x), SAP(%01x), MFID(%02x) : %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x\n", logts.get(d_msgq_id), d_chan, get_slot_cc(), pdp_dpf, pdp_sap, pdp_mfid,
+				d_dhdr[offset + 0], d_dhdr[offset + 1], d_dhdr[offset + 2], d_dhdr[offset + 3], d_dhdr[offset + 4], d_dhdr[offset + 5], d_dhdr[offset + 6], d_dhdr[offset + 7], d_dhdr[offset + 8], d_dhdr[offset + 9]);
+		}
 	}
 
 	return true;
@@ -394,15 +442,35 @@ dmr_slot::decode_pdp_header(uint8_t* dhdr) {
 
 bool
 dmr_slot::decode_pdp_data(uint8_t* pdp) {
+	if (d_pdp_bf)                       // decrement expected fragment count
+		d_pdp_bf--;
+	else {                              // error if fragment not expected
+		d_pdp_state = DATA_INVALID;
+		d_pdp.clear();
+		return false;
+	}
 
-	// Convert bits to bytes for debugging purposes
-	d_pdp.assign(10,0);
+	// Convert bits to bytes and save fragment
+	int offset = d_pdp.size();
+	d_pdp.insert(d_pdp.end(), 12, 0);
 	for (int i = 0; i < 96; i++) {
-		d_pdp[i / 8] = (d_pdp[i / 8] << 1) | pdp[i];
+		d_pdp[offset + (i / 8)] = (d_pdp[offset + (i / 8)] << 1) | pdp[i];
 	}
 
 	if (d_debug >= 10) {
-		fprintf(stderr, "%s Slot(%d), CC(%x), PDP RATE 1/2 DATA FRAGMENT     : %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x\n", logts.get(d_msgq_id), d_chan, get_slot_cc(), d_pdp[0], d_pdp[1], d_pdp[2], d_pdp[3], d_pdp[4], d_pdp[5], d_pdp[6], d_pdp[7], d_pdp[8], d_pdp[9]);
+		fprintf(stderr, "%s Slot(%d), CC(%x), PDP RATE 1/2 FRAGMENT : %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x\n", logts.get(d_msgq_id), d_chan, get_slot_cc(), d_pdp[offset + 0], d_pdp[offset + 1], d_pdp[offset + 2], d_pdp[offset + 3], d_pdp[offset + 4], d_pdp[offset + 5], d_pdp[offset + 6], d_pdp[offset + 7], d_pdp[offset + 8], d_pdp[offset + 9], d_pdp[offset + 10], d_pdp[offset + 11]);
+	}
+
+	if (d_pdp_bf == 0) {
+		d_pdp_state = DATA_VALID;
+
+		if (d_debug >= 10) {
+			int d_len = d_pdp.size() - (d_pdp_poc + 4);
+			char szData[(d_len * 3) + 1];
+			for (int i = 0; i < d_len; i++)
+				sprintf((szData + (i *3)), "%02x ", d_pdp[i]);
+			fprintf(stderr, "%s Slot(%d), CC(%x), PDP RATE 1/2 DATA DEST(%06x), SOURCE(%06x) : %s\n", logts.get(d_msgq_id), d_chan, get_slot_cc(), get_dhdr_dst(), get_dhdr_src(), szData);
+		}
 	}
 }
 

@@ -75,17 +75,22 @@ private:
 	bit_vector  d_slot_type;
 	byte_vector d_emb;		// last received Embedded data
 	byte_vector d_mbc;		// last received MBC data
+	byte_vector d_dhdr;		// last received Data Header data
 	byte_vector d_pdp;		// last received PDP data
 	byte_vector d_lc;		// last received LC data
 	uint8_t     d_rc;		// last received RC data
 	uint16_t    d_sb;		// last received SB data
 	byte_vector d_pi;
+	uint8_t     d_pdp_bf;
+	uint8_t     d_pdp_poc;
 	data_state  d_mbc_state;
+	data_state  d_dhdr_state;
 	data_state  d_pdp_state;
 	bool        d_lc_valid;		// flag indicating if LC data is valid
 	bool        d_rc_valid;		// flag indicating if RC data is valid
 	bool        d_sb_valid;		// flag indicating if SB data is valid
 	bool        d_pi_valid;		// flag indicating if PI data is valid
+	bool        d_dhdr_valid;	// flag indicating if DHDR data is valid
 	uint64_t    d_type;
 	uint8_t     d_cc;
 	int         d_msgq_id;
@@ -129,6 +134,10 @@ private:
 
 	inline uint8_t  get_slot_cc()    { return d_slot_type.size() ? ((d_slot_type[0] << 3) + (d_slot_type[1] << 2) + (d_slot_type[2] << 1) + d_slot_type[3]) : 0xf; };
 	inline uint8_t  get_data_type()  { return d_slot_type.size() ? ((d_slot_type[4] << 3) + (d_slot_type[5] << 2) + (d_slot_type[6] << 1) + d_slot_type[7]) : 0x9; };
+
+	inline uint8_t  get_dhdr_sap()   { return d_dhdr_valid ? (d_dhdr[1] >> 4) & 0xf : 0; };
+	inline uint32_t get_dhdr_dst()   { return d_dhdr_valid ? ((d_dhdr[2] << 16) + (d_dhdr[3] << 8) + d_dhdr[4]) : 0; };
+	inline uint32_t get_dhdr_src()   { return d_dhdr_valid ? ((d_dhdr[5] << 16) + (d_dhdr[6] << 8) + d_dhdr[7]) : 0; };
 
 };
 
