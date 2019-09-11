@@ -37,6 +37,7 @@
 #include "hamming.h"
 #include "golay2087.h"
 #include "bptc19696.h"
+#include "trellis.h"
 #include "crc16.h"
 
 dmr_slot::dmr_slot(const int chan, const int debug, int msgq_id, gr::msg_queue::sptr queue) :
@@ -200,22 +201,30 @@ dmr_slot::decode_slot_type() {
 				rc = false;
 			break;
 		}
-		case 0x6: // Packet Data Protocol header
+		case 0x6: { // Packet Data Protocol header
 			uint8_t dhdr[96];
 			if (bptc.decode(d_slot, dhdr))
 				rc = decode_pdp_header(dhdr);
 			else
 				rc = false;
 			break;
-		case 0x7: // Rate 1/2 data
+		}
+		case 0x7: { // Rate 1/2 data
 			uint8_t pdp[96];
 			if (bptc.decode(d_slot, pdp))
-				rc = decode_pdp_data(pdp);
+				rc = decode_pdp_12data(pdp);
 			else
 				rc = false;
 			break;
-		case 0x8: // Rate 3/4 data
+		}
+		case 0x8: { // Rate 3/4 data
+			uint8_t pdp[18];
+			if (trellis.decode(d_slot, pdp))
+				rc = decode_pdp_34data(pdp);
+			else
+				rc = false;
 			break;
+		}
 		case 0x9: { // Idle
 			if (d_debug >= 10) {
 				fprintf(stderr, "%s Slot(%d), CC(%x), IDLE\n", logts.get(d_msgq_id), d_chan, get_slot_cc());
@@ -407,7 +416,7 @@ dmr_slot::decode_pdp_header(uint8_t* dhdr) {
 			d_dhdr_state = DATA_VALID;
 
 		if (d_debug >= 10) {
-			fprintf(stderr, "%s Slot(%d), CC(%x), PDP HDR1 GF(%01x), DPF(%01x), SAP(%01x), POC(%01x), BF(%02x) : %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x\n", logts.get(d_msgq_id), d_chan, get_slot_cc(), pdp_gf, pdp_dpf, pdp_sap, pdp_poc, pdp_bf,
+			fprintf(stderr, "%s Slot(%d), CC(%x), PDP HDR1 GF(%01x), DPF(%01x), SAP(%01x), POC(%01x), BF(%02x), DEST(%06x), SOURCE(%06x) : %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x\n", logts.get(d_msgq_id), d_chan, get_slot_cc(), pdp_gf, pdp_dpf, pdp_sap, pdp_poc, pdp_bf, get_dhdr_dst(), get_dhdr_src(),
 				d_dhdr[0], d_dhdr[1], d_dhdr[2], d_dhdr[3], d_dhdr[4], d_dhdr[5], d_dhdr[6], d_dhdr[7], d_dhdr[8], d_dhdr[9]);
 		}
 	}
@@ -441,7 +450,7 @@ dmr_slot::decode_pdp_header(uint8_t* dhdr) {
 }
 
 bool
-dmr_slot::decode_pdp_data(uint8_t* pdp) {
+dmr_slot::decode_pdp_12data(uint8_t* pdp) {
 	if (d_pdp_bf)                       // decrement expected fragment count
 		d_pdp_bf--;
 	else {                              // error if fragment not expected
@@ -472,6 +481,48 @@ dmr_slot::decode_pdp_data(uint8_t* pdp) {
 			fprintf(stderr, "%s Slot(%d), CC(%x), PDP RATE 1/2 DATA DEST(%06x), SOURCE(%06x) : %s\n", logts.get(d_msgq_id), d_chan, get_slot_cc(), get_dhdr_dst(), get_dhdr_src(), szData);
 		}
 	}
+
+	return (d_pdp_state != DATA_INVALID) ? true : false; 
+}
+
+bool
+dmr_slot::decode_pdp_34data(uint8_t* pdp) {
+	if (d_pdp_bf)                       // decrement expected fragment count
+		d_pdp_bf--;
+	else {                              // error if fragment not expected
+		d_pdp_state = DATA_INVALID;
+		d_pdp.clear();
+		return false;
+	}
+
+	// Save fragment
+	int offset = d_pdp.size();
+	d_pdp.insert(d_pdp.end(), 18, 0);
+	for (int i = 0; i < 18; i++) {
+		d_pdp[offset + i] = pdp[i];
+	}
+
+	if (d_debug >= 10) {
+		fprintf(stderr, "%s Slot(%d), CC(%x), PDP RATE 3/4 FRAGMENT : %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x\n", logts.get(d_msgq_id), d_chan, get_slot_cc(), d_pdp[offset + 0], d_pdp[offset + 1], d_pdp[offset + 2], d_pdp[offset + 3],
+						  d_pdp[offset + 4], d_pdp[offset + 5], d_pdp[offset + 6], d_pdp[offset + 7],
+						  d_pdp[offset + 8], d_pdp[offset + 9], d_pdp[offset + 10], d_pdp[offset + 11],
+						  d_pdp[offset + 12], d_pdp[offset + 13], d_pdp[offset + 14], d_pdp[offset + 15],
+						  d_pdp[offset + 16], d_pdp[offset + 17]);
+	}
+
+	if (d_pdp_bf == 0) {
+		d_pdp_state = DATA_VALID;
+
+		if (d_debug >= 10) {
+			int d_len = d_pdp.size() - (d_pdp_poc + 4);
+			char szData[(d_len * 3) + 1];
+			for (int i = 0; i < d_len; i++)
+				sprintf((szData + (i *3)), "%02x ", d_pdp[i]);
+			fprintf(stderr, "%s Slot(%d), CC(%x), PDP RATE 3/4 DATA DEST(%06x), SOURCE(%06x) : %s\n", logts.get(d_msgq_id), d_chan, get_slot_cc(), get_dhdr_dst(), get_dhdr_src(), szData);
+		}
+	}
+
+	return (d_pdp_state != DATA_INVALID) ? true : false; 
 }
 
 bool

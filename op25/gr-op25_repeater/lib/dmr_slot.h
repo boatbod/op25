@@ -28,6 +28,7 @@
 #include "frame_sync_magics.h"
 #include "dmr_const.h"
 #include "bptc19696.h"
+#include "trellis.h"
 #include "ezpwd/rs"
 #include "log_ts.h"
 
@@ -99,16 +100,18 @@ private:
 	int         d_slot_mask;
         log_ts      logts;
 	CBPTC19696  bptc;
+	CDMRTrellis trellis;
 	ezpwd::RS<255,252> rs12;	// Reed-Solomon(12,9) object for Link Control decode
 	gr::msg_queue::sptr d_msg_queue;
 
 	void send_msg(const std::string& m_buf, const int m_type);
 	bool decode_slot_type();
 	bool decode_csbk(uint8_t* csbk);
-	bool decode_mbc_header(uint8_t* csbk);
-	bool decode_mbc_continue(uint8_t* csbk);
-	bool decode_pdp_header(uint8_t* csbk);
-	bool decode_pdp_data(uint8_t* csbk);
+	bool decode_mbc_header(uint8_t* mbc);
+	bool decode_mbc_continue(uint8_t* mbc);
+	bool decode_pdp_header(uint8_t* dhdr);
+	bool decode_pdp_12data(uint8_t* pdp);
+	bool decode_pdp_34data(uint8_t* pdp);
 	bool decode_vlch(uint8_t* vlch);
 	bool decode_tlc(uint8_t* tlc);
 	bool decode_lc(uint8_t* lc, int* rs_errs = NULL);
