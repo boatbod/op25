@@ -37,7 +37,6 @@ const unsigned char ENCODE_TABLE[] = {
 
 const unsigned char BIT_MASK_TABLE[] = {0x80U, 0x40U, 0x20U, 0x10U, 0x08U, 0x04U, 0x02U, 0x01U};
 
-#define WRITE_BIT(p,i,b) p[(i)>>3] = (b) ? (p[(i)>>3] | BIT_MASK_TABLE[(i)&7]) : (p[(i)>>3] & ~BIT_MASK_TABLE[(i)&7])
 #define READ_BIT(p,i)    (p[(i)>>3] & BIT_MASK_TABLE[(i)&7])
 
 CDMRTrellis::CDMRTrellis()
@@ -82,33 +81,6 @@ bool CDMRTrellis::decode(const unsigned char* data, unsigned char* payload)
 	return fixCode(savePoints, failPos - 1U, payload);
 }
 
-#if 0
-void CDMRTrellis::encode(const unsigned char* payload, unsigned char* data)
-{
-	assert(payload != NULL);
-	assert(data != NULL);
-
-	unsigned char tribits[49U];
-	bitsToTribits(payload, tribits);
-
-	unsigned char points[49U];
-	unsigned char state = 0U;
-
-	for (unsigned int i = 0U; i < 49U; i++) {
-		unsigned char tribit = tribits[i];
-
-		points[i] = ENCODE_TABLE[state * 8U + tribit];
-
-		state = tribit;
-	}
-
-	signed char dibits[98U];
-	pointsToDibits(points, dibits);
-
-	interleave(dibits, data);
-}
-#endif
-
 void CDMRTrellis::deinterleave(const unsigned char* data, signed char* dibits) const
 {
 	int n;
@@ -136,43 +108,6 @@ void CDMRTrellis::deinterleave(const unsigned char* data, signed char* dibits) c
 		dibits[n] = dibit;
 	}
 }
-
-#if 0
-void CDMRTrellis::interleave(const signed char* dibits, unsigned char* data) const
-{
-	for (unsigned int i = 0U; i < 98U; i++) {
-		unsigned int n = INTERLEAVE_TABLE[i];
-
-		bool b1, b2;
-		switch (dibits[n]) {
-		case +3:
-			b1 = false;
-			b2 = true;
-			break;
-		case +1:
-			b1 = false;
-			b2 = false;
-			break;
-		case -1:
-			b1 = true;
-			b2 = false;
-			break;
-		default:
-			b1 = true;
-			b2 = true;
-			break;
-		}
-
-		n = i * 2U + 0U;
-		if (n >= 98U) n += 68U;
-		WRITE_BIT(data, n, b1);
-
-		n = i * 2U + 1U;
-		if (n >= 98U) n += 68U;
-		WRITE_BIT(data, n, b2);
-	}
-}
-#endif
 
 void CDMRTrellis::dibitsToPoints(const signed char* dibits, unsigned char* points) const
 {
@@ -308,21 +243,18 @@ void CDMRTrellis::bitsToTribits(const unsigned char* payload, unsigned char* tri
 
 void CDMRTrellis::tribitsToBits(const unsigned char* tribits, unsigned char* payload) const
 {
-	for (unsigned int i = 0U; i < 48U; i++) {
-		unsigned char tribit = tribits[i];
+	unsigned char bits[144];
 
-		bool b1 = (tribit & 0x04U) == 0x04U;
-		bool b2 = (tribit & 0x02U) == 0x02U;
-		bool b3 = (tribit & 0x01U) == 0x01U;
-
-		unsigned int n = 143U - i * 3U;
-
-		WRITE_BIT(payload, n, b1);
-		n--;
-		WRITE_BIT(payload, n, b2);
-		n--;
-		WRITE_BIT(payload, n, b3);
+	// convert tribits to bits
+	for (int i = 0; i < 48; i++) {
+		bits[(i * 3) + 0] = (tribits[i] >> 2) & 1;
+		bits[(i * 3) + 1] = (tribits[i] >> 1) & 1;
+		bits[(i * 3) + 2] = tribits[i] & 1;
 	}
+
+	// convert bits to bytes
+	for (int i = 0; i < 144; i++)
+		payload[i/8] = (payload[i/8] << 1) | bits[i];
 }
 
 bool CDMRTrellis::fixCode(unsigned char* points, unsigned int failPos, unsigned char* payload) const
@@ -368,8 +300,9 @@ unsigned int CDMRTrellis::checkCode(const unsigned char* points, unsigned char* 
 			}
 		}
 
-		if (tribits[i] == 9U)
+		if (tribits[i] == 9U) {
 			return i;
+		}
 
 		state = tribits[i];
 	}

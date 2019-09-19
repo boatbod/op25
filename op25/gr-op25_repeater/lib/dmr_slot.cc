@@ -210,7 +210,7 @@ dmr_slot::decode_slot_type() {
 			break;
 		}
 		case 0x7: { // Rate 1/2 data
-			uint8_t pdp[96];
+			uint8_t pdp[96]; // bits
 			if (bptc.decode(d_slot, pdp))
 				rc = decode_pdp_12data(pdp);
 			else
@@ -218,7 +218,7 @@ dmr_slot::decode_slot_type() {
 			break;
 		}
 		case 0x8: { // Rate 3/4 data
-			uint8_t pdp[18];
+			uint8_t pdp[18]; // bytes
 			if (trellis.decode(d_slot, pdp))
 				rc = decode_pdp_34data(pdp);
 			else
@@ -416,7 +416,7 @@ dmr_slot::decode_pdp_header(uint8_t* dhdr) {
 			d_dhdr_state = DATA_VALID;
 
 		if (d_debug >= 10) {
-			fprintf(stderr, "%s Slot(%d), CC(%x), PDP HDR1 GF(%01x), DPF(%01x), SAP(%01x), POC(%01x), BF(%02x), DEST(%06x), SOURCE(%06x) : %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x\n", logts.get(d_msgq_id), d_chan, get_slot_cc(), pdp_gf, pdp_dpf, pdp_sap, pdp_poc, pdp_bf, get_dhdr_dst(), get_dhdr_src(),
+			fprintf(stderr, "%s Slot(%d), CC(%x), PDP HDR1 GF(%01x), DPF(%01x), SAP(%01x), POC(%01x), BF(%02x), DEST(%u), SOURCE(%u) : %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x\n", logts.get(d_msgq_id), d_chan, get_slot_cc(), pdp_gf, pdp_dpf, pdp_sap, pdp_poc, pdp_bf, get_dhdr_dst(), get_dhdr_src(),
 				d_dhdr[0], d_dhdr[1], d_dhdr[2], d_dhdr[3], d_dhdr[4], d_dhdr[5], d_dhdr[6], d_dhdr[7], d_dhdr[8], d_dhdr[9]);
 		}
 	}
@@ -478,7 +478,7 @@ dmr_slot::decode_pdp_12data(uint8_t* pdp) {
 			char szData[(d_len * 3) + 1];
 			for (int i = 0; i < d_len; i++)
 				sprintf((szData + (i *3)), "%02x ", d_pdp[i]);
-			fprintf(stderr, "%s Slot(%d), CC(%x), PDP RATE 1/2 DATA DEST(%06x), SOURCE(%06x) : %s\n", logts.get(d_msgq_id), d_chan, get_slot_cc(), get_dhdr_dst(), get_dhdr_src(), szData);
+			fprintf(stderr, "%s Slot(%d), CC(%x), PDP RATE 1/2 DATA DEST(%u), SOURCE(%u) : %s\n", logts.get(d_msgq_id), d_chan, get_slot_cc(), get_dhdr_dst(), get_dhdr_src(), szData);
 		}
 	}
 
