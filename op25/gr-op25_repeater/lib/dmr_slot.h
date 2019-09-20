@@ -138,6 +138,7 @@ private:
 	inline uint8_t  get_slot_cc()    { return d_slot_type.size() ? ((d_slot_type[0] << 3) + (d_slot_type[1] << 2) + (d_slot_type[2] << 1) + d_slot_type[3]) : 0xf; };
 	inline uint8_t  get_data_type()  { return d_slot_type.size() ? ((d_slot_type[4] << 3) + (d_slot_type[5] << 2) + (d_slot_type[6] << 1) + d_slot_type[7]) : 0x9; };
 
+	inline uint8_t  get_dhdr_dpf()   { return d_dhdr_valid ? (d_dhdr[0] & 0xf) : 0; };
 	inline uint8_t  get_dhdr_sap()   { return d_dhdr_valid ? (d_dhdr[1] >> 4) & 0xf : 0; };
 	inline uint32_t get_dhdr_dst()   { return d_dhdr_valid ? ((d_dhdr[2] << 16) + (d_dhdr[3] << 8) + d_dhdr[4]) : 0; };
 	inline uint32_t get_dhdr_src()   { return d_dhdr_valid ? ((d_dhdr[5] << 16) + (d_dhdr[6] << 8) + d_dhdr[7]) : 0; };

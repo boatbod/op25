@@ -459,16 +459,21 @@ dmr_slot::decode_pdp_12data(uint8_t* pdp) {
 		return false;
 	}
 
-	// Convert bits to bytes and save fragment
-	int offset = d_pdp.size();
-	d_pdp.insert(d_pdp.end(), 12, 0);
-	for (int i = 0; i < 96; i++) {
-		d_pdp[offset + (i / 8)] = (d_pdp[offset + (i / 8)] << 1) | pdp[i];
+
+	// Unconfirmed delivery format is all user-data
+	int startpos = 0;
+
+	// Confirmed delivery format contains DBSN and CRC9 which are not part of user-data
+	if (get_dhdr_dpf() == 3) {
+		//TODO: validate DBSN and CRC-9
+		startpos = 2;
 	}
 
-	if (d_debug >= 10) {
-		fprintf(stderr, "%s Slot(%d), CC(%x), PDP RATE 1/2 FRAGMENT : %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x\n", logts.get(d_msgq_id), d_chan, get_slot_cc(), d_pdp[offset + 0], d_pdp[offset + 1], d_pdp[offset + 2], d_pdp[offset + 3], d_pdp[offset + 4], d_pdp[offset + 5], d_pdp[offset + 6], d_pdp[offset + 7], d_pdp[offset + 8], d_pdp[offset + 9], d_pdp[offset + 10], d_pdp[offset + 11]);
-	}
+	// Convert bits to bytes and save fragment
+	int offset = d_pdp.size();
+	d_pdp.insert(d_pdp.end(), (12 - startpos), 0);
+	for (int i = (startpos * 8); i < 96; i++)
+		d_pdp[offset + (i / 8) - startpos] = (d_pdp[offset + (i / 8) - startpos] << 1) | pdp[i];
 
 	if (d_pdp_bf == 0) {
 		d_pdp_state = DATA_VALID;
@@ -495,19 +500,20 @@ dmr_slot::decode_pdp_34data(uint8_t* pdp) {
 		return false;
 	}
 
-	// Save fragment
-	int offset = d_pdp.size();
-	d_pdp.insert(d_pdp.end(), 18, 0);
-	for (int i = 0; i < 18; i++) {
-		d_pdp[offset + i] = pdp[i];
+	int startpos = 0;
+
+	// Confirmed delivery format contains DBSN and CRC9 which are not part of user-data
+	if (get_dhdr_dpf() == 3) {
+		//TODO: validate DBSN and CRC-9
+		startpos = 2;
 	}
 
-	if (d_debug >= 10) {
-		fprintf(stderr, "%s Slot(%d), CC(%x), PDP RATE 3/4 FRAGMENT : %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x\n", logts.get(d_msgq_id), d_chan, get_slot_cc(), d_pdp[offset + 0], d_pdp[offset + 1], d_pdp[offset + 2], d_pdp[offset + 3],
-						  d_pdp[offset + 4], d_pdp[offset + 5], d_pdp[offset + 6], d_pdp[offset + 7],
-						  d_pdp[offset + 8], d_pdp[offset + 9], d_pdp[offset + 10], d_pdp[offset + 11],
-						  d_pdp[offset + 12], d_pdp[offset + 13], d_pdp[offset + 14], d_pdp[offset + 15],
-						  d_pdp[offset + 16], d_pdp[offset + 17]);
+	// Save received fragment
+	// TODO: handle repeat transmissions with duplicate DBSN
+	int offset = d_pdp.size();
+	d_pdp.insert(d_pdp.end(), (18 - startpos), 0);
+	for (int i = startpos; i < 18; i++) {
+		d_pdp[offset + i - startpos] = pdp[i];
 	}
 
 	if (d_pdp_bf == 0) {
@@ -518,7 +524,7 @@ dmr_slot::decode_pdp_34data(uint8_t* pdp) {
 			char szData[(d_len * 3) + 1];
 			for (int i = 0; i < d_len; i++)
 				sprintf((szData + (i *3)), "%02x ", d_pdp[i]);
-			fprintf(stderr, "%s Slot(%d), CC(%x), PDP RATE 3/4 DATA DEST(%06x), SOURCE(%06x) : %s\n", logts.get(d_msgq_id), d_chan, get_slot_cc(), get_dhdr_dst(), get_dhdr_src(), szData);
+			fprintf(stderr, "%s Slot(%d), CC(%x), PDP RATE 3/4 DATA DEST(%u), SOURCE(%u) : %s\n", logts.get(d_msgq_id), d_chan, get_slot_cc(), get_dhdr_dst(), get_dhdr_src(), szData);
 		}
 	}
 
