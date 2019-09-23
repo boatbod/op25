@@ -89,4 +89,19 @@ static inline uint16_t crc16(const uint8_t buf[], int len) {
         crc = crc ^ 0xffff;
         return crc & 0xffff;
 }
+
+static inline uint32_t crc32(const uint8_t buf[], size_t len)
+{
+    uint32_t poly = 0xedb88320;
+    uint32_t crc  = 0;
+    int k;
+
+    crc = ~crc;
+    while (len--) {
+        crc ^= *buf++;
+        for (k = 0; k < 8; k++)
+            crc = crc & 1 ? (crc >> 1) ^ poly : crc >> 1;
+    }
+    return ~crc;
+}
 #endif /* INCLUDED_CRC16_H */
