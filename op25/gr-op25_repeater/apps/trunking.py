@@ -863,7 +863,7 @@ class rx_ctl (object):
         m_type = ctypes.c_int16(msg.type() & 0xffff).value
         m_ts = float(msg.arg2())
 
-        if m_proto != 0:	# P25 m_proto=0
+        if m_proto > 0:	# P25 m_proto=0
             return
 
         if (m_ts < self.last_tune_time) and (m_type != -2):
