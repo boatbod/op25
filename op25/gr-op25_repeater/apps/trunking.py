@@ -85,6 +85,7 @@ class trunked_system (object):
         self.last_tsbk = 0
         self.cc_timeouts = 0
         self.talkgroups = {}
+        self.patches ={}
         if config:
             self.blacklist = config['blacklist']
             self.whitelist = config['whitelist']
@@ -248,6 +249,30 @@ class trunked_system (object):
         for tg in expired_tgs:
             self.blacklist.pop(tg)
 
+    def add_patch(self, sg, ga1, ga2, ga3):
+        if sg not in self.patches:
+            self.patches[sg] = []
+
+        for ga in [ga1, ga2, ga3]:
+            if (ga != sg) and (ga not in self.patches[sg]):
+                self.patches[sg].append(ga)
+                if self.debug > 10:
+                    sys.stderr.write("%f tgid(%d) is patched to sg(%d)\n" % (time.time(), ga, sg))
+
+        if len(self.patches[sg]) == 0:
+            del self.patches[sg]
+
+    def del_patch(self, sg, ga1, ga2, ga3):
+        if sg not in self.patches:
+            return
+
+        for ga in [ga1, ga2, ga3]:
+            if ga in self.patches[sg]:
+                self.patches[sg].remove(ga)
+
+        if len(self.patches[sg]) == 0:
+            del self.patches[sg]
+
     def find_talkgroup(self, start_time, tgid=None, hold=False):
         tgt_tgid = None
         self.blacklist_update(start_time)
@@ -366,6 +391,7 @@ class trunked_system (object):
                 ga3   = (tsbk >> 16) & 0xffff
                 if self.debug > 10:
                     sys.stderr.write('MOT_GRG_ADD_CMD(0x00): sg:%d ga1:%d ga2:%d ga3:%d\n' % (sg, ga1, ga2, ga3))
+                self.add_patch(sg, ga1, ga2, ga3)
             else:
                 opts  = (tsbk >> 72) & 0xff
                 ch   = (tsbk >> 56) & 0xffff
@@ -386,6 +412,7 @@ class trunked_system (object):
                 ga3   = (tsbk >> 16) & 0xffff
                 if self.debug > 10:
                     sys.stderr.write('MOT_GRG_DEL_CMD(0x01): sg:%d ga1:%d ga2:%d ga3:%d\n' % (sg, ga1, ga2, ga3))
+                self.del_patch(sg, ga1, ga2, ga3)
         elif opcode == 0x02:   # group voice chan grant update
             mfrid  = (tsbk >> 80) & 0xff
             if mfrid == 0x90:
@@ -394,6 +421,9 @@ class trunked_system (object):
                 sa  = (tsbk >> 16) & 0xffffff
                 f = self.channel_id_to_frequency(ch)
                 self.update_voice_frequency(f, tgid=sg, tdma_slot=self.get_tdma_slot(ch), srcaddr=sa)
+                if sg in self.patches:	# update patched tgids
+                    for ga in self.patches[sg]:
+                        self.update_voice_frequency(f, tgid=ga, tdma_slot=self.get_tdma_slot(ch), srcaddr=sa)
                 if f:
                     updated += 1
                 if self.debug > 10:
@@ -424,8 +454,14 @@ class trunked_system (object):
                 f1 = self.channel_id_to_frequency(ch1)
                 f2 = self.channel_id_to_frequency(ch2)
                 self.update_voice_frequency(f1, tgid=sg1, tdma_slot=self.get_tdma_slot(ch1))
+                if sg1 in self.patches:		# updated patched tgids for freq1
+                    for ga in self.patches[sg1]:
+                        self.update_voice_frequency(f1, tgid=ga, tdma_slot=self.get_tdma_slot(ch1))
                 if f1 != f2:
                     self.update_voice_frequency(f2, tgid=sg2, tdma_slot=self.get_tdma_slot(ch2))
+                    if sg2 in self.patches:	# updated patched tgids for freq2
+                        for ga in self.patches[sg2]:
+                            self.update_voice_frequency(f2, tgid=ga, tdma_slot=self.get_tdma_slot(ch2))
                 if f1:
                     updated += 1
                 if f2:
