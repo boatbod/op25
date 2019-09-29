@@ -256,7 +256,7 @@ class trunked_system (object):
         for ga in [ga1, ga2, ga3]:
             if (ga != sg) and (ga not in self.patches[sg]):
                 self.patches[sg].append(ga)
-                if self.debug > 10:
+                if self.debug >= 5:
                     sys.stderr.write("%f tgid(%d) is patched to sg(%d)\n" % (time.time(), ga, sg))
 
         if len(self.patches[sg]) == 0:
@@ -269,6 +269,8 @@ class trunked_system (object):
         for ga in [ga1, ga2, ga3]:
             if ga in self.patches[sg]:
                 self.patches[sg].remove(ga)
+                if self.debug >= 5:
+                    sys.stderr.write("%f tgid(%d) is unpatched from sg(%d)\n" % (time.time(), ga, sg))
 
         if len(self.patches[sg]) == 0:
             del self.patches[sg]
