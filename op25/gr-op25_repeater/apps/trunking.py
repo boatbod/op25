@@ -81,6 +81,7 @@ class trunked_system (object):
         self.cc_list = []
         self.cc_list_index = 0
         self.CC_HUNT_TIME = 5.0
+        self.PATCH_EXPIRY_TIME = 4.0
         self.center_frequency = 0
         self.last_tsbk = 0
         self.cc_timeouts = 0
@@ -251,15 +252,19 @@ class trunked_system (object):
 
     def add_patch(self, sg, ga1, ga2, ga3):
         if sg not in self.patches:
-            self.patches[sg] = []
+            self.patches[sg] = {}
+            self.patches[sg]['ga'] = []
+            self.patches[sg]['ts'] = time.time()
 
         for ga in [ga1, ga2, ga3]:
-            if (ga != sg) and (ga not in self.patches[sg]):
-                self.patches[sg].append(ga)
-                if self.debug >= 5:
-                    sys.stderr.write("%f tgid(%d) is patched to sg(%d)\n" % (time.time(), ga, sg))
+            if (ga != sg):
+                self.patches[sg]['ts'] = time.time() # update timestamp
+                if ga not in self.patches[sg]['ga']:
+                    self.patches[sg]['ga'].append(ga)
+                    if self.debug >= 5:
+                        sys.stderr.write("%f tgid(%d) is patched to sg(%d)\n" % (time.time(), ga, sg))
 
-        if len(self.patches[sg]) == 0:
+        if len(self.patches[sg]['ga']) == 0:
             del self.patches[sg]
 
     def del_patch(self, sg, ga1, ga2, ga3):
@@ -267,13 +272,21 @@ class trunked_system (object):
             return
 
         for ga in [ga1, ga2, ga3]:
-            if ga in self.patches[sg]:
-                self.patches[sg].remove(ga)
+            if ga in self.patches[sg]['ga']:
+                self.patches[sg]['ga'].remove(ga)
                 if self.debug >= 5:
                     sys.stderr.write("%f tgid(%d) is unpatched from sg(%d)\n" % (time.time(), ga, sg))
 
-        if len(self.patches[sg]) == 0:
+        if len(self.patches[sg]['ga']) == 0:
             del self.patches[sg]
+
+    def expire_patches(self):
+        time_now = time.time()
+        for sg in list(self.patches):
+            if time_now > (self.patches[sg]['ts'] + self.PATCH_EXPIRY_TIME):
+                del self.patches[sg]
+                if self.debug >= 5:
+                    sys.stderr.write("%f deleting expired patch sg(%d)\n" % (time.time(), sg))
 
     def find_talkgroup(self, start_time, tgid=None, hold=False):
         tgt_tgid = None
@@ -424,7 +437,7 @@ class trunked_system (object):
                 f = self.channel_id_to_frequency(ch)
                 self.update_voice_frequency(f, tgid=sg, tdma_slot=self.get_tdma_slot(ch), srcaddr=sa)
                 if sg in self.patches:	# update patched tgids
-                    for ga in self.patches[sg]:
+                    for ga in self.patches[sg]['ga']:
                         self.update_voice_frequency(f, tgid=ga, tdma_slot=self.get_tdma_slot(ch), srcaddr=sa)
                 if f:
                     updated += 1
@@ -457,12 +470,12 @@ class trunked_system (object):
                 f2 = self.channel_id_to_frequency(ch2)
                 self.update_voice_frequency(f1, tgid=sg1, tdma_slot=self.get_tdma_slot(ch1))
                 if sg1 in self.patches:		# updated patched tgids for freq1
-                    for ga in self.patches[sg1]:
+                    for ga in self.patches[sg1]['ga']:
                         self.update_voice_frequency(f1, tgid=ga, tdma_slot=self.get_tdma_slot(ch1))
                 if f1 != f2:
                     self.update_voice_frequency(f2, tgid=sg2, tdma_slot=self.get_tdma_slot(ch2))
                     if sg2 in self.patches:	# updated patched tgids for freq2
-                        for ga in self.patches[sg2]:
+                        for ga in self.patches[sg2]['ga']:
                             self.update_voice_frequency(f2, tgid=ga, tdma_slot=self.get_tdma_slot(ch2))
                 if f1:
                     updated += 1
@@ -1138,6 +1151,7 @@ class rx_ctl (object):
                 new_state = self.states.CC
                 new_frequency = tsys.trunk_cc
         elif command == 'update':
+            tsys.expire_patches()
             if self.current_state == self.states.CC:
                 desired_tgid = None
                 if (self.tgid_hold is not None) and (self.tgid_hold_until > curr_time):
