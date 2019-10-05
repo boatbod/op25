@@ -81,7 +81,7 @@ class trunked_system (object):
         self.cc_list = []
         self.cc_list_index = 0
         self.CC_HUNT_TIME = 5.0
-        self.PATCH_EXPIRY_TIME = 4.0
+        self.PATCH_EXPIRY_TIME = 20.0
         self.center_frequency = 0
         self.last_tsbk = 0
         self.cc_timeouts = 0
@@ -204,6 +204,14 @@ class trunked_system (object):
             return 3
         return self.tgid_map[tgid][1]
 
+    def update_talkgroups(self, frequency, tgid, tdma_slot, srcaddr):
+        self.update_talkgroup(frequency, tgid, tdma_slot, srcaddr)
+        if tgid in self.patches:
+            for ptgid in self.patches[tgid]['ga']:
+                self.update_talkgroup(frequency, ptgid, tdma_slot, srcaddr)
+                if self.debug >= 5:
+                    sys.stderr.write('%f update_talkgroups: sg(%d) patched tgid(%d)\n' % (time.time(), tgid, ptgid))
+
     def update_talkgroup(self, frequency, tgid, tdma_slot, srcaddr):
         if self.debug >= 5:
             sys.stderr.write('%f set tgid=%s, srcaddr=%s\n' % (time.time(), tgid, srcaddr))
@@ -221,7 +229,7 @@ class trunked_system (object):
     def update_voice_frequency(self, frequency, tgid=None, tdma_slot=None, srcaddr=0):
         if not frequency:	# e.g., channel identifier not yet known
             return
-        self.update_talkgroup(frequency, tgid, tdma_slot, srcaddr)
+        self.update_talkgroups(frequency, tgid, tdma_slot, srcaddr)
         if frequency not in self.voice_frequencies:
             self.voice_frequencies[frequency] = {'counter':0}
             sorted_freqs = collections.OrderedDict(sorted(self.voice_frequencies.items()))
@@ -253,16 +261,16 @@ class trunked_system (object):
     def add_patch(self, sg, ga1, ga2, ga3):
         if sg not in self.patches:
             self.patches[sg] = {}
-            self.patches[sg]['ga'] = []
+            self.patches[sg]['ga'] = set()
             self.patches[sg]['ts'] = time.time()
 
         for ga in [ga1, ga2, ga3]:
             if (ga != sg):
                 self.patches[sg]['ts'] = time.time() # update timestamp
                 if ga not in self.patches[sg]['ga']:
-                    self.patches[sg]['ga'].append(ga)
+                    self.patches[sg]['ga'].add(ga)
                     if self.debug >= 5:
-                        sys.stderr.write("%f tgid(%d) is patched to sg(%d)\n" % (time.time(), ga, sg))
+                        sys.stderr.write("%f add_patch: tgid(%d) is patched to sg(%d)\n" % (time.time(), ga, sg))
 
         if len(self.patches[sg]['ga']) == 0:
             del self.patches[sg]
@@ -273,11 +281,11 @@ class trunked_system (object):
 
         for ga in [ga1, ga2, ga3]:
             if ga in self.patches[sg]['ga']:
-                self.patches[sg]['ga'].remove(ga)
+                self.patches[sg]['ga'].discard(ga)
                 if self.debug >= 5:
-                    sys.stderr.write("%f tgid(%d) is unpatched from sg(%d)\n" % (time.time(), ga, sg))
+                    sys.stderr.write("%f del_patch: tgid(%d) is unpatched from sg(%d)\n" % (time.time(), ga, sg))
 
-        if len(self.patches[sg]['ga']) == 0:
+        if (ga1 == sg) or (len(self.patches[sg]['ga']) == 0):
             del self.patches[sg]
 
     def expire_patches(self):
@@ -286,7 +294,7 @@ class trunked_system (object):
             if time_now > (self.patches[sg]['ts'] + self.PATCH_EXPIRY_TIME):
                 del self.patches[sg]
                 if self.debug >= 5:
-                    sys.stderr.write("%f deleting expired patch sg(%d)\n" % (time.time(), sg))
+                    sys.stderr.write("%f expired_patches: expiring patch sg(%d)\n" % (time.time(), sg))
 
     def find_talkgroup(self, start_time, tgid=None, hold=False):
         tgt_tgid = None
@@ -400,15 +408,15 @@ class trunked_system (object):
         if opcode == 0x00:   # group voice chan grant
             mfrid  = (tsbk >> 80) & 0xff
             if mfrid == 0x90:	# MOT_GRG_ADD_CMD
-                sg  = (tsbk >> 64) & 0xffff
-                ga1   = (tsbk >> 48) & 0xffff
-                ga2   = (tsbk >> 32) & 0xffff
-                ga3   = (tsbk >> 16) & 0xffff
+                sg   = (tsbk >> 64) & 0xffff
+                ga1  = (tsbk >> 48) & 0xffff
+                ga2  = (tsbk >> 32) & 0xffff
+                ga3  = (tsbk >> 16) & 0xffff
                 if self.debug > 10:
                     sys.stderr.write('MOT_GRG_ADD_CMD(0x00): sg:%d ga1:%d ga2:%d ga3:%d\n' % (sg, ga1, ga2, ga3))
                 self.add_patch(sg, ga1, ga2, ga3)
             else:
-                opts  = (tsbk >> 72) & 0xff
+                opts = (tsbk >> 72) & 0xff
                 ch   = (tsbk >> 56) & 0xffff
                 ga   = (tsbk >> 40) & 0xffff
                 sa   = (tsbk >> 16) & 0xffffff
@@ -421,10 +429,10 @@ class trunked_system (object):
         elif opcode == 0x01:   # reserved
             mfrid  = (tsbk >> 80) & 0xff
             if mfrid == 0x90: #MOT_GRG_DEL_CMD
-                sg  = (tsbk >> 64) & 0xffff
-                ga1   = (tsbk >> 48) & 0xffff
-                ga2   = (tsbk >> 32) & 0xffff
-                ga3   = (tsbk >> 16) & 0xffff
+                sg   = (tsbk >> 64) & 0xffff
+                ga1  = (tsbk >> 48) & 0xffff
+                ga2  = (tsbk >> 32) & 0xffff
+                ga3  = (tsbk >> 16) & 0xffff
                 if self.debug > 10:
                     sys.stderr.write('MOT_GRG_DEL_CMD(0x01): sg:%d ga1:%d ga2:%d ga3:%d\n' % (sg, ga1, ga2, ga3))
                 self.del_patch(sg, ga1, ga2, ga3)
@@ -436,9 +444,6 @@ class trunked_system (object):
                 sa  = (tsbk >> 16) & 0xffffff
                 f = self.channel_id_to_frequency(ch)
                 self.update_voice_frequency(f, tgid=sg, tdma_slot=self.get_tdma_slot(ch), srcaddr=sa)
-                if sg in self.patches:	# update patched tgids
-                    for ga in self.patches[sg]['ga']:
-                        self.update_voice_frequency(f, tgid=ga, tdma_slot=self.get_tdma_slot(ch), srcaddr=sa)
                 if f:
                     updated += 1
                 if self.debug > 10:
@@ -462,21 +467,15 @@ class trunked_system (object):
         elif opcode == 0x03:   # group voice chan grant update exp : TIA.102-AABC-B-2005 page 56
             mfrid  = (tsbk >> 80) & 0xff
             if mfrid == 0x90: #MOT_GRG_CN_GRANT_UPDT
-                ch1   = (tsbk >> 64) & 0xffff
+                ch1  = (tsbk >> 64) & 0xffff
                 sg1  = (tsbk >> 48) & 0xffff
-                ch2   = (tsbk >> 32) & 0xffff
+                ch2  = (tsbk >> 32) & 0xffff
                 sg2  = (tsbk >> 16) & 0xffff
                 f1 = self.channel_id_to_frequency(ch1)
                 f2 = self.channel_id_to_frequency(ch2)
                 self.update_voice_frequency(f1, tgid=sg1, tdma_slot=self.get_tdma_slot(ch1))
-                if sg1 in self.patches:		# updated patched tgids for freq1
-                    for ga in self.patches[sg1]['ga']:
-                        self.update_voice_frequency(f1, tgid=ga, tdma_slot=self.get_tdma_slot(ch1))
                 if f1 != f2:
                     self.update_voice_frequency(f2, tgid=sg2, tdma_slot=self.get_tdma_slot(ch2))
-                    if sg2 in self.patches:	# updated patched tgids for freq2
-                        for ga in self.patches[sg2]['ga']:
-                            self.update_voice_frequency(f2, tgid=ga, tdma_slot=self.get_tdma_slot(ch2))
                 if f1:
                     updated += 1
                 if f2:
@@ -508,6 +507,27 @@ class trunked_system (object):
             ta     = (tsbk >> 16) & 0xffffff
             if self.debug > 10:
                 sys.stderr.write('tsbk28 grp_aff_resp: mfrid: 0x%x, gav: %d, aga: %d, ga: %d, ta: %d\n' % (mfrid, gav, aga, ga, ta))
+        elif opcode == 0x30:
+            mfrid  = (tsbk >> 80) & 0xff
+            if mfrid == 0xA4:  # GRG_EXENC_CMD
+                grg_t   = (tsbk >> 79) & 0x1
+                grg_g   = (tsbk >> 78) & 0x1
+                grg_a   = (tsbk >> 77) & 0x1
+                grg_ssn = (tsbk >> 72) & 0x1f # TODO: SSN should be stored and checked
+                sg      = (tsbk >> 56) & 0xffff
+                keyid   = (tsbk >> 40) & 0xffff
+                rta     = (tsbk >> 16) & 0xffffff
+                if self.debug > 10:
+                    sys.stderr.write('GRG_EXENC_CMD(0x30): grg_t:%d, grg_g:%d, grg_a:%d, grg_ssn:%d, sg:%d, keyid:%d, rta:%d\n' % (grg_t, grg_g, grg_a, grg_ssn, sg, keyid, rta))
+                if grg_g == 1: # Group request
+                    algid = (rta >> 16) & 0xff
+                    ga    =  rta        & 0xffff
+                    if grg_a == 1: # Activate
+                        self.add_patch(sg, ga, ga, ga)
+                    else:          # Deactivate
+                        self.del_patch(sg, ga, ga, ga)
+                else:          # Unit request (currently unhandled)
+                    pass
         elif opcode == 0x34:   # iden_up vhf uhf
             iden = (tsbk >> 76) & 0xf
             bwvu = (tsbk >> 72) & 0xf
