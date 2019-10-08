@@ -519,15 +519,15 @@ class trunked_system (object):
                 rta     = (tsbk >> 16) & 0xffffff
                 if self.debug > 10:
                     sys.stderr.write('GRG_EXENC_CMD(0x30): grg_t:%d, grg_g:%d, grg_a:%d, grg_ssn:%d, sg:%d, keyid:%d, rta:%d\n' % (grg_t, grg_g, grg_a, grg_ssn, sg, keyid, rta))
-                if grg_g == 1: # Group request
-                    algid = (rta >> 16) & 0xff
-                    ga    =  rta        & 0xffff
-                    if grg_a == 1: # Activate
+                if grg_a == 1: # Activate
+                    if grg_g == 1: # Group request
+                        algid = (rta >> 16) & 0xff
+                        ga    =  rta        & 0xffff
                         self.add_patch(sg, ga, ga, ga)
-                    else:          # Deactivate
-                        self.del_patch(sg, ga, ga, ga)
-                else:          # Unit request (currently unhandled)
-                    pass
+                    else:          # Unit request (currently unhandled)
+                        pass
+                else:          # Deactivate
+                    self.del_patch(sg, 0, 0, 0)
         elif opcode == 0x34:   # iden_up vhf uhf
             iden = (tsbk >> 76) & 0xf
             bwvu = (tsbk >> 72) & 0xf
