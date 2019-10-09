@@ -350,6 +350,18 @@ class trunked_system (object):
                 updated += 1
             if self.debug > 10:
                 sys.stderr.write('mbt00 voice grant ch1 %x ch2 %x addr 0x%x\n' %(ch1, ch2, ga))
+        if opcode == 0x02: # grp regroup voice channel grant
+            mfrid  = (mbt_data >> 168) & 0xff
+            if mfrid == 0x90:	# MOT_GRG_CN_GRANT_EXP
+                ch1  = (mbt_data >> 80) & 0xffff
+                ch2  = (mbt_data >> 64) & 0xffff
+                sg   = (mbt_data >> 48) & 0xffff
+                f = self.channel_id_to_frequency(ch1)
+                self.update_voice_frequency(f, tgid=sg, tdma_slot=self.get_tdma_slot(ch1), srcaddr=src)
+                if f:
+                    updated += 1
+                if self.debug > 10:
+                    sys.stderr.write('mbt02 voice regroup grant ch1 %x ch2 %x addr 0x%x\n' %(ch1, ch2, ga))
         elif opcode == 0x3c:  # adjacent status
             syid = (header >> 48) & 0xfff
             rfid = (header >> 24) & 0xff
