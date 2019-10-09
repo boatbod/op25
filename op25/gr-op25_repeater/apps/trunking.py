@@ -285,7 +285,7 @@ class trunked_system (object):
                 if self.debug >= 5:
                     sys.stderr.write("%f del_patch: tgid(%d) is unpatched from sg(%d)\n" % (time.time(), ga, sg))
 
-        if (ga1 == sg) or (len(self.patches[sg]['ga']) == 0):
+        if ((ga1 == 0) and (ga2 == 0) and (ga3 ==0)) or (len(self.patches[sg]['ga']) == 0):
             del self.patches[sg]
 
     def expire_patches(self):
