@@ -334,7 +334,22 @@ class trunked_system (object):
     def add_blacklist(self, tgid, end_time=None):
         if not tgid:
             return
+        if tgid in self.blacklist:
+            return
         self.blacklist[tgid] = end_time
+        if self.debug > 0:
+            sys.stderr.write("%f blacklisting tgid(%d)\n" % (time.time(), tgid))
+
+    def add_whitelist(self, tgid):
+        if not tgid:
+            return
+        if not self.whitelist:
+            self.whitelist = {}
+        if tgid in self.whitelist:
+            return
+        self.whitelist[tgid] = None
+        if self.debug > 0:
+            sys.stderr.write("%f whitelisting tgid(%d)\n" % (time.time(), tgid))
 
     def decode_mbt_data(self, opcode, src, header, mbt_data):
         self.cc_timeouts = 0
@@ -1284,6 +1299,20 @@ class rx_ctl (object):
                 if command == 'skip':
                     end_time = curr_time + self.TGID_SKIP_TIME
                 tsys.add_blacklist(self.current_tgid, end_time=end_time)
+                self.current_tgid = None
+                self.tgid_hold = None
+                self.tgid_hold_until = curr_time
+                self.hold_mode = False
+                if self.current_state != self.states.CC:
+                    new_state = self.states.CC
+                    new_frequency = tsys.trunk_cc
+        elif command == 'whitelist':
+            if (cmd_data <= 0) or (cmd_data > 65534):
+                if self.debug > 0:
+                    sys.stderr.write("%f whitelist tgid(%d) out of range (1-65534)\n" % (time.time(), cmd_data))
+                return
+            tsys.add_whitelist(cmd_data)
+            if self.current_tgid and self.current_id not in self.whitelist:
                 self.current_tgid = None
                 self.tgid_hold = None
                 self.tgid_hold_until = curr_time

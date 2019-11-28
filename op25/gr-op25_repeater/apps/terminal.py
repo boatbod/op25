@@ -195,8 +195,26 @@ class curses_terminal(threading.Thread):
                     tgid = 0
             except:
                 tgid = 0
-            self.send_command('hold', tgid)
- 
+            if tgid:
+                self.send_command('hold', tgid)
+        elif c == ord('w'):
+            self.prompt.addstr(0, 0, 'W/L tgid')
+            self.prompt.refresh()
+            self.text_win.erase()
+            response = self.textpad.edit()
+            self.prompt.erase()
+            self.prompt.refresh()
+            self.text_win.erase()
+            self.text_win.refresh()
+            self.title_help()
+            try:
+                tgid = int(response)
+                if (tgid < 0) or (tgid > 65534):
+                    tgid = 0
+            except:
+                tgid = 0
+            if tgid:
+                self.send_command('whitelist', tgid)
         elif c == ord(','):
             self.send_command('adj_tune', -100)
         elif c == ord('.'):
