@@ -347,14 +347,12 @@ class trunked_system (object):
     def add_whitelist(self, tgid):
         if not tgid:
             return
-        if not self.whitelist:
-            self.whitelist = {}
-        if tgid in self.whitelist:
-            return
         if self.blacklist and tgid in self.blacklist:
             self.blacklist.pop(tgid)
             if self.debug > 0:
                 sys.stderr.write("%f de-blacklisting tgid(%d)\n" % (time.time(), tgid))
+        if not self.whitelist or tgid in self.whitelist:
+            return
         self.whitelist[tgid] = None
         if self.debug > 0:
             sys.stderr.write("%f whitelisting tgid(%d)\n" % (time.time(), tgid))
