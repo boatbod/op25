@@ -336,6 +336,10 @@ class trunked_system (object):
             return
         if tgid in self.blacklist:
             return
+        if self.whitelist and tgid in self.whitelist:
+            self.whitelist.pop(tgid)
+            if self.debug > 0:
+                sys.stderr.write("%f de-whitelisting tgid(%d)\n" % (time.time(), tgid))
         self.blacklist[tgid] = end_time
         if self.debug > 0:
             sys.stderr.write("%f blacklisting tgid(%d)\n" % (time.time(), tgid))
@@ -347,6 +351,10 @@ class trunked_system (object):
             self.whitelist = {}
         if tgid in self.whitelist:
             return
+        if self.blacklist and tgid in self.blacklist:
+            self.blacklist.pop(tgid)
+            if self.debug > 0:
+                sys.stderr.write("%f de-blacklisting tgid(%d)\n" % (time.time(), tgid))
         self.whitelist[tgid] = None
         if self.debug > 0:
             sys.stderr.write("%f whitelisting tgid(%d)\n" % (time.time(), tgid))
@@ -1294,7 +1302,7 @@ class rx_ctl (object):
                 self.tgid_hold_until = curr_time
                 self.hold_mode = False
         elif command == 'skip' or command == 'lockout':
-            if self.current_tgid:
+            if self.current_tgid and cmd_data == self.current_id:
                 end_time = None
                 if command == 'skip':
                     end_time = curr_time + self.TGID_SKIP_TIME
@@ -1306,6 +1314,13 @@ class rx_ctl (object):
                 if self.current_state != self.states.CC:
                     new_state = self.states.CC
                     new_frequency = tsys.trunk_cc
+            else:
+                if (cmd_data <= 0) or (cmd_data > 65534):
+                    if self.debug > 0:
+                        sys.stderr.write("%f blacklist tgid(%d) out of range (1-65534)\n" % (time.time(), cmd_data))
+                    return
+                tsys.add_blacklist(cmd_data)
+
         elif command == 'whitelist':
             if (cmd_data <= 0) or (cmd_data > 65534):
                 if self.debug > 0:

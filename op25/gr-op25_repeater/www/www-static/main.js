@@ -401,6 +401,11 @@ function f_scan_button(command) {
         if (isNaN(_tgid) || (_tgid < 0) || (_tgid > 65535))
             _tgid = 0;
     }
+    else if (command == "lockout") {
+        _tgid = parseInt(prompt("Enter tgid to blacklist", _tgid));
+        if (isNaN(_tgid) || (_tgid <= 0) || (_tgid > 65534))
+            return;
+    }
     else if (command == "whitelist") {
         _tgid = parseInt(prompt("Enter tgid to whitelist", _tgid));
         if (isNaN(_tgid) || (_tgid <= 0) || (_tgid > 65534))
