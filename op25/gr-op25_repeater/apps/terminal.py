@@ -150,7 +150,8 @@ class curses_terminal(threading.Thread):
         _ORD_S = ord('s')
         _ORD_L = ord('l')
         _ORD_H = ord('h')
-        COMMANDS = {_ORD_S: 'skip', _ORD_L: 'lockout', _ORD_H: 'hold'}
+        _ORD_R = ord('R')
+        COMMANDS = {_ORD_S: 'skip', _ORD_L: 'lockout', _ORD_H: 'hold', _ORD_R: 'reload'}
         c = self.stdscr.getch()
         if c == ord('u') or self.do_auto_update():
             self.send_command('update', 0)
