@@ -1,5 +1,6 @@
 
 // Copyright 2017, 2018 Max H. Parke KA1RBI
+// Copyright 2018, 2019 gnorbury@bondcar.com
 // 
 // This file is part of OP25
 // 
@@ -390,18 +391,28 @@ function f_plot_button(command) {
 }
 
 function f_scan_button(command) {
-    var hold_tgid = 0;
+    var _tgid = 0;
 
     if (command == "goto") {
         command = "hold"
         if (current_tgid != null)
-           hold_tgid = current_tgid;
-        hold_tgid = parseInt(prompt("Enter tgid to hold", hold_tgid));
-        if (isNaN(hold_tgid) || (hold_tgid < 0) || (hold_tgid > 65535))
-            hold_tgid = 0;
+           _tgid = current_tgid;
+        _tgid = parseInt(prompt("Enter tgid to hold", _tgid));
+        if (isNaN(_tgid) || (_tgid < 0) || (_tgid > 65535))
+            _tgid = 0;
+    }
+    else if ((command == "lockout") && (current_tgid == null)) {
+        _tgid = parseInt(prompt("Enter tgid to blacklist", _tgid));
+        if (isNaN(_tgid) || (_tgid <= 0) || (_tgid > 65534))
+            return;
+    }
+    else if (command == "whitelist") {
+        _tgid = parseInt(prompt("Enter tgid to whitelist", _tgid));
+        if (isNaN(_tgid) || (_tgid <= 0) || (_tgid > 65534))
+            return;
     }
 
-    send_command(command, hold_tgid);
+    send_command(command, _tgid);
 }
 
 function f_debug() {

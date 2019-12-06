@@ -123,7 +123,7 @@ class curses_terminal(threading.Thread):
 
     def title_help(self):
         title_str = "OP25"
-        help_str = "(f)req (h)old (s)kip (l)ock (q)uit (1-5)plot (,.<>)tune"
+        help_str = "(f)req (h)old (s)kip (l)ock (W)list (B)list (q)uit (1-5)plot (,.<>)tune"
         self.title_bar.erase()
         self.help_bar.erase()
         self.title_bar.addstr(0, 0, title_str.center(self.maxx-1, " "), curses.A_REVERSE)
@@ -150,7 +150,8 @@ class curses_terminal(threading.Thread):
         _ORD_S = ord('s')
         _ORD_L = ord('l')
         _ORD_H = ord('h')
-        COMMANDS = {_ORD_S: 'skip', _ORD_L: 'lockout', _ORD_H: 'hold'}
+        _ORD_R = ord('R')
+        COMMANDS = {_ORD_S: 'skip', _ORD_L: 'lockout', _ORD_H: 'hold', _ORD_R: 'reload'}
         c = self.stdscr.getch()
         if c == ord('u') or self.do_auto_update():
             self.send_command('update', 0)
@@ -195,8 +196,44 @@ class curses_terminal(threading.Thread):
                     tgid = 0
             except:
                 tgid = 0
-            self.send_command('hold', tgid)
- 
+            if tgid:
+                self.send_command('hold', tgid)
+        elif c == ord('W'):
+            self.prompt.addstr(0, 0, 'W/L tgid ')
+            self.prompt.refresh()
+            self.text_win.erase()
+            response = self.textpad.edit()
+            self.prompt.erase()
+            self.prompt.refresh()
+            self.text_win.erase()
+            self.text_win.refresh()
+            self.title_help()
+            try:
+                tgid = int(response)
+                if (tgid < 0) or (tgid > 65534):
+                    tgid = 0
+            except:
+                tgid = 0
+            if tgid:
+                self.send_command('whitelist', tgid)
+        elif c == ord('B'):
+            self.prompt.addstr(0, 0, 'B/L tgid ')
+            self.prompt.refresh()
+            self.text_win.erase()
+            response = self.textpad.edit()
+            self.prompt.erase()
+            self.prompt.refresh()
+            self.text_win.erase()
+            self.text_win.refresh()
+            self.title_help()
+            try:
+                tgid = int(response)
+                if (tgid < 0) or (tgid > 65534):
+                    tgid = 0
+            except:
+                tgid = 0
+            if tgid:
+                self.send_command('lockout', tgid)
         elif c == ord(','):
             self.send_command('adj_tune', -100)
         elif c == ord('.'):

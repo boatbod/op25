@@ -334,7 +334,28 @@ class trunked_system (object):
     def add_blacklist(self, tgid, end_time=None):
         if not tgid:
             return
+        if tgid in self.blacklist:
+            return
+        if self.whitelist and tgid in self.whitelist:
+            self.whitelist.pop(tgid)
+            if self.debug > 0:
+                sys.stderr.write("%f de-whitelisting tgid(%d)\n" % (time.time(), tgid))
         self.blacklist[tgid] = end_time
+        if self.debug > 0:
+            sys.stderr.write("%f blacklisting tgid(%d)\n" % (time.time(), tgid))
+
+    def add_whitelist(self, tgid):
+        if not tgid:
+            return
+        if self.blacklist and tgid in self.blacklist:
+            self.blacklist.pop(tgid)
+            if self.debug > 0:
+                sys.stderr.write("%f de-blacklisting tgid(%d)\n" % (time.time(), tgid))
+        if not self.whitelist or tgid in self.whitelist:
+            return
+        self.whitelist[tgid] = None
+        if self.debug > 0:
+            sys.stderr.write("%f whitelisting tgid(%d)\n" % (time.time(), tgid))
 
     def decode_mbt_data(self, opcode, src, header, mbt_data):
         self.cc_timeouts = 0
@@ -892,6 +913,7 @@ class rx_ctl (object):
             for k in ['whitelist', 'blacklist']:
                 if k in configs[nac]:
                     sys.stderr.write("Reading %s file\n" % k)
+                    self.configs[nac][k + ".file"] = configs[nac][k]
                     self.configs[nac][k] = get_int_dict(configs[nac][k])
             if 'tgid_tags_file' in configs[nac]:
                 import csv
@@ -1279,7 +1301,7 @@ class rx_ctl (object):
                 self.tgid_hold_until = curr_time
                 self.hold_mode = False
         elif command == 'skip' or command == 'lockout':
-            if self.current_tgid:
+            if self.current_tgid and cmd_data == self.current_id:
                 end_time = None
                 if command == 'skip':
                     end_time = curr_time + self.TGID_SKIP_TIME
@@ -1291,6 +1313,43 @@ class rx_ctl (object):
                 if self.current_state != self.states.CC:
                     new_state = self.states.CC
                     new_frequency = tsys.trunk_cc
+            else:
+                if (cmd_data <= 0) or (cmd_data > 65534):
+                    if self.debug > 0:
+                        sys.stderr.write("%f blacklist tgid(%d) out of range (1-65534)\n" % (time.time(), cmd_data))
+                    return
+                tsys.add_blacklist(cmd_data)
+        elif command == 'whitelist':
+            if (cmd_data <= 0) or (cmd_data > 65534):
+                if self.debug > 0:
+                    sys.stderr.write("%f whitelist tgid(%d) out of range (1-65534)\n" % (time.time(), cmd_data))
+                return
+            tsys.add_whitelist(cmd_data)
+            if self.current_tgid and self.whitelist and self.current_id not in self.whitelist:
+                self.current_tgid = None
+                self.tgid_hold = None
+                self.tgid_hold_until = curr_time
+                self.hold_mode = False
+                if self.current_state != self.states.CC:
+                    new_state = self.states.CC
+                    new_frequency = tsys.trunk_cc
+        elif command == 'reload':
+            nac = self.current_nac
+            sys.stderr.write("%f reloading blacklist & whitelist files for nac(%x)\n" % (time.time(), nac))
+            tsys.blacklist.clear()
+            if 'blacklist.file' in self.configs[nac]:
+                self.configs[nac]['blacklist'] = get_int_dict(self.configs[nac]['blacklist.file'])
+                tsys.blacklist = self.configs[nac]['blacklist']
+            if 'whitelist.file' in self.configs[nac]:
+                self.configs[nac]['whitelist'] = get_int_dict(self.configs[nac]['whitelist.file'])
+                tsys.whitelist = self.configs[nac]['whitelist']
+            self.current_tgid = None
+            self.tgid_hold = None
+            self.tgid_hold_until = curr_time
+            self.hold_mode = False
+            if self.current_state != self.states.CC:
+                new_state = self.states.CC
+                new_frequency = tsys.trunk_cc
         else:
             sys.stderr.write('update_state: unknown command: %s\n' % command)
             assert 0 == 1

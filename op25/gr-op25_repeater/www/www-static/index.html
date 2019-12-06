@@ -20,7 +20,7 @@
 <li id="li1" class="nav-li"><input id="b1" class="nav-button" type="button" name="B1" value="Home" method="post" action="" onclick="javascript:f_select(&quot;status&quot;);"></li>
 <li id="li2" class="nav-li"><input id="b2" class="nav-button" type="button" name="B2" value="Plot" method="post" action="" onclick="javascript:f_select(&quot;plot&quot;);"></li>
 <li id="li3" class="nav-li"><input id="b3" class="nav-button" type="button" name="B3" value="About" method="post" action="" onclick="javascript:f_select(&quot;about&quot;);"></li>
-<li id="li4"><span class="copyr"> &copy; 2017, 2018 Max H. Parke KA1RBI [boatbod version]</span></li>
+<li id="li4"><span class="copyr"> &copy; 2017-2019 Max H. Parke & Graham J. Norbury [boatbod version]</span></li>
 </ul> 
 </div>
 <div id="div_debug" style="display: none;">
@@ -31,19 +31,23 @@
 <div id="controls1" class="flex-container">
 
 	<div>
-	<input type="button" class="scan-button" name="skip" value="SKIP" onclick="javascript:f_scan_button(&quot;skip&quot;);">
+	<input type="button" class="scan-button" name="skip" value="SKIP" title="Skip current tgid" onclick="javascript:f_scan_button(&quot;skip&quot;);">
 	</div>
 
 	<div>
-	<input type="button" class="scan-button" name="hold" value="HOLD" onclick="javascript:f_scan_button(&quot;hold&quot;);">
+	<input type="button" class="scan-button" name="hold" value="HOLD" title="Hold current tgid" onclick="javascript:f_scan_button(&quot;hold&quot;);">
 	</div>
 
 	<div>
-	<input type="button" class="scan-button" name="goto" value="GOTO" onclick="javascript:f_scan_button(&quot;goto&quot;);">
+	<input type="button" class="scan-button" name="goto" value="GOTO" title="Go to tgid" onclick="javascript:f_scan_button(&quot;goto&quot;);">
 	</div>
 
 	<div>
-	<input type="button" class="scan-button" name="lockout" value="LOCKOUT" onclick="javascript:f_scan_button(&quot;lockout&quot;);">
+	<input type="button" class="scan-button" name="lockout" value="BkLIST" title="Blacklist tgid" onclick="javascript:f_scan_button(&quot;lockout&quot;);">
+	</div>
+
+	<div>
+	<input type="button" class="scan-button" name="whitelist" value="WhLIST" title="Whitelist tgid" onclick="javascript:f_scan_button(&quot;whitelist&quot;);">
 	</div>
 
 	<div>
@@ -51,19 +55,19 @@
 	</div>
 
 	<div>
-	<input type="button" class="scan-button" name="<<" value="<<" onclick="javascript:f_tune_button(-1200);">
+	<input type="button" class="scan-button" name="<<" value="<<" title="Adjust tune -1200" onclick="javascript:f_tune_button(-1200);">
 	</div>
 
 	<div>
-	<input type="button" class="scan-button" name="<" value="<" onclick="javascript:f_tune_button(-100);">
+	<input type="button" class="scan-button" name="<" value="<" title="Adjust tune -100" onclick="javascript:f_tune_button(-100);">
 	</div>
 
 	<div>
-	<input type="button" class="scan-button" name=">" value=">" onclick="javascript:f_tune_button(100);">
+	<input type="button" class="scan-button" name=">" value=">" title="Adjust tune +100" onclick="javascript:f_tune_button(100);">
 	</div>
 
 	<div>
-	<input type="button" class="scan-button" name=">>" value=">>" onclick="javascript:f_tune_button(1200);">
+	<input type="button" class="scan-button" name=">>" value=">>" title="Adjust tune +1200" onclick="javascript:f_tune_button(1200);">
 	</div>
 
 </div>
@@ -71,23 +75,23 @@
 <div id="controls2" class="flex-container" style="display: none;">
 
 	<div>
-	<input type="button" class="plot-button" name="pl1" value="FFT" onclick="javascript:f_plot_button(1);">
+	<input type="button" class="scan-button" name="pl1" value="FFT" title="Toggle Spectrum Plot" onclick="javascript:f_plot_button(1);">
 	</div>
 
 	<div>
-	<input type="button" class="plot-button" name="pl2" value="Con" onclick="javascript:f_plot_button(2);">
+	<input type="button" class="scan-button" name="pl2" value="Con" title="Toggle Constellation Plot" onclick="javascript:f_plot_button(2);">
 	</div>
 
 	<div>
-	<input type="button" class="plot-button" name="pl3" value="Sym" onclick="javascript:f_plot_button(3);">
+	<input type="button" class="scan-button" name="pl3" value="Sym" title="Toggle Symbol Plot" onclick="javascript:f_plot_button(3);">
 	</div>
 
 	<div>
-	<input type="button" class="plot-button" name="pl4" value="Dat" onclick="javascript:f_plot_button(4);">
+	<input type="button" class="scan-button" name="pl4" value="Dat" title="Toggle Datascope Plot" onclick="javascript:f_plot_button(4);">
 	</div>
 
 	<div>
-	<input type="button" class="plot-button" name="pl5" value="Mix" onclick="javascript:f_plot_button(5);">
+	<input type="button" class="scan-button" name="pl5" value="Mix" title="Toggle Mixer Plot" onclick="javascript:f_plot_button(5);">
 	</div>
 
 	<div>
@@ -95,19 +99,19 @@
 	</div>
 
 	<div>
-	<input type="button" class="scan-button" name="<<" value="<<" onclick="javascript:f_tune_button(-1200);">
+	<input type="button" class="scan-button" name="<<" value="<<" title="Adjust tune -1200" onclick="javascript:f_tune_button(-1200);">
 	</div>
 
 	<div>
-	<input type="button" class="scan-button" name="<" value="<" onclick="javascript:f_tune_button(-100);">
+	<input type="button" class="scan-button" name="<" value="<" title="Adjust tune -100" onclick="javascript:f_tune_button(-100);">
 	</div>
 
 	<div>
-	<input type="button" class="scan-button" name=">" value=">" onclick="javascript:f_tune_button(100);">
+	<input type="button" class="scan-button" name=">" value=">" title="Adjust tune +100" onclick="javascript:f_tune_button(100);">
 	</div>
 
 	<div>
-	<input type="button" class="scan-button" name=">>" value=">>" onclick="javascript:f_tune_button(1200);">
+	<input type="button" class="scan-button" name=">>" value=">>" title="Adjust tune +1200" onclick="javascript:f_tune_button(1200);">
 	</div>
 
 </div>
