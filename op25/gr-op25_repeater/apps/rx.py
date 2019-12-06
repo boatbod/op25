@@ -4,6 +4,8 @@
 # 
 # Copyright 2011, 2012, 2013, 2014, 2015, 2016, 2017 Max H. Parke KA1RBI
 # 
+# Copyright 2018-2019 Graham J. Norbury
+# 
 # Copyright 2003,2004,2005,2006 Free Software Foundation, Inc.
 #         (from radiorausch)
 # 
@@ -397,16 +399,17 @@ class p25_rx_block (gr.top_block):
                 relative_freq = center_freq - freq
                 if abs(relative_freq + self.options.offset) > self.channel_rate / 2:
                     self.lo_freq = self.options.offset					# relative tune not possible
-                    self.demod.set_relative_frequency(self.lo_freq)				# reset demod relative freq
-                    self.set_freq(freq + offset)						# direct tune instead
+                    self.demod.set_relative_frequency(self.lo_freq)			# reset demod relative freq
+                    self.set_freq(freq + offset)					# direct tune instead
                 else:    
                     self.lo_freq = self.options.offset + relative_freq
                     if self.demod.set_relative_frequency(self.lo_freq):			# relative tune successful
+                        self.demod.reset()                                              # reset gardner-costas loop
                         self.set_freq(center_freq + offset)
                         if self.fft_sink:
                             self.fft_sink.set_relative_freq(relative_freq)
                     else:
-                        self.lo_freq = self.options.offset					# relative tune unsuccessful
+                        self.lo_freq = self.options.offset				# relative tune unsuccessful
                         self.demod.set_relative_frequency(self.lo_freq)			# reset demod relative freq
                         self.set_freq(freq + offset)					# direct tune instead
             elif not self.options.symbols:
