@@ -22,6 +22,7 @@
 # 02110-1301, USA.
 
 from ctypes import *
+import os
 import sys
 import time
 import threading
@@ -314,6 +315,7 @@ class socket_audio(object):
 		self.sock_b = None
                 if dest_stdout:
 			pcm_device = "stdout"
+                        sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0) # reopen stdout with buffering disabled
 			self.pcm = stdout_wrapper()
 		else:
 			self.pcm = alsasound()
