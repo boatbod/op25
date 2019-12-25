@@ -269,7 +269,7 @@ class rx_block (gr.top_block):
                 msgq_id = len(self.channels)
                 self.trunk_rx.add_receiver(msgq_id)
             else:
-                msgq_id = -1
+                msgq_id = -1 - len(self.channels)
             chan = channel(cfg, dev, self.verbosity, msgq_id, self.rx_q)
             self.channels.append(chan)
             if (cfg.has_key("raw_input")) and (cfg['raw_input'] != ""):
