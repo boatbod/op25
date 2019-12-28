@@ -36,8 +36,8 @@ _def_sps_mult = 2
 
 GNUPLOT = '/usr/bin/gnuplot'
 
-FFT_AVG  = 0.25
-MIX_AVG  = 0.15
+FFT_AVG  = 0.05
+MIX_AVG  = 0.05
 BAL_AVG  = 0.05
 FFT_BINS = 512
 
