@@ -39,7 +39,8 @@ GNUPLOT = '/usr/bin/gnuplot'
 FFT_AVG  = 0.05
 MIX_AVG  = 0.05
 BAL_AVG  = 0.05
-FFT_BINS = 512
+FFT_BINS = 512   # number of fft bins
+FFT_FREQ = 0.1   # time interval between fft updates
 
 class wrap_gp(object):
 	def __init__(self, sps=_def_sps, plot_name=""):
@@ -137,6 +138,7 @@ class wrap_gp(object):
 				self.freqs = np.fft.fftfreq(len(self.ffts))
 				self.freqs = np.fft.fftshift(self.freqs)
 				tune_freq = (self.center_freq - self.relative_freq) / 1e6
+                                sys.stderr.write("%f len(self.ffts)=%d\n" % (time.time(), len(self.ffts)))
 				if self.center_freq and self.width:
                                 	self.freqs = ((self.freqs * self.width) + self.center_freq + self.offset_freq) / 1e6
 				for i in xrange(len(self.ffts)):
@@ -282,12 +284,11 @@ class fft_sink_c(gr.sync_block):
             out_sig=None)
         self.debug = debug
         self.gnuplot = wrap_gp(plot_name=plot_name)
-        self.skip = 0
+        self.next_due = time.time()
 
     def work(self, input_items, output_items):
-        self.skip += 1
-        if self.skip == 50:
-            self.skip = 0
+        if time.time() > self.next_due:
+            self.next_due = time.time() + 0.1
             in0 = input_items[0]
 	    self.gnuplot.plot(in0, FFT_BINS, mode='fft')
         return len(input_items[0])
@@ -318,10 +319,13 @@ class mixer_sink_c(gr.sync_block):
             out_sig=None)
         self.debug = debug
         self.gnuplot = wrap_gp(plot_name=plot_name)
+        self.next_due = time.time()
 
     def work(self, input_items, output_items):
-        in0 = input_items[0]
-	self.gnuplot.plot(in0, FFT_BINS, mode='mixer')
+        if time.time() > self.next_due:
+            self.next_due = time.time() + 0.1
+            in0 = input_items[0]
+	    self.gnuplot.plot(in0, FFT_BINS, mode='mixer')
         return len(input_items[0])
 
     def kill(self):
