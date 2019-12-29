@@ -138,7 +138,6 @@ class wrap_gp(object):
 				self.freqs = np.fft.fftfreq(len(self.ffts))
 				self.freqs = np.fft.fftshift(self.freqs)
 				tune_freq = (self.center_freq - self.relative_freq) / 1e6
-                                sys.stderr.write("%f len(self.ffts)=%d\n" % (time.time(), len(self.ffts)))
 				if self.center_freq and self.width:
                                 	self.freqs = ((self.freqs * self.width) + self.center_freq + self.offset_freq) / 1e6
 				for i in xrange(len(self.ffts)):
