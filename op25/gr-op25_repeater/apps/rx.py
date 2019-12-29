@@ -571,17 +571,24 @@ class p25_rx_block (gr.top_block):
         if (self.fft_sink is None):
             self.fft_sink = fft_sink_c()
             self.add_plot_sink(self.fft_sink)
-            self.spectrum_decim = filter.rational_resampler_ccf(1, self.options.decim_amt)
+            if self.options.decim_amt > 1:
+                self.spectrum_decim = filter.rational_resampler_ccf(1, self.options.decim_amt)
+            else:
+                self.spectrum_decim = None
             self.fft_sink.set_offset(self.options.offset)
             self.fft_sink.set_center_freq(self.target_freq)
             self.fft_sink.set_width(self.options.sample_rate)
             self.lock()
-            self.connect(self.spectrum_decim, self.fft_sink)
-            self.demod.connect_complex('src', self.spectrum_decim)
+            if self.spectrum_decim is not None:
+                self.connect(self.spectrum_decim, self.fft_sink)
+                self.demod.connect_complex('src', self.spectrum_decim)
+            else:
+                self.demod.connect_complex('src', self.fft_sink)
             self.unlock()
         elif (self.fft_sink is not None):
             self.lock()
-            self.disconnect(self.spectrum_decim, self.fft_sink)
+            if self.spectrum_decim is not None:
+                self.disconnect(self.spectrum_decim, self.fft_sink)
             self.demod.disconnect_complex()
             self.unlock()
             self.fft_sink.kill()
