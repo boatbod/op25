@@ -37,10 +37,11 @@ _def_sps_mult = 2
 GNUPLOT = '/usr/bin/gnuplot'
 
 FFT_AVG  = 0.05
-MIX_AVG  = 0.05
+MIX_AVG  = 0.15
 BAL_AVG  = 0.05
 FFT_BINS = 512   # number of fft bins
 FFT_FREQ = 0.1   # time interval between fft updates
+MIX_FREQ = 0.001 # time interval between mixer updates
 
 class wrap_gp(object):
 	def __init__(self, sps=_def_sps, plot_name=""):
@@ -287,7 +288,7 @@ class fft_sink_c(gr.sync_block):
 
     def work(self, input_items, output_items):
         if time.time() > self.next_due:
-            self.next_due = time.time() + 0.1
+            self.next_due = time.time() + FFT_FREQ
             in0 = input_items[0]
 	    self.gnuplot.plot(in0, FFT_BINS, mode='fft')
         return len(input_items[0])
