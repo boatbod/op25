@@ -184,7 +184,8 @@ macro(GR_SWIG_INSTALL)
         )
 
         include(GrPython)
-        GR_PYTHON_INSTALL(FILES ${CMAKE_CURRENT_BINARY_DIR}/${name}.py
+        GR_PYTHON_INSTALL(${name}
+            FILES ${CMAKE_CURRENT_BINARY_DIR}/${name}.py
             DESTINATION ${GR_SWIG_INSTALL_DESTINATION}
             COMPONENT ${GR_SWIG_INSTALL_COMPONENT}
         )
