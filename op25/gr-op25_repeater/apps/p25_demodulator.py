@@ -335,7 +335,7 @@ class p25_demod_cb(p25_demod_base):
             return True
         self.lo_freq = freq
         if self.if1:
-            if freq not in self.t_cache.keys():
+            if freq not in list(self.t_cache.keys()):
                 self.t_cache[freq] = filter.firdes.complex_band_pass(1.0, self.input_rate, -freq - self.if1/2, -freq + self.if1/2, self.if1/2, filter.firdes.WIN_HAMMING)
             self.bpf.set_taps(self.t_cache[freq])
             bfo_f = self.decim * -freq / float(self.input_rate)

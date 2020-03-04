@@ -89,5 +89,5 @@ class meta_server(threading.Thread):
                     self.last_metadata = metadata
             except (requests.ConnectionError, requests.Timeout):
                 if self.logging >= 1:
-                    sys.stderr.write("%f meta_server::send_metadata(): exception %s\n" % (time.time(), sys.exc_value))
+                    sys.stderr.write("%f meta_server::send_metadata(): exception %s\n" % (time.time(), sys.exc_info()[1]))
 

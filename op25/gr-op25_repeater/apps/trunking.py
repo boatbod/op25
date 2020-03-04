@@ -129,13 +129,13 @@ class trunked_system (object):
         d['rxchan'] = self.rfss_chan
         d['txchan'] = self.rfss_txchan
         d['wacn'] = self.ns_wacn
-        d['secondary'] = self.secondary.keys()
+        d['secondary'] = list(self.secondary.keys())
         d['tsbks'] = self.stats['tsbks']
         d['frequencies'] = {}
         d['frequency_data'] = {}
         d['last_tsbk'] = self.last_tsbk
         t = time.time()
-        for f in self.voice_frequencies.keys():
+        for f in list(self.voice_frequencies.keys()):
             tgs = '%s %s' % (self.voice_frequencies[f]['tgid'][0], self.voice_frequencies[f]['tgid'][1])
             d['frequencies'][f] = 'voice frequency %f tgid(s) %s %4.1fs ago count %d' %  (f / 1000000.0, tgs, t - self.voice_frequencies[f]['time'], self.voice_frequencies[f]['counter'])
 
@@ -147,7 +147,7 @@ class trunked_system (object):
         s = []
         s.append('rf: syid %x rfid %d stid %d frequency %f uplink %f' % ( self.rfss_syid, self.rfss_rfid, self.rfss_stid, float(self.rfss_chan) / 1000000.0, float(self.rfss_txchan) / 1000000.0))
         s.append('net: syid %x wacn %x frequency %f' % ( self.ns_syid, self.ns_wacn, float(self.ns_chan) / 1000000.0))
-        s.append('secondary control channel(s): %s' % ','.join(['%f' % (float(k) / 1000000.0) for k in self.secondary.keys()]))
+        s.append('secondary control channel(s): %s' % ','.join(['%f' % (float(k) / 1000000.0) for k in list(self.secondary.keys())]))
         s.append('stats: tsbks %d crc %d' % (self.stats['tsbks'], self.stats['crc']))
         s.append('')
         t = time.time()
@@ -252,7 +252,7 @@ class trunked_system (object):
                        (not self.whitelist and tgid not in self.blacklist)))]
 
     def blacklist_update(self, start_time):
-        expired_tgs = [tg for tg in self.blacklist.keys()
+        expired_tgs = [tg for tg in list(self.blacklist.keys())
                             if self.blacklist[tg] is not None
                             and self.blacklist[tg] < start_time]
         for tg in expired_tgs:
@@ -765,7 +765,7 @@ class rx_ctl (object):
                 self.build_config_tsv(conf_file)
             else:
                 self.build_config(conf_file)
-            self.nacs = self.configs.keys()
+            self.nacs = list(self.configs.keys())
             self.current_nac = self.find_next_tsys()
             self.current_state = self.states.CC
 
@@ -839,7 +839,7 @@ class rx_ctl (object):
                 if (len(row) < 4) or (len(row) > 9):
                     sys.stderr.write("Skipping invalid row in %s: %s\n" % (tsv_filename, row))
                     continue
-                for i in xrange(len(row)):
+                for i in range(len(row)):
                     if row[i]:
                         fields[hdrmap[i]] = row[i]
                         if hdrmap[i] != 'sysname':
@@ -848,7 +848,7 @@ class rx_ctl (object):
                 configs[nac] = fields
 
         if 0 in configs: # if NAC 0 exists, remove all other configs
-            for nac in configs.keys():
+            for nac in list(configs.keys()):
                 if nac != 0:
                     configs.pop(nac)
 
@@ -859,8 +859,8 @@ class rx_ctl (object):
         self.setup_config(configs)
 
     def build_config(self, config_filename):
-        import ConfigParser
-        config = ConfigParser.ConfigParser()
+        import configparser
+        config = configparser.ConfigParser()
         config.read(config_filename)
         configs = {}
         for section in config.sections():
@@ -874,9 +874,9 @@ class rx_ctl (object):
         self.setup_config(configs)
 
     def add_default_config(self, nac, cclist=[], offset=0, whitelist=None, blacklist={}, tgid_map={}, sysname=None, center_frequency=None, modulation='cqpsk'):
-        if nac in self.configs.keys():
+        if nac in list(self.configs.keys()):
             return
-        if nac not in self.trunked_systems.keys():
+        if nac not in list(self.trunked_systems.keys()):
             return
         tsys = self.trunked_systems[nac]
         if not tsys.rfss_chan:
@@ -891,7 +891,7 @@ class rx_ctl (object):
             sysname = 'NAC 0x%x' % nac
         if not cclist:
             cclist = [tsys.rfss_chan]
-            cclist.extend(tsys.secondary.keys())
+            cclist.extend(list(tsys.secondary.keys()))
             tsys.cc_list = cclist
         self.configs[nac] = {'cclist':cclist, 'offset':offset, 'whitelist':whitelist, 'blacklist':blacklist, 'tgid_map':tgid_map, 'sysname': sysname, 'center_frequency': center_frequency, 'modulation':modulation}
         self.current_nac = nac
@@ -946,7 +946,7 @@ class rx_ctl (object):
 
     def to_json(self):
         d = {'json_type': 'trunk_update'}
-        for nac in self.trunked_systems.keys():
+        for nac in list(self.trunked_systems.keys()):
             d[nac] = json.loads(self.trunked_systems[nac].to_json())
         d['srcaddr'] = self.current_srcaddr
         d['grpaddr'] = self.current_grpaddr
@@ -955,7 +955,7 @@ class rx_ctl (object):
         return json.dumps(d)
 
     def dump_tgids(self):
-        for nac in self.trunked_systems.keys():
+        for nac in list(self.trunked_systems.keys()):
             self.trunked_systems[nac].dump_tgids()
 
     def to_string(self):
@@ -1029,7 +1029,7 @@ class rx_ctl (object):
                     sys.stderr.write("%f Reconfiguring NAC from 0x000 to 0x%x\n" % (time.time(), nac))
                     self.trunked_systems[nac] = self.trunked_systems.pop(0)
                     self.configs[nac] = self.configs.pop(0)
-                    self.nacs = self.configs.keys()
+                    self.nacs = list(self.configs.keys())
                     self.current_nac = nac
                 else:
                     sys.stderr.write("%f NAC %x not configured\n" % (time.time(), nac))
@@ -1360,7 +1360,7 @@ class rx_ctl (object):
                 sys.stderr.write("%f reset tsys to NAC 0 after control channel change\n" % time.time())
             self.trunked_systems[0] = self.trunked_systems.pop(self.current_nac)
             self.configs[0] = self.configs.pop(self.current_nac)
-            self.nacs = self.configs.keys()
+            self.nacs = list(self.configs.keys())
             self.current_nac = 0
             self.current_state = self.states.CC
             self.current_tgid = None

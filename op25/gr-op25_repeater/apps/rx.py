@@ -123,8 +123,8 @@ class p25_rx_block (gr.top_block):
 
             gain_names = self.src.get_gain_names()
             for name in gain_names:
-                range = self.src.get_gain_range(name)
-                sys.stderr.write("gain: name: %s range: start %d stop %d step %d\n" % (name, range[0].start(), range[0].stop(), range[0].step()))
+                g_range = self.src.get_gain_range(name)
+                sys.stderr.write("gain: name: %s range: start %d stop %d step %d\n" % (name, g_range[0].start(), g_range[0].stop(), g_range[0].step()))
             if options.gains:
                 for tup in options.gains.split(","):
                     name, gain = tup.split(":")
@@ -174,7 +174,7 @@ class p25_rx_block (gr.top_block):
 
         self.constellation_scope_connected = False
 
-        for i in xrange(len(speeds)):
+        for i in range(len(speeds)):
             if speeds[i] == _default_speed:
                 self.current_speed = i
                 self.default_speed_idx = i
@@ -185,7 +185,7 @@ class p25_rx_block (gr.top_block):
         # wait for gdb
         if options.pause:
             sys.stdout.write("Ready for GDB to attach (pid = %d)\n" % (os.getpid(),))
-            raw_input("Press 'Enter' to continue...")
+            input("Press 'Enter' to continue...")
 
         self.input_q = gr.msg_queue(10)
         self.output_q = gr.msg_queue(10)
@@ -314,7 +314,7 @@ class p25_rx_block (gr.top_block):
         if self.options.phase2_tdma:
             num_ambe = 2
         if self.options.logfile_workers:
-            for i in xrange(self.options.logfile_workers):
+            for i in range(self.options.logfile_workers):
                 demod = p25_demodulator.p25_demod_cb(input_rate=capture_rate,
                                                      demod_type=self.options.demod_type,
                                                      offset=self.options.offset)

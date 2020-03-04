@@ -102,7 +102,7 @@ class p25_decoder_sink_b(gr.hier_block2):
         num_decoders = 1
         if num_ambe > 1:
            num_decoders += num_ambe - 1
-        for slot in xrange(num_decoders):
+        for slot in range(num_decoders):
             self.p25_decoders.append(op25_repeater.p25_frame_assembler(wireshark_host, udp_port, debug, do_imbe, do_output, do_msgq, msgq, do_audio_output, do_phase2_tdma, do_nocrypt))
             self.p25_decoders[slot].set_slotid(slot)
 

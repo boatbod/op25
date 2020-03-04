@@ -141,7 +141,7 @@ class wrap_gp(object):
 				tune_freq = (self.center_freq - self.relative_freq) / 1e6
 				if self.center_freq and self.width:
                                 	self.freqs = ((self.freqs * self.width) + self.center_freq + self.offset_freq) / 1e6
-				for i in xrange(len(self.ffts)):
+				for i in range(len(self.ffts)):
 					if mode == 'fft':
 						self.avg_pwr[i] = ((1.0 - FFT_AVG) * self.avg_pwr[i]) + (FFT_AVG * np.abs(self.ffts[i]))
 					else:
