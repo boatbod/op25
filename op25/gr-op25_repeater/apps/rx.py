@@ -138,6 +138,7 @@ class p25_rx_block (gr.top_block):
                 print 'supported sample rates %d-%d step %d' % (rates.start(), rates.stop(), rates.step())
             except:
                 pass	# ignore
+            sys.stderr.write('RTL Gain of %d set to: %.1f\n' % (gain, self.src.get_gain('LNA')))
 
             if options.freq_corr:
                 self.src.set_freq_corr(options.freq_corr)
@@ -461,7 +462,7 @@ class p25_rx_block (gr.top_block):
         if self.rtl_found:
             self.src.set_gain(gain, 'LNA')
             if self.options.verbosity:
-                print 'RTL Gain of %d set to: %.1f' % (gain, self.src.get_gain('LNA'))
+                sys.stderr.write('RTL Gain of %d set to: %.1f\n' % (gain, self.src.get_gain('LNA')))
         else:
             if self.baseband_input:
                 f = 1.0
