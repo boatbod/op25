@@ -68,7 +68,7 @@ class curses_terminal(threading.Thread):
         self.maxy, self.maxx = self.stdscr.getmaxyx()
         if (self.maxy < 6) or (self.maxx < 60):
             sys.stderr.write("Terminal window too small! Minimum size [70 x 6], actual [%d x %d]\n" % (self.maxx, self.maxy))
-            print "Terminal window too small! Minimum size [70 x 6], actual [%d x %d]\n" % (self.maxx, self.maxy)
+            sys.stdout.write("Terminal window too small! Minimum size [70 x 6], actual [%d x %d]\n" % (self.maxx, self.maxy))
             self.keep_running = False
             return
 

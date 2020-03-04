@@ -330,11 +330,9 @@ class p25_demod_cb(p25_demod_base):
 
     def set_relative_frequency(self, freq):
         if abs(freq) > ((self.input_rate / 2) - (self.if1 / 2)):
-            #print 'set_relative_frequency: error, relative frequency %d exceeds limit %d' % (freq, self.input_rate/2)
             return False
         if freq == self.lo_freq:
             return True
-        #print 'set_relative_frequency', freq
         self.lo_freq = freq
         if self.if1:
             if freq not in self.t_cache.keys():
@@ -371,7 +369,7 @@ class p25_demod_cb(p25_demod_base):
         elif demod_type == 'cqpsk':
             self.connect(self.if_out, self.cutoff, self.agc, self.clock, self.diffdec, self.to_float, self.rescale, self.slicer)
         else:
-            print 'connect_chain failed, type: %s' % demod_type
+            sys.stderr.write("connect_chain failed, type: %s\n" % demod_type)
             assert 0 == 1
         if self.float_sink is not None:
             self.connect_float(self.float_sink[1])
@@ -409,7 +407,7 @@ class p25_demod_cb(p25_demod_base):
             self.connect(self.fsk4_demod, sink)
             self.float_sink = [self.fsk4_demod, sink]
         else:
-            print 'connect_float: state error', self.connect_state
+            sys.stderr.write("connect_float: state error: %s\n" % self.connect_state)
             assert 0 == 1
 
     def disconnect_complex(self):

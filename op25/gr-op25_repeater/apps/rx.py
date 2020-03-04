@@ -4,7 +4,7 @@
 # 
 # Copyright 2011, 2012, 2013, 2014, 2015, 2016, 2017 Max H. Parke KA1RBI
 # 
-# Copyright 2018-2019 Graham J. Norbury
+# Copyright 2018-2020 Graham J. Norbury
 # 
 # Copyright 2003,2004,2005,2006 Free Software Foundation, Inc.
 #         (from radiorausch)
@@ -115,27 +115,26 @@ class p25_rx_block (gr.top_block):
                 import osmosdr
                 self.src = osmosdr.source(options.args)
             except Exception:
-                print "osmosdr source_c creation failure"
+                sys.stdout.write("osmosdr source_c creation failure\n")
                 ignore = True
  
             if any(x in options.args.lower() for x in ['rtl', 'airspy', 'hackrf', 'uhd']):
-                #print "'rtl' has been found in options.args (%s)" % (options.args)
                 self.rtl_found = True
 
             gain_names = self.src.get_gain_names()
             for name in gain_names:
                 range = self.src.get_gain_range(name)
-                print "gain: name: %s range: start %d stop %d step %d" % (name, range[0].start(), range[0].stop(), range[0].step())
+                sys.stderr.write("gain: name: %s range: start %d stop %d step %d\n" % (name, range[0].start(), range[0].stop(), range[0].step()))
             if options.gains:
                 for tup in options.gains.split(","):
                     name, gain = tup.split(":")
                     gain = int(gain)
-                    print "setting gain %s to %d" % (name, gain)
+                    sys.stderr.write("setting gain %s to %d\n" % (name, gain))
                     self.src.set_gain(gain, name)
 
             rates = self.src.get_sample_rates()
             try:
-                print 'supported sample rates %d-%d step %d' % (rates.start(), rates.stop(), rates.step())
+                sys.stderr.write("supported sample rates %d-%d step %d\n" % (rates.start(), rates.stop(), rates.step()))
             except:
                 pass	# ignore
             sys.stderr.write('RTL Gain of %d set to: %.1f\n' % (gain, self.src.get_gain('LNA')))
@@ -185,7 +184,7 @@ class p25_rx_block (gr.top_block):
 
         # wait for gdb
         if options.pause:
-            print 'Ready for GDB to attach (pid = %d)' % (os.getpid(),)
+            sys.stdout.write("Ready for GDB to attach (pid = %d)\n" % (os.getpid(),))
             raw_input("Press 'Enter' to continue...")
 
         self.input_q = gr.msg_queue(10)
@@ -471,7 +470,6 @@ class p25_rx_block (gr.top_block):
             self.demod.set_baseband_gain(float(gain) * f)
 
     def set_audio_scaler(self, vol):
-        #print 'audio scaler: %f' % ((1 / 32768.0) * (vol * 0.1))
         if hasattr(self.decoder, 'set_scaler_k'):
             self.decoder.set_scaler_k((1 / 32768.0) * (vol * 0.1))
 
@@ -716,7 +714,6 @@ class p25_rx_block (gr.top_block):
         if file_seek > 0:
             rc = ifile.seek(file_seek*1024, gr.SEEK_SET)
             assert rc == True
-            #print "seek: %d, rc = %d" % (file_seek, rc)
         throttle = blocks.throttle(gr.sizeof_gr_complex, speed)
         self.source = blocks.multiply_const_cc(gain)
         self.connect(ifile, throttle, self.source)
