@@ -167,7 +167,7 @@ class dmr_receiver:
                 d_buf += format(ord(byte),"02x")
             sys.stderr.write("%f [%d] DMR PDU: lcn(%d), state(%d), type(%d), slot(%d), data(%s)\n" % (time.time(), self.msgq_id, self.chan_list[self.current_chan], self.current_state, m_type, m_slot, d_buf))
 
-	if m_type == 0:   # CACH SLC
+        if m_type == 0:   # CACH SLC
             self.rx_CACH_SLC(m_buf)
         elif m_type == 1: # CACH CSBK
             pass

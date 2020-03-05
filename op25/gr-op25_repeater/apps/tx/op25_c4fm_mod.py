@@ -54,7 +54,7 @@ def transfer_function_rx():
 	# Specs undefined above 2,880 Hz.  It would be nice to have a sharper
 	# rolloff, but this filter is cheap enough....
 	xfer = []	# frequency domain transfer function
-	for f in xrange(0,4800):
+	for f in range(0,4800):
 		# D(f)
 		t = pi * f / 4800
 		if t < 1e-6:
@@ -66,7 +66,7 @@ def transfer_function_rx():
 
 def transfer_function_tx():
 	xfer = []	# frequency domain transfer function
-	for f in xrange(0, 2881):	# specs cover 0 - 2,880 Hz
+	for f in range(0, 2881):	# specs cover 0 - 2,880 Hz
 		# H(f)
 		if f < 1920:
 			hf = 1.0
@@ -84,7 +84,7 @@ def transfer_function_tx():
 
 def transfer_function_dmr():
 	xfer = []	# frequency domain transfer function
-	for f in xrange(0, 2881):	# specs cover 0 - 2,880 Hz
+	for f in range(0, 2881):	# specs cover 0 - 2,880 Hz
 		if f < 1920:
 			hf = 1.0
 		else:
@@ -223,11 +223,11 @@ class p25_mod_bf(gr.hier_block2):
             self.connect(self.filter, self)
 
     def _print_verbage(self):
-        print "\nModulator:"
-        print "interpolation: %d decimation: %d" %(self._interp_factor, self._decimation)
+        print("\nModulator:")
+        print("interpolation: %d decimation: %d" %(self._interp_factor, self._decimation))
 
     def _setup_logging(self):
-        print "Modulation logging turned on."
+        print("Modulation logging turned on.")
         self.connect(self.C2S,
                      gr.file_sink(gr.sizeof_float, "tx_chunks2symbols.dat"))
         self.connect(self.polarity,

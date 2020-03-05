@@ -22,7 +22,7 @@ import numpy as np
 
 def rev_int(n,l):
 	j=0
-	for i in xrange(l):
+	for i in range(l):
 		b=n&1
 		n=n>>1
 		j = (j << 1) | b
@@ -30,7 +30,7 @@ def rev_int(n,l):
 
 def bits_to_dibits(bits):
 	d = []
-	for i in xrange(len(bits)>>1):
+	for i in range(len(bits)>>1):
 		d.append((bits[i*2]<<1) + bits[i*2+1])
 	return d
 
@@ -43,14 +43,14 @@ def dibits_to_bits(dibits):
 
 def mk_array(n, l):
 	a = []
-	for i in xrange(0,l):
+	for i in range(0,l):
 		a.insert(0, n & 1)
 		n = n >> 1
 	return np.array(a)
 
 def mk_int(a):
-	res= 0L
-	for i in xrange(0, len(a)):
+	res= 0
+	for i in range(0, len(a)):
 		res = res * 2
 		res = res + (a[i] & 1)
 	return res
@@ -61,7 +61,7 @@ def mk_str(a):
 def check_l(a,b):
 	ans = 0
 	assert len(a) == len(b)
-	for i in xrange(len(a)):
+	for i in range(len(a)):
 		if (a[i] == b[i]):
 			ans += 1
 	return ans
@@ -77,7 +77,7 @@ def fixup(a):
 	return res
 
 def find_sym(pattern, symbols):
-	for i in xrange(0, len(symbols)-len(pattern)):
+	for i in range(0, len(symbols)-len(pattern)):
 		chunk = symbols[i : i + len(pattern)]
 		if chunk == pattern:
 			return i

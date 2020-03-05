@@ -30,18 +30,18 @@ import pdb
 
 from xml.parsers.expat import ExpatError
 
-from generated import compound
+from .generated import compound
 
 
 class Base(object):
 
-    class Duplicate(StandardError):
+    class Duplicate(Exception):
         pass
 
-    class NoSuchMember(StandardError):
+    class NoSuchMember(Exception):
         pass
 
-    class ParsingError(StandardError):
+    class ParsingError(Exception):
         pass
 
     def __init__(self, parse_data, top=None):
@@ -94,7 +94,7 @@ class Base(object):
         for cls in self.mem_classes:
             if cls.can_parse(mem):
                 return cls
-        raise StandardError(("Did not find a class for object '%s'." \
+        raise Exception(("Did not find a class for object '%s'." \
                                  % (mem.get_name())))
 
     def convert_mem(self, mem):
@@ -102,11 +102,11 @@ class Base(object):
             cls = self.get_cls(mem)
             converted = cls.from_parse_data(mem, self.top)
             if converted is None:
-                raise StandardError('No class matched this object.')
+                raise Exception('No class matched this object.')
             self.add_ref(converted)
             return converted
-        except StandardError, e:
-            print e
+        except Exception as e:
+            print(e)
 
     @classmethod
     def includes(cls, inst):

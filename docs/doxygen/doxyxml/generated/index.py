@@ -8,9 +8,9 @@ from xml.dom import minidom
 
 import os
 import sys
-import compound
+from . import compound
 
-import indexsuper as supermod
+from . import indexsuper as supermod
 
 class DoxygenTypeSub(supermod.DoxygenType):
     def __init__(self, version=None, compound=None):

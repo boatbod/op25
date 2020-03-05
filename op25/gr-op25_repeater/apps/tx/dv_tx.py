@@ -105,7 +105,7 @@ class my_top_block(gr.top_block):
         max_inputs = 1
 
 	if options.protocol is None:
-            print 'protocol [-p] option missing'
+            print('protocol [-p] option missing')
             sys.exit(0)
 
         if options.protocol == 'ysf' or options.protocol == 'dmr' or options.protocol == 'dstar':
@@ -202,7 +202,7 @@ class my_top_block(gr.top_block):
                 f1 = float(options.if_rate) / options.alt_modulator_rate
                 i1 = int(options.if_rate / options.alt_modulator_rate)
                 if f1 - i1 > 1e-3:
-                    print '*** Error, sdr rate %d not an integer multiple of alt modulator rate %d - ratio=%f' % (options.if_rate, options.alt_modulator_rate, f1)
+                    print('*** Error, sdr rate %d not an integer multiple of alt modulator rate %d - ratio=%f' % (options.if_rate, options.alt_modulator_rate, f1))
                     sys.exit(0)
                 a_resamp = filter.pfb.arb_resampler_fff(options.alt_modulator_rate / float(options.modulator_rate))
                 sys.stderr.write('adding resampler for rate change %d ===> %d\n' % (options.modulator_rate, options.alt_modulator_rate))
@@ -225,12 +225,12 @@ class my_top_block(gr.top_block):
         gain_names = self.u.get_gain_names()
         for name in gain_names:
             range = self.u.get_gain_range(name)
-            print "gain: name: %s range: start %d stop %d step %d" % (name, range[0].start(), range[0].stop(), range[0].step())
+            print("gain: name: %s range: start %d stop %d step %d" % (name, range[0].start(), range[0].stop(), range[0].step()))
         if options.gains:
             for tuple in options.gains.split(","):
                 name, gain = tuple.split(":")
                 gain = int(gain)
-                print "setting gain %s to %d" % (name, gain)
+                print("setting gain %s to %d" % (name, gain))
                 self.u.set_gain(gain, name)
 
         self.u.set_sample_rate(options.if_rate)
@@ -239,7 +239,7 @@ class my_top_block(gr.top_block):
         #self.u.set_bandwidth(options.if_rate)
 
 if __name__ == "__main__":
-    print 'Multiprotocol Digital Voice TX (C) Copyright 2017 Max H. Parke KA1RBI'
+    print('Multiprotocol Digital Voice TX (C) Copyright 2017 Max H. Parke KA1RBI')
     try:
         my_top_block().run()
     except KeyboardInterrupt:

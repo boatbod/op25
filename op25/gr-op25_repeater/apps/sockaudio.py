@@ -313,9 +313,9 @@ class socket_audio(object):
 		self.dest_stdout = dest_stdout
 		self.sock_a = None
 		self.sock_b = None
-                if dest_stdout:
+		if dest_stdout:
 			pcm_device = "stdout"
-                        sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0) # reopen stdout with buffering disabled
+			sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0) # reopen stdout with buffering disabled
 			self.pcm = stdout_wrapper()
 		else:
 			self.pcm = alsasound()
@@ -335,7 +335,7 @@ class socket_audio(object):
 
 			# Check for select() polling timeout and pcm self-check
 			if (not readable) and (not writable) and (not exceptional):
- 				rc = self.pcm.check()
+				rc = self.pcm.check()
 				continue
 
 			# Data received on the udp port is 320 bytes for an audio frame or 2 bytes for a flag
@@ -451,7 +451,7 @@ class audio_thread(threading.Thread):
 		threading.Thread.__init__(self, **kwds)
 		self.setDaemon(True)
 		self.keep_running = True
-                self.sock_audio = socket_audio(udp_host, udp_port, pcm_device, two_channels, audio_gain, dest_stdout, **kwds)
+		self.sock_audio = socket_audio(udp_host, udp_port, pcm_device, two_channels, audio_gain, dest_stdout, **kwds)
 		self.start()
 		return
 

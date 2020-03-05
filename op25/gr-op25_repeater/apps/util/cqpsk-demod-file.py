@@ -76,8 +76,8 @@ class my_top_block(gr.top_block):
         decim_amt = 1
         if options.tone_detect:
             if sample_rate != 96000:
-                print "warning, only 96K has been tested."
-                print "other rates may require theta to be reviewed/adjusted."
+                print("warning, only 96K has been tested.")
+                print("other rates may require theta to be reviewed/adjusted.")
             step_size = 7.5e-8
             theta = -4	# optimum timing sampling point
             cic_length = 48
@@ -146,8 +146,8 @@ class my_top_block(gr.top_block):
             self.connect(SLICER, SINKC)
 
         if options.debug:
-            print 'Ready for GDB to attach (pid = %d)' % (os.getpid(),)
-            raw_input("Press 'Enter' to continue...")
+            print('Ready for GDB to attach (pid = %d)' % (os.getpid(),))
+            input("Press 'Enter' to continue...")
 
 if __name__ == "__main__":
     try:

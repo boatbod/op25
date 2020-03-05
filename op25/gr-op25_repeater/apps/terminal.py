@@ -158,7 +158,7 @@ class curses_terminal(threading.Thread):
         if c in list(COMMANDS.keys()):
             self.send_command(COMMANDS[c], 0)
         elif c == ord('q'):
-		return True
+            return True
         elif c == ord('t'):
             if self.current_nac:
                 self.send_command('add_default_config', int(self.current_nac))

@@ -171,16 +171,16 @@ class fm_tx_block(stdgui2.std_top_block):
         gain_names = self.u.get_gain_names()
         for name in gain_names:
             gain_range = self.u.get_gain_range(name)
-            print "gain: name: %s range: start %d stop %d step %d" % (name, gain_range[0].start(), gain_range[0].stop(), gain_range[0].step())
+            print("gain: name: %s range: start %d stop %d step %d" % (name, gain_range[0].start(), gain_range[0].stop(), gain_range[0].step()))
         if options.gains:
             for tuple in options.gains.split(","):
                 name, gain = tuple.split(":")
                 gain = int(gain)
-                print "setting gain %s to %d" % (name, gain)
+                print("setting gain %s to %d" % (name, gain))
                 self.u.set_gain(gain, name)
 
         self.usrp_rate = 320000
-        print 'setting sample rate'
+        print('setting sample rate')
         self.u.set_sample_rate(self.usrp_rate)
         self.u.set_center_freq(int(options.freq))
         #self.u.set_bandwidth(self.usrp_rate)
@@ -284,10 +284,10 @@ class fm_tx_block(stdgui2.std_top_block):
 
         r = self.u.tune(self.subdev.which(), self.subdev, target_freq)
         if r:
-            print "r.baseband_freq =", eng_notation.num_to_str(r.baseband_freq)
-            print "r.dxc_freq      =", eng_notation.num_to_str(r.dxc_freq)
-            print "r.residual_freq =", eng_notation.num_to_str(r.residual_freq)
-            print "r.inverted      =", r.inverted
+            print("r.baseband_freq =", eng_notation.num_to_str(r.baseband_freq))
+            print("r.dxc_freq      =", eng_notation.num_to_str(r.dxc_freq))
+            print("r.residual_freq =", eng_notation.num_to_str(r.residual_freq))
+            print("r.inverted      =", r.inverted)
             
             # Could use residual_freq in s/w freq translator
             return True

@@ -69,9 +69,9 @@ class p25_decoder_sink_b(gr.hier_block2):
         @type debug: int
 	"""
 
-	gr.hier_block2.__init__(self, "p25_demod_c",
-				gr.io_signature(1, 1, gr.sizeof_char),       # Input signature
-				gr.io_signature(0, 0, 0)) # Output signature
+        gr.hier_block2.__init__(self, "p25_demod_c",
+                                gr.io_signature(1, 1, gr.sizeof_char), # Input signature
+                                gr.io_signature(0, 0, 0))              # Output signature
 
         assert 0 <= num_ambe <= _def_max_tdma_timeslots
         assert not (num_ambe > 1 and dest != 'wav')

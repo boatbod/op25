@@ -10,8 +10,8 @@ from xml.dom import Node
 
 import sys
 
-import compoundsuper as supermod
-from compoundsuper import MixedContainer
+from . import compoundsuper as supermod
+from .compoundsuper import MixedContainer
 
 
 class DoxygenTypeSub(supermod.DoxygenType):

@@ -61,9 +61,9 @@ class wrap_gp(object):
 		self.sequence = 0
 		self.output_dir = None
 		self.filename = None
-                if plot_name == "":
-                        self.plot_name = ""
-                else:
+		if plot_name == "":
+			self.plot_name = ""
+		else:
 			self.plot_name = plot_name + " "
 
 		self.attach_gp()
@@ -73,8 +73,8 @@ class wrap_gp(object):
 		exe  = GNUPLOT
 		self.gp = subprocess.Popen(args, executable=exe, stdin=subprocess.PIPE)
 
-        def set_sps(self, sps):
-            self.sps = sps
+	def set_sps(self, sps):
+		self.sps = sps
 
 	def kill(self):
 		try:
@@ -184,26 +184,26 @@ class wrap_gp(object):
 			h+= 'set size square\n'
 			h+= 'set xrange [-1:1]\n'
 			h+= 'set yrange [-1:1]\n'
-                        h+= 'set title "%sConstellation"\n' % self.plot_name
+			h+= 'set title "%sConstellation"\n' % self.plot_name
 		elif mode == 'eye':
 			h+= background
 			h+= 'set yrange [-4:4]\n'
-                        h+= 'set title "%sDatascope"\n' % self.plot_name
+			h+= 'set title "%sDatascope"\n' % self.plot_name
 		elif mode == 'symbol':
 			h+= background
 			h+= 'set yrange [-4:4]\n'
-                        h+= 'set title "%sSymbol"\n' % self.plot_name
+			h+= 'set title "%sSymbol"\n' % self.plot_name
 		elif mode == 'fft' or mode == 'mixer':
 			h+= 'unset arrow; unset title\n'
 			h+= 'set xrange [%f:%f]\n' % (self.freqs[0], self.freqs[len(self.freqs)-1])
-                        h+= 'set xlabel "Frequency"\n'
-                        h+= 'set ylabel "Power(dB)"\n'
-                        h+= 'set grid\n'
+			h+= 'set xlabel "Frequency"\n'
+			h+= 'set ylabel "Power(dB)"\n'
+			h+= 'set grid\n'
 			h+= 'set yrange [-100:0]\n'
 			if mode == 'mixer':	# mixer
                                 h+= 'set title "%sMixer: balance %3.0f (smaller is better)"\n' % (self.plot_name, (np.abs(self.avg_sum_pwr * 1000)))
 			else:			# fft
-                                h+= 'set title "%sSpectrum"\n' % self.plot_name
+				h+= 'set title "%sSpectrum"\n' % self.plot_name
 				if self.center_freq:
 					arrow_pos = (self.center_freq - self.relative_freq) / 1e6
 					h+= 'set arrow from %f, graph 0 to %f, graph 1 nohead\n' % (arrow_pos, arrow_pos)
@@ -249,7 +249,7 @@ class eye_sink_f(gr.sync_block):
 
     def work(self, input_items, output_items):
         in0 = input_items[0]
-	consumed = self.gnuplot.plot(in0, 100 * self.sps, mode='eye')
+        consumed = self.gnuplot.plot(in0, 100 * self.sps, mode='eye')
         return consumed ### len(input_items[0])
 
     def kill(self):
@@ -268,7 +268,7 @@ class constellation_sink_c(gr.sync_block):
 
     def work(self, input_items, output_items):
         in0 = input_items[0]
-	self.gnuplot.plot(in0, 1000, mode='constellation')
+        self.gnuplot.plot(in0, 1000, mode='constellation')
         return len(input_items[0])
 
     def kill(self):
@@ -290,7 +290,7 @@ class fft_sink_c(gr.sync_block):
         if time.time() > self.next_due:
             self.next_due = time.time() + FFT_FREQ
             in0 = input_items[0]
-	    self.gnuplot.plot(in0, FFT_BINS, mode='fft')
+            self.gnuplot.plot(in0, FFT_BINS, mode='fft')
         return len(input_items[0])
 
     def kill(self):
@@ -298,7 +298,7 @@ class fft_sink_c(gr.sync_block):
 
     def set_center_freq(self, f):
         self.gnuplot.set_center_freq(f)
-	self.gnuplot.set_relative_freq(0.0)
+        self.gnuplot.set_relative_freq(0.0)
 
     def set_relative_freq(self, f):
         self.gnuplot.set_relative_freq(f)
@@ -325,7 +325,7 @@ class mixer_sink_c(gr.sync_block):
         if time.time() > self.next_due:
             self.next_due = time.time() + MIX_FREQ
             in0 = input_items[0]
-	    self.gnuplot.plot(in0, FFT_BINS, mode='mixer')
+            self.gnuplot.plot(in0, FFT_BINS, mode='mixer')
         return len(input_items[0])
 
     def kill(self):
@@ -344,7 +344,7 @@ class symbol_sink_f(gr.sync_block):
 
     def work(self, input_items, output_items):
         in0 = input_items[0]
-	self.gnuplot.plot(in0, 2400, mode='symbol')
+        self.gnuplot.plot(in0, 2400, mode='symbol')
         return len(input_items[0])
 
     def kill(self):

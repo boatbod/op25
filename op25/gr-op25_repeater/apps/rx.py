@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # Copyright 2008-2011 Steve Glass
 # 
@@ -202,7 +202,7 @@ class p25_rx_block (gr.top_block):
             self.open_audio(self.channel_rate, options.gain, options.audio_input)
         elif options.ifile:
             self.open_ifile2(self.channel_rate, options.ifile)
-	elif options.symbols:
+        elif options.symbols:
             self.open_symbols(self.symbol_rate, options.symbols, options.seek)
         else:
             pass
@@ -265,7 +265,7 @@ class p25_rx_block (gr.top_block):
 
         if self.baseband_input:
             self.demod = p25_demodulator.p25_demod_fb(input_rate=capture_rate, excess_bw=self.options.excess_bw)
-	elif self.options.symbols:
+        elif self.options.symbols:
             self.demod = None
         else:	# complex input
             # local osc
@@ -289,7 +289,7 @@ class p25_rx_block (gr.top_block):
         self.decoder = p25_decoder.p25_decoder_sink_b(dest='audio', do_imbe=self.options.vocoder, num_ambe=num_ambe, wireshark_host=self.options.wireshark_host, udp_port=udp_port, do_msgq = True, msgq=self.rx_q, audio_output=self.options.audio_output, debug=self.options.verbosity, nocrypt=self.options.nocrypt)
 
         # connect it all up
-	if self.options.symbols:
+        if self.options.symbols:
             self.connect(source, self.decoder)
         else:
             self.connect(source, self.demod, self.decoder)
@@ -377,7 +377,7 @@ class p25_rx_block (gr.top_block):
             rate = 4800
 
         self.set_sps(rate)
-	if not self.options.symbols:
+        if not self.options.symbols:
             self.demod.set_omega(rate)
 
     def set_sps(self, rate):
@@ -520,7 +520,7 @@ class p25_rx_block (gr.top_block):
         return True
 
     def toggle_plot(self, plot_type):
-	if self.options.symbols:
+        if self.options.symbols:
             return              # plots not supported when replacing symbol
 
         plot_off = 0

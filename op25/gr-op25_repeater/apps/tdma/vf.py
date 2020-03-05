@@ -38,7 +38,7 @@ def process_vcw(vf):
 	pr = [0] * 24
 	m1 = [0] * 23
 	pr[0] = 16 * u0
-	for n in xrange(1,24):
+	for n in range(1,24):
 		pr[n] = (173*pr[n-1] + 13849) - 65536 * int((173*pr[n-1]+13849)/65536)
 		m1[n-1] = int(pr[n] / 32768) & 1
 	m1 = mk_int(m1)
@@ -57,7 +57,7 @@ def process_vcw(vf):
 	b[7] = ( u2       & 0x0e) + ((u3 >> 2) & 0x1)
 	b[8] = ((u2 << 2) & 0x04) + ( u3       & 0x3)
 	s = "\t".join(['%s' % x for x in b])
-	print "%s" % s
+	print("%s" % s)
 
 def process_v(f,type):
 	vf = dibits_to_bits(f[11:11+36])

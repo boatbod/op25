@@ -140,7 +140,7 @@ class trunked_system (object):
             d['frequencies'][f] = 'voice frequency %f tgid(s) %s %4.1fs ago count %d' %  (f / 1000000.0, tgs, t - self.voice_frequencies[f]['time'], self.voice_frequencies[f]['counter'])
 
             d['frequency_data'][f] = {'tgids': self.voice_frequencies[f]['tgid'], 'last_activity': '%7.1f' % (t - self.voice_frequencies[f]['time']), 'counter': self.voice_frequencies[f]['counter']}
-	d['adjacent_data'] = self.adjacent_data
+        d['adjacent_data'] = self.adjacent_data
         return json.dumps(d)
 
     def to_string(self):
@@ -326,7 +326,7 @@ class trunked_system (object):
         return None, None, None, None
 
     def dump_tgids(self):
-	sys.stderr.write("Known tgids: { ")
+        sys.stderr.write("Known tgids: { ")
         for tgid in sorted(self.talkgroups.keys()):
             sys.stderr.write("%d " % tgid);
         sys.stderr.write("}\n") 
@@ -705,14 +705,14 @@ def get_int_dict(s):
             v = v.split("\t",1) # split on tab
             try:
                 v0 = int(v[0])				# first parameter is tgid or start of tgid range
-		v1 = v0
-		if (len(v) > 1) and (int(v[1]) > v0):	# second parameter if present is end of tgid range
+                v1 = v0
+                if (len(v) > 1) and (int(v[1]) > v0):	# second parameter if present is end of tgid range
                 	v1 = int(v[1])
 		
-		for tg in range(v0, (v1 + 1)):
-                	if tg not in d:      # is this a new tg?
-                		d[tg] = []   # if so, add to dict (key only, value null)
-                		sys.stderr.write('added talkgroup %d from %s\n' % (tg,s))
+                for tg in range(v0, (v1 + 1)):
+                        if tg not in d:      # is this a new tg?
+                                d[tg] = []   # if so, add to dict (key only, value null)
+               	                sys.stderr.write('added talkgroup %d from %s\n' % (tg,s))
 
             except (IndexError, ValueError) as ex:
                 continue

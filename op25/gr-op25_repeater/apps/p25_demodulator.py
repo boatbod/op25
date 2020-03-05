@@ -173,9 +173,9 @@ class p25_demod_fb(p25_demod_base):
         @type input_rate: int
 	"""
 
-	gr.hier_block2.__init__(self, "p25_demod_fb",
-				gr.io_signature(1, 1, gr.sizeof_float),       # Input signature
-				gr.io_signature(1, 1, gr.sizeof_char)) # Output signature
+        gr.hier_block2.__init__(self, "p25_demod_fb",
+            gr.io_signature(1, 1, gr.sizeof_float),       # Input signature
+            gr.io_signature(1, 1, gr.sizeof_char)) # Output signature
 
         p25_demod_base.__init__(self, if_rate=input_rate, symbol_rate=symbol_rate, filter_type=filter_type)
 
@@ -218,10 +218,9 @@ class p25_demod_cb(p25_demod_base):
         @type input_rate: int
 	"""
 
-	gr.hier_block2.__init__(self, "p25_demod_cb",
-				gr.io_signature(1, 1, gr.sizeof_gr_complex),       # Input signature
-				gr.io_signature(1, 1, gr.sizeof_char)) # Output signature
-#				gr.io_signature(0, 0, 0)) # Output signature
+        gr.hier_block2.__init__(self, "p25_demod_cb",
+                                gr.io_signature(1, 1, gr.sizeof_gr_complex),  # Input signature
+                                gr.io_signature(1, 1, gr.sizeof_char))        # Output signature
         p25_demod_base.__init__(self, if_rate=if_rate, symbol_rate=symbol_rate, filter_type=filter_type)
 
         self.input_rate = input_rate
