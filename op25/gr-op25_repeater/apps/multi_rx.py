@@ -353,7 +353,7 @@ class du_queue_watcher(threading.Thread):
 
 class rx_main(object):
     def __init__(self):
-        def byteify(input):	# thx so
+        def byteify(input):    # thx so
             if isinstance(input, dict):
                 return {byteify(key): byteify(value)
                         for key, value in list(input.items())}

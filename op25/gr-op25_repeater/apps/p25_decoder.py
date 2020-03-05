@@ -53,21 +53,21 @@ class p25_decoder_sink_b(gr.hier_block2):
 
     def __init__(self,
                  dest           = _def_dest,
-                 do_imbe	= _def_do_imbe,
-                 num_ambe	= _def_num_ambe,
-                 wireshark_host	= _def_wireshark_host,
-                 udp_port	= _def_udp_port,
-                 do_msgq	= False,
-                 msgq		= None,
-                 audio_output	= _def_audio_output,
-                 debug		= _def_debug,
+                 do_imbe        = _def_do_imbe,
+                 num_ambe       = _def_num_ambe,
+                 wireshark_host = _def_wireshark_host,
+                 udp_port       = _def_udp_port,
+                 do_msgq        = False,
+                 msgq           = None,
+                 audio_output   = _def_audio_output,
+                 debug          = _def_debug,
                  nocrypt        = _def_nocrypt ):
         """
-	Hierarchical block for P25 decoding.
+        Hierarchical block for P25 decoding.
 
         @param debug: debug level
         @type debug: int
-	"""
+        """
 
         gr.hier_block2.__init__(self, "p25_demod_c",
                                 gr.io_signature(1, 1, gr.sizeof_char), # Input signature

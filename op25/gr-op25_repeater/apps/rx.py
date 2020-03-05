@@ -78,7 +78,7 @@ os.environ['IMBE'] = 'soft'
 
 WIRESHARK_PORT = 23456
 
-_def_interval = 1.0	# sec
+_def_interval = 1.0    # sec
 _def_file_dir = '../www/images'
 
 # The P25 receiver
@@ -136,7 +136,7 @@ class p25_rx_block (gr.top_block):
             try:
                 sys.stderr.write("supported sample rates %d-%d step %d\n" % (rates.start(), rates.stop(), rates.step()))
             except:
-                pass	# ignore
+                pass    # ignore
             sys.stderr.write('RTL Gain of %d set to: %.1f\n' % (gain, self.src.get_gain('LNA')))
 
             if options.freq_corr:
@@ -267,7 +267,7 @@ class p25_rx_block (gr.top_block):
             self.demod = p25_demodulator.p25_demod_fb(input_rate=capture_rate, excess_bw=self.options.excess_bw)
         elif self.options.symbols:
             self.demod = None
-        else:	# complex input
+        else:    # complex input
             # local osc
             self.lo_freq = self.options.offset
             if self.options.audio_if or self.options.ifile or self.options.input:
@@ -365,7 +365,7 @@ class p25_rx_block (gr.top_block):
             set_tdma = True
             self.decoder.set_slotid(params['tdma'])
         if set_tdma == self.tdma_state:
-            return	# already in desired state
+            return    # already in desired state
         self.tdma_state = set_tdma
         if set_tdma:
             hash = '%x%x%x' % (params['nac'], params['sysid'], params['wacn'])
@@ -392,30 +392,30 @@ class p25_rx_block (gr.top_block):
         offset = params['offset']
         center_freq = params['center_frequency']
 
-        if freq != last_freq:								# ignore requests to tune to same freq
+        if freq != last_freq:                               # ignore requests to tune to same freq
             if self.options.hamlib_model:
                 self.hamlib.set_freq(freq)
             elif (not self.options.symbols) and params['center_frequency']:
                 relative_freq = center_freq - freq
                 if abs(relative_freq + self.options.offset) > self.channel_rate / 2:
-                    self.lo_freq = self.options.offset					# relative tune not possible
-                    self.demod.set_relative_frequency(self.lo_freq)			# reset demod relative freq
-                    self.set_freq(freq + offset)					# direct tune instead
+                    self.lo_freq = self.options.offset                       # relative tune not possible
+                    self.demod.set_relative_frequency(self.lo_freq)              # reset demod relative freq
+                    self.set_freq(freq + offset)                                 # direct tune instead
                 else:    
                     self.lo_freq = self.options.offset + relative_freq
-                    if self.demod.set_relative_frequency(self.lo_freq):			# relative tune successful
-                        self.demod.reset()                                              # reset gardner-costas loop
+                    if self.demod.set_relative_frequency(self.lo_freq):      # relative tune successful
+                        self.demod.reset()                                       # reset gardner-costas loop
                         self.set_freq(center_freq + offset)
                         if self.fft_sink:
                             self.fft_sink.set_relative_freq(relative_freq)
                     else:
-                        self.lo_freq = self.options.offset				# relative tune unsuccessful
-                        self.demod.set_relative_frequency(self.lo_freq)			# reset demod relative freq
-                        self.set_freq(freq + offset)					# direct tune instead
+                        self.lo_freq = self.options.offset                   # relative tune unsuccessful
+                        self.demod.set_relative_frequency(self.lo_freq)          # reset demod relative freq
+                        self.set_freq(freq + offset)                             # direct tune instead
             elif not self.options.symbols:
                 self.set_freq(freq + offset)
             else:
-                pass	# fake tuning when playing back symbols file
+                pass                                        # fake tuning when playing back symbols file
             self.decoder.reset_timer()
 
         self.configure_tdma(params)
@@ -445,7 +445,7 @@ class p25_rx_block (gr.top_block):
         self.meta_q.insert_tail(msg)
 
     def hamlib_attach(self, model):
-        Hamlib.rig_set_debug (Hamlib.RIG_DEBUG_NONE)	# RIG_DEBUG_TRACE
+        Hamlib.rig_set_debug (Hamlib.RIG_DEBUG_NONE)    # RIG_DEBUG_TRACE
 
         self.hamlib = Hamlib.Rig (model)
         self.hamlib.set_conf ("serial_speed","9600")
@@ -540,15 +540,15 @@ class p25_rx_block (gr.top_block):
             self.toggle_mixer()
             plot_off = 5
 
-        if (plot_type == 1) and (plot_off != 1):	# fft
+        if (plot_type == 1) and (plot_off != 1):    # fft
             self.toggle_fft()
-        elif (plot_type == 2) and (plot_off != 2):	# constellation
+        elif (plot_type == 2) and (plot_off != 2):  # constellation
             self.toggle_constellation()
-        elif (plot_type == 3) and (plot_off != 3):	# symbol
+        elif (plot_type == 3) and (plot_off != 3):  # symbol
             self.toggle_symbol()
-        elif (plot_type == 4) and (plot_off != 4):	# datascope
+        elif (plot_type == 4) and (plot_off != 4):  # datascope
             self.toggle_eye()
-        elif (plot_type == 5) and (plot_off != 5):	# mixer output
+        elif (plot_type == 5) and (plot_off != 5):  # mixer output
             self.toggle_mixer()
 
     def toggle_mixer(self):
@@ -796,7 +796,7 @@ class p25_rx_block (gr.top_block):
         elif s == 'update':
             self.freq_update()
             if self.trunk_rx is None:
-                return False	## possible race cond - just ignore
+                return False    ## possible race cond - just ignore
             js = self.trunk_rx.to_json()
             msg = gr.message().make_from_string(js, -4, 0, 0)
             self.input_q.insert_tail(msg)
