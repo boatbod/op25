@@ -93,7 +93,7 @@ class curses_terminal(threading.Thread):
     def resize_curses(self):
         self.maxy, self.maxx = self.stdscr.getmaxyx()
  
-        if (self.maxx < 60) or (self.maxy < 6):	# do not resize if window is now too small
+        if (self.maxx < 60) or (self.maxy < 6):    # do not resize if window is now too small
             return 
 
         self.stdscr.erase()
@@ -134,7 +134,7 @@ class curses_terminal(threading.Thread):
         self.stdscr.refresh()
 
     def do_auto_update(self):
-        UPDATE_INTERVAL = 0.5	# sec.
+        UPDATE_INTERVAL = 0.5    # sec.
         if not self.auto_update:
             return False
         if self.last_update + UPDATE_INTERVAL > time.time():
