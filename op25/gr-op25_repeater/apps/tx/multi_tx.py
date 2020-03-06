@@ -64,12 +64,12 @@ class pipeline(gr.hier_block2):
             assert config_file
             ENCODER = op25_repeater.dstar_tx_sb(verbose, config_file)
         elif protocol == 'p25':
-            ENCODER = op25_repeater.vocoder(True,		# 0=Decode,True=Encode
-                                  False,	# Verbose flag
-                                  0,	# flex amount
-                                  "",			# udp ip address
-                                  0,			# udp port
-                                  False) 		# dump raw u vectors
+            ENCODER = op25_repeater.vocoder(True, # 0=Decode,True=Encode
+                                  False,          # Verbose flag
+                                  0,              # flex amount
+                                  "",             # udp ip address
+                                  0,              # udp port
+                                  False)          # dump raw u vectors
         elif protocol == 'ysf':
             assert config_file
             ENCODER = op25_repeater.ysf_tx_sb(verbose, config_file, fullrate_mode)

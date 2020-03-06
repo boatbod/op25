@@ -122,11 +122,11 @@ class my_top_block(gr.top_block):
         hostname = "127.0.0.1"
         port = 23456
         debug = 0
-	if options.verbose:
-                debug = 255
+        if options.verbose:
+            debug = 255
         do_imbe = False
         if options.imbe:
-                do_imbe = True
+            do_imbe = True
         do_output = True # enable block's output stream
         do_msgq = False  # msgq output not yet implemented
         msgq = gr.msg_queue(2)

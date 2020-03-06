@@ -65,7 +65,7 @@ class file_pipeline(gr.hier_block2):
                                 gr.io_signature(0, 0, 0),                    # Input signature
                                 gr.io_signature(1, 1, gr.sizeof_gr_complex)) # Output signature
 
-	fs = blocks.file_source(gr.sizeof_gr_complex, input_file, True)
+        fs = blocks.file_source(gr.sizeof_gr_complex, input_file, True)
         agc = analog.feedforward_agc_cc(160, 1.0)
 
         # Local oscillator
@@ -226,12 +226,12 @@ class fm_tx_block(stdgui2.std_top_block):
           #self.audio_input = audio.source(input_audio_rate, options.audio_input)
           af = 1333
           audio_input = analog.sig_source_s( input_audio_rate, analog.GR_SIN_WAVE, af, 15000)
-          t = op25_repeater.vocoder(True,		# 0=Decode,True=Encode
-                                  options.verbose,	# Verbose flag
-                                  options.stretch,	# flex amount
-                                  "",			# udp ip address
-                                  0,			# udp port
-                                  False) 		# dump raw u vectors
+          t = op25_repeater.vocoder(True,          # 0=Decode,True=Encode
+                                  options.verbose, # Verbose flag
+                                  options.stretch, # flex amount
+                                  "",              # udp ip address
+                                  0,               # udp port
+                                  False)           # dump raw u vectors
           self.connect(audio_input, t)
           self.vocoders.append(t)
 

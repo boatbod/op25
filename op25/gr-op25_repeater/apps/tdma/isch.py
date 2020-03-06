@@ -22,39 +22,39 @@ import numpy as np
 from bit_utils import *
 
 def mk_isch(v):
-	v1 = v & 3
-	v = v >> 2
-	v2 = v & 1
-	v = v >> 1
-	v3 = v & 3
-	v = v >> 2
-	v4 = v & 3
-	v = v >> 2
-	v5 = v & 3
-	return v4, v3, v2, v1
+    v1 = v & 3
+    v  = v >> 2
+    v2 = v & 1
+    v  = v >> 1
+    v3 = v & 3
+    v  = v >> 2
+    v4 = v & 3
+    v  = v >> 2
+    v5 = v & 3
+    return v4, v3, v2, v1
 
 class p25p2_isch(object):
-	def __init__(self):
-		self.isch_map = self.mk_isch_lookup()
+    def __init__(self):
+        self.isch_map = self.mk_isch_lookup()
 
-	def mk_isch_lookup(self):
-		isch_map = {}
-		g = np.array(np.mat('1 0 0 0 1 0 0 0 0 0 0 1 0 1 1 0 1 1 0 0 1 1 1 0 0 0 1 1 0 1 1 0 1 1 0 1 0 1 1 1; 0 0 1 0 0 0 0 0 0 0 0 1 1 1 0 1 1 1 1 1 1 1 0 1 0 1 0 0 1 1 1 1 0 1 1 0 0 1 0 0; 0 0 0 1 0 0 0 0 0 0 0 0 1 1 1 1 0 1 0 0 1 0 1 1 0 0 0 1 0 1 1 1 0 1 0 1 1 0 0 0; 0 0 0 0 1 1 0 0 0 0 0 0 0 0 0 0 1 1 0 1 1 1 1 0 1 1 0 1 0 0 0 1 1 0 0 0 1 1 1 0; 0 0 0 0 0 0 1 0 0 0 0 0 1 0 0 0 0 0 0 0 0 1 1 1 1 1 1 1 0 1 1 1 1 1 1 1 1 1 1 1; 0 0 0 0 1 0 0 1 0 0 0 0 0 1 0 0 1 0 0 0 1 1 0 1 1 0 0 1 1 0 1 1 0 1 1 1 0 0 1 0; 0 0 0 0 0 0 0 0 1 0 0 1 1 1 0 1 1 0 1 0 0 0 1 1 1 0 1 0 0 0 0 1 0 1 1 1 0 0 0 1; 0 0 0 0 0 0 0 0 0 1 0 1 1 0 0 0 1 1 0 0 1 0 1 1 1 0 1 0 1 0 1 0 0 1 0 0 1 1 1 0; 0 0 0 0 0 0 0 0 0 0 1 1 0 1 0 0 0 0 1 1 1 1 0 1 1 0 0 0 0 1 0 1 1 0 0 1 0 1 1 1'))
-		c0 = 0x184229d461
-		for i in range(0, 2**7):
-			codeword = mk_int(np.dot(mk_array(i, 9), g)) ^ c0
-			isch_map['%x' % codeword] = i
-		return isch_map
+    def mk_isch_lookup(self):
+        isch_map = {}
+        g = np.array(np.mat('1 0 0 0 1 0 0 0 0 0 0 1 0 1 1 0 1 1 0 0 1 1 1 0 0 0 1 1 0 1 1 0 1 1 0 1 0 1 1 1; 0 0 1 0 0 0 0 0 0 0 0 1 1 1 0 1 1 1 1 1 1 1 0 1 0 1 0 0 1 1 1 1 0 1 1 0 0 1 0 0; 0 0 0 1 0 0 0 0 0 0 0 0 1 1 1 1 0 1 0 0 1 0 1 1 0 0 0 1 0 1 1 1 0 1 0 1 1 0 0 0; 0 0 0 0 1 1 0 0 0 0 0 0 0 0 0 0 1 1 0 1 1 1 1 0 1 1 0 1 0 0 0 1 1 0 0 0 1 1 1 0; 0 0 0 0 0 0 1 0 0 0 0 0 1 0 0 0 0 0 0 0 0 1 1 1 1 1 1 1 0 1 1 1 1 1 1 1 1 1 1 1; 0 0 0 0 1 0 0 1 0 0 0 0 0 1 0 0 1 0 0 0 1 1 0 1 1 0 0 1 1 0 1 1 0 1 1 1 0 0 1 0; 0 0 0 0 0 0 0 0 1 0 0 1 1 1 0 1 1 0 1 0 0 0 1 1 1 0 1 0 0 0 0 1 0 1 1 1 0 0 0 1; 0 0 0 0 0 0 0 0 0 1 0 1 1 0 0 0 1 1 0 0 1 0 1 1 1 0 1 0 1 0 1 0 0 1 0 0 1 1 1 0; 0 0 0 0 0 0 0 0 0 0 1 1 0 1 0 0 0 0 1 1 1 1 0 1 1 0 0 0 0 1 0 1 1 0 0 1 0 1 1 1'))
+        c0 = 0x184229d461
+        for i in range(0, 2**7):
+            codeword = mk_int(np.dot(mk_array(i, 9), g)) ^ c0
+            isch_map['%x' % codeword] = i
+        return isch_map
 
-	def decode_isch(self, syms):
-		sync0 = 0x575d57f7ff
-		v = mk_int(dibits_to_bits(syms))
-		vp = '%x' % v
-		isch = 'unknown'
-		if v == sync0:
-			return -2, -2, -2, -2
-		if vp in self.isch_map:
-			chn,loc,fr,cnt = mk_isch(self.isch_map[vp])
-			return chn, loc, fr, cnt
-		# FIXME: if bit error(s), locate closest matching codeword
-		return -1, -1, -1, -1
+    def decode_isch(self, syms):
+        sync0 = 0x575d57f7ff
+        v = mk_int(dibits_to_bits(syms))
+        vp = '%x' % v
+        isch = 'unknown'
+        if v == sync0:
+            return -2, -2, -2, -2
+        if vp in self.isch_map:
+            chn,loc,fr,cnt = mk_isch(self.isch_map[vp])
+            return chn, loc, fr, cnt
+        # FIXME: if bit error(s), locate closest matching codeword
+        return -1, -1, -1, -1
