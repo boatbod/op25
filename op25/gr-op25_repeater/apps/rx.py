@@ -4,7 +4,7 @@
 # 
 # Copyright 2011, 2012, 2013, 2014, 2015, 2016, 2017 Max H. Parke KA1RBI
 # 
-# Copyright 2018-2019 Graham J. Norbury
+# Copyright 2018-2020 Graham J. Norbury
 # 
 # Copyright 2003,2004,2005,2006 Free Software Foundation, Inc.
 #         (from radiorausch)
@@ -78,7 +78,7 @@ os.environ['IMBE'] = 'soft'
 
 WIRESHARK_PORT = 23456
 
-_def_interval = 1.0	# sec
+_def_interval = 1.0    # sec
 _def_file_dir = '../www/images'
 
 # The P25 receiver
@@ -115,29 +115,28 @@ class p25_rx_block (gr.top_block):
                 import osmosdr
                 self.src = osmosdr.source(options.args)
             except Exception:
-                print "osmosdr source_c creation failure"
+                sys.stdout.write("osmosdr source_c creation failure\n")
                 ignore = True
  
             if any(x in options.args.lower() for x in ['rtl', 'airspy', 'hackrf', 'uhd']):
-                #print "'rtl' has been found in options.args (%s)" % (options.args)
                 self.rtl_found = True
 
             gain_names = self.src.get_gain_names()
             for name in gain_names:
-                range = self.src.get_gain_range(name)
-                print "gain: name: %s range: start %d stop %d step %d" % (name, range[0].start(), range[0].stop(), range[0].step())
+                g_range = self.src.get_gain_range(name)
+                sys.stderr.write("gain: name: %s range: start %d stop %d step %d\n" % (name, g_range[0].start(), g_range[0].stop(), g_range[0].step()))
             if options.gains:
                 for tup in options.gains.split(","):
                     name, gain = tup.split(":")
                     gain = int(gain)
-                    print "setting gain %s to %d" % (name, gain)
+                    sys.stderr.write("setting gain %s to %d\n" % (name, gain))
                     self.src.set_gain(gain, name)
 
             rates = self.src.get_sample_rates()
             try:
-                print 'supported sample rates %d-%d step %d' % (rates.start(), rates.stop(), rates.step())
+                sys.stderr.write("supported sample rates %d-%d step %d\n" % (rates.start(), rates.stop(), rates.step()))
             except:
-                pass	# ignore
+                pass    # ignore
             sys.stderr.write('RTL Gain of %d set to: %.1f\n' % (gain, self.src.get_gain('LNA')))
 
             if options.freq_corr:
@@ -175,7 +174,7 @@ class p25_rx_block (gr.top_block):
 
         self.constellation_scope_connected = False
 
-        for i in xrange(len(speeds)):
+        for i in range(len(speeds)):
             if speeds[i] == _default_speed:
                 self.current_speed = i
                 self.default_speed_idx = i
@@ -185,8 +184,8 @@ class p25_rx_block (gr.top_block):
 
         # wait for gdb
         if options.pause:
-            print 'Ready for GDB to attach (pid = %d)' % (os.getpid(),)
-            raw_input("Press 'Enter' to continue...")
+            sys.stdout.write("Ready for GDB to attach (pid = %d)\n" % (os.getpid(),))
+            input("Press 'Enter' to continue...")
 
         self.input_q = gr.msg_queue(10)
         self.output_q = gr.msg_queue(10)
@@ -203,7 +202,7 @@ class p25_rx_block (gr.top_block):
             self.open_audio(self.channel_rate, options.gain, options.audio_input)
         elif options.ifile:
             self.open_ifile2(self.channel_rate, options.ifile)
-	elif options.symbols:
+        elif options.symbols:
             self.open_symbols(self.symbol_rate, options.symbols, options.seek)
         else:
             pass
@@ -266,9 +265,9 @@ class p25_rx_block (gr.top_block):
 
         if self.baseband_input:
             self.demod = p25_demodulator.p25_demod_fb(input_rate=capture_rate, excess_bw=self.options.excess_bw)
-	elif self.options.symbols:
+        elif self.options.symbols:
             self.demod = None
-        else:	# complex input
+        else:    # complex input
             # local osc
             self.lo_freq = self.options.offset
             if self.options.audio_if or self.options.ifile or self.options.input:
@@ -290,7 +289,7 @@ class p25_rx_block (gr.top_block):
         self.decoder = p25_decoder.p25_decoder_sink_b(dest='audio', do_imbe=self.options.vocoder, num_ambe=num_ambe, wireshark_host=self.options.wireshark_host, udp_port=udp_port, do_msgq = True, msgq=self.rx_q, audio_output=self.options.audio_output, debug=self.options.verbosity, nocrypt=self.options.nocrypt)
 
         # connect it all up
-	if self.options.symbols:
+        if self.options.symbols:
             self.connect(source, self.decoder)
         else:
             self.connect(source, self.demod, self.decoder)
@@ -315,7 +314,7 @@ class p25_rx_block (gr.top_block):
         if self.options.phase2_tdma:
             num_ambe = 2
         if self.options.logfile_workers:
-            for i in xrange(self.options.logfile_workers):
+            for i in range(self.options.logfile_workers):
                 demod = p25_demodulator.p25_demod_cb(input_rate=capture_rate,
                                                      demod_type=self.options.demod_type,
                                                      offset=self.options.offset)
@@ -366,7 +365,7 @@ class p25_rx_block (gr.top_block):
             set_tdma = True
             self.decoder.set_slotid(params['tdma'])
         if set_tdma == self.tdma_state:
-            return	# already in desired state
+            return    # already in desired state
         self.tdma_state = set_tdma
         if set_tdma:
             hash = '%x%x%x' % (params['nac'], params['sysid'], params['wacn'])
@@ -378,7 +377,7 @@ class p25_rx_block (gr.top_block):
             rate = 4800
 
         self.set_sps(rate)
-	if not self.options.symbols:
+        if not self.options.symbols:
             self.demod.set_omega(rate)
 
     def set_sps(self, rate):
@@ -393,30 +392,30 @@ class p25_rx_block (gr.top_block):
         offset = params['offset']
         center_freq = params['center_frequency']
 
-        if freq != last_freq:								# ignore requests to tune to same freq
+        if freq != last_freq:                               # ignore requests to tune to same freq
             if self.options.hamlib_model:
                 self.hamlib.set_freq(freq)
             elif (not self.options.symbols) and params['center_frequency']:
                 relative_freq = center_freq - freq
                 if abs(relative_freq + self.options.offset) > self.channel_rate / 2:
-                    self.lo_freq = self.options.offset					# relative tune not possible
-                    self.demod.set_relative_frequency(self.lo_freq)			# reset demod relative freq
-                    self.set_freq(freq + offset)					# direct tune instead
+                    self.lo_freq = self.options.offset                       # relative tune not possible
+                    self.demod.set_relative_frequency(self.lo_freq)              # reset demod relative freq
+                    self.set_freq(freq + offset)                                 # direct tune instead
                 else:    
                     self.lo_freq = self.options.offset + relative_freq
-                    if self.demod.set_relative_frequency(self.lo_freq):			# relative tune successful
-                        self.demod.reset()                                              # reset gardner-costas loop
+                    if self.demod.set_relative_frequency(self.lo_freq):      # relative tune successful
+                        self.demod.reset()                                       # reset gardner-costas loop
                         self.set_freq(center_freq + offset)
                         if self.fft_sink:
                             self.fft_sink.set_relative_freq(relative_freq)
                     else:
-                        self.lo_freq = self.options.offset				# relative tune unsuccessful
-                        self.demod.set_relative_frequency(self.lo_freq)			# reset demod relative freq
-                        self.set_freq(freq + offset)					# direct tune instead
+                        self.lo_freq = self.options.offset                   # relative tune unsuccessful
+                        self.demod.set_relative_frequency(self.lo_freq)          # reset demod relative freq
+                        self.set_freq(freq + offset)                             # direct tune instead
             elif not self.options.symbols:
                 self.set_freq(freq + offset)
             else:
-                pass	# fake tuning when playing back symbols file
+                pass                                        # fake tuning when playing back symbols file
             self.decoder.reset_timer()
 
         self.configure_tdma(params)
@@ -446,7 +445,7 @@ class p25_rx_block (gr.top_block):
         self.meta_q.insert_tail(msg)
 
     def hamlib_attach(self, model):
-        Hamlib.rig_set_debug (Hamlib.RIG_DEBUG_NONE)	# RIG_DEBUG_TRACE
+        Hamlib.rig_set_debug (Hamlib.RIG_DEBUG_NONE)    # RIG_DEBUG_TRACE
 
         self.hamlib = Hamlib.Rig (model)
         self.hamlib.set_conf ("serial_speed","9600")
@@ -471,7 +470,6 @@ class p25_rx_block (gr.top_block):
             self.demod.set_baseband_gain(float(gain) * f)
 
     def set_audio_scaler(self, vol):
-        #print 'audio scaler: %f' % ((1 / 32768.0) * (vol * 0.1))
         if hasattr(self.decoder, 'set_scaler_k'):
             self.decoder.set_scaler_k((1 / 32768.0) * (vol * 0.1))
 
@@ -522,7 +520,7 @@ class p25_rx_block (gr.top_block):
         return True
 
     def toggle_plot(self, plot_type):
-	if self.options.symbols:
+        if self.options.symbols:
             return              # plots not supported when replacing symbol
 
         plot_off = 0
@@ -542,15 +540,15 @@ class p25_rx_block (gr.top_block):
             self.toggle_mixer()
             plot_off = 5
 
-        if (plot_type == 1) and (plot_off != 1):	# fft
+        if (plot_type == 1) and (plot_off != 1):    # fft
             self.toggle_fft()
-        elif (plot_type == 2) and (plot_off != 2):	# constellation
+        elif (plot_type == 2) and (plot_off != 2):  # constellation
             self.toggle_constellation()
-        elif (plot_type == 3) and (plot_off != 3):	# symbol
+        elif (plot_type == 3) and (plot_off != 3):  # symbol
             self.toggle_symbol()
-        elif (plot_type == 4) and (plot_off != 4):	# datascope
+        elif (plot_type == 4) and (plot_off != 4):  # datascope
             self.toggle_eye()
-        elif (plot_type == 5) and (plot_off != 5):	# mixer output
+        elif (plot_type == 5) and (plot_off != 5):  # mixer output
             self.toggle_mixer()
 
     def toggle_mixer(self):
@@ -716,7 +714,6 @@ class p25_rx_block (gr.top_block):
         if file_seek > 0:
             rc = ifile.seek(file_seek*1024, gr.SEEK_SET)
             assert rc == True
-            #print "seek: %d, rc = %d" % (file_seek, rc)
         throttle = blocks.throttle(gr.sizeof_gr_complex, speed)
         self.source = blocks.multiply_const_cc(gain)
         self.connect(ifile, throttle, self.source)
@@ -799,7 +796,7 @@ class p25_rx_block (gr.top_block):
         elif s == 'update':
             self.freq_update()
             if self.trunk_rx is None:
-                return False	## possible race cond - just ignore
+                return False    ## possible race cond - just ignore
             js = self.trunk_rx.to_json()
             msg = gr.message().make_from_string(js, -4, 0, 0)
             self.input_q.insert_tail(msg)

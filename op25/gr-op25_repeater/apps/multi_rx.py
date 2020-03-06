@@ -86,7 +86,7 @@ class channel(object):
         self.verbosity = verbosity
         self.name = config['name']
         self.device = dev
-        if config.has_key('frequency') and (config['frequency'] != ""):
+        if 'frequency' in config and (config['frequency'] != ""):
             self.frequency = config['frequency']
         else:
             self.frequency = self.device.frequency
@@ -97,7 +97,7 @@ class channel(object):
         self.sinks = []
         self.kill_sink = []
         self.symbol_rate = _def_symbol_rate
-        if 'symbol_rate' in config.keys():
+        if 'symbol_rate' in list(config.keys()):
             self.symbol_rate = config['symbol_rate']
         self.config = config
         self.demod = p25_demodulator.p25_demod_cb(
@@ -111,10 +111,10 @@ class channel(object):
                          symbol_rate = self.symbol_rate)
         self.decoder = op25_repeater.frame_assembler(config['destination'], verbosity, msgq_id, rx_q)
 
-        if config.has_key('key') and (config['key'] != ""):
+        if 'key' in config and (config['key'] != ""):
             self.set_key(int(config['key'], 0))
 
-        if ('plot' not in config.keys()) or (config['plot'] == ""):
+        if ('plot' not in list(config.keys())) or (config['plot'] == ""):
             return
 
         for plot in config['plot'].split(','):
@@ -198,7 +198,7 @@ class rx_block (gr.top_block):
         self.trunking = None
         self.du_watcher = None
         self.rx_q = gr.msg_queue(100)
-        if config.has_key("trunking"):
+        if "trunking" in config:
             self.configure_trunking(config['trunking'])
 
         self.configure_devices(config['devices'])
@@ -208,8 +208,8 @@ class rx_block (gr.top_block):
             self.trunk_rx.post_init()
 
     def configure_trunking(self, config):
-        if ((config.has_key("module") and (config['module'] == "")) or 
-            (config.has_key("chans") and (config['chans'] == ""))):
+        if (("module" in config and (config['module'] == "")) or 
+            ("chans" in config and (config['chans'] == ""))):
             return
 
         tk_mod = config['module']
@@ -233,13 +233,13 @@ class rx_block (gr.top_block):
             self.devices.append(device(cfg))
 
     def find_device(self, chan):
-        if chan.has_key('device') and (chan['device'] != "") and (self.device_id_by_name.has_key(chan['device'])):
+        if 'device' in chan and (chan['device'] != "") and (chan['device'] in self.device_id_by_name):
             dev_id = self.device_id_by_name[chan['device']]
             sys.stderr.write("DEVICE ID=%d\n" % dev_id)
             if dev_id < len(self.devices):
                 return self.devices[dev_id]
             
-        if chan.has_key('frequency') and (chan['frequency'] != ""):
+        if 'frequency' in chan and (chan['frequency'] != ""):
             for dev in self.devices:
                 d = abs(chan['frequency'] - dev.frequency)
                 nf = dev.sample_rate / 2
@@ -251,7 +251,7 @@ class rx_block (gr.top_block):
         self.channels = []
         for cfg in config:
             dev = self.find_device(cfg)
-            if (dev is None) and cfg.has_key('frequency'):
+            if (dev is None) and 'frequency' in cfg:
                 sys.stderr.write("* * * Frequency %d not within spectrum band of any device - ignoring!\n" % cfg['frequency'])
                 continue
             elif dev is None:
@@ -272,10 +272,10 @@ class rx_block (gr.top_block):
                 msgq_id = -1 - len(self.channels)
             chan = channel(cfg, dev, self.verbosity, msgq_id, self.rx_q)
             self.channels.append(chan)
-            if (cfg.has_key("raw_input")) and (cfg['raw_input'] != ""):
+            if ("raw_input" in cfg) and (cfg['raw_input'] != ""):
                 sys.stderr.write("Reading raw symbols from file: %s\n" % cfg['raw_input'])
                 chan.raw_file = blocks.file_source(gr.sizeof_char, cfg['raw_input'], False)
-                if (cfg.has_key("raw_seek")) and (cfg['raw_seek'] != 0):
+                if ("raw_seek" in cfg) and (cfg['raw_seek'] != 0):
                     chan.raw_file.seek(int(cfg['raw_seek']) * 4800, 0)
                 chan.throttle = blocks.throttle(gr.sizeof_char, chan.symbol_rate)
                 chan.throttle.set_max_noutput_items(chan.symbol_rate/50);
@@ -283,7 +283,7 @@ class rx_block (gr.top_block):
                 self.connect(chan.throttle, chan.decoder)
             else:
                 self.connect(dev.src, chan.demod, chan.decoder)
-                if (cfg.has_key("raw_output")) and (cfg['raw_output'] != ""):
+                if ("raw_output" in cfg) and (cfg['raw_output'] != ""):
                     sys.stderr.write("Saving raw symbols to file: %s\n" % cfg['raw_output'])
                     chan.raw_sink = blocks.file_sink(gr.sizeof_char, cfg['raw_output'])
                     self.connect(chan.demod, chan.raw_sink)
@@ -304,19 +304,19 @@ class rx_block (gr.top_block):
             chan.set_slot(0)
             return False
         
-        if params.has_key('slot'):
+        if 'slot' in params:
             chan.set_slot(params['slot'])
 
-        if params.has_key('chan'):
+        if 'chan' in params:
             self.trunk_rx.receivers[tuner].current_chan = params['chan']
 
-        if params.has_key('state'):
+        if 'state' in params:
             self.trunk_rx.receivers[tuner].current_state = params['state']
 
-        if params.has_key('type'):
+        if 'type' in params:
             self.trunk_rx.receivers[tuner].current_type = params['type']
 
-        if params.has_key('time'):
+        if 'time' in params:
             self.trunk_rx.receivers[tuner].tune_time = params['time']
 
         return True
@@ -324,7 +324,7 @@ class rx_block (gr.top_block):
     def set_slot(self, params):
         tuner = params['tuner']
         chan = self.channels[tuner]
-        if params.has_key('slot'):
+        if 'slot' in params:
             chan.set_slot(params['slot'])
 
     def kill(self):
@@ -353,13 +353,13 @@ class du_queue_watcher(threading.Thread):
 
 class rx_main(object):
     def __init__(self):
-        def byteify(input):	# thx so
+        def byteify(input):    # thx so
             if isinstance(input, dict):
                 return {byteify(key): byteify(value)
-                        for key, value in input.iteritems()}
+                        for key, value in list(input.items())}
             elif isinstance(input, list):
                 return [byteify(element) for element in input]
-            elif isinstance(input, unicode):
+            elif isinstance(input, str):
                 return input.encode('utf-8')
             else:
                 return input
@@ -375,8 +375,8 @@ class rx_main(object):
 
         # wait for gdb
         if options.pause:
-            print 'Ready for GDB to attach (pid = %d)' % (os.getpid(),)
-            raw_input("Press 'Enter' to continue...")
+            sys.stdout.write("Ready for GDB to attach (pid = %d)\n" % (os.getpid(),))
+            input("Press 'Enter' to continue...")
 
         if options.config_file == '-':
             config = json.loads(sys.stdin.read())

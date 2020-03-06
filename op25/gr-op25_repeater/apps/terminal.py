@@ -68,7 +68,7 @@ class curses_terminal(threading.Thread):
         self.maxy, self.maxx = self.stdscr.getmaxyx()
         if (self.maxy < 6) or (self.maxx < 60):
             sys.stderr.write("Terminal window too small! Minimum size [70 x 6], actual [%d x %d]\n" % (self.maxx, self.maxy))
-            print "Terminal window too small! Minimum size [70 x 6], actual [%d x %d]\n" % (self.maxx, self.maxy)
+            sys.stdout.write("Terminal window too small! Minimum size [70 x 6], actual [%d x %d]\n" % (self.maxx, self.maxy))
             self.keep_running = False
             return
 
@@ -93,7 +93,7 @@ class curses_terminal(threading.Thread):
     def resize_curses(self):
         self.maxy, self.maxx = self.stdscr.getmaxyx()
  
-        if (self.maxx < 60) or (self.maxy < 6):	# do not resize if window is now too small
+        if (self.maxx < 60) or (self.maxy < 6):    # do not resize if window is now too small
             return 
 
         self.stdscr.erase()
@@ -134,7 +134,7 @@ class curses_terminal(threading.Thread):
         self.stdscr.refresh()
 
     def do_auto_update(self):
-        UPDATE_INTERVAL = 0.5	# sec.
+        UPDATE_INTERVAL = 0.5    # sec.
         if not self.auto_update:
             return False
         if self.last_update + UPDATE_INTERVAL > time.time():
@@ -155,10 +155,10 @@ class curses_terminal(threading.Thread):
         c = self.stdscr.getch()
         if c == ord('u') or self.do_auto_update():
             self.send_command('update', 0)
-        if c in COMMANDS.keys():
+        if c in list(COMMANDS.keys()):
             self.send_command(COMMANDS[c], 0)
         elif c == ord('q'):
-		return True
+            return True
         elif c == ord('t'):
             if self.current_nac:
                 self.send_command('add_default_config', int(self.current_nac))
@@ -254,14 +254,14 @@ class curses_terminal(threading.Thread):
         # return true signifies end of main event loop
         msg = json.loads(js)
         if msg['json_type'] == 'trunk_update':
-            nacs = [x for x in msg.keys() if x.isnumeric() ]
+            nacs = [x for x in list(msg.keys()) if x.isnumeric() ]
             if not nacs:
                 return
             if msg.get('nac'):
                 current_nac = str(msg['nac'])
             else:
                 times = {msg[nac]['last_tsbk']:nac for nac in nacs}
-                current_nac = times[ sorted(times.keys(), reverse=True)[0] ]
+                current_nac = times[ sorted(list(times.keys()), reverse=True)[0] ]
             self.current_nac = current_nac
             s = 'NAC 0x%x' % (int(current_nac))
             s += ' WACN 0x%x' % (msg[current_nac]['wacn'])
@@ -275,7 +275,7 @@ class curses_terminal(threading.Thread):
             self.top_bar.addstr(0, 0, s)
             self.top_bar.refresh()
             self.freq_list.erase()
-            for i in xrange(len(freqs)):
+            for i in range(len(freqs)):
                 if i > (self.maxy - 6):
                     break
                 s=msg[current_nac]['frequencies'][freqs[i]]

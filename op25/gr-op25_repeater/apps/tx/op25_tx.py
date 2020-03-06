@@ -65,7 +65,7 @@ class file_pipeline(gr.hier_block2):
                                 gr.io_signature(0, 0, 0),                    # Input signature
                                 gr.io_signature(1, 1, gr.sizeof_gr_complex)) # Output signature
 
-	fs = blocks.file_source(gr.sizeof_gr_complex, input_file, True)
+        fs = blocks.file_source(gr.sizeof_gr_complex, input_file, True)
         agc = analog.feedforward_agc_cc(160, 1.0)
 
         # Local oscillator
@@ -171,16 +171,16 @@ class fm_tx_block(stdgui2.std_top_block):
         gain_names = self.u.get_gain_names()
         for name in gain_names:
             gain_range = self.u.get_gain_range(name)
-            print "gain: name: %s range: start %d stop %d step %d" % (name, gain_range[0].start(), gain_range[0].stop(), gain_range[0].step())
+            print("gain: name: %s range: start %d stop %d step %d" % (name, gain_range[0].start(), gain_range[0].stop(), gain_range[0].step()))
         if options.gains:
             for tuple in options.gains.split(","):
                 name, gain = tuple.split(":")
                 gain = int(gain)
-                print "setting gain %s to %d" % (name, gain)
+                print("setting gain %s to %d" % (name, gain))
                 self.u.set_gain(gain, name)
 
         self.usrp_rate = 320000
-        print 'setting sample rate'
+        print('setting sample rate')
         self.u.set_sample_rate(self.usrp_rate)
         self.u.set_center_freq(int(options.freq))
         #self.u.set_bandwidth(self.usrp_rate)
@@ -226,12 +226,12 @@ class fm_tx_block(stdgui2.std_top_block):
           #self.audio_input = audio.source(input_audio_rate, options.audio_input)
           af = 1333
           audio_input = analog.sig_source_s( input_audio_rate, analog.GR_SIN_WAVE, af, 15000)
-          t = op25_repeater.vocoder(True,		# 0=Decode,True=Encode
-                                  options.verbose,	# Verbose flag
-                                  options.stretch,	# flex amount
-                                  "",			# udp ip address
-                                  0,			# udp port
-                                  False) 		# dump raw u vectors
+          t = op25_repeater.vocoder(True,          # 0=Decode,True=Encode
+                                  options.verbose, # Verbose flag
+                                  options.stretch, # flex amount
+                                  "",              # udp ip address
+                                  0,               # udp port
+                                  False)           # dump raw u vectors
           self.connect(audio_input, t)
           self.vocoders.append(t)
 
@@ -284,10 +284,10 @@ class fm_tx_block(stdgui2.std_top_block):
 
         r = self.u.tune(self.subdev.which(), self.subdev, target_freq)
         if r:
-            print "r.baseband_freq =", eng_notation.num_to_str(r.baseband_freq)
-            print "r.dxc_freq      =", eng_notation.num_to_str(r.dxc_freq)
-            print "r.residual_freq =", eng_notation.num_to_str(r.residual_freq)
-            print "r.inverted      =", r.inverted
+            print("r.baseband_freq =", eng_notation.num_to_str(r.baseband_freq))
+            print("r.dxc_freq      =", eng_notation.num_to_str(r.dxc_freq))
+            print("r.residual_freq =", eng_notation.num_to_str(r.residual_freq))
+            print("r.inverted      =", r.inverted)
             
             # Could use residual_freq in s/w freq translator
             return True

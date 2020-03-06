@@ -25,9 +25,9 @@ docs than the generated classes provide.
 
 import os
 
-from generated import index
-from base import Base
-from text import description
+from .generated import index
+from .base import Base
+from .text import description
 
 class DoxyIndex(Base):
     """

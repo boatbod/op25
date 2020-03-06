@@ -40,25 +40,25 @@ from op25_c4fm_mod import p25_mod_bf
 RC_FILTER = {'dmr': 'rrc', 'p25': 'rc', 'ysf': 'rrc', 'dstar': None}
 
 output_gains = {
-	'dmr': 5.5,
-	'dstar': 0.95,
-	'p25': 4.5,
-	'ysf': 5.5
+    'dmr': 5.5,
+    'dstar': 0.95,
+    'p25': 4.5,
+    'ysf': 5.5
 }
 gain_adjust = {
-	'dmr': 3.0,
-	'dstar': 7.5,
-	'ysf': 4.0
+    'dmr': 3.0,
+    'dstar': 7.5,
+    'ysf': 4.0
 }
 gain_adjust_fullrate = {
-	'p25': 2.0,
-	'ysf': 3.0
+    'p25': 2.0,
+    'ysf': 3.0
 }
-mod_adjust = {	# rough values
-	'dmr': 0.35,
-	'dstar': 0.075,
-	'p25': 0.33,
-	'ysf': 0.42
+mod_adjust = {  # rough values
+    'dmr': 0.35,
+    'dstar': 0.075,
+    'p25': 0.33,
+    'ysf': 0.42
 }
 
 class my_top_block(gr.top_block):
@@ -104,14 +104,14 @@ class my_top_block(gr.top_block):
 
         max_inputs = 1
 
-	if options.protocol is None:
-            print 'protocol [-p] option missing'
+        if options.protocol is None:
+            print('protocol [-p] option missing')
             sys.exit(0)
 
         if options.protocol == 'ysf' or options.protocol == 'dmr' or options.protocol == 'dstar':
             assert options.config_file # dstar, dmr and ysf require config file ("-c FILENAME" option)
 
-	output_gain = output_gains[options.protocol]
+        output_gain = output_gains[options.protocol]
 
         if options.test: # input file is in symbols of size=char
             ENCODER = blocks.file_source(gr.sizeof_char, options.test, True)
@@ -126,12 +126,12 @@ class my_top_block(gr.top_block):
         elif options.protocol == 'dstar':
             ENCODER = op25_repeater.dstar_tx_sb(options.verbose, options.config_file)
         elif options.protocol == 'p25':
-            ENCODER = op25_repeater.vocoder(True,		# 0=Decode,True=Encode
-                                  False,	# Verbose flag
-                                  0,	# flex amount
-                                  "",			# udp ip address
-                                  0,			# udp port
-                                  False) 		# dump raw u vectors
+            ENCODER = op25_repeater.vocoder(True, # 0=Decode,True=Encode
+                                  False,          # Verbose flag
+                                  0,              # flex amount
+                                  "",             # udp ip address
+                                  0,              # udp port
+                                  False)          # dump raw u vectors
         elif options.protocol == 'ysf':
             ENCODER = op25_repeater.ysf_tx_sb(options.verbose, options.config_file, options.fullrate_mode)
             if options.fullrate_mode:
@@ -202,7 +202,7 @@ class my_top_block(gr.top_block):
                 f1 = float(options.if_rate) / options.alt_modulator_rate
                 i1 = int(options.if_rate / options.alt_modulator_rate)
                 if f1 - i1 > 1e-3:
-                    print '*** Error, sdr rate %d not an integer multiple of alt modulator rate %d - ratio=%f' % (options.if_rate, options.alt_modulator_rate, f1)
+                    print('*** Error, sdr rate %d not an integer multiple of alt modulator rate %d - ratio=%f' % (options.if_rate, options.alt_modulator_rate, f1))
                     sys.exit(0)
                 a_resamp = filter.pfb.arb_resampler_fff(options.alt_modulator_rate / float(options.modulator_rate))
                 sys.stderr.write('adding resampler for rate change %d ===> %d\n' % (options.modulator_rate, options.alt_modulator_rate))
@@ -225,12 +225,12 @@ class my_top_block(gr.top_block):
         gain_names = self.u.get_gain_names()
         for name in gain_names:
             range = self.u.get_gain_range(name)
-            print "gain: name: %s range: start %d stop %d step %d" % (name, range[0].start(), range[0].stop(), range[0].step())
+            print("gain: name: %s range: start %d stop %d step %d" % (name, range[0].start(), range[0].stop(), range[0].step()))
         if options.gains:
             for tuple in options.gains.split(","):
                 name, gain = tuple.split(":")
                 gain = int(gain)
-                print "setting gain %s to %d" % (name, gain)
+                print("setting gain %s to %d" % (name, gain))
                 self.u.set_gain(gain, name)
 
         self.u.set_sample_rate(options.if_rate)
@@ -239,7 +239,7 @@ class my_top_block(gr.top_block):
         #self.u.set_bandwidth(options.if_rate)
 
 if __name__ == "__main__":
-    print 'Multiprotocol Digital Voice TX (C) Copyright 2017 Max H. Parke KA1RBI'
+    print('Multiprotocol Digital Voice TX (C) Copyright 2017 Max H. Parke KA1RBI')
     try:
         my_top_block().run()
     except KeyboardInterrupt:

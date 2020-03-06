@@ -59,7 +59,7 @@ class dmr_receiver:
         self.debug = debug
         self.cc_timeouts = 0
         self.chans = chans
-        self.chan_list = self.chans.keys()
+        self.chan_list = list(self.chans.keys())
         self.current_chan = 0
         self.rest_lcn = 0
         self.active_tgids = {}
@@ -101,7 +101,7 @@ class dmr_receiver:
                 sys.stderr.write("%f [%d] CONNECT PLUS CHANNEL GRANT: srcAddr(%06x), grpAddr(%06x), unknown lcn(%d), slot(%d)\n" % (time.time(), self.msgq_id, src_addr, grp_addr, lcn, slot))
 
     def find_freq(self, lcn):
-        if self.chans.has_key(lcn):
+        if lcn in self.chans:
             return (self.chan_list.index(lcn), self.chans[lcn].frequency)
         else:
             return (None, None)
@@ -167,7 +167,7 @@ class dmr_receiver:
                 d_buf += format(ord(byte),"02x")
             sys.stderr.write("%f [%d] DMR PDU: lcn(%d), state(%d), type(%d), slot(%d), data(%s)\n" % (time.time(), self.msgq_id, self.chan_list[self.current_chan], self.current_state, m_type, m_slot, d_buf))
 
-	if m_type == 0:   # CACH SLC
+        if m_type == 0:   # CACH SLC
             self.rx_CACH_SLC(m_buf)
         elif m_type == 1: # CACH CSBK
             pass
@@ -358,7 +358,7 @@ class rx_ctl(object):
         self.check_expired_grants()
 
         m_rxid = int(msg.arg1()) >> 1
-        if self.receivers.has_key(m_rxid):
+        if m_rxid in self.receivers:
             self.receivers[m_rxid].process_qmsg(msg)
 
     def check_expired_grants(self):

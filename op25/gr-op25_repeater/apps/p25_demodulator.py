@@ -57,35 +57,35 @@ _def_omega_relative_limit = 0.005
 # /////////////////////////////////////////////////////////////////////////////
 
 def get_decim(speed):
-	s = int(speed)
-	if_freqs = [24000, 25000, 32000]
-	for i_f in if_freqs:
-		if s % i_f != 0:
-			continue
-		q = s / i_f
-		if q & 1:
-			continue
-		if q >= 40 and q & 3 == 0:
-			decim = q/4
-			decim2 = 4
-		else:
-			decim = q/2
-			decim2 = 2
-		return decim, decim2
-	return None
+    s = int(speed)
+    if_freqs = [24000, 25000, 32000]
+    for i_f in if_freqs:
+        if s % i_f != 0:
+            continue
+        q = s / i_f
+        if q & 1:
+            continue
+        if q >= 40 and q & 3 == 0:
+            decim = q/4
+            decim2 = 4
+        else:
+            decim = q/2
+            decim2 = 2
+        return decim, decim2
+    return None
 
 class p25_demod_base(gr.hier_block2):
     def __init__(self,
-                 if_rate	= None,
-                 filter_type	= None,
+                 if_rate    = None,
+                 filter_type    = None,
                  excess_bw      = _def_excess_bw,
-                 symbol_rate	= _def_symbol_rate):
+                 symbol_rate    = _def_symbol_rate):
         """
-	Hierarchical block for P25 demodulation base class
+        Hierarchical block for P25 demodulation base class
 
         @param if_rate: sample rate of complex input channel
         @type if_rate: int
-	"""
+        """
         self.if_rate = if_rate
         self.symbol_rate = symbol_rate
         self.bb_sink = None
@@ -161,21 +161,21 @@ class p25_demod_base(gr.hier_block2):
 class p25_demod_fb(p25_demod_base):
 
     def __init__(self,
-                 input_rate	= None,
-                 filter_type	= None,
+                 input_rate = None,
+                 filter_type    = None,
                  excess_bw      = _def_excess_bw,
-                 symbol_rate	= _def_symbol_rate):
+                 symbol_rate    = _def_symbol_rate):
         """
-	Hierarchical block for P25 demodulation.
+        Hierarchical block for P25 demodulation.
 
-	The float input is fsk4-demodulated
+        The float input is fsk4-demodulated
         @param input_rate: sample rate of complex input channel
         @type input_rate: int
-	"""
+        """
 
-	gr.hier_block2.__init__(self, "p25_demod_fb",
-				gr.io_signature(1, 1, gr.sizeof_float),       # Input signature
-				gr.io_signature(1, 1, gr.sizeof_char)) # Output signature
+        gr.hier_block2.__init__(self, "p25_demod_fb",
+            gr.io_signature(1, 1, gr.sizeof_float),       # Input signature
+            gr.io_signature(1, 1, gr.sizeof_char)) # Output signature
 
         p25_demod_base.__init__(self, if_rate=input_rate, symbol_rate=symbol_rate, filter_type=filter_type)
 
@@ -200,28 +200,27 @@ class p25_demod_fb(p25_demod_base):
 class p25_demod_cb(p25_demod_base):
 
     def __init__(self,
-                 input_rate	= None,
-                 demod_type	= 'cqpsk',
-                 filter_type	= None,
+                 input_rate = None,
+                 demod_type = 'cqpsk',
+                 filter_type    = None,
                  excess_bw      = _def_excess_bw,
-                 relative_freq	= 0,
-                 offset		= 0,
-                 if_rate	= _def_if_rate,
-                 gain_mu	= _def_gain_mu,
-                 costas_alpha	= _def_costas_alpha,
-                 symbol_rate	= _def_symbol_rate):
+                 relative_freq  = 0,
+                 offset     = 0,
+                 if_rate    = _def_if_rate,
+                 gain_mu    = _def_gain_mu,
+                 costas_alpha   = _def_costas_alpha,
+                 symbol_rate    = _def_symbol_rate):
         """
-	Hierarchical block for P25 demodulation.
+        Hierarchical block for P25 demodulation.
 
-	The complex input is tuned, decimated and demodulated
+        The complex input is tuned, decimated and demodulated
         @param input_rate: sample rate of complex input channel
         @type input_rate: int
-	"""
+        """
 
-	gr.hier_block2.__init__(self, "p25_demod_cb",
-				gr.io_signature(1, 1, gr.sizeof_gr_complex),       # Input signature
-				gr.io_signature(1, 1, gr.sizeof_char)) # Output signature
-#				gr.io_signature(0, 0, 0)) # Output signature
+        gr.hier_block2.__init__(self, "p25_demod_cb",
+                                gr.io_signature(1, 1, gr.sizeof_gr_complex),  # Input signature
+                                gr.io_signature(1, 1, gr.sizeof_char))        # Output signature
         p25_demod_base.__init__(self, if_rate=if_rate, symbol_rate=symbol_rate, filter_type=filter_type)
 
         self.input_rate = input_rate
@@ -288,7 +287,7 @@ class p25_demod_cb(p25_demod_base):
 
         alpha = costas_alpha
         beta = 0.125 * alpha * alpha
-        fmax = 2400	# Hz
+        fmax = 2400 # Hz
         fmax = 2*pi * fmax / float(self.if_rate)
 
         self.clock = op25_repeater.gardner_costas_cc(omega, gain_mu, gain_omega, alpha,  beta, fmax, -fmax)
@@ -313,7 +312,7 @@ class p25_demod_cb(p25_demod_base):
 
         self.set_relative_frequency(relative_freq)
 
-    def get_freq_error(self):	# get error in Hz (approx).
+    def get_freq_error(self):   # get error in Hz (approx).
         return int(self.clock.get_freq_error() * self.symbol_rate)
 
     def set_omega(self, rate):
@@ -330,14 +329,12 @@ class p25_demod_cb(p25_demod_base):
 
     def set_relative_frequency(self, freq):
         if abs(freq) > ((self.input_rate / 2) - (self.if1 / 2)):
-            #print 'set_relative_frequency: error, relative frequency %d exceeds limit %d' % (freq, self.input_rate/2)
             return False
         if freq == self.lo_freq:
             return True
-        #print 'set_relative_frequency', freq
         self.lo_freq = freq
         if self.if1:
-            if freq not in self.t_cache.keys():
+            if freq not in list(self.t_cache.keys()):
                 self.t_cache[freq] = filter.firdes.complex_band_pass(1.0, self.input_rate, -freq - self.if1/2, -freq + self.if1/2, self.if1/2, filter.firdes.WIN_HAMMING)
             self.bpf.set_taps(self.t_cache[freq])
             bfo_f = self.decim * -freq / float(self.input_rate)
@@ -363,7 +360,7 @@ class p25_demod_cb(p25_demod_base):
     # assumes lock held or init
     def connect_chain(self, demod_type):
         if self.connect_state == demod_type:
-            return	# already in desired state
+            return  # already in desired state
         self.disconnect_chain()
         self.connect_state = demod_type
         if demod_type == 'fsk4':
@@ -371,14 +368,14 @@ class p25_demod_cb(p25_demod_base):
         elif demod_type == 'cqpsk':
             self.connect(self.if_out, self.cutoff, self.agc, self.clock, self.diffdec, self.to_float, self.rescale, self.slicer)
         else:
-            print 'connect_chain failed, type: %s' % demod_type
+            sys.stderr.write("connect_chain failed, type: %s\n" % demod_type)
             assert 0 == 1
         if self.float_sink is not None:
             self.connect_float(self.float_sink[1])
 
     # assumes lock held or init
     def connect_fm_demod(self):
-        if self.aux_fm_connected or self.connect_state != 'cqpsk':	# only valid for cqpsk demod type
+        if self.aux_fm_connected or self.connect_state != 'cqpsk':  # only valid for cqpsk demod type
             sys.stderr.write("connect_fm_demod() failed test\n")
             return
         self.connect(self.cutoff, self.fm_demod, self.baseband_amp, self.symbol_filter, self.null_sink)
@@ -386,7 +383,7 @@ class p25_demod_cb(p25_demod_base):
 
     # assumes lock held or init
     def disconnect_fm_demod(self):
-        if not self.aux_fm_connected or self.connect_state != 'cqpsk':	# only valid for cqpsk demod type
+        if not self.aux_fm_connected or self.connect_state != 'cqpsk':  # only valid for cqpsk demod type
             sys.stderr.write("disconnect_fm_demod() failed test\n")
             return
         self.disconnect(self.cutoff, self.fm_demod, self.baseband_amp, self.symbol_filter, self.null_sink)
@@ -409,7 +406,7 @@ class p25_demod_cb(p25_demod_base):
             self.connect(self.fsk4_demod, sink)
             self.float_sink = [self.fsk4_demod, sink]
         else:
-            print 'connect_float: state error', self.connect_state
+            sys.stderr.write("connect_float: state error: %s\n" % self.connect_state)
             assert 0 == 1
 
     def disconnect_complex(self):
