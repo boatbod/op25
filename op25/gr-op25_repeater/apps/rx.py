@@ -2,7 +2,7 @@
 
 # Copyright 2008-2011 Steve Glass
 # 
-# Copyright 2011, 2012, 2013, 2014, 2015, 2016, 2017 Max H. Parke KA1RBI
+# Copyright 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020 Max H. Parke KA1RBI
 # 
 # Copyright 2018-2020 Graham J. Norbury
 # 
@@ -104,6 +104,14 @@ class p25_rx_block (gr.top_block):
         self.eye_sink = None
         self.mixer_sink = None
         self.target_freq = 0.0
+        self.last_error_update = 0
+        self.error_band = 0
+        self.tuning_error = 0
+        self.freq_correction = 0
+        self.last_set_freq = 0
+        self.last_set_freq_at = time.time()
+        self.last_change_freq = 0
+        self.last_change_freq_at = time.time()
         self.last_freq_params = {'freq' : 0.0, 'tgid' : None, 'tag' : "", 'tdma' : None}
         self.meta_server = None
         self.stream_url = ""
@@ -385,12 +393,42 @@ class p25_rx_block (gr.top_block):
         if (self.eye_sink is not None):
             self.eye_sink.set_sps(self.sps)
 
+    def error_tracking(self):
+        UPDATE_TIME = 3
+        if self.last_error_update + UPDATE_TIME > time.time() \
+            or self.last_change_freq_at + UPDATE_TIME > time.time():
+            return
+        self.last_error_update = time.time()
+        band = self.demod.get_error_band()
+        freq_error = self.demod.get_freq_error()
+        if band:
+            self.error_band += band
+        self.freq_correction += freq_error * 0.15
+        if self.freq_correction > 600:
+            self.freq_correction -= 1200
+            self.error_band += 1
+        elif self.freq_correction < -600:
+            self.freq_correction += 1200
+            self.error_band -= 1
+        self.tuning_error = self.error_band * 1200 + self.freq_correction
+        self.options.fine_tune = -self.tuning_error
+        self.set_freq(self.target_freq)
+        e = 0
+        if self.last_change_freq > 0:
+            e = (self.tuning_error*1e6) / float(self.last_change_freq)
+        if self.options.verbosity >= 10:
+            sys.stderr.write('frequency_tracking\t%d\t%d\t%d\t%d\t%f\n' % (freq_error, self.error_band, self.tuning_error, self.freq_correction, e))
+
     def change_freq(self, params):
         last_freq = self.last_freq_params['freq']
         self.last_freq_params = params
         freq = params['freq']
         offset = params['offset']
         center_freq = params['center_frequency']
+        if self.options.freq_error_tracking:
+            self.error_tracking()
+        self.last_change_freq = freq
+        self.last_change_freq_at = time.time()
 
         if freq != last_freq:                               # ignore requests to tune to same freq
             if self.options.hamlib_model:
@@ -914,6 +952,7 @@ class rx_main(object):
         parser.add_option("-N", "--gains", type="string", default=None, help="gain settings")
         parser.add_option("-O", "--audio-output", type="string", default="default", help="audio output device name")
         parser.add_option("-x", "--audio-gain", type="eng_float", default="1.0", help="audio gain (default = 1.0)")
+        parser.add_option("-X", "--freq-error-tracking", action="store_true", default=False, help="enable experimental frequency error tracking")
         parser.add_option("-U", "--udp-player", action="store_true", default=False, help="enable built-in udp audio player")
         parser.add_option("-q", "--freq-corr", type="eng_float", default=0.0, help="frequency correction")
         parser.add_option("-d", "--fine-tune", type="eng_float", default=0.0, help="fine tuning")
