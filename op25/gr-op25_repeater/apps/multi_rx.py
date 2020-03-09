@@ -63,11 +63,11 @@ class device(object):
             sys.stderr.write('WARNING: requested sample rate %d for device %s may not\n' % (config['rate'], config['name']))
             sys.stderr.write("be optimal.  You may want to use one of the following rates\n")
             sys.stderr.write('%s\n' % speeds)
-        self.src = osmosdr.source(config['args'])
+        self.src = osmosdr.source(str(config['args']))
 
         for tup in config['gains'].split(','):
             name, gain = tup.split(':')
-            self.src.set_gain(int(gain), name)
+            self.src.set_gain(int(gain), str(name))
 
         self.src.set_freq_corr(config['ppm'])
         self.ppm = config['ppm']
@@ -109,7 +109,7 @@ class channel(object):
                          offset = dev.offset,
                          if_rate = config['if_rate'],
                          symbol_rate = self.symbol_rate)
-        self.decoder = op25_repeater.frame_assembler(config['destination'], verbosity, msgq_id, rx_q)
+        self.decoder = op25_repeater.frame_assembler(str(config['destination']), verbosity, msgq_id, rx_q)
 
         if 'key' in config and (config['key'] != ""):
             self.set_key(int(config['key'], 0))
