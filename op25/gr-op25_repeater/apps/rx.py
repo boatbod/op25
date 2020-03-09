@@ -419,8 +419,8 @@ class p25_rx_block (gr.top_block):
         if self.last_change_freq > 0:
             err_ppm = round((self.tuning_error*1e6) / float(self.last_change_freq))
             err_hz = self.tuning_error - (err_ppm * (self.last_change_freq / 1e6))
-        if self.options.verbosity >= 1:
-            sys.stderr.write('frequency_tracking\t%d\t%d\t%d\t%d\t%d\n' % (freq_error, self.error_band, self.tuning_error, err_ppm, err_hz))
+        if self.options.verbosity >= 10:
+            sys.stderr.write('%f frequency_tracking\t%d\t%d\t%d\t%d\t%d\n' % (time.time(), freq_error, self.error_band, self.tuning_error, err_ppm, err_hz))
         if do_freq_update:
             self.src.set_freq_corr(err_ppm)
             self.options.fine_tune = -err_hz
