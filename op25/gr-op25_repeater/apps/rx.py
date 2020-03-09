@@ -422,11 +422,12 @@ class p25_rx_block (gr.top_block):
         if self.options.verbosity >= 10:
             sys.stderr.write('%f frequency_tracking\t%d\t%d\t%d\t%d\t%d\n' % (time.time(), freq_error, self.error_band, self.tuning_error, err_ppm, err_hz))
         if do_freq_update:
-            self.src.set_freq_corr(err_ppm)
-            self.options.fine_tune = err_hz
+            corrected_ppm = self.options.freq_corr + err_ppm  # compute new device ppm based on starting point plus adjustment
+            self.src.set_freq_corr(corrected_ppm)
+            self.options.fine_tune = err_hz                   # replace existing fine_tune with new correction value
             self.set_freq(self.target_freq)
             if self.options.verbosity >= 1:
-                sys.stderr.write('%f Adjusting tuning: ppm(%d), fine_tune(%d) ["-q %d -d %d"]\n' % (time.time(), err_ppm, err_hz, err_ppm, err_hz))
+                sys.stderr.write('%f Adjusting tuning: ppm(%d), fine_tune(%d) ["-q %d -d %d"]\n' % (time.time(), corrected_ppm, err_hz, corrected_ppm, err_hz))
 
     def change_freq(self, params):
         last_freq = self.last_freq_params['freq']
