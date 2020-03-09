@@ -49,6 +49,7 @@ namespace gr {
       static sptr make(float samples_per_symbol, float gain_mu, float gain_omega, float alpha, float beta, float max_freq, float min_freq);
       virtual void set_omega(float omega) {}
       virtual float get_freq_error(void) { return 0; }
+      virtual int get_error_band(void) {}
       virtual void reset() {}
     };
 

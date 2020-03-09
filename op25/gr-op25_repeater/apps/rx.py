@@ -394,7 +394,7 @@ class p25_rx_block (gr.top_block):
             self.eye_sink.set_sps(self.sps)
 
     def error_tracking(self):
-        UPDATE_TIME = 3
+        UPDATE_TIME = 3.0
         if self.last_error_update + UPDATE_TIME > time.time() \
             or self.last_change_freq_at + UPDATE_TIME > time.time():
             return
@@ -403,7 +403,11 @@ class p25_rx_block (gr.top_block):
         freq_error = self.demod.get_freq_error()
         if band:
             self.error_band += band
-        self.freq_correction += freq_error * 0.15
+        if band or abs(freq_error) >= 200: # avoid hunting by only compensating errors over 200hz
+            self.freq_correction += freq_error * 0.15
+            do_freq_update = 1
+        else:
+            do_freq_update = 0
         if self.freq_correction > 600:
             self.freq_correction -= 1200
             self.error_band += 1
@@ -411,13 +415,16 @@ class p25_rx_block (gr.top_block):
             self.freq_correction += 1200
             self.error_band -= 1
         self.tuning_error = self.error_band * 1200 + self.freq_correction
-        self.options.fine_tune = -self.tuning_error
-        self.set_freq(self.target_freq)
         e = 0
         if self.last_change_freq > 0:
-            e = (self.tuning_error*1e6) / float(self.last_change_freq)
-        if self.options.verbosity >= 10:
-            sys.stderr.write('frequency_tracking\t%d\t%d\t%d\t%d\t%f\n' % (freq_error, self.error_band, self.tuning_error, self.freq_correction, e))
+            err_ppm = round((self.tuning_error*1e6) / float(self.last_change_freq))
+            err_hz = self.tuning_error - (err_ppm * (self.last_change_freq / 1e6))
+        if self.options.verbosity >= 1:
+            sys.stderr.write('frequency_tracking\t%d\t%d\t%d\t%d\t%d\n' % (freq_error, self.error_band, self.tuning_error, err_ppm, err_hz))
+        if do_freq_update:
+            self.src.set_freq_corr(err_ppm)
+            self.options.fine_tune = -err_hz
+            self.set_freq(self.target_freq)
 
     def change_freq(self, params):
         last_freq = self.last_freq_params['freq']
