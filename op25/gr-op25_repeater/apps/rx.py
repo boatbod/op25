@@ -70,6 +70,7 @@ from gr_gnuplot import mixer_sink_c
 
 from terminal import op25_terminal
 from sockaudio  import audio_thread
+from log_ts import log_ts
 
 #speeds = [300, 600, 900, 1200, 1440, 1800, 1920, 2400, 2880, 3200, 3600, 3840, 4000, 4800, 6000, 6400, 7200, 8000, 9600, 14400, 19200]
 speeds = [4800, 6000]
@@ -420,14 +421,14 @@ class p25_rx_block (gr.top_block):
             err_ppm = round((self.tuning_error*1e6) / float(self.last_change_freq))
             err_hz = -int(self.tuning_error - (err_ppm * (self.last_change_freq / 1e6)))
         if self.options.verbosity >= 10:
-            sys.stderr.write('%f frequency_tracking\t%d\t%d\t%d\t%d\t%d\n' % (time.time(), freq_error, self.error_band, self.tuning_error, err_ppm, err_hz))
+            sys.stderr.write('%s frequency_tracking\t%d\t%d\t%d\t%d\t%d\n' % (log_ts.get(), freq_error, self.error_band, self.tuning_error, err_ppm, err_hz))
         if do_freq_update:
             corrected_ppm = self.options.freq_corr + err_ppm  # compute new device ppm based on starting point plus adjustment
             self.src.set_freq_corr(corrected_ppm)
             self.options.fine_tune = err_hz                   # replace existing fine_tune with new correction value
             self.set_freq(self.target_freq)
             if self.options.verbosity >= 2:
-                sys.stderr.write('%f Adjusting tuning: ppm(%d), fine_tune(%d) ["-q %d -d %d"]\n' % (time.time(), corrected_ppm, err_hz, corrected_ppm, err_hz))
+                sys.stderr.write('%s Adjusting tuning: ppm(%d), fine_tune(%d) ["-q %d -d %d"]\n' % (log_ts.get(), corrected_ppm, err_hz, corrected_ppm, err_hz))
 
     def change_freq(self, params):
         last_freq = self.last_freq_params['freq']

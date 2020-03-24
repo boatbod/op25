@@ -30,6 +30,7 @@ import select
 import socket
 import errno
 import struct
+from log_ts import log_ts
 
 # OP25 defaults
 PCM_RATE = 8000             # audio sample rate (Hz)
@@ -205,7 +206,7 @@ class alsasound(object):
         if (ret < 0):
             if (ret == -errno.EPIPE): # underrun
                 if (LOG_AUDIO_XRUNS):
-                    sys.stderr.write("%f PCM underrun\n" % time.time())
+                    sys.stderr.write("%s PCM underrun\n" % log_ts.get())
                 ret = self.libasound.snd_pcm_recover(self.c_pcm, ret, 1)
                 if (ret >= 0):
                     ret = self.libasound.snd_pcm_writei(self.c_pcm, cast(c_data, POINTER(c_void_p)), n_frames)

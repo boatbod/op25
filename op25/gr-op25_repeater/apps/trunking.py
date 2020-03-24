@@ -26,6 +26,7 @@ import collections
 import json
 sys.path.append('tdma')
 import lfsr
+from log_ts import log_ts
 
 def utf_ascii(ustr):
     return (ustr.decode("utf-8")).encode("ascii", "ignore")
@@ -210,16 +211,16 @@ class trunked_system (object):
             for ptgid in self.patches[tgid]['ga']:
                 self.update_talkgroup(frequency, ptgid, tdma_slot, srcaddr)
                 if self.debug >= 5:
-                    sys.stderr.write('%f update_talkgroups: sg(%d) patched tgid(%d)\n' % (time.time(), tgid, ptgid))
+                    sys.stderr.write('%s update_talkgroups: sg(%d) patched tgid(%d)\n' % (log_ts.get(), tgid, ptgid))
 
     def update_talkgroup(self, frequency, tgid, tdma_slot, srcaddr):
         if self.debug >= 5:
-            sys.stderr.write('%f set tgid=%s, srcaddr=%s\n' % (time.time(), tgid, srcaddr))
+            sys.stderr.write('%s set tgid=%s, srcaddr=%s\n' % (log_ts.get(), tgid, srcaddr))
         
         if tgid not in self.talkgroups:
             self.talkgroups[tgid] = {'counter':0}
             if self.debug >= 5:
-                sys.stderr.write('%f new tgid: %s %s prio %d\n' % (time.time(), tgid, self.get_tag(tgid), self.get_prio(tgid)))
+                sys.stderr.write('%s new tgid=%s %s prio %d\n' % (log_ts.get(), tgid, self.get_tag(tgid), self.get_prio(tgid)))
         self.talkgroups[tgid]['time'] = time.time()
         self.talkgroups[tgid]['frequency'] = frequency
         self.talkgroups[tgid]['tdma_slot'] = tdma_slot
@@ -235,7 +236,7 @@ class trunked_system (object):
             sorted_freqs = collections.OrderedDict(sorted(self.voice_frequencies.items()))
             self.voice_frequencies = sorted_freqs
             if self.debug >= 5:
-                sys.stderr.write('%f new freq: %f\n' % (time.time(), frequency/1000000.0))
+                sys.stderr.write('%s new freq=%f\n' % (log_ts.get(), frequency/1000000.0))
 
         if tdma_slot is None:
             tdma_slot = 0
@@ -270,7 +271,7 @@ class trunked_system (object):
                 if ga not in self.patches[sg]['ga']:
                     self.patches[sg]['ga'].add(ga)
                     if self.debug >= 5:
-                        sys.stderr.write("%f add_patch: tgid(%d) is patched to sg(%d)\n" % (time.time(), ga, sg))
+                        sys.stderr.write("%s add_patch: tgid(%d) is patched to sg(%d)\n" % (log_ts.get(), ga, sg))
 
         if len(self.patches[sg]['ga']) == 0:
             del self.patches[sg]
@@ -283,12 +284,12 @@ class trunked_system (object):
             if ga in self.patches[sg]['ga']:
                 self.patches[sg]['ga'].discard(ga)
                 if self.debug >= 5:
-                    sys.stderr.write("%f del_patch: tgid(%d) is unpatched from sg(%d)\n" % (time.time(), ga, sg))
+                    sys.stderr.write("%s del_patch: tgid(%d) is unpatched from sg(%d)\n" % (log_ts.get(), ga, sg))
 
         if ((ga1, ga2, ga3) == (0, 0, 0)) or (len(self.patches[sg]['ga']) == 0):
             del self.patches[sg]
             if self.debug >= 5:
-                sys.stderr.write("%f del_patch: deleting patch sg(%d)\n" % (time.time(), sg))
+                sys.stderr.write("%s del_patch: deleting patch sg(%d)\n" % (log_ts.get(), sg))
 
     def expire_patches(self):
         time_now = time.time()
@@ -296,7 +297,7 @@ class trunked_system (object):
             if time_now > (self.patches[sg]['ts'] + self.PATCH_EXPIRY_TIME):
                 del self.patches[sg]
                 if self.debug >= 5:
-                    sys.stderr.write("%f expired_patches: expiring patch sg(%d)\n" % (time.time(), sg))
+                    sys.stderr.write("%s expired_patches: expiring patch sg(%d)\n" % (log_ts.get(), sg))
 
     def find_talkgroup(self, start_time, tgid=None, hold=False):
         tgt_tgid = None
@@ -339,10 +340,10 @@ class trunked_system (object):
         if self.whitelist and tgid in self.whitelist:
             self.whitelist.pop(tgid)
             if self.debug > 0:
-                sys.stderr.write("%f de-whitelisting tgid(%d)\n" % (time.time(), tgid))
+                sys.stderr.write("%s de-whitelisting tgid(%d)\n" % (log_ts.get(), tgid))
         self.blacklist[tgid] = end_time
         if self.debug > 0:
-            sys.stderr.write("%f blacklisting tgid(%d)\n" % (time.time(), tgid))
+            sys.stderr.write("%s blacklisting tgid(%d)\n" % (log_ts.get(), tgid))
 
     def add_whitelist(self, tgid):
         if not tgid:
@@ -350,12 +351,12 @@ class trunked_system (object):
         if self.blacklist and tgid in self.blacklist:
             self.blacklist.pop(tgid)
             if self.debug > 0:
-                sys.stderr.write("%f de-blacklisting tgid(%d)\n" % (time.time(), tgid))
+                sys.stderr.write("%s de-blacklisting tgid(%d)\n" % (log_ts.get(), tgid))
         if not self.whitelist or tgid in self.whitelist:
             return
         self.whitelist[tgid] = None
         if self.debug > 0:
-            sys.stderr.write("%f whitelisting tgid(%d)\n" % (time.time(), tgid))
+            sys.stderr.write("%s whitelisting tgid(%d)\n" % (log_ts.get(), tgid))
 
     def decode_mbt_data(self, opcode, src, header, mbt_data):
         self.cc_timeouts = 0
@@ -683,7 +684,7 @@ class trunked_system (object):
         if self.trunk_cc != self.last_trunk_cc:
             self.last_trunk_cc = self.trunk_cc
             if self.debug >=5:
-                sys.stderr.write('%f set control channel: %f\n' % (curr_time, self.trunk_cc / 1000000.0))
+                sys.stderr.write('%s set control channel=%f\n' % (log_ts.get(curr_time), self.trunk_cc / 1000000.0))
             return True
         return False
 
@@ -789,7 +790,7 @@ class rx_ctl (object):
         frequency = params['freq']
         if frequency and self.frequency_set:
             if self.debug > 10:
-                sys.stderr.write("%f set_frequency(%s)\n" % (time.time(), frequency))
+                sys.stderr.write("%s set_frequency(%s)\n" % (log_ts.get(), frequency))
             if frequency != self.last_tune_freq:
                 self.last_tune_time = time.time()
                 self.last_tune_freq = frequency
@@ -800,7 +801,7 @@ class rx_ctl (object):
             return
 
         if self.debug > 1:
-            sys.stderr.write("%f do_metadata state=%d: [%s] %s\n" % (time.time(), state, tgid, tag))
+            sys.stderr.write("%s do_metadata state=%d: [%s] %s\n" % (log_ts.get(), state, tgid, tag))
         self.meta_update(tgid, tag)
         self.meta_state = state
 
@@ -973,7 +974,7 @@ class rx_ctl (object):
 
         if (m_ts < self.last_tune_time) and (m_type != -2):
             if self.debug > 10:
-                sys.stderr.write("type %d at %f with ts %f ignored due to frequency change\n" % (m_type, time.time(), m_ts))
+                sys.stderr.write("%s type %d with ts %s ignored due to frequency change\n" % (log_ts.get(), m_type, log_ts.get(m_ts)))
             return
 
         updated = 0
@@ -997,7 +998,7 @@ class rx_ctl (object):
             return
         elif m_type == -1:  # timeout
             if self.debug > 10:
-                sys.stderr.write('%f process_data_unit timeout\n' % time.time())
+                sys.stderr.write('%s process_data_unit timeout\n' % log_ts.get())
             self.update_state('timeout', curr_time)
             if self.logfile_workers:
                 self.logging_scheduler(curr_time)
@@ -1016,7 +1017,7 @@ class rx_ctl (object):
                 nac = self.current_nac
         s = s[2:]
         if self.debug > 10:
-            sys.stderr.write('nac %x type %d at %f state %d len %d\n' %(nac, m_type, time.time(), self.current_state, len(s)))
+            sys.stderr.write('%s nac %x type %d state %d len %d\n' %(log_ts.get(), nac, m_type, self.current_state, len(s)))
         if (m_type == 7 or m_type == 12) and nac not in self.trunked_systems:
             if not self.configs:
                 # TODO: allow whitelist/blacklist rather than blind automatic-add
@@ -1024,13 +1025,13 @@ class rx_ctl (object):
             else:
                 # If trunk.tsv file configured with nac=0, use decoded nac instead
                 if 0 in self.trunked_systems:
-                    sys.stderr.write("%f Reconfiguring NAC from 0x000 to 0x%x\n" % (time.time(), nac))
+                    sys.stderr.write("%s Reconfiguring NAC from 0x000 to 0x%x\n" % (log_ts.get(), nac))
                     self.trunked_systems[nac] = self.trunked_systems.pop(0)
                     self.configs[nac] = self.configs.pop(0)
                     self.nacs = list(self.configs.keys())
                     self.current_nac = nac
                 else:
-                    sys.stderr.write("%f NAC %x not configured\n" % (time.time(), nac))
+                    sys.stderr.write("%s NAC %x not configured\n" % (log_ts.get(), nac))
                 return
         if m_type == 7:     # trunk: TSBK
             t = 0
@@ -1054,12 +1055,12 @@ class rx_ctl (object):
 
             opcode = (header >> 16) & 0x3f
             if self.debug > 10:
-                sys.stderr.write('type %d at %f state %d len %d/%d opcode %x [%0x/%0x]\n' %(m_type, time.time(), self.current_state, len(s1), len(s2), opcode, header,mbt_data))
+                sys.stderr.write('%s type %d state %d len %d/%d opcode %x [%0x/%0x]\n' %(log_ts.get(), m_type, self.current_state, len(s1), len(s2), opcode, header,mbt_data))
             updated += self.trunked_systems[nac].decode_mbt_data(opcode, src, header << 16, mbt_data << 32)
 
         if nac != self.current_nac:
             if self.debug > 10: # this is occasionally expected if cycling between different tsys
-                sys.stderr.write("%f received NAC %x does not match expected NAC %x\n" % (time.time(), nac, self.current_nac))
+                sys.stderr.write("%s received NAC %x does not match expected NAC %x\n" % (log_ts.get(), nac, self.current_nac))
             return
 
         if self.logfile_workers:
@@ -1083,7 +1084,7 @@ class rx_ctl (object):
         self.working_frequencies[frequency]['worker']['demod'].set_relative_frequency(0)
         self.working_frequencies[frequency]['worker']['active'] = False
         self.working_frequencies.pop(frequency)
-        sys.stderr.write('%f release worker frequency %d\n' % (curr_time, frequency))
+        sys.stderr.write('%s release worker frequency %d\n' % (log_ts.get(curr_time), frequency))
 
     def free_talkgroup(self, frequency, tgid, curr_time):
         decoder = self.working_frequencies[frequency]['worker']['decoder']
@@ -1092,7 +1093,7 @@ class rx_ctl (object):
         if tdma_slot is None:
             index = 0
         self.working_frequencies[frequency]['tgids'].pop(tgid)
-        sys.stderr.write('%f release tgid %d frequency %d\n' % (curr_time, tgid, frequency))
+        sys.stderr.write('%s release tgid %d frequency %d\n' % (log_ts.get(curr_time), tgid, frequency))
 
     def logging_scheduler(self, curr_time):
         tsys = self.trunked_systems[self.current_nac]
@@ -1102,14 +1103,14 @@ class rx_ctl (object):
             # see if this tgid active on any other freq(s)
             other_freqs = [f for f in self.working_frequencies if f != frequency and tgid in self.working_frequencies[f]['tgids']]
             if other_freqs:
-                sys.stderr.write('%f tgid %d slot %s frequency %d found on other frequencies %s\n' % (curr_time, tgid, tdma_slot, frequency, ','.join(['%s' % f for f in other_freqs])))
+                sys.stderr.write('%s tgid %d slot %s frequency %d found on other frequencies %s\n' % (log_ts.get(curr_time), tgid, tdma_slot, frequency, ','.join(['%s' % f for f in other_freqs])))
                 for f in other_freqs:
                     self.free_talkgroup(f, tgid, curr_time)
                     if not self.working_frequencies[f]['tgids']:
                         self.free_frequency(f, curr_time)
             diff = abs(tsys.center_frequency - frequency)
             if diff > self.input_rate/2:
-                #sys.stderr.write('%f request for frequency %d tgid %d failed, offset %d exceeds maximum %d\n' % (curr_time, frequency, tgid, diff, self.input_rate/2))
+                #sys.stderr.write('%s request for frequency %d tgid %d failed, offset %d exceeds maximum %d\n' % (log_ts.get(curr_time), frequency, tgid, diff, self.input_rate/2))
                 continue
 
             update = True
@@ -1119,11 +1120,11 @@ class rx_ctl (object):
                     if tgids[tgid]['tdma_slot'] == tdma_slot:
                         update = False
                     else:
-                        sys.stderr.write('%f slot switch %s was %s tgid %d frequency %d\n' % (curr_time, tdma_slot, tgids[tgid]['tdma_slot'], tgid, frequency))
+                        sys.stderr.write('%s slot switch %s was %s tgid %d frequency %d\n' % (log_ts.get(curr_time), tdma_slot, tgids[tgid]['tdma_slot'], tgid, frequency))
                         worker = self.working_frequencies[frequency]['worker']
                 else:
                     #active_tdma_slots = [tgids[tg]['tdma_slot'] for tg in tgids]
-                    sys.stderr.write("%f new tgid %d slot %s arriving on already active frequency %d\n" % (curr_time, tgid, tdma_slot, frequency))
+                    sys.stderr.write("%s new tgid %d slot %s arriving on already active frequency %d\n" % (log_ts.get(curr_time), tgid, tdma_slot, frequency))
                     previous_tgid = [id for id in tgids if tgids[id]['tdma_slot'] == tdma_slot]
                     assert len(previous_tgid) == 1   ## check for logic error
                     self.free_talkgroup(frequency, previous_tgid[0], curr_time)
@@ -1135,12 +1136,12 @@ class rx_ctl (object):
                     continue
                 self.working_frequencies[frequency] = {'tgids' : {}, 'worker': worker}
                 worker['demod'].set_relative_frequency(tsys.center_frequency - frequency)
-                sys.stderr.write('%f starting worker frequency %d tg %d slot %s\n' % (curr_time, frequency, tgid, tdma_slot))
+                sys.stderr.write('%s starting worker frequency %d tg %d slot %s\n' % (log_ts.get(curr_time), frequency, tgid, tdma_slot))
             self.working_frequencies[frequency]['tgids'][tgid] = {'updated': curr_time, 'tdma_slot': tdma_slot}
             if not update:
                 continue
             filename = 'tgid-%d-%f.wav' % (tgid, curr_time)
-            sys.stderr.write('%f update frequency %d tg %d slot %s file %s\n' % (curr_time, frequency, tgid, tdma_slot, filename))
+            sys.stderr.write('%s update frequency %d tg %d slot %s file %s\n' % (log_ts.get(curr_time), frequency, tgid, tdma_slot, filename))
             # set demod speed, decoder slot, output file name
             demod = worker['demod']
             decoder = worker['decoder']
@@ -1192,11 +1193,11 @@ class rx_ctl (object):
         if command == 'timeout':
             if self.current_state == self.states.CC:
                 if self.debug > 0:
-                    sys.stderr.write("%f control channel timeout\n" % time.time())
+                    sys.stderr.write("%s control channel timeout\n" % log_ts.get())
                 tsys.cc_timeouts += 1
             elif self.current_state != self.states.CC:
                 if self.debug > 1:
-                    sys.stderr.write("%f voice timeout\n" % time.time())
+                    sys.stderr.write("%s voice timeout\n" % log_ts.get())
                 if self.hold_mode is False:
                     self.current_tgid = None
                 self.current_srcaddr = 0
@@ -1210,7 +1211,7 @@ class rx_ctl (object):
                 desired_tgid = None
                 if (self.tgid_hold is not None) and (self.tgid_hold_until > curr_time):
                     if self.debug > 1:
-                        sys.stderr.write("%f hold active tg(%s)\n" % (time.time(), self.tgid_hold))
+                        sys.stderr.write("%s hold active tg(%s)\n" % (log_ts.get(), self.tgid_hold))
                     desired_tgid = self.tgid_hold
                 elif (self.tgid_hold is not None) and (self.hold_mode == False):
                     self.tgid_hold = None
@@ -1218,7 +1219,7 @@ class rx_ctl (object):
                 if new_frequency:
                     if self.debug > 0:
                         tslot = tdma_slot if tdma_slot is not None else '-'
-                        sys.stderr.write("%f voice update:  tg(%s), freq(%s), slot(%s), prio(%d)\n" % (time.time(), new_tgid, new_frequency, tslot, tsys.get_prio(new_tgid)))
+                        sys.stderr.write("%s voice update:  tg(%s), freq(%s), slot(%s), prio(%d)\n" % (log_ts.get(), new_tgid, new_frequency, tslot, tsys.get_prio(new_tgid)))
                     new_state = self.states.TO_VC
                     self.current_tgid = new_tgid
                     self.current_srcaddr = srcaddr
@@ -1232,7 +1233,7 @@ class rx_ctl (object):
                 if new_tgid != self.current_tgid:
                     if self.debug > 0:
                         tslot = tdma_slot if tdma_slot is not None else '-'
-                        sys.stderr.write("%f voice preempt: tg(%s), freq(%s), slot(%s), prio(%d)\n" % (time.time(), new_tgid, new_frequency, tslot, tsys.get_prio(new_tgid)))
+                        sys.stderr.write("%s voice preempt: tg(%s), freq(%s), slot(%s), prio(%d)\n" % (log_ts.get(), new_tgid, new_frequency, tslot, tsys.get_prio(new_tgid)))
                     new_state = self.states.TO_VC
                     self.current_tgid = new_tgid
                     self.current_srcaddr = srcaddr
@@ -1251,7 +1252,7 @@ class rx_ctl (object):
         elif command == 'duid15' or command == 'tdma_duid15': # termination with channel release
             if self.current_state != self.states.CC:
                 if self.debug > 1:
-                    sys.stderr.write("%f %s, tg(%d)\n" % (time.time(), command, self.current_tgid))
+                    sys.stderr.write("%s %s, tg(%d)\n" % (log_ts.get(), command, self.current_tgid))
                 self.current_srcaddr = 0
                 self.current_grpaddr = 0
                 self.current_encrypted = 0
@@ -1276,7 +1277,7 @@ class rx_ctl (object):
                     self.tgid_hold_until = curr_time + 86400 * 10000
                     self.hold_mode = True
                     if self.debug > 0:
-                        sys.stderr.write ('%f set hold tg(%s) until %f\n' % (time.time(), self.tgid_hold, self.tgid_hold_until))
+                        sys.stderr.write ('%s set hold tg(%s) until %f\n' % (log_ts.get(), self.tgid_hold, self.tgid_hold_until))
                     if self.current_tgid != self.tgid_hold:
                         self.current_tgid = self.tgid_hold
                         self.current_srcaddr = 0
@@ -1290,10 +1291,10 @@ class rx_ctl (object):
                     self.tgid_hold_until = curr_time + 86400 * 10000
                     self.hold_mode = True
                     if self.debug > 0:
-                        sys.stderr.write ('%f set hold tg(%s) until %f\n' % (time.time(), self.tgid_hold, self.tgid_hold_until))
+                        sys.stderr.write ('%s set hold tg(%s) until %f\n' % (log_ts.get(), self.tgid_hold, self.tgid_hold_until))
             elif self.hold_mode is True:
                 if self.debug > 0:
-                    sys.stderr.write ('%f clear hold tg(%s)\n' % (time.time(), self.tgid_hold))
+                    sys.stderr.write ('%s clear hold tg(%s)\n' % (log_ts.get(), self.tgid_hold))
                 self.current_tgid = None
                 self.tgid_hold = None
                 self.tgid_hold_until = curr_time
@@ -1314,13 +1315,13 @@ class rx_ctl (object):
             else:
                 if (cmd_data <= 0) or (cmd_data > 65534):
                     if self.debug > 0:
-                        sys.stderr.write("%f blacklist tgid(%d) out of range (1-65534)\n" % (time.time(), cmd_data))
+                        sys.stderr.write("%s blacklist tgid(%d) out of range (1-65534)\n" % (log_ts.get(), cmd_data))
                     return
                 tsys.add_blacklist(cmd_data)
         elif command == 'whitelist':
             if (cmd_data <= 0) or (cmd_data > 65534):
                 if self.debug > 0:
-                    sys.stderr.write("%f whitelist tgid(%d) out of range (1-65534)\n" % (time.time(), cmd_data))
+                    sys.stderr.write("%s whitelist tgid(%d) out of range (1-65534)\n" % (log_ts.get(), cmd_data))
                 return
             tsys.add_whitelist(cmd_data)
             if self.current_tgid and self.whitelist and self.current_id not in self.whitelist:
@@ -1333,7 +1334,7 @@ class rx_ctl (object):
                     new_frequency = tsys.trunk_cc
         elif command == 'reload':
             nac = self.current_nac
-            sys.stderr.write("%f reloading blacklist & whitelist files for nac(%x)\n" % (time.time(), nac))
+            sys.stderr.write("%s reloading blacklist & whitelist files for nac(%x)\n" % (log_ts.get(), nac))
             tsys.blacklist.clear()
             if 'blacklist.file' in self.configs[nac]:
                 self.configs[nac]['blacklist'] = get_int_dict(self.configs[nac]['blacklist.file'])
@@ -1355,7 +1356,7 @@ class rx_ctl (object):
         hunted_cc = tsys.hunt_cc(curr_time)
         if tsys.wildcard_tsys and hunted_cc and self.current_nac != 0:
             if self.debug >= 5:
-                sys.stderr.write("%f reset tsys to NAC 0 after control channel change\n" % time.time())
+                sys.stderr.write("%s reset tsys to NAC 0 after control channel change\n" % log_ts.get())
             self.trunked_systems[0] = self.trunked_systems.pop(self.current_nac)
             self.configs[0] = self.configs.pop(self.current_nac)
             self.nacs = list(self.configs.keys())
@@ -1369,7 +1370,7 @@ class rx_ctl (object):
 
         if self.current_state != self.states.CC and self.tgid_hold_until <= curr_time and self.hold_mode is False and new_state is None:
             if self.debug > 1:
-                sys.stderr.write("%f release tg(%s)\n" % (time.time(), self.current_tgid))
+                sys.stderr.write("%s release tg(%s)\n" % (log_ts.get(), self.current_tgid))
             self.tgid_hold = None
             self.current_tgid = None
             self.current_srcaddr = 0
