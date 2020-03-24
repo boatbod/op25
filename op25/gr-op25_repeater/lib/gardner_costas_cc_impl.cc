@@ -164,6 +164,7 @@ uint8_t gardner_costas_cc_impl::slicer(float sym) {
 void gardner_costas_cc_impl::reset() {
     d_phase = 0;
     d_freq = 0;
+    d_update_request = 0;
     d_last_sample = 0;
 }
 
