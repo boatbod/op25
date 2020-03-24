@@ -80,12 +80,12 @@ class trunked_system (object):
         self.trunk_cc = 0
         self.last_trunk_cc = 0
         self.cc_list = []
-        self.cc_list_index = 0
+        self.cc_list_index = -1
+        self.cc_timeouts = -1
         self.CC_HUNT_TIME = 5.0
         self.PATCH_EXPIRY_TIME = 20.0
         self.center_frequency = 0
         self.last_tsbk = 0
-        self.cc_timeouts = 0
         self.talkgroups = {}
         self.patches ={}
         if config:
@@ -94,10 +94,10 @@ class trunked_system (object):
             self.tgid_map  = config['tgid_map']
             self.offset    = config['offset']
             self.sysname   = config['sysname']
-            self.trunk_cc  = config['cclist'][0]    # TODO: scan thru list
             self.cc_list   = config['cclist']
             self.center_frequency = config['center_frequency']
             self.modulation = config['modulation']
+            self.hunt_cc(time.time())
 
     def reset(self):
         self.freq_table = {}
@@ -674,7 +674,7 @@ class trunked_system (object):
         return updated
 
     def hunt_cc(self, curr_time):
-        if self.cc_timeouts < 6:
+        if (self.cc_timeouts >=0) and (self.cc_timeouts < 6):
             return False
         self.cc_timeouts = 0
         self.cc_list_index += 1
@@ -711,7 +711,7 @@ def get_int_dict(s):
                 for tg in range(v0, (v1 + 1)):
                         if tg not in d:      # is this a new tg?
                                 d[tg] = []   # if so, add to dict (key only, value null)
-                                sys.stderr.write('added talkgroup %d from %s\n' % (tg,s))
+                                sys.stderr.write('%s added talkgroup %d from %s\n' % (log_ts.get(),tg,s))
 
             except (IndexError, ValueError) as ex:
                 continue
@@ -911,7 +911,7 @@ class rx_ctl (object):
                 self.configs[nac]['modulation'] = 'cqpsk'
             for k in ['whitelist', 'blacklist']:
                 if k in configs[nac]:
-                    sys.stderr.write("Reading %s file\n" % k)
+                    sys.stderr.write("%s Reading %s file\n" % (log_ts.get(), k))
                     self.configs[nac][k + ".file"] = configs[nac][k]
                     self.configs[nac][k] = get_int_dict(configs[nac][k])
             if 'tgid_tags_file' in configs[nac]:

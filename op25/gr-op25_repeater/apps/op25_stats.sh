@@ -19,7 +19,7 @@ grep 'new freq=' $1 | cut -d"=" -f2 | sort -n >> op25-freqs-used.txt
 # control channels used, and time of switch
 echo "Generating list of control channels used: op25-cc-used.txt"
 echo "# Control Channels Used" > op25-cc-used.txt
-grep 'set control channel:' $1 | cut -d" " -f2 >> op25-cc-used.txt
+grep 'set control channel=' $1 | cut -d"=" -f2 >> op25-cc-used.txt
 
 # list of new talkgroups seen
 echo "Generating list of new talkgroups seen: op25-new-tgids.txt"
