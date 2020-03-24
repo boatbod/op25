@@ -37,6 +37,7 @@ import op25
 import op25_repeater
 import p25_demodulator
 import p25_decoder
+from log_ts import log_ts
 
 from gr_gnuplot import constellation_sink_c
 from gr_gnuplot import fft_sink_c
@@ -273,8 +274,8 @@ class rx_block (gr.top_block):
             chan = channel(cfg, dev, self.verbosity, msgq_id, self.rx_q)
             self.channels.append(chan)
             if ("raw_input" in cfg) and (cfg['raw_input'] != ""):
-                sys.stderr.write("Reading raw symbols from file: %s\n" % cfg['raw_input'])
-                chan.raw_file = blocks.file_source(gr.sizeof_char, cfg['raw_input'], False)
+                sys.stderr.write("%s Reading raw symbols from file: %s\n" % (log_ts.get(), cfg['raw_input']))
+                chan.raw_file = blocks.file_source(gr.sizeof_char, str(cfg['raw_input']), False)
                 if ("raw_seek" in cfg) and (cfg['raw_seek'] != 0):
                     chan.raw_file.seek(int(cfg['raw_seek']) * 4800, 0)
                 chan.throttle = blocks.throttle(gr.sizeof_char, chan.symbol_rate)
@@ -284,8 +285,8 @@ class rx_block (gr.top_block):
             else:
                 self.connect(dev.src, chan.demod, chan.decoder)
                 if ("raw_output" in cfg) and (cfg['raw_output'] != ""):
-                    sys.stderr.write("Saving raw symbols to file: %s\n" % cfg['raw_output'])
-                    chan.raw_sink = blocks.file_sink(gr.sizeof_char, cfg['raw_output'])
+                    sys.stderr.write("%s Saving raw symbols to file: %s\n" % (tog_ts.get(), cfg['raw_output']))
+                    chan.raw_sink = blocks.file_sink(gr.sizeof_char, str(cfg['raw_output']))
                     self.connect(chan.demod, chan.raw_sink)
 
     def scan_channels(self):
