@@ -111,6 +111,7 @@ class p25_rx_block (gr.top_block):
         self.freq_correction = 0
         self.last_set_freq = 0
         self.last_set_freq_at = time.time()
+        self.last_set_ppm = 0
         self.last_change_freq = 0
         self.last_change_freq_at = time.time()
         self.last_freq_params = {'freq' : 0.0, 'tgid' : None, 'tag' : "", 'tdma' : None}
@@ -150,6 +151,7 @@ class p25_rx_block (gr.top_block):
 
             if options.freq_corr:
                 self.src.set_freq_corr(options.freq_corr)
+                self.last_set_ppm = options.freq_corr
 
             if options.gain_mode is not None:
                 if options.gain_mode:
@@ -424,7 +426,9 @@ class p25_rx_block (gr.top_block):
             sys.stderr.write('%s frequency_tracking\t%d\t%d\t%d\t%d\t%d\n' % (log_ts.get(), freq_error, self.error_band, self.tuning_error, err_ppm, err_hz))
         if do_freq_update:
             corrected_ppm = self.options.freq_corr + err_ppm  # compute new device ppm based on starting point plus adjustment
-            self.src.set_freq_corr(corrected_ppm)
+            if corrected_ppm != self.last_set_ppm:
+                self.src.set_freq_corr(corrected_ppm)
+                self.last_set_ppm = corrected_ppm
             self.options.fine_tune = err_hz                   # replace existing fine_tune with new correction value
             self.set_freq(self.target_freq)
             if self.options.verbosity >= 2:
