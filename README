@@ -1,3 +1,10 @@
+This fork colorizes the curses terminal view for easier identification of TGIDs based
+on what tags are entered into the trunk ID tag mapping file tsv file.  Any TGID with 
+"PD" in the tag name will colorize TGID output in active field as Blue, "FD" as Red, 
+"EMS" as Green, "DPW" as yellow, and any tag in that file w/o those descriptors will be
+ white. Descriptors may be in any position in talkgroup name, but must be as listed
+ (sans quotes), talkgroup tag file must be declared in trunk file to work.
+
 Forked from git://git.osmocom.org/op25 "max" branch on 9/10/2017
 Up to date with "max" branch as of 3/3/2018
 
