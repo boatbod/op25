@@ -48,6 +48,25 @@ class q_watcher(threading.Thread):
             msg = self.msgq.delete_head()
             self.callback(msg)
 
+
+
+def assign_ccp(s,ccp):
+    if "PD" in s:
+        ccp = curses.color_pair(1)
+        return ccp
+    elif "FD" in s:
+        ccp = curses.color_pair(2) 
+        return ccp
+    elif "EMS" in s:
+        ccp = curses.color_pair(3)
+        return ccp
+    elif "DPW" in s:
+            ccp = curses.color_pair(4)
+            return ccp
+    else:
+            ccp = curses.color_pair(5)
+            return ccp
+
 class curses_terminal(threading.Thread):
     def __init__(self, input_q,  output_q, sock=None, **kwds):
         threading.Thread.__init__ (self, **kwds)
@@ -63,8 +82,21 @@ class curses_terminal(threading.Thread):
         self.sock = sock
         self.start()
 
+
     def setup_curses(self):
         self.stdscr = curses.initscr()
+	if curses.has_colors():
+           curses.start_color()
+           curses.init_pair(1, curses.COLOR_BLUE, curses.COLOR_BLACK)
+           curses.init_pair(2, curses.COLOR_RED, curses.COLOR_BLACK)
+           curses.init_pair(3, curses.COLOR_GREEN, curses.COLOR_BLACK)
+           curses.init_pair(4, curses.COLOR_YELLOW, curses.COLOR_BLACK)
+           curses.init_pair(5, curses.COLOR_WHITE, curses.COLOR_BLACK)
+           curses.init_pair(6, curses.COLOR_CYAN, curses.COLOR_BLACK)
+           curses.init_pair(7, curses.COLOR_MAGENTA, curses.COLOR_BLACK)
+           sys.stderr.write("color is enabled\n")
+        else:
+           sys.stderr.write("color is disabled\n")
         self.maxy, self.maxx = self.stdscr.getmaxyx()
         if (self.maxy < 6) or (self.maxx < 60):
             sys.stderr.write("Terminal window too small! Minimum size [70 x 6], actual [%d x %d]\n" % (self.maxx, self.maxy))
@@ -146,7 +178,6 @@ class curses_terminal(threading.Thread):
         # return true signifies end of main event loop
         if curses.is_term_resized(self.maxy, self.maxx) is True:
             self.resize_curses()
-
         _ORD_S = ord('s')
         _ORD_L = ord('l')
         _ORD_H = ord('h')
@@ -253,6 +284,7 @@ class curses_terminal(threading.Thread):
     def process_json(self, js):
         # return true signifies end of main event loop
         msg = json.loads(js)
+        ccp = curses.color_pair(5)
         if msg['json_type'] == 'trunk_update':
             nacs = [x for x in list(msg.keys()) if x.isnumeric() ]
             if not nacs:
@@ -280,7 +312,7 @@ class curses_terminal(threading.Thread):
                     break
                 s=msg[current_nac]['frequencies'][freqs[i]]
                 s = s[:(self.maxx - 1)]
-                self.freq_list.addstr(i, 0, s)
+                self.freq_list.addstr(i, 0, s, ccp | curses.A_BOLD)
             self.freq_list.refresh()
             self.status1.erase()
             if 'srcaddr' in msg:
@@ -313,8 +345,10 @@ class curses_terminal(threading.Thread):
             self.active1.refresh()
             if msg['tag']:
                 s = msg['tag']
+                #colorize tags based on tag name
+                ccp = assign_ccp(s,ccp)
                 s = s[:(self.maxx - 16)]
-                self.active2.addstr(0, 0, s)
+                self.active2.addstr(0, 0, s, ccp | curses.A_BOLD)
             self.active2.refresh()
             self.stdscr.refresh()
         return False

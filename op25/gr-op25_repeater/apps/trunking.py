@@ -858,8 +858,8 @@ class rx_ctl (object):
         self.setup_config(configs)
 
     def build_config(self, config_filename):
-        import configparser
-        config = configparser.ConfigParser()
+        import ConfigParser
+        config = ConfigParser.ConfigParser()
         config.read(config_filename)
         configs = {}
         for section in config.sections():
