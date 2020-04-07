@@ -131,6 +131,14 @@ class p25_rx_block (gr.top_block):
             if any(x in options.args.lower() for x in ['rtl', 'airspy', 'hackrf', 'uhd']):
                 self.rtl_found = True
 
+            if options.gain_mode is not None:
+                if options.gain_mode:
+                    self.src.set_gain_mode(True, 0)
+                else:
+                    self.src.set_gain_mode(True, 0)  # UGH! Ugly workaround for gr-osmosdr airspy bug
+                    self.src.set_gain_mode(False, 0)
+                sys.stderr.write("gr-osmosdr driver gain_mode: %s\n" % self.src.get_gain_mode())
+
             gain_names = self.src.get_gain_names()
             for name in gain_names:
                 g_range = self.src.get_gain_range(name)
@@ -147,19 +155,10 @@ class p25_rx_block (gr.top_block):
                 sys.stderr.write("supported sample rates %d-%d step %d\n" % (rates.start(), rates.stop(), rates.step()))
             except:
                 pass    # ignore
-            sys.stderr.write('RTL Gain of %d set to: %.1f\n' % (gain, self.src.get_gain('LNA')))
 
             if options.freq_corr:
                 self.src.set_freq_corr(options.freq_corr)
                 self.last_set_ppm = options.freq_corr
-
-            if options.gain_mode is not None:
-                if options.gain_mode:
-                    self.src.set_gain_mode(True, 0)
-                else:
-                    self.src.set_gain_mode(False, 0)
-                sys.stderr.write("Osmocom driver gain_mode: %s\n" % self.src.get_gain_mode())
-
 
         if options.audio:
             self.channel_rate = 48000
