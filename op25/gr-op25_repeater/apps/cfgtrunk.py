@@ -92,7 +92,7 @@ def edit_config(hdrmap, configs, p_pos, p_value):
     if (idx not in configs) or (param < 0) or (param > len(hdrmap)):
         return 2
 
-    if (p_value is not None) or (p_value != ""):
+    if (p_value is not None) and (p_value != ""):
         configs[idx][hdrmap[param]] = p_value
     else:
         del configs[idx][hdrmap[param]]
