@@ -339,10 +339,10 @@ class trunked_system (object):
             return
         if self.whitelist and tgid in self.whitelist:
             self.whitelist.pop(tgid)
-            if self.debug > 0:
+            if self.debug > 1:
                 sys.stderr.write("%s de-whitelisting tgid(%d)\n" % (log_ts.get(), tgid))
         self.blacklist[tgid] = end_time
-        if self.debug > 0:
+        if self.debug > 1:
             sys.stderr.write("%s blacklisting tgid(%d)\n" % (log_ts.get(), tgid))
 
     def add_whitelist(self, tgid):
@@ -350,12 +350,12 @@ class trunked_system (object):
             return
         if self.blacklist and tgid in self.blacklist:
             self.blacklist.pop(tgid)
-            if self.debug > 0:
+            if self.debug > 1:
                 sys.stderr.write("%s de-blacklisting tgid(%d)\n" % (log_ts.get(), tgid))
         if not self.whitelist or tgid in self.whitelist:
             return
         self.whitelist[tgid] = None
-        if self.debug > 0:
+        if self.debug > 1:
             sys.stderr.write("%s whitelisting tgid(%d)\n" % (log_ts.get(), tgid))
 
     def decode_mbt_data(self, opcode, src, header, mbt_data):
@@ -719,7 +719,7 @@ def get_int_dict(s):
     return dict.fromkeys(d)
 
 class rx_ctl (object):
-    def __init__(self, debug=0, frequency_set=None, conf_file=None, logfile_workers=None, meta_update=None):
+    def __init__(self, debug=0, frequency_set=None, conf_file=None, logfile_workers=None, meta_update=None, crypt_behavior=0):
         class _states(object):
             ACQ = 0
             CC = 1
@@ -731,13 +731,14 @@ class rx_ctl (object):
         self.trunked_systems = {}
         self.frequency_set = frequency_set
         self.meta_update = meta_update
+        self.crypt_behavior = crypt_behavior
         self.meta_state = 0
         self.debug = debug
         self.tgid_hold = None
         self.tgid_hold_until = time.time()
         self.hold_mode = False
         self.TGID_HOLD_TIME = 2.0    # TODO: make more configurable
-        self.TGID_SKIP_TIME = 1.0    # TODO: make more configurable
+        self.TGID_SKIP_TIME = 4.0    # TODO: make more configurable
         self.current_nac = None
         self.current_id = 0
         self.current_tgid = None
@@ -988,7 +989,14 @@ class rx_ctl (object):
             if ('grpaddr' in js):
                 self.current_grpaddr = js['grpaddr']
             if 'encrypted' in js:
-                self.current_encrypted = js['encrypted']
+                if self.crypt_behavior > 1:
+                    if js['encrypted'] and self.current_tgid is not None:
+                        if self.debug > 0:
+                            sys.stderr.write('%s skipping encrypted tg(%d)\n' % (log_ts.get(), self.current_tgid))
+                        self.update_state('skip', curr_time, self.current_tgid)
+                else:
+                    self.current_encrypted = js['encrypted']
+
             return 
         elif m_type == -2:  # request from gui
             cmd = msg.to_string()
@@ -1300,12 +1308,15 @@ class rx_ctl (object):
                 self.tgid_hold_until = curr_time
                 self.hold_mode = False
         elif command == 'skip' or command == 'lockout':
-            if self.current_tgid and cmd_data == self.current_id:
+            if self.current_tgid and ((cmd_data == self.current_tgid) or (cmd_data == 0)):
                 end_time = None
                 if command == 'skip':
                     end_time = curr_time + self.TGID_SKIP_TIME
                 tsys.add_blacklist(self.current_tgid, end_time=end_time)
                 self.current_tgid = None
+                self.current_srcaddr = 0
+                self.current_grpaddr = 0
+                self.current_encrypted = 0
                 self.tgid_hold = None
                 self.tgid_hold_until = curr_time
                 self.hold_mode = False
@@ -1324,7 +1335,7 @@ class rx_ctl (object):
                     sys.stderr.write("%s whitelist tgid(%d) out of range (1-65534)\n" % (log_ts.get(), cmd_data))
                 return
             tsys.add_whitelist(cmd_data)
-            if self.current_tgid and self.whitelist and self.current_id not in self.whitelist:
+            if self.current_tgid and self.whitelist and self.current_tgid not in self.whitelist:
                 self.current_tgid = None
                 self.tgid_hold = None
                 self.tgid_hold_until = curr_time

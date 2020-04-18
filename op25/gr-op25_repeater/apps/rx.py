@@ -296,6 +296,9 @@ class p25_rx_block (gr.top_block):
         if self.options.phase2_tdma:
             num_ambe = 1
 
+        if self.options.crypt_behavior > 0:
+            self.options.nocrypt = True
+
         self.decoder = p25_decoder.p25_decoder_sink_b(dest='audio', do_imbe=self.options.vocoder, num_ambe=num_ambe, wireshark_host=self.options.wireshark_host, udp_port=udp_port, do_msgq = True, msgq=self.rx_q, audio_output=self.options.audio_output, debug=self.options.verbosity, nocrypt=self.options.nocrypt)
 
         # connect it all up
@@ -332,7 +335,7 @@ class p25_rx_block (gr.top_block):
                 logfile_workers.append({'demod': demod, 'decoder': decoder, 'active': False})
                 self.connect(source, demod, decoder)
 
-        self.trunk_rx = trunking.rx_ctl(frequency_set = self.change_freq, debug = self.options.verbosity, conf_file = self.options.trunk_conf_file, logfile_workers=logfile_workers, meta_update = self.meta_update)
+        self.trunk_rx = trunking.rx_ctl(frequency_set = self.change_freq, debug = self.options.verbosity, conf_file = self.options.trunk_conf_file, logfile_workers=logfile_workers, meta_update = self.meta_update, crypt_behavior = self.options.crypt_behavior)
 
         self.du_watcher = du_queue_watcher(self.rx_q, self.trunk_rx.process_qmsg)
 
@@ -952,6 +955,7 @@ class rx_main(object):
         parser.add_option("-v", "--verbosity", type="int", default=0, help="message debug level")
         parser.add_option("-V", "--vocoder", action="store_true", default=False, help="voice codec")
         parser.add_option("-n", "--nocrypt", action="store_true", default=False, help="silence encrypted traffic")
+        parser.add_option("--crypt-behavior", type="int", default=1, help="encrypted traffic behavior: 0=allow, 1=silence, 2=skip")
         parser.add_option("-o", "--offset", type="eng_float", default=0.0, help="tuning offset frequency [to circumvent DC offset]", metavar="Hz")
         parser.add_option("-p", "--pause", action="store_true", default=False, help="block on startup")
         parser.add_option("-w", "--wireshark", action="store_true", default=False, help="output data to Wireshark")
