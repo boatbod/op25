@@ -101,16 +101,34 @@ class channel(object):
         if 'symbol_rate' in list(config.keys()):
             self.symbol_rate = config['symbol_rate']
         self.config = config
-        self.demod = p25_demodulator.p25_demod_cb(
-                         input_rate = dev.sample_rate,
-                         demod_type = config['demod_type'],
-                         filter_type = config['filter_type'],
-                         excess_bw = config['excess_bw'],
-                         relative_freq = dev.frequency + dev.offset - self.frequency,
-                         offset = dev.offset,
-                         if_rate = config['if_rate'],
-                         symbol_rate = self.symbol_rate)
-        self.decoder = op25_repeater.frame_assembler(str(config['destination']), verbosity, msgq_id, rx_q)
+        if config['demod_type'] == "fsk": # Motorola 3600bps
+            import smartnet
+            self.demod = p25_demodulator.p25_demod_cb(
+                             input_rate = dev.sample_rate,
+                             demod_type = 'fsk4',
+                             filter_type = 'fsk',
+                             excess_bw = config['excess_bw'],
+                             relative_freq = dev.frequency + dev.offset - self.frequency,
+                             offset = dev.offset,
+                             if_rate = config['if_rate'],
+                             symbol_rate = self.symbol_rate)
+            self.decoder = digital.correlate_access_code_tag_bb("10101100",
+                                                                0,
+                                                                "smartnet_preamble") #should mark start of packet
+            self.deinterleave = smartnet.deinterleave()
+            self.crc = smartnet.crc(rx_q)
+
+        else:                             # P25, DMR, NXDN and everything else
+            self.demod = p25_demodulator.p25_demod_cb(
+                             input_rate = dev.sample_rate,
+                             demod_type = config['demod_type'],
+                             filter_type = config['filter_type'],
+                             excess_bw = config['excess_bw'],
+                             relative_freq = dev.frequency + dev.offset - self.frequency,
+                             offset = dev.offset,
+                             if_rate = config['if_rate'],
+                             symbol_rate = self.symbol_rate)
+            self.decoder = op25_repeater.frame_assembler(str(config['destination']), verbosity, msgq_id, rx_q)
 
         if 'key' in config and (config['key'] != ""):
             self.set_key(int(config['key'], 0))
@@ -121,7 +139,8 @@ class channel(object):
         for plot in config['plot'].split(','):
             # fixme: allow multiple complex consumers (fft and constellation currently mutually exclusive)
             if plot == 'datascope':
-                assert config['demod_type'] == 'fsk4'   ## datascope plot requires fsk4 demod type
+                assert (config['demod_type'] == 'fsk4' or
+                        config['demod_type'] == 'fsk')   ## datascope plot requires fsk or fsk4 demod type
                 sink = eye_sink_f(plot_name=self.name, sps=config['if_rate'] / self.symbol_rate)
                 self.demod.connect_bb('symbol_filter', sink)
                 self.kill_sink.append(sink)
@@ -284,6 +303,8 @@ class rx_block (gr.top_block):
                 self.connect(chan.throttle, chan.decoder)
             else:
                 self.connect(dev.src, chan.demod, chan.decoder)
+                if cfg['demod_type'] == 'fsk':
+                   self.connect(chan.decoder, chan.deinterleave, chan.crc)
                 if ("raw_output" in cfg) and (cfg['raw_output'] != ""):
                     sys.stderr.write("%s Saving raw symbols to file: %s\n" % (tog_ts.get(), cfg['raw_output']))
                     chan.raw_sink = blocks.file_sink(gr.sizeof_char, str(cfg['raw_output']))
