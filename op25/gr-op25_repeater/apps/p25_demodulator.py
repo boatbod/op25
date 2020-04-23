@@ -98,7 +98,7 @@ class p25_demod_base(gr.hier_block2):
             ntaps = 7 * sps
             if ntaps & 1 == 0:
                 ntaps += 1
-            coeffs = filter.firdes.root_raised_cosine(1.0, if_rate, symbol_rate, excess_bw, ntaps)
+            coeffs = filter.firdes.root_raised_cosine(1.0, self.if_rate, self.symbol_rate, excess_bw, ntaps)
         if filter_type == 'nxdn':
             coeffs = op25_c4fm_mod.c4fm_taps(sample_rate=self.if_rate, span=9, generator=op25_c4fm_mod.transfer_function_nxdn, symbol_rate=self.symbol_rate).generate()
             gain_adj = 1.8	# for nxdn48 6.25 KHz
@@ -131,6 +131,18 @@ class p25_demod_base(gr.hier_block2):
                                                            _def_omega_relative_limit)
             levels = [ -2.0, 0.0, 2.0, 4.0 ]
             self.slicer = op25_repeater.fsk4_slicer_fb(levels)
+        elif filter_type == 'fsk':
+            _def_symbol_deviation = 1800
+
+            ntaps = 7 * sps
+            if ntaps & 1 == 0:
+                ntaps += 1
+            coeffs = filter.firdes.root_raised_cosine(1.0, self.if_rate, self.symbol_rate, excess_bw, ntaps)
+            self.fsk4_demod = digital.clock_recovery_mm_ff(sps, 0.1, 0.5, 0.05, 0.005)
+            #self.fsk4_demod = digital.clock_recovery_mm_ff(sps, 2.5e-5, 0.5, 0.01, 0.3) // gr-smartnet version
+            self.symbol_filter = filter.fir_filter_fff(1, coeffs)
+
+            self.slicer = digital.binary_slicer_fb()
         else:
             self.symbol_filter = filter.fir_filter_fff(1, coeffs)
             autotuneq = gr.msg_queue(2)
@@ -244,6 +256,8 @@ class p25_demod_cb(p25_demod_base):
         self.t_cache = {}
         if filter_type == 'rrc':
             self.set_baseband_gain(0.61)
+        elif filter_type == 'fsk':
+            self.set_baseband_gain(0.75)
 
         self.mixer = blocks.multiply_cc()
         decimator_values = get_decim(input_rate)
@@ -315,7 +329,10 @@ class p25_demod_cb(p25_demod_base):
         self.rescale = blocks.multiply_const_ff( (1 / (pi / 4)) )
 
         # fm demodulator (needed in fsk4 case)
-        fm_demod_gain = if_rate / (2.0 * pi * _def_symbol_deviation)
+        if filter_type == 'fsk':
+            fm_demod_gain = 1.59
+        else: 
+            fm_demod_gain = if_rate / (2.0 * pi * _def_symbol_deviation)
         self.fm_demod = analog.quadrature_demod_cf(fm_demod_gain)
 
         self.connect_chain(demod_type)
