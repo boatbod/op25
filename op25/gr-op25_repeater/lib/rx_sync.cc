@@ -410,7 +410,7 @@ void rx_sync::rx_sym(const uint8_t sym)
 	case RX_TYPE_NONE:
 		break;
 	case RX_TYPE_P25:
-        p25fdma.rx_sym(symbol_ptr, MODE_DATA[d_current_type].fragment_len); // reassemble and process each 72 symbol fragment
+        p25fdma.rx_sym(symbol_ptr, MODE_DATA[d_current_type].fragment_len); // reassemble and process each 36 symbol fragment
 		break;
 	case RX_TYPE_DMR:
 		// frame with explicit sync resets expiration counter
