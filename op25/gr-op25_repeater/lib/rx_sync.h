@@ -34,6 +34,7 @@
 #include "check_frame_sync.h"
 
 #include "frame_sync_magics.h"
+#include "p25p1_fdma.h"
 #include "p25p2_vf.h"
 #include "mbelib.h"
 #include "ambe.h"
@@ -68,7 +69,7 @@ static const struct _mode_data {
 	int expiration;
 } MODE_DATA[RX_N_TYPES] = {
 	{"NONE",   0,0,0,0},
-	{"P25",    48,0,864,1728},
+	{"P25",    48,0,36,1728},
 	{"DMR",    48,66,144,1728},
 	{"DSTAR",  48,72,96,2016*2},
 	{"YSF",    40,0,480,480*2}
@@ -132,6 +133,7 @@ private:
 	int d_shift_reg;
 	int d_slot_mask;
 	unsigned int d_unmute_until[2];
+	p25p1_fdma p25fdma;
 	p25p2_vf interleaver;
 	mbe_parms cur_mp[2];
 	mbe_parms prev_mp[2];

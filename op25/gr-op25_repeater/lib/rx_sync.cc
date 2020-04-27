@@ -184,7 +184,8 @@ rx_sync::rx_sync(const char * options, int debug, int msgq_id, gr::msg_queue::sp
 	d_msg_queue(queue),
 	sync_timer(op25_timer(1000000)),
 	d_audio(options, debug),
-	dmr(debug, msgq_id, queue)
+	dmr(debug, msgq_id, queue),
+	p25fdma(d_audio, debug, true, false, true, queue, d_output_queue[0], true, true)
 {
 	if (msgq_id >= 0)
 		d_stereo = false; // single channel audio for trunking
@@ -373,7 +374,7 @@ void rx_sync::rx_sym(const uint8_t sym)
 		if (d_current_type != sync_detected) {
 			d_current_type = sync_detected;
 			d_expires = d_symbol_count + MODE_DATA[d_current_type].expiration;
-			d_rx_count = 0;
+			d_rx_count = MODE_DATA[d_current_type].sync_offset + (MODE_DATA[d_current_type].sync_len >> 1);
 		}
 		if (d_rx_count != MODE_DATA[d_current_type].sync_offset + (MODE_DATA[d_current_type].sync_len >> 1)) {
 			if (d_debug >= 10)
@@ -399,7 +400,8 @@ void rx_sync::rx_sym(const uint8_t sym)
 	assert (start_idx >= 0);
 	uint8_t * symbol_ptr = d_cbuf+start_idx;
 	uint8_t * bit_ptr = symbol_ptr;
-	if (d_current_type != RX_TYPE_DSTAR) {
+	//if (d_current_type != RX_TYPE_DSTAR) { // <<<incorrect?? Should be ((d_current_type==RX_TYPE_DSTAR) || (d_current_type==RX_TYPE_YSF)) ???
+	if ((d_current_type == RX_TYPE_DSTAR) || (d_current_type==RX_TYPE_YSF)) {
 		dibits_to_bits(bitbuf, symbol_ptr, MODE_DATA[d_current_type].fragment_len);
 		bit_ptr = bitbuf;
 	}
@@ -407,11 +409,7 @@ void rx_sync::rx_sym(const uint8_t sym)
 	case RX_TYPE_NONE:
 		break;
 	case RX_TYPE_P25:
-		for (unsigned int codeword_ct=0; codeword_ct < nof_voice_codewords; codeword_ct++) {
-			for (unsigned int i=0; i<voice_codeword_sz; i++)
-				tmpcw[i] = bit_ptr[voice_codeword_bits[codeword_ct][i]];
-			codeword(tmpcw, CODEWORD_P25P1, 0);  // 144 bits
-		}
+		p25fdma.rx_sym(symbol_ptr, MODE_DATA[d_current_type].fragment_len); // reassemble and process each 36 symbol fragment
 		break;
 	case RX_TYPE_DMR:
 		// frame with explicit sync resets expiration counter
