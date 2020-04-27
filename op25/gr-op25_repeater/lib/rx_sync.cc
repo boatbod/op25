@@ -185,7 +185,7 @@ rx_sync::rx_sync(const char * options, int debug, int msgq_id, gr::msg_queue::sp
 	sync_timer(op25_timer(1000000)),
 	d_audio(options, debug),
 	dmr(debug, msgq_id, queue),
-    p25fdma(d_audio, debug, true, false, true, queue, d_output_queue[0], true, true)
+	p25fdma(d_audio, debug, true, false, true, queue, d_output_queue[0], true, true)
 {
 	if (msgq_id >= 0)
 		d_stereo = false; // single channel audio for trunking
@@ -374,7 +374,7 @@ void rx_sync::rx_sym(const uint8_t sym)
 		if (d_current_type != sync_detected) {
 			d_current_type = sync_detected;
 			d_expires = d_symbol_count + MODE_DATA[d_current_type].expiration;
-			d_rx_count = 0;
+			d_rx_count = MODE_DATA[d_current_type].sync_offset + (MODE_DATA[d_current_type].sync_len >> 1);
 		}
 		if (d_rx_count != MODE_DATA[d_current_type].sync_offset + (MODE_DATA[d_current_type].sync_len >> 1)) {
 			if (d_debug >= 10)
@@ -393,7 +393,6 @@ void rx_sync::rx_sym(const uint8_t sym)
 		sync_timeout();
 		return;
 	}
-
 	if (d_rx_count < MODE_DATA[d_current_type].fragment_len)
 		return;
 	d_rx_count = 0;
@@ -405,12 +404,11 @@ void rx_sync::rx_sym(const uint8_t sym)
 		dibits_to_bits(bitbuf, symbol_ptr, MODE_DATA[d_current_type].fragment_len);
 		bit_ptr = bitbuf;
 	}
-
 	switch (d_current_type) {
 	case RX_TYPE_NONE:
 		break;
 	case RX_TYPE_P25:
-        p25fdma.rx_sym(symbol_ptr, MODE_DATA[d_current_type].fragment_len); // reassemble and process each 36 symbol fragment
+		p25fdma.rx_sym(symbol_ptr, MODE_DATA[d_current_type].fragment_len); // reassemble and process each 36 symbol fragment
 		break;
 	case RX_TYPE_DMR:
 		// frame with explicit sync resets expiration counter
