@@ -400,7 +400,7 @@ void rx_sync::rx_sym(const uint8_t sym)
 	assert (start_idx >= 0);
 	uint8_t * symbol_ptr = d_cbuf+start_idx;
 	uint8_t * bit_ptr = symbol_ptr;
-	if (d_current_type != RX_TYPE_DSTAR) {
+	if ((d_current_type == RX_TYPE_DSTAR) || (d_current_type==RX_TYPE_YSF)) {
 		dibits_to_bits(bitbuf, symbol_ptr, MODE_DATA[d_current_type].fragment_len);
 		bit_ptr = bitbuf;
 	}
