@@ -719,16 +719,16 @@ def get_int_dict(s):
     return dict.fromkeys(d)
 
 class rx_ctl (object):
-    def __init__(self, debug=0, frequency_set=None, conf_file=None, logfile_workers=None, meta_update=None, crypt_behavior=0):
+    def __init__(self, debug=0, frequency_set=None, conf_file=None, logfile_workers=None, meta_update=None, crypt_behavior=0, slot_set=None, chans={}):
         class _states(object):
             ACQ = 0
             CC = 1
             TO_VC = 2
             VC = 3
         self.states = _states
-
         self.current_state = self.states.CC
         self.trunked_systems = {}
+        self.receivers = {}
         self.frequency_set = frequency_set
         self.meta_update = meta_update
         self.crypt_behavior = crypt_behavior
@@ -749,6 +749,7 @@ class rx_ctl (object):
         self.TSYS_HOLD_TIME = 3.0    # TODO: make more configurable
         self.wait_until = time.time()
         self.configs = {}
+        self.chans = chans
         self.nacs = []
         self.logfile_workers = logfile_workers
         self.active_talkgroups = {}
@@ -757,38 +758,52 @@ class rx_ctl (object):
         self.last_garbage_collect = 0
         self.last_tune_time = 0.0;
         self.last_tune_freq = 0;
+
         if self.logfile_workers:
             self.input_rate = self.logfile_workers[0]['demod'].input_rate
 
-        if conf_file:
-            if conf_file.endswith('.tsv'):
+        if conf_file or len(chans) > 0:
+            if len(chans) > 0:               # called from multi_rx.py
+                self.build_config_chans(self.chans)
+            elif conf_file.endswith('.tsv'): # called from rx.py
                 self.build_config_tsv(conf_file)
+                self.post_init()
             else:
                 self.build_config(conf_file)
-            self.nacs = list(self.configs.keys())
-            self.current_nac = self.find_next_tsys()
-            self.current_state = self.states.CC
+                self.post_init()
 
-            tsys = self.trunked_systems[self.current_nac]
+    def add_receiver(self, msgq_id):
+        self.receivers[msgq_id] = msgq_id # TODO: fill this placeholder
 
-            if self.logfile_workers and tsys.modulation == 'c4fm':
-                for worker in self.logfile_workers:
-                    worker['demod'].connect_chain('fsk4')
+    def post_init(self):
+        #for rx_id in self.receivers:
+        #    self.receivers[rx_id].post_init()
 
-            self.set_frequency({
-                'freq':   tsys.trunk_cc,
-                'tgid':   None,
-                'offset': tsys.offset,
-                'tag':    "",
-                'nac':    self.current_nac,
-                'system': tsys.sysname,
-                'center_frequency': tsys.center_frequency,
-                'tdma':   None, 
-                'wacn':   None, 
-                'sysid':  None})
+        self.nacs = list(self.configs.keys())
+        self.current_nac = self.find_next_tsys()
+        self.current_state = self.states.CC
+
+        tsys = self.trunked_systems[self.current_nac]
+
+        if self.logfile_workers and tsys.modulation == 'c4fm':
+            for worker in self.logfile_workers:
+                worker['demod'].connect_chain('fsk4')
+
+        self.set_frequency({
+            'freq':   tsys.trunk_cc,
+            'tgid':   None,
+            'offset': tsys.offset,
+            'tag':    "",
+            'nac':    self.current_nac,
+            'system': tsys.sysname,
+            'center_frequency': tsys.center_frequency,
+            'tdma':   None, 
+            'wacn':   None, 
+            'sysid':  None})
 
     def set_frequency(self, params):
         frequency = params['freq']
+        params['tuner'] = 0
         if frequency and self.frequency_set:
             if self.debug > 10:
                 sys.stderr.write("%s set_frequency(%s)\n" % (log_ts.get(), frequency))
@@ -798,6 +813,9 @@ class rx_ctl (object):
             self.frequency_set(params)
 
     def do_metadata(self, state, tgid, tag):
+        if self.meta_update is None:
+            return
+
         if (state == 1) and (self.meta_state == 1): # don't update more than once for an idle channel (state=1)
             return
 
@@ -858,6 +876,13 @@ class rx_ctl (object):
 
         self.setup_config(configs)
 
+    def build_config_chans(self, config):
+        configs = {}
+        for cfg in config:
+            nac = eval(cfg['nac'])
+            configs[nac] = cfg
+        self.setup_config(configs)
+
     def build_config(self, config_filename):
         import configparser
         config = configparser.ConfigParser()
@@ -911,7 +936,7 @@ class rx_ctl (object):
             else:
                 self.configs[nac]['modulation'] = 'cqpsk'
             for k in ['whitelist', 'blacklist']:
-                if k in configs[nac]:
+                if (k in configs[nac]) and (configs[nac][k] != ""):
                     sys.stderr.write("%s Reading %s file\n" % (log_ts.get(), k))
                     self.configs[nac][k + ".file"] = configs[nac][k]
                     self.configs[nac][k] = get_int_dict(configs[nac][k])

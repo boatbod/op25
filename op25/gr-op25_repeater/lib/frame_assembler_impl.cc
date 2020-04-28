@@ -48,6 +48,10 @@ namespace gr {
       d_sync.set_xor_mask(key);
     }
 
+    void frame_assembler_impl::sync_reset() {
+      d_sync.sync_reset();
+    }
+
     frame_assembler::sptr
     frame_assembler::make(const char* options, int debug, int msgq_id, gr::msg_queue::sptr queue)
     {

@@ -57,6 +57,11 @@ void rx_sync::cbuf_insert(const uint8_t c) {
 	d_cbuf_idx = (d_cbuf_idx + 1) % CBUF_SIZE;
 }
 
+void rx_sync::reset_timer(void) {
+	sync_timer.reset();
+	p25fdma.reset_timer();
+}
+
 void rx_sync::sync_reset(void) {
 	// Sync counters and registers reset
 	d_symbol_count = 0;
@@ -65,6 +70,7 @@ void rx_sync::sync_reset(void) {
 	d_shift_reg = 0;
 	d_sync_reg = 0;
 	d_expires = 0;
+	d_current_type = RX_TYPE_NONE;
 
 	// Audio reset
 	for (int chan = 0; chan <= 1; chan++) {
@@ -75,6 +81,12 @@ void rx_sync::sync_reset(void) {
 				fprintf(stderr, "%s mute channel(%d)\n", logts.get(d_msgq_id), chan);
 			}
 		}
+	}
+
+	// Timers reset
+	reset_timer();
+	if (d_debug >= 10) {
+		fprintf(stderr, "%s rx_sync::sync_reset:\n", logts.get(d_msgq_id));
 	}
 }
 
@@ -87,7 +99,7 @@ void rx_sync::set_slot_mask(int mask) {
 	}
 
 	if (d_slot_mask == 4) {
-		sync_timer.reset();
+		reset_timer();
 		sync_reset();
 	}
 	d_slot_mask = mask;
@@ -185,7 +197,8 @@ rx_sync::rx_sync(const char * options, int debug, int msgq_id, gr::msg_queue::sp
 	sync_timer(op25_timer(1000000)),
 	d_audio(options, debug),
 	dmr(debug, msgq_id, queue),
-	p25fdma(d_audio, debug, true, false, true, queue, d_output_queue[0], true, true)
+	p25fdma(d_audio, debug, true, false, true, queue, d_output_queue[0], true, true),
+	p25tdma(d_audio, 0, debug, true, queue, d_output_queue[0], true, true)
 {
 	if (msgq_id >= 0)
 		d_stereo = false; // single channel audio for trunking
@@ -194,7 +207,6 @@ rx_sync::rx_sync(const char * options, int debug, int msgq_id, gr::msg_queue::sp
 	mbe_initMbeParms (&cur_mp[1], &prev_mp[1], &enh_mp[1]);
 	mbe_initToneParms (&tone_mp[0]);
 	mbe_initToneParms (&tone_mp[1]);
-	sync_timer.reset();
 	sync_reset();
 }
 
@@ -202,16 +214,27 @@ rx_sync::~rx_sync()	// destructor
 {
 }
 
-void rx_sync::sync_timeout()
+void rx_sync::sync_timeout(rx_types proto)
 {
-	if ((d_msgq_id < 0) || (d_msg_queue->full_p()))
-	return;
-
-	std::string m_buf;
-	gr::message::sptr msg = gr::message::make_from_string(m_buf, get_msg_type(PROTOCOL_DMR, M_DMR_TIMEOUT), (d_msgq_id << 1), logts.get_ts());
-	d_msg_queue->insert_tail(msg);
-
-	sync_timer.reset();
+	if ((d_msgq_id >= 0) && (!d_msg_queue->full_p())) {
+		std::string m_buf;
+		gr::message::sptr msg;
+		switch(proto) {
+		case RX_TYPE_NONE:
+		case RX_TYPE_P25:
+			msg = gr::message::make_from_string(m_buf, get_msg_type(PROTOCOL_P25, M_P25_TIMEOUT), (d_msgq_id << 1), logts.get_ts());
+			d_msg_queue->insert_tail(msg);
+			break;
+		case RX_TYPE_DMR:
+			msg = gr::message::make_from_string(m_buf, get_msg_type(PROTOCOL_DMR, M_DMR_TIMEOUT), (d_msgq_id << 1), logts.get_ts());
+			d_msg_queue->insert_tail(msg);
+			break;
+		}
+		if (d_debug >= 10) {
+			fprintf(stderr, "%s rx_sync::sync_timeout: protocol %s\n", logts.get(d_msgq_id), MODE_DATA[proto].type);
+		}
+    }
+	reset_timer();
 }
 
 void rx_sync::codeword(const uint8_t* cw, const enum codeword_types codeword_type, int slot_id) {
@@ -365,7 +388,7 @@ void rx_sync::rx_sym(const uint8_t sym)
 	cbuf_insert(sym);
 	if (d_current_type == RX_TYPE_NONE && sync_detected == RX_TYPE_NONE) {
 		if (sync_timer.expired()) {
-			sync_timeout();
+			sync_timeout(RX_TYPE_NONE);
 		}
 		return;
         }
@@ -389,8 +412,8 @@ void rx_sync::rx_sym(const uint8_t sym)
 	if (d_symbol_count >= d_expires) {
 		if (d_debug >= 10)
 			fprintf(stderr, "%s %s: timeout, symbol %d\n", logts.get(d_msgq_id), MODE_DATA[d_current_type].type, d_symbol_count);
+		sync_timeout(d_current_type);
 		d_current_type = RX_TYPE_NONE;
-		sync_timeout();
 		return;
 	}
 	if (d_rx_count < MODE_DATA[d_current_type].fragment_len)
