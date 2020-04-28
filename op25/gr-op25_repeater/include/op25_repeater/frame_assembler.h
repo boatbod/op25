@@ -27,33 +27,34 @@
 #include <gnuradio/msg_queue.h>
 
 namespace gr {
-  namespace op25_repeater {
+    namespace op25_repeater {
 
-    /*!
-     * \brief <+description of block+>
-     * \ingroup op25_repeater
-     *
-     */
-    class OP25_REPEATER_API frame_assembler : virtual public gr::block
-    {
-     public:
-      typedef boost::shared_ptr<frame_assembler> sptr;
+        /*!
+         * \brief <+description of block+>
+         * \ingroup op25_repeater
+         *
+         */
+        class OP25_REPEATER_API frame_assembler : virtual public gr::block
+        {
+            public:
+                typedef boost::shared_ptr<frame_assembler> sptr;
 
-      /*!
-       * \brief Return a shared_ptr to a new instance of op25_repeater::frame_assembler.
-       *
-       * To avoid accidental use of raw pointers, op25_repeater::frame_assembler's
-       * constructor is in a private implementation
-       * class. op25_repeater::frame_assembler::make is the public interface for
-       * creating new instances.
-       */
-      static sptr make(const char* options, int debug, int msgq_id, gr::msg_queue::sptr queue);
-      virtual void set_xormask(const char*p) {}
-      virtual void set_slotid(int slotid) {}
-      virtual void set_slotkey(int key) {}
-    };
+                /*!
+                 * \brief Return a shared_ptr to a new instance of op25_repeater::frame_assembler.
+                 *
+                 * To avoid accidental use of raw pointers, op25_repeater::frame_assembler's
+                 * constructor is in a private implementation
+                 * class. op25_repeater::frame_assembler::make is the public interface for
+                 * creating new instances.
+                 */
+                static sptr make(const char* options, int debug, int msgq_id, gr::msg_queue::sptr queue);
+                virtual void set_xormask(const char*p) {}
+                virtual void set_slotid(int slotid) {}
+                virtual void set_slotkey(int key) {}
+                virtual void sync_reset(void) {}
+        };
 
-  } // namespace op25_repeater
+    } // namespace op25_repeater
 } // namespace gr
 
 #endif /* INCLUDED_OP25_REPEATER_FRAME_ASSEMBLER_H */

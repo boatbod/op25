@@ -167,14 +167,15 @@ class channel(object):
                 self.demod.set_relative_frequency(self.device.frequency + self.device.offset - old_freq)
                 self.frequency = old_freq
                 if self.verbosity:
-                    sys.stderr.write("%f [%d] Unable to tune %s to frequency %f\n" % (time.time(), self.msgq_id, self.name, (freq/1e6)))
+                    sys.stderr.write("%s [%d] Unable to tune %s to frequency %f\n" % (log_ts.get(), self.msgq_id, self.name, (freq/1e6)))
                 return False
         for sink in self.sinks:
             if sink.name() == "fft_sink_c":
                 sink.set_center_freq(self.device.frequency)
                 sink.set_relative_freq(self.device.frequency + self.device.offset - freq)
         if self.verbosity >= 9:
-            sys.stderr.write("%f [%d] Tuning to frequency %f\n" % (time.time(), self.msgq_id, (freq/1e6)))
+            sys.stderr.write("%s [%d] Tuning to frequency %f\n" % (log_ts.get(), self.msgq_id, (freq/1e6)))
+        self.decoder.sync_reset()
         return True
 
     def set_slot(self, slot):
@@ -297,14 +298,14 @@ class rx_block (gr.top_block):
         tuner = params['tuner']
         if (tuner < 0) or (tuner > len(self.channels)):
             if self.verbosity:
-                sys.stderr.write("%f No %s channel available for tuning\n" % (time.time(), params['tuner']))
+                sys.stderr.write("%s No %s channel available for tuning\n" % (log_ts.get(), params['tuner']))
             return False
 
         chan = self.channels[tuner]
         if not chan.set_freq(params['freq']):
             chan.set_slot(0)
             return False
-        
+
         if 'slot' in params:
             chan.set_slot(params['slot'])
 

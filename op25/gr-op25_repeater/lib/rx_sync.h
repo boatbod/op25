@@ -35,6 +35,7 @@
 
 #include "frame_sync_magics.h"
 #include "p25p1_fdma.h"
+#include "p25p2_tdma.h"
 #include "p25p2_vf.h"
 #include "mbelib.h"
 #include "ambe.h"
@@ -107,13 +108,14 @@ class rx_sync {
 public:
 	void rx_sym(const uint8_t sym);
 	void sync_reset(void);
+	void reset_timer(void);
 	void set_slot_mask(int mask);
 	void set_xor_mask(int mask);
 	rx_sync(const char * options, int debug, int msgq_id, gr::msg_queue::sptr queue);
 	~rx_sync();
 
 private:
-	void sync_timeout();
+	void sync_timeout(rx_types proto);
 	void cbuf_insert(const uint8_t c);
 	void ysf_sync(const uint8_t dibitbuf[], bool& ysf_fullrate, bool& unmute);
 	void codeword(const uint8_t* cw, const enum codeword_types codeword_type, int slot_id);
@@ -134,6 +136,7 @@ private:
 	int d_slot_mask;
 	unsigned int d_unmute_until[2];
 	p25p1_fdma p25fdma;
+	p25p2_tdma p25tdma;
 	p25p2_vf interleaver;
 	mbe_parms cur_mp[2];
 	mbe_parms prev_mp[2];
