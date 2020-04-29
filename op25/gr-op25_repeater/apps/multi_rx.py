@@ -225,7 +225,6 @@ class channel(object):
         self.demod.set_omega(rate)
         if self.scope_sink is not None:
             self.scope_sink.set_sps(self.config['if_rate'] / rate)
-        sys.stderr.write("%s Set P25 TDMA parameters: rate=%d\n" % (log_ts.get(), self.symbol_rate))
 
     def set_slot(self, slot):
         self.decoder.set_slotid(slot)
