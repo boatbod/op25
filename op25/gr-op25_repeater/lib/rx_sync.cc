@@ -103,13 +103,18 @@ void rx_sync::set_slot_mask(int mask) {
 		sync_reset();
 	}
 	d_slot_mask = mask;
+	p25tdma.set_slotid(mask);
 }
 
-void rx_sync::set_xor_mask(int mask) {
+void rx_sync::set_xormask(const char* p) {
+	p25tdma.set_xormask(p);
+}
+
+void rx_sync::set_slot_key(int mask) {
 	if (d_debug >= 10) {
-		fprintf(stderr, "%s rx_sync::set_xor_mask: current(%d), new(%d)\n", logts.get(d_msgq_id), d_xor_mask, mask);
+		fprintf(stderr, "%s rx_sync::set_slot_key: current(%d), new(%d)\n", logts.get(d_msgq_id), d_slot_key, mask);
 	}
-	d_xor_mask = mask;
+	d_slot_key = mask;
 }
 
 static int ysf_decode_fich(const uint8_t src[100], uint8_t dest[32]) {   // input is 100 dibits, result is 32 bits
@@ -182,7 +187,7 @@ void rx_sync::ysf_sync(const uint8_t dibitbuf[], bool& ysf_fullrate, bool& unmut
 }
 
 rx_sync::rx_sync(const char * options, int debug, int msgq_id, gr::msg_queue::sptr queue) :	// constructor
-	d_xor_mask(0),
+	d_slot_key(0),
 	d_slot_mask(3),
 	d_symbol_count(0),
 	d_sync_reg(0),
@@ -221,7 +226,8 @@ void rx_sync::sync_timeout(rx_types proto)
 		gr::message::sptr msg;
 		switch(proto) {
 		case RX_TYPE_NONE:
-		case RX_TYPE_P25:
+		case RX_TYPE_P25P1:
+		case RX_TYPE_P25P2:
 			msg = gr::message::make_from_string(m_buf, get_msg_type(PROTOCOL_P25, M_P25_TIMEOUT), (d_msgq_id << 1), logts.get_ts());
 			d_msg_queue->insert_tail(msg);
 			break;
@@ -263,10 +269,10 @@ void rx_sync::codeword(const uint8_t* cw, const enum codeword_types codeword_typ
 			fprintf(stderr, "%s AMBE %02x %02x %02x %02x %02x %02x %02x errs %lu\n", logts.get(d_msgq_id),
 			       	p_cw[0], p_cw[1], p_cw[2], p_cw[3], p_cw[4], p_cw[5], p_cw[6], errs);
 		}
-		if (d_xor_mask) {
+		if (d_slot_key) {
 			uint8_t skipped_bits = p_cw[1] & 0xf0;
 			for (int i = 0; i <= 6; i++)
-				p_cw[i]   ^= (d_xor_mask >> ((i + 1) % 2) * 8);
+				p_cw[i]   ^= (d_slot_key >> ((i + 1) % 2) * 8);
 			p_cw[1] = (p_cw[1] & 0x0f) + skipped_bits;
 			interleaver.unpack_cw(p_cw, U);
 			interleaver.unpack_b(b, U);
@@ -430,8 +436,11 @@ void rx_sync::rx_sym(const uint8_t sym)
 	switch (d_current_type) {
 	case RX_TYPE_NONE:
 		break;
-	case RX_TYPE_P25:
+	case RX_TYPE_P25P1:
 		p25fdma.rx_sym(symbol_ptr, MODE_DATA[d_current_type].fragment_len); // reassemble and process each 36 symbol fragment
+		break;
+	case RX_TYPE_P25P2:
+		p25tdma.rx_sym(symbol_ptr, MODE_DATA[d_current_type].fragment_len); // reassemble and process each 180 symbol fragment
 		break;
 	case RX_TYPE_DMR:
 		// frame with explicit sync resets expiration counter

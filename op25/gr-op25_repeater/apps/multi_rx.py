@@ -45,6 +45,9 @@ from gr_gnuplot import symbol_sink_f
 from gr_gnuplot import eye_sink_f
 from gr_gnuplot import mixer_sink_c
 
+sys.path.append('tdma')
+import lfsr
+
 os.environ['IMBE'] = 'soft'
 
 _def_symbol_rate = 4800
@@ -95,8 +98,11 @@ class channel(object):
         self.raw_sink = None
         self.raw_file = None
         self.throttle = None
+        self.scope_sink = None
         self.sinks = []
         self.kill_sink = []
+        self.tdma_state = False
+        self.xor_cache = {}
         self.symbol_rate = _def_symbol_rate
         if 'symbol_rate' in list(config.keys()):
             self.symbol_rate = config['symbol_rate']
@@ -144,6 +150,7 @@ class channel(object):
                 sink = eye_sink_f(plot_name=self.name, sps=config['if_rate'] / self.symbol_rate)
                 self.demod.connect_bb('symbol_filter', sink)
                 self.kill_sink.append(sink)
+                self.scope_sink = sink
             elif plot == 'symbol':
                 sink = symbol_sink_f(plot_name=self.name)
                 self.demod.connect_float(sink)
@@ -196,6 +203,29 @@ class channel(object):
             sys.stderr.write("%s [%d] Tuning to frequency %f\n" % (log_ts.get(), self.msgq_id, (freq/1e6)))
         self.decoder.sync_reset()
         return True
+
+    def configure_p25_tdma(self, params):
+        set_tdma = False
+        if params['tdma'] is not None:
+            set_tdma = True
+            self.decoder.set_slotid(params['tdma'])
+        if set_tdma == self.tdma_state:
+            return
+        self.tdma_state = set_tdma
+        if set_tdma:
+            hash = '%x%x%x' % (params['nac'], params['sysid'], params['wacn'])
+            if hash not in self.xor_cache:
+                self.xor_cache[hash] = lfsr.p25p2_lfsr(params['nac'], params['sysid'], params['wacn']).xor_chars
+            self.decoder.set_xormask(self.xor_cache[hash])
+            rate = 6000
+        else:
+            rate = self.config['symbol_rate']
+
+        self.symbol_rate = rate
+        self.demod.set_omega(rate)
+        if self.scope_sink is not None:
+            self.scope_sink.set_sps(self.config['if_rate'] / rate)
+        sys.stderr.write("%s Set P25 TDMA parameters: rate=%d\n" % (log_ts.get(), self.symbol_rate))
 
     def set_slot(self, slot):
         self.decoder.set_slotid(slot)
@@ -323,6 +353,9 @@ class rx_block (gr.top_block):
             return False
 
         chan = self.channels[tuner]
+        if 'sigtype' in params and params['sigtype'] == "P25": # P25 specific TDMA config
+            chan.configure_p25_tdma(params)
+
         if not chan.set_freq(params['freq']):
             chan.set_slot(0)
             return False

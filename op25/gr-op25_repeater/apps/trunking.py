@@ -804,6 +804,7 @@ class rx_ctl (object):
     def set_frequency(self, params):
         frequency = params['freq']
         params['tuner'] = 0
+        params['sigtype'] = "P25"
         if frequency and self.frequency_set:
             if self.debug > 10:
                 sys.stderr.write("%s set_frequency(%s)\n" % (log_ts.get(), frequency))
