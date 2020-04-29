@@ -37,7 +37,8 @@
 namespace gr {
   namespace op25_repeater {
 
-    void frame_assembler_impl::set_xormask(const char*p) {
+    void frame_assembler_impl::set_xormask(const char* p) {
+      d_sync.set_xormask(p);
     }
 
     void frame_assembler_impl::set_slotid(int slotid) {
@@ -45,7 +46,7 @@ namespace gr {
     }
 
     void frame_assembler_impl::set_slotkey(int key) {
-      d_sync.set_xor_mask(key);
+      d_sync.set_slot_key(key);
     }
 
     void frame_assembler_impl::sync_reset() {

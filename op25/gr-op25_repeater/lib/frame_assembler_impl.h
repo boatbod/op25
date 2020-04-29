@@ -48,7 +48,7 @@ namespace gr {
                 // internal functions
 
                 void queue_msg(int duid);
-                void set_xormask(const char*p);
+                void set_xormask(const char* p);
                 void set_slotid(int slotid);
                 void set_slotkey(int key);
                 void sync_reset();
