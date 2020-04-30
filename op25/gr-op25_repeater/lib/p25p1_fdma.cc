@@ -720,7 +720,7 @@ p25p1_fdma::rx_sym (const uint8_t *syms, int nsyms)
   if (d_do_msgq && !d_msg_queue->full_p()) {
     // check for timeout
     if (qtimer.expired()) {
-      if (d_debug > 10)
+      if (d_debug >= 10)
         fprintf(stderr, "%s p25p1_fdma::rx_sym() timeout\n", logts.get());
 
       if (d_do_audio_output) {
