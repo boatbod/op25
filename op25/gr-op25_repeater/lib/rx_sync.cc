@@ -1,4 +1,5 @@
 // P25 Decoder (C) Copyright 2013, 2014, 2015, 2016, 2017 Max H. Parke KA1RBI
+//             (C) Copyright 2019, 2020 Graham J. Norbury (DMR & P25 additions)
 // 
 // This file is part of OP25
 // 
@@ -310,22 +311,9 @@ void rx_sync::codeword(const uint8_t* cw, const enum codeword_types codeword_typ
 			mbe_dequantizeAmbe2250Parms(&cur_mp[slot_id], &prev_mp[slot_id], b);
 		break;
 	case CODEWORD_P25P2:
-		break;
-	case CODEWORD_P25P1:	// 144 bits
-		for (int i=0; i<144; i++)
-			fullrate_cw[i] = cw[i];
-		errs = imbe_header_decode(fullrate_cw, u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7], E0, ET);
-		do_fullrate = true;
-		if (d_debug >= 10) {
-			packed_codeword p_cw;
-			imbe_pack(p_cw, u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7]);
-			fprintf(stderr, "%s IMBE %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x errs %lu\n",
-					logts.get(d_msgq_id),
-					p_cw[0], p_cw[1], p_cw[2], p_cw[3], p_cw[4], p_cw[5],
-				       	p_cw[6], p_cw[7], p_cw[8], p_cw[9], p_cw[10], errs);
-		}
-
-		break;
+		break; // Not used; handled by p25p2_tdma
+	case CODEWORD_P25P1:
+		break; // Not used; handled by p25p1_fdma
 	case CODEWORD_YSF_FULLRATE:	// 144 bits
 		for (int i=0; i<144; i++)
 			fullrate_cw[i] = cw[ysf_permutation[i]];
@@ -440,7 +428,7 @@ void rx_sync::rx_sym(const uint8_t sym)
 		p25fdma.rx_sym(symbol_ptr, MODE_DATA[d_current_type].fragment_len); // reassemble and process each 36 symbol fragment
 		break;
 	case RX_TYPE_P25P2:
-		p25tdma.rx_sym(symbol_ptr, MODE_DATA[d_current_type].fragment_len); // reassemble and process each 180 symbol fragment
+		p25tdma.handle_packet(symbol_ptr); // passing 180 dibit packets is faster than bit-shuffling via p25tdma::rx_sym()
 		break;
 	case RX_TYPE_DMR:
 		// frame with explicit sync resets expiration counter
