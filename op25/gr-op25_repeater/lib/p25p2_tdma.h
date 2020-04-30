@@ -49,8 +49,6 @@ public:
 	~p25p2_tdma();	// destructor
 	void set_xormask(const char*p);
 	bool rx_sym(uint8_t sym);
-	void rx_sym(const uint8_t *syms, int nsyms);
-
 	int handle_frame(void) ;
 private:
 	p25p2_sync sync;

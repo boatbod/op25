@@ -120,15 +120,6 @@ bool p25p2_tdma::rx_sym(uint8_t sym)
 	return p2framer.rx_sym(sym);
 }
 
-void p25p2_tdma::rx_sym(const uint8_t *syms, int nsyms)
-{
-	for(int i=0; i<nsyms; i++) {
-		symbols_received++;
-		if (p2framer.rx_sym(syms[i]))
-			handle_frame();
-	}
-}
-
 void p25p2_tdma::set_slotid(int slotid)
 {
 	assert (slotid == 0 || slotid == 1);
