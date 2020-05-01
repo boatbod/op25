@@ -105,6 +105,9 @@ SND_PCM_ACCESS_RW_INTERLEAVED = c_int(3)
 SND_PCM_ACCESS_RW_NONINTERLEAVED = c_int(4)
 SND_PCM_ACCESS_LAST = SND_PCM_ACCESS_RW_NONINTERLEAVED
 
+PA_STREAM_PLAYBACK = 1
+PA_SAMPLE_S16LE = 3
+
 # Python CTypes wrapper to Alsa libasound2
 class alsasound(object):
     def __init__(self):
@@ -264,6 +267,63 @@ class alsasound(object):
     def check(self):
         return 0
 
+class _struct_pa_sample_spec(Structure):
+    _fields_ = [("format", c_int),
+                ("rate", c_uint32),
+                ("channels", c_uint8)]
+
+class pa_sound(object):
+    def __init__(self):
+        self.error = c_int(0)
+        self.libpa = cdll.LoadLibrary("libpulse-simple.so.0")
+       	self.libpa.strerror.restype = c_char_p
+        self.ss = _struct_pa_sample_spec(PA_SAMPLE_S16LE, 8000, 2)
+
+    def open(self, hwdevice):
+        self.out = c_void_p(self.libpa.pa_simple_new(None,
+		    "OP25".encode("ascii"),
+            PA_STREAM_PLAYBACK,
+            None,
+		    "OP25 Playback".encode('ascii'),
+            byref(self.ss),
+		    None,
+            None,
+            byref(self.error)))
+
+        if not self.out:
+            sys.stderr.write("%s Could not open PulseAudio stream: %s\n" % (log_ts.get(), str(pa.strerror(error), 'ascii')))
+
+        return self.error
+
+    def close(self):
+        self.libpa.pa_simple_free(self.out)
+
+    def setup(self, pcm_format, pcm_channels, pcm_rate, pcm_buffer_size):
+        self.ss.format = PA_SAMPLE_S16LE # fixed format
+        self.ss.channels = pcm_channels
+        self.ss.rate = pcm_rate
+        return 0
+
+    def write(self, pcm_data):
+        self.libpa.pa_simple_write(self.out, pcm_data, len(pcm_data), byref(self.error))
+        return self.error
+
+    def drain(self):
+        self.libpa.pa_simple_drain(self.out, byref(self.error))
+        return self.error
+
+    def drop(self):
+        self.libpa.pa_simple_flush(self.out, byref(self.error))
+        return self.error
+
+    def dump(self):
+        return 0
+
+    def check(self):
+        return 0
+
+
+
 # Wrapper to emulate pcm writes of sound samples to stdout (for liquidsoap)
 class stdout_wrapper(object): 
     def __init__(self):
@@ -314,14 +374,33 @@ class socket_audio(object):
         self.dest_stdout = dest_stdout
         self.sock_a = None
         self.sock_b = None
+        self.pcm = None
         if dest_stdout:
             pcm_device = "stdout"
             sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0) # reopen stdout with buffering disabled
             self.pcm = stdout_wrapper()
         else:
-            self.pcm = alsasound()
+            if pcm_device.lower() == "pulse":
+                try:
+                    self.pcm = pa_sound()       # first try to use PulseAudio
+                    sys.stderr.write("using PulseAudio sound system\n")
+                except:
+                    sys.stderr.write("unable to load PulseAudio library\n")
+                    pcm_device = "default"
+
+            if self.pcm is None:
+                try:
+                    self.pcm = alsasound()  # if PulseAudio not available, try to use ALSA
+                    sys.stderr.write("using ALSA sound system\n")
+                except:
+                    sys.stderr.write("unable to load ALSA library\n")
+
+        if self.pcm is not None:
+            self.setup_pcm(pcm_device)
+        else:
+            self.keep_running = False
+
         self.setup_sockets(udp_host, udp_port)
-        self.setup_pcm(pcm_device)
 
     def run(self):
         rc = 0
@@ -444,7 +523,8 @@ class socket_audio(object):
 
     def close_pcm(self):
         sys.stderr.write('audio closing\n')
-        self.pcm.close()
+        if self.pcm is not None:
+            self.pcm.close()
         return
 
 class audio_thread(threading.Thread):
