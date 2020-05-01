@@ -431,6 +431,8 @@ class p25_rx_block (gr.top_block):
             if corrected_ppm != self.last_set_ppm:
                 self.src.set_freq_corr(corrected_ppm)
                 self.last_set_ppm = corrected_ppm
+                if self.options.verbosity >= 1:
+                    sys.stderr.write('%s Adjusting tuning correction: ppm(%d) ["-q %d"]\n' % (log_ts.get(), corrected_ppm, corrected_ppm))
             self.options.fine_tune = err_hz                   # replace existing fine_tune with new correction value
             self.set_freq(self.target_freq)
             if self.options.verbosity >= 2:
