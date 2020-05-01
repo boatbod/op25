@@ -380,11 +380,13 @@ class socket_audio(object):
             sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0) # reopen stdout with buffering disabled
             self.pcm = stdout_wrapper()
         else:
-            try:
-                self.pcm = pa_sound()       # first try to use PulseAudio
-                sys.stderr.write("using PulseAudio sound system\n")
-            except:
-                sys.stderr.write("unable to load PulseAudio library\n")
+            if pcm_device.lower() == "pulse":
+                try:
+                    self.pcm = pa_sound()       # first try to use PulseAudio
+                    sys.stderr.write("using PulseAudio sound system\n")
+                except:
+                    sys.stderr.write("unable to load PulseAudio library\n")
+                    pcm_device = "default"
 
             if self.pcm is None:
                 try:
