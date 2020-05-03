@@ -1,5 +1,6 @@
 # Untracked files
-stderr.2
+stderr*
+*.2
 *.blist
 *.wlist
 *.json
