@@ -30,7 +30,7 @@
 #include <arpa/inet.h>
 #include <deque>
 
-#include "rx_sync.h"
+#include "rx_base.h"
 
 typedef std::deque<uint8_t> dibit_queue;
 
@@ -43,7 +43,7 @@ namespace gr {
                 int d_debug;
                 int d_msgq_id;
                 gr::msg_queue::sptr d_msg_queue;
-                rx_sync d_sync;
+                rx_base* d_sync;
 
                 // internal functions
 

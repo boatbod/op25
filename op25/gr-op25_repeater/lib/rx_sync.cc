@@ -66,6 +66,7 @@ void rx_sync::reset_timer(void) {
 void rx_sync::sync_reset(void) {
 	// Sync counters and registers reset
 	d_symbol_count = 0;
+    d_cbuf_idx = 0;
 	d_rx_count = 0;
 	d_threshold = 0;
 	d_shift_reg = 0;

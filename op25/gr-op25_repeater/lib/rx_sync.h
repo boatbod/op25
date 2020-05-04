@@ -50,6 +50,8 @@
 #include "op25_audio.h"
 #include "log_ts.h"
 
+#include "rx_base.h"
+
 namespace gr{
     namespace op25_repeater{
 
@@ -107,7 +109,7 @@ enum codeword_types {
 	CODEWORD_YSF_HALFRATE
 };
 
-class rx_sync {
+class rx_sync : public rx_base {
 public:
 	void rx_sym(const uint8_t sym);
 	void sync_reset(void);

@@ -63,6 +63,7 @@ list(APPEND op25_repeater_sources
     mbelib.c
     ambe_encoder.cc
     rx_sync.cc
+    rx_smartnet.cc
     hamming.cc
     golay2087.cc
     bptc19696.cc
