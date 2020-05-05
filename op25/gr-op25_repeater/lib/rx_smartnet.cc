@@ -91,7 +91,8 @@ namespace gr{
             if (!crc_ok)
                 return;
 
-            fprintf(stderr, "%s SMARTNET OSW received: (%05d,%s,0x%03x) [%02x %02x %02x %02x %02x]\n", logts.get(d_msgq_id), d_pkt.address, ((d_pkt.group) ? "g" : "i"), d_pkt.command, d_pkt.raw_data[0], d_pkt.raw_data[1], d_pkt.raw_data[2], d_pkt.raw_data[3], d_pkt.raw_data[4]);
+            if (d_debug >= 10)
+                fprintf(stderr, "%s SMARTNET OSW received: (%05d,%s,0x%03x)\n", logts.get(d_msgq_id), d_pkt.address, ((d_pkt.group) ? "g" : "i"), d_pkt.command);
 
             send_msg((const char*)d_pkt.raw_data);
 
