@@ -326,8 +326,9 @@ class p25_demod_cb(p25_demod_base):
 
         # fm demodulator (needed in fsk4 case)
         if filter_type == 'fsk':
-            _def_symbol_deviation = 1800
-        fm_demod_gain = if_rate / (2.0 * pi * _def_symbol_deviation)
+            fm_demod_gain = if_rate / (2.0 * pi * 1800)
+        else:
+            fm_demod_gain = if_rate / (2.0 * pi * _def_symbol_deviation)
         self.fm_demod = analog.quadrature_demod_cf(fm_demod_gain)
 
         self.connect_chain(demod_type)
