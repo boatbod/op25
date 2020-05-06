@@ -291,9 +291,9 @@ class pa_sound(object):
             byref(self.error)))
 
         if not self.out:
-            sys.stderr.write("%s Could not open PulseAudio stream: %s\n" % (log_ts.get(), str(pa.strerror(error), 'ascii')))
+            sys.stderr.write("%s Could not open PulseAudio stream: %s\n" % (log_ts.get(), self.libpa.strerror(self.error)))
 
-        return self.error
+        return self.error.value
 
     def close(self):
         self.libpa.pa_simple_free(self.out)
@@ -310,11 +310,11 @@ class pa_sound(object):
 
     def drain(self):
         self.libpa.pa_simple_drain(self.out, byref(self.error))
-        return self.error
+        return self.error.value
 
     def drop(self):
         self.libpa.pa_simple_flush(self.out, byref(self.error))
-        return self.error
+        return self.error.value
 
     def dump(self):
         return 0
