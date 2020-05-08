@@ -329,7 +329,7 @@ class rx_block (gr.top_block):
             else:
                 self.connect(dev.src, chan.demod, chan.decoder)
                 if ("raw_output" in cfg) and (cfg['raw_output'] != ""):
-                    sys.stderr.write("%s Saving raw symbols to file: %s\n" % (tog_ts.get(), cfg['raw_output']))
+                    sys.stderr.write("%s Saving raw symbols to file: %s\n" % (log_ts.get(), cfg['raw_output']))
                     chan.raw_sink = blocks.file_sink(gr.sizeof_char, str(cfg['raw_output']))
                     self.connect(chan.demod, chan.raw_sink)
 
