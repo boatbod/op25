@@ -148,7 +148,6 @@ class osw_parser(object):
                 dst_tgid = osw_addr
                 tgt_freq = osw_f
                 sys.stderr.write("%s SMARTNET GROUP GRANT src(%d), tgid(%d), freq(%f)\n" % (log_ts.get(), src_rid, dst_tgid, tgt_freq))
-        
         elif osw_cmd == 0x321:   # Two-OSW digital group voice grant
             src_rid = osw_addr
             osw_addr, osw_grp, osw_cmd, osw_ch, osw_f = self.osw_q.popleft()
