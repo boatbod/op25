@@ -64,9 +64,6 @@ class rx_ctl(object):
             osw_cmd  = (ord(s[3]) << 8) + ord(s[4])
             self.osw_parser.enqueue(osw_addr, osw_grp, osw_cmd)
 
-            if self.debug >= 11:
-                sys.stderr.write("%s SMARTNET OSW (%d,%d,0x%03x)\n" % (log_ts.get(), osw_addr, osw_grp, osw_cmd))
-
 class osw_parser(object):
     def __init__(self, debug, config):
         self.debug = debug
@@ -122,10 +119,6 @@ class osw_parser(object):
 
             if (cmd >= bp_offset) and (cmd < high_cmd):
                 freq = bp_base + (bp_spacing * (cmd - bp_offset ))
-
-        if freq > 0.0:
-            sys.stderr.write("%s SMARTNET FREQ (0x%03x): %f\n" % (log_ts.get(), cmd, freq))
-
         return freq
 
     def enqueue(self, addr, grp, cmd):
@@ -141,9 +134,30 @@ class osw_parser(object):
             return
 
         osw_addr, osw_grp, osw_cmd, osw_ch, osw_f = self.osw_q.popleft()
-        if osw_ch:
-            sys.stderr.write("%s SMARTNET OSW (%d,%s,0x%03x,%f)\n" % (log_ts.get(), osw_addr, osw_grp, osw_cmd, osw_f))
-        else:
-            sys.stderr.write("%s SMARTNET OSW (%d,%s,0x%03x)\n" % (log_ts.get(), osw_addr, osw_grp, osw_cmd))
+        if self.debug >= 11:
+            if osw_ch:
+                sys.stderr.write("%s SMARTNET OSW (0x%04x,%s,0x%03x,%f)\n" % (log_ts.get(), osw_addr, osw_grp, osw_cmd, osw_f))
+            else:
+                sys.stderr.write("%s SMARTNET OSW (0x%04x,%s,0x%03x)\n" % (log_ts.get(), osw_addr, osw_grp, osw_cmd))
 
+        src_rid = 0
+        if osw_cmd == 0x308:
+            src_rid = osw_addr
+            osw_addr, osw_grp, osw_cmd, osw_ch, osw_f = self.osw_q.popleft()
+            if osw_ch and osw_grp and (osw_addr != 0) and (src_rid != 0):
+                dst_tgid = osw_addr
+                tgt_freq = osw_f
+                sys.stderr.write("%s SMARTNET GROUP GRANT src(%d), tgid(%d), freq(%f)\n" % (log_ts.get(), src_rid, dst_tgid, tgt_freq))
+        
+        elif osw_cmd == 0x321:   # Two-OSW digital group voice grant
+            src_rid = osw_addr
+            osw_addr, osw_grp, osw_cmd, osw_ch, osw_f = self.osw_q.popleft()
+            if osw_ch and osw_grp and (osw_addr != 0):
+                dst_tgid = osw_addr
+                tgt_freq = osw_f
+                sys.stderr.write("%s SMARTNET ASTRO GRANT src(%d), tgid(%d), freq(%f)\n" % (log_ts.get(), src_rid, dst_tgid, tgt_freq))
+        elif osw_ch and osw_grp: # Single-OSW voice update
+            dst_tgid = osw_addr
+            tgt_freq = osw_f
+            sys.stderr.write("%s SMARTNET GROUP UPDATE src(%d), tgid(%d), freq(%f)\n" % (log_ts.get(), src_rid, dst_tgid, tgt_freq))
 
