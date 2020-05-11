@@ -347,7 +347,7 @@ class rx_ctl(object):
         for rx_id in self.receivers:
             self.receivers[rx_id].post_init()
 
-    def add_receiver(self, msgq_id):
+    def add_receiver(self, msgq_id, config):
         self.receivers[msgq_id] = dmr_receiver(msgq_id, self.frequency_set, self.slot_set, self.chans, self.debug)
 
     def process_qmsg(self, msg):

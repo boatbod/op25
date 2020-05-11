@@ -772,7 +772,7 @@ class rx_ctl (object):
                 self.build_config(conf_file)
                 self.post_init()
 
-    def add_receiver(self, msgq_id):
+    def add_receiver(self, msgq_id, config):
         self.receivers[msgq_id] = msgq_id # TODO: fill this placeholder
 
     def post_init(self):

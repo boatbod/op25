@@ -170,6 +170,7 @@ class channel(object):
                 self.sinks.append(mixer_sink_c(plot_name=self.name))
                 self.demod.connect_complex('mixer', self.sinks[i])
                 self.kill_sink.append(self.sinks[i])
+                self.sinks[i].set_width(config['if_rate'])
             else:
                 sys.stderr.write('unrecognized plot type %s\n' % plot)
                 return
@@ -312,7 +313,7 @@ class rx_block (gr.top_block):
                     continue    
             if self.trunking is not None:
                 msgq_id = len(self.channels)
-                self.trunk_rx.add_receiver(msgq_id)
+                self.trunk_rx.add_receiver(msgq_id, config=cfg)
             else:
                 msgq_id = -1 - len(self.channels)
             chan = channel(cfg, dev, self.verbosity, msgq_id, self.rx_q)
