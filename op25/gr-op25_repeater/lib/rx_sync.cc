@@ -105,7 +105,7 @@ void rx_sync::set_slot_mask(int mask) {
 		sync_reset();
 	}
 	d_slot_mask = mask;
-	p25tdma.set_slotid(mask);
+	p25tdma.set_slotid(mask & 0x1);
 }
 
 void rx_sync::set_xormask(const char* p) {
