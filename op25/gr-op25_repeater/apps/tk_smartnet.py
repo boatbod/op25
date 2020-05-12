@@ -154,7 +154,7 @@ class osw_receiver(object):
         m_ts = float(msg.arg2())
 
         if (m_type == -1):  # Control Channel Timeout
-            if self.debug > 0:
+            if self.debug > 10:
                 sys.stderr.write("%s [%d] control channel timeout\n" % (log_ts.get(), self.msgq_id))
             self.cc_retries += 1
             if self.cc_retries >= CC_TIMEOUT_RETRIES:
@@ -175,7 +175,10 @@ class osw_receiver(object):
 
     def is_chan(self, cmd): # Is the 'cmd' a valid frequency or an actual command
         band = self.config['bandplan'][:3]
+        subtype = self.config['bandplan'][3:len(self.config['bandplan'])].lower().lstrip("_-:")
         if band == "800":
+            if subtype == "reband" and cmd > 0x22f:
+                return False
             if (cmd >= 0 and cmd <= 0x2F7) or (cmd >= 0x32f and cmd <= 0x33F) or (cmd >= 0x3c1 and cmd <= 0x3FE) or cmd == 0x3BE:
                 return True
         elif band == "900":
@@ -195,8 +198,11 @@ class osw_receiver(object):
 
         if band == "800":
             if cmd <= 0x2CF:
-                if subtype == "reband" and cmd >= 0x1B8 and cmd <= 0x22F: # REBAND site
-                    freq = 851.0250 + (0.025 * (cmd - 0x1B8))
+                if subtype == "reband":                                   # REBAND
+                    if cmd < 0x1b8:
+                        freq = 851.0125 + (0.025 * cmd)
+                    if cmd >= 0x1B8 and cmd <= 0x22F:
+                        freq = 851.0250 + (0.025 * (cmd - 0x1B8))
                 elif subtype == "splinter" and cmd <= 0x257:              # SPLINTER site
                     freq = 851.0 + (0.025 * cmd)
                 else:
@@ -236,7 +242,7 @@ class osw_receiver(object):
             return
 
         osw_addr, osw_grp, osw_cmd, osw_ch, osw_f = self.osw_q.popleft()
-        if self.debug >= 11:
+        if self.debug >= 9:
             if osw_ch:
                 sys.stderr.write("%s [%d] SMARTNET OSW (0x%04x,%s,0x%03x,%f)\n" % (log_ts.get(), self.msgq_id, osw_addr, osw_grp, osw_cmd, osw_f))
             else:
