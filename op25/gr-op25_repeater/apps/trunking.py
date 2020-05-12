@@ -752,7 +752,6 @@ class rx_ctl (object):
         self.chans = chans
         self.nacs = []
         self.logfile_workers = logfile_workers
-        self.active_talkgroups = {}
         self.working_frequencies = {}
         self.xor_cache = {}
         self.last_garbage_collect = 0
