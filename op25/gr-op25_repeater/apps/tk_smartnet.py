@@ -312,7 +312,11 @@ class osw_receiver(object):
     def update_voice_frequency(self, frequency, tgid=None, srcaddr=-1, mode=-1):
         if not frequency:    # e.g., channel identifier not yet known
             return
+
         self.update_talkgroups(frequency, tgid, srcaddr)
+
+        base_tgid = tgid & 0xfff0
+        tgid_stat = tgid & 0x000f
         if frequency not in self.voice_frequencies:
             self.voice_frequencies[frequency] = {'counter':0}
             sorted_freqs = collections.OrderedDict(sorted(self.voice_frequencies.items()))
@@ -323,7 +327,7 @@ class osw_receiver(object):
         if 'tgid' not in self.voice_frequencies[frequency]:
             self.voice_frequencies[frequency]['tgid'] = [None]
             self.voice_frequencies[frequency]['mode'] = 0
-        self.voice_frequencies[frequency]['tgid'] = tgid
+        self.voice_frequencies[frequency]['tgid'] = base_tgid
         self.voice_frequencies[frequency]['counter'] += 1
         self.voice_frequencies[frequency]['time'] = time.time()
         if mode >= 0:
@@ -338,28 +342,33 @@ class osw_receiver(object):
         #            sys.stderr.write('%s update_talkgroups: sg(%d) patched tgid(%d)\n' % (log_ts.get(), tgid, ptgid))
 
     def update_talkgroup(self, frequency, tgid, srcaddr):
+        base_tgid = tgid & 0xfff0
+        tgid_stat = tgid & 0x000f
+
         if self.debug >= 5:
-            sys.stderr.write('%s [%d] set tgid=%s, srcaddr=%s\n' % (log_ts.get(), self.msgq_id, tgid, srcaddr))
+            sys.stderr.write('%s [%d] set tgid=%s, srcaddr=%s\n' % (log_ts.get(), self.msgq_id, base_tgid, srcaddr))
         
-        if tgid not in self.talkgroups:
-            self.talkgroups[tgid] = {'counter':0}
-            self.talkgroups[tgid]['tgid'] = tgid
-            self.talkgroups[tgid]['srcaddr'] = 0
-            self.talkgroups[tgid]['receiver'] = None
+        if base_tgid not in self.talkgroups:
+            self.talkgroups[base_tgid] = {'counter':0}
+            self.talkgroups[base_tgid]['tgid'] = base_tgid
+            self.talkgroups[base_tgid]['status'] = tgid_stat
+            self.talkgroups[base_tgid]['srcaddr'] = 0
+            self.talkgroups[base_tgid]['receiver'] = None
             if self.debug >= 5:
-                #sys.stderr.write('%s new tgid=%s %s prio %d\n' % (log_ts.get(), tgid, self.get_tag(tgid), self.get_prio(tgid)))
-                sys.stderr.write('%s [%d] new tgid=%s\n' % (log_ts.get(), self.msgq_id, tgid))
-        self.talkgroups[tgid]['time'] = time.time()
-        self.talkgroups[tgid]['frequency'] = frequency
-        #self.talkgroups[tgid]['prio'] = self.get_prio(tgid)
+                #sys.stderr.write('%s new tgid=%s %s prio %d\n' % (log_ts.get(), base_tgid, self.get_tag(base_tgid), self.get_prio(base_tgid)))
+                sys.stderr.write('%s [%d] new tgid=%s\n' % (log_ts.get(), self.msgq_id, base_tgid))
+        self.talkgroups[base_tgid]['time'] = time.time()
+        self.talkgroups[base_tgid]['frequency'] = frequency
+        #self.talkgroups[base_tgid]['prio'] = self.get_prio(base_tgid)
         if srcaddr >= 0:
-            self.talkgroups[tgid]['srcaddr'] = srcaddr
+            self.talkgroups[base_tgid]['srcaddr'] = srcaddr
 
     def find_talkgroup(self, start_time, tgid=None, hold=False):
         tgt_tgid = None
         self.blacklist_update(start_time)
 
-        if (tgid is not None) and (tgid in self.talkgroups) and (self.talkgroups[tgid]['receiver'] is None):
+        # tgid status >=8 indicates encryption
+        if (tgid is not None) and (tgid in self.talkgroups) and (self.talkgroups[tgid]['status'] < 8) and (self.talkgroups[tgid]['receiver'] is None):
             tgt_tgid = tgid
 
         for active_tgid in self.talkgroups:
@@ -371,7 +380,7 @@ class osw_receiver(object):
                 continue
             if self.whitelist and active_tgid not in self.whitelist:
                 continue
-            if (tgt_tgid is None) and (self.talkgroups[active_tgid]['receiver'] is None):
+            if (tgt_tgid is None) and (self.talkgroups[active_tgid]['status'] < 8) and (self.talkgroups[active_tgid]['receiver'] is None):
                 tgt_tgid = active_tgid
             #elif self.talkgroups[active_tgid]['prio'] < self.talkgroups[tgt_tgid]['prio']:
             #    tgt_tgid = active_tgid
