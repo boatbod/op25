@@ -448,14 +448,15 @@ class voice_receiver(object):
         m_ts = float(msg.arg2())
 
         if (m_type == -1):  # Voice Channel Timeout
-            if self.current_talkgroup is not None and self.debug > 1:
-                sys.stderr.write("%s [%d] voice timeout\n" % (log_ts.get(), self.msgq_id))
-            self.vc_retries += 1
-            if self.vc_retries >= VC_TIMEOUT_RETRIES:
-                if self.debug > 1:
-                    sys.stderr.write("%s [%d] releasing tg(%d), freq(%f) due to excess timeouts\n" % (log_ts.get(), self.msgq_id, self.current_talkgroup['tgid'], self.tuned_frequency))
-                self.vc_retries = 0
-                self.release_voice()
+            pass
+            #if self.current_talkgroup is not None and self.debug > 1:
+            #    sys.stderr.write("%s [%d] voice timeout\n" % (log_ts.get(), self.msgq_id))
+            #self.vc_retries += 1
+            #if self.vc_retries >= VC_TIMEOUT_RETRIES:
+            #    if self.debug > 1:
+            #        sys.stderr.write("%s [%d] releasing tg(%d), freq(%f) due to excess timeouts\n" % (log_ts.get(), self.msgq_id, self.current_talkgroup['tgid'], self.tuned_frequency))
+            #    self.vc_retries = 0
+            #    self.release_voice()
 
     def tune_voice(self, freq, talkgroup):
         if talkgroup is None:
