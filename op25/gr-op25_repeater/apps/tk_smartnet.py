@@ -41,6 +41,32 @@ def get_frequency( f):    # return frequency in Hz
     else:     # assume in MHz due to '.'
         return int(float(f) * 1000000)
 
+def get_int_dict(s):      # used to read blacklist/whitelist files
+    d = {}
+    try:
+        with open(s,"r") as f:
+            for v in f:
+                v = v.split("\t",1)                        # split on tab
+                try:
+                    v0 = int(v[0])                         # first parameter is tgid or start of tgid range
+                    v1 = v0
+                    if (len(v) > 1) and (int(v[1]) > v0):  # second parameter if present is end of tgid range
+                        v1 = int(v[1])
+
+                    for tg in range(v0, (v1 + 1)):
+                            if tg not in d:      # is this a new tg?
+                                    d[tg] = []   # if so, add to dict (key only, value null)
+                                    sys.stderr.write('%s added talkgroup %d from %s\n' % (log_ts.get(),tg,s))
+
+                except (IndexError, ValueError) as ex:
+                    continue
+        f.close()
+    except (IOError) as ex:
+        sys.stderr.write("%s: %s\n" % (ex.strerror, s))
+
+    return dict.fromkeys(d)
+
+
 #################
 class rx_ctl(object):
     def __init__(self, debug=0, frequency_set=None, slot_set=None, chans={}):
@@ -111,6 +137,8 @@ class osw_receiver(object):
         self.osw_q = deque(maxlen=OSW_QUEUE_SIZE)
         self.voice_frequencies = {}
         self.talkgroups = {}
+        self.blacklist = {}
+        self.whitelist = None
         self.cc_list = []
         self.cc_index = -1
         self.cc_retries = 0
@@ -132,6 +160,14 @@ class osw_receiver(object):
 
         for f in self.config['control_channel_list'].split(','):
             self.cc_list.append(get_frequency(f))
+
+        if 'blacklist' in self.config and self.config['blacklist'] != "":
+            sys.stderr.write("%s [%d] reading blacklist file: %s\n" % (log_ts.get(), self.msgq_id, self.config['blacklist']))
+            self.blacklist = get_int_dict(self.config['blacklist'])
+
+        if 'whitelist' in self.config and self.config['whitelist'] != "":
+            sys.stderr.write("%s [%d] reading whitelist file: %s\n" % (log_ts.get(), self.msgq_id, self.config['whitelist']))
+            self.whitelist = get_int_dict(self.config['whitelist'])
 
         self.tune_next_cc()
 
@@ -321,7 +357,7 @@ class osw_receiver(object):
 
     def find_talkgroup(self, start_time, tgid=None, hold=False):
         tgt_tgid = None
-        #self.blacklist_update(start_time)
+        self.blacklist_update(start_time)
 
         if (tgid is not None) and (tgid in self.talkgroups) and (self.talkgroups[tgid]['receiver'] is None):
             tgt_tgid = tgid
@@ -331,10 +367,10 @@ class osw_receiver(object):
                 break
             if self.talkgroups[active_tgid]['time'] < start_time:
                 continue
-            #if active_tgid in self.blacklist and (not self.whitelist or active_tgid not in self.whitelist):
-            #    continue
-            #if self.whitelist and active_tgid not in self.whitelist:
-            #    continue
+            if active_tgid in self.blacklist and (not self.whitelist or active_tgid not in self.whitelist):
+                continue
+            if self.whitelist and active_tgid not in self.whitelist:
+                continue
             if (tgt_tgid is None) and (self.talkgroups[active_tgid]['receiver'] is None):
                 tgt_tgid = active_tgid
             #elif self.talkgroups[active_tgid]['prio'] < self.talkgroups[tgt_tgid]['prio']:
@@ -344,6 +380,13 @@ class osw_receiver(object):
             return self.talkgroups[tgt_tgid]['frequency'], tgt_tgid, self.talkgroups[tgt_tgid]['srcaddr']
         return None, None, None
 
+    def blacklist_update(self, start_time):
+        expired_tgs = [tg for tg in list(self.blacklist.keys())
+                            if self.blacklist[tg] is not None
+                            and self.blacklist[tg] < start_time]
+        for tg in expired_tgs:
+            self.blacklist.pop(tg)
+
     def expire_talkgroups(self, curr_time):
         if curr_time < self.last_expiry_check + EXPIRY_TIMER:
             return
@@ -352,7 +395,7 @@ class osw_receiver(object):
         for tgid in self.talkgroups:
             if (self.talkgroups[tgid]['receiver'] is not None) and (curr_time >= self.talkgroups[tgid]['time'] + TGID_EXPIRY_TIME):
                 if self.debug > 1:
-                    sys.stderr.write("%s [%d] Expiring tg(%d), freq(%f)\n" % (log_ts.get(), self.msgq_id, tgid, self.talkgroups[tgid]['frequency']))
+                    sys.stderr.write("%s [%d] expiring tg(%d), freq(%f)\n" % (log_ts.get(), self.msgq_id, tgid, self.talkgroups[tgid]['frequency']))
                 self.talkgroups[tgid]['receiver'].release_voice()
 
     def assign_voice_receivers(self, curr_time):
