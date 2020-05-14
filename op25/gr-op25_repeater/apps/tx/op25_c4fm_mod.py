@@ -49,7 +49,7 @@ _def_span = 13  #desired number of impulse response coeffs, in units of symbols
 _def_gmsk_span = 4
 _def_bt = 0.25
 
-def transfer_function_rx(symbol_rate=_def_symbol_rate):
+def transfer_function_rx(symbol_rate=_def_symbol_rate, rate_multiplier=1.0):
 	# p25 c4fm de-emphasis filter
 	# Specs undefined above 2,880 Hz.  It would be nice to have a sharper
 	# rolloff, but this filter is cheap enough....
@@ -142,8 +142,8 @@ class c4fm_taps(object):
 		self.ntaps = (self.sps * span) | 1
 		self.generator = generator
 
-	def generate(self):
-		impulse_response = np.fft.fftshift(np.fft.irfft(self.generator(symbol_rate=self.symbol_rate), self.sample_rate))
+	def generate(self, rate_multiplier = 1.0):
+		impulse_response = np.fft.fftshift(np.fft.irfft(self.generator(symbol_rate=self.symbol_rate, rate_multiplier=rate_multiplier), self.sample_rate))
 		start = np.argmax(impulse_response) - (self.ntaps-1) // 2
 		coeffs = impulse_response[start: start+self.ntaps]
 		gain = self.filter_gain / sum(coeffs)

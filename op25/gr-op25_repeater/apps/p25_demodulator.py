@@ -132,6 +132,9 @@ class p25_demod_base(gr.hier_block2):
             levels = [ -2.0, 0.0, 2.0, 4.0 ]
             self.slicer = op25_repeater.fsk4_slicer_fb(levels)
         elif filter_type == 'fsk':
+            # Theoretically pfb_clock_sync is supposed to be 'better' than clock_recovery_mm but something
+            # must not be right because it can permanently loose timing lock under high ber conditions
+            #
             #nfilts = 32
             #ntaps = 7 * sps
             #pfb_taps = filter.firdes.root_raised_cosine(nfilts, sps*nfilts, 1.0, excess_bw, ntaps*nfilts)
@@ -146,6 +149,13 @@ class p25_demod_base(gr.hier_block2):
             self.fsk4_demod = digital.clock_recovery_mm_ff(sps, 0.1, 0.5, 0.05, 0.005)
             self.symbol_filter = filter.fir_filter_fff(1, coeffs)
             self.slicer = digital.binary_slicer_fb()
+        elif filter_type == "widepulse":
+            coeffs = op25_c4fm_mod.c4fm_taps(sample_rate=self.if_rate, span=9, generator=op25_c4fm_mod.transfer_function_rx).generate(rate_multiplier = 2.0)
+            self.symbol_filter = filter.fir_filter_fff(1, coeffs)
+            autotuneq = gr.msg_queue(2)
+            self.fsk4_demod = op25.fsk4_demod_ff(autotuneq, self.if_rate, self.symbol_rate)
+            levels = [ -2.0, 0.0, 2.0, 4.0 ]
+            self.slicer = op25_repeater.fsk4_slicer_fb(levels)
         else:
             self.symbol_filter = filter.fir_filter_fff(1, coeffs)
             autotuneq = gr.msg_queue(2)
