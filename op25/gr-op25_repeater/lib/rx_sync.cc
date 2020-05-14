@@ -204,8 +204,8 @@ rx_sync::rx_sync(const char * options, int debug, int msgq_id, gr::msg_queue::sp
 	sync_timer(op25_timer(1000000)),
 	d_audio(options, debug),
 	dmr(debug, msgq_id, queue),
-	p25fdma(d_audio, debug, true, false, true, queue, d_output_queue[0], true, true),
-	p25tdma(d_audio, 0, debug, true, queue, d_output_queue[0], true, true)
+	p25fdma(d_audio, debug, true, false, true, queue, d_output_queue[0], true, true, msgq_id),
+	p25tdma(d_audio, 0, debug, true, queue, d_output_queue[0], true, true, msgq_id)
 {
 	if (msgq_id >= 0)
 		d_stereo = false; // single channel audio for trunking
