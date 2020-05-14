@@ -419,7 +419,7 @@ class voice_receiver(object):
 
         if (m_type == -1):   # Voice Channel Timeout
             pass
-        elif (m_type == 7):  # DUID-7  (call termination without channel release)
+        elif (m_type == 3):  # DUID-3  (call termination without channel release)
             pass 
         elif (m_type == 15): # DUID-15 (call termination with channel release)
             self.expire_talkgroup()
