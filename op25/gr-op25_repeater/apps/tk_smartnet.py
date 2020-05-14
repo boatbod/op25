@@ -66,6 +66,12 @@ def get_int_dict(s):      # used to read blacklist/whitelist files
 
     return dict.fromkeys(d)
 
+def from_dict(d, key, def_val):
+    if key in d:
+        return d[key]
+    else:
+        return def_val
+
 
 #################
 class rx_ctl(object):
@@ -74,75 +80,85 @@ class rx_ctl(object):
         self.slot_set = slot_set
         self.debug = debug
         self.receivers = {}
-        self.systems = []
+        self.systems = {}
         self.chans = chans
 
         for chan in self.chans:
-            self.systems.append(osw_receiver(debug=self.debug,
-                                             frequency_set=self.frequency_set,
-                                             request_rx=self.request_voice_receiver,
-                                             config=chan))
+            sysname = chan['sysname']
+            if sysname not in self.systems:
+                self.systems[sysname] = { 'control': None, 'voice' : [] }
+                self.systems[sysname]['control'] = osw_receiver(debug         = self.debug,
+                                                                frequency_set = self.frequency_set,
+                                                                config        = chan)
 
+    # add_receiver is called once per radio channel defined in cfg.json
     def add_receiver(self, msgq_id, config):
-        if msgq_id in self.receivers:
+        if msgq_id in self.receivers: # should be impossible
             return
 
+        rx_ctl = None
         rx_sys = None
-        rx_type = 0
-        cfg_dest = config['destination'].lower()
-        if cfg_dest == "smartnet":   # control channel
-            for sysid in self.systems:
-                if sysid.get_msgq_id() < 0:
-                    sysid.set_msgq_id(msgq_id)
-                    rx_sys = sysid
-                    rx_type = 1
-                    break
-            if rx_sys is None:
-                sys.stderr.write("%s [%d] Receiver destination is 'smartnet' but insufficient control channels defined\n" % (log_ts.get(), msgq_id))
-        elif cfg_dest[:4] == "udp:": # voice channel
-            rx_sys = voice_receiver(debug=self.debug, msgq_id=msgq_id, frequency_set=self.frequency_set, slot_set=self.slot_set)
-            rx_type = 2
+        rx_name = from_dict(config, 'name', str(msgq_id))
+        rx_sysname = from_dict(config, 'trunking_sysname', "undefined")
+
+        if rx_sysname in self.systems:   # known trunking system
+            rx_ctl = from_dict(self.systems[rx_sysname], 'control', None)
+            cfg_dest = (from_dict(config, 'destination', "undefined")).lower()
+            if cfg_dest == "smartnet":   # control channel
+                if rx_ctl is not None:
+                    rx_ctl.set_msgq_id(msgq_id)
+                    rx_sys = rx_ctl
+            elif cfg_dest[:4] == "udp:": # voice channel:
+                rx_sys = voice_receiver(debug         = self.debug,
+                                        msgq_id       = msgq_id,
+                                        frequency_set = self.frequency_set,
+                                        slot_set      = self.slot_set,
+                                        control       = rx_ctl,
+                                        config        = config)
+                self.systems[rx_sysname]['voice'].append(rx_sys)
+        else:                            # undefined or mis-configured trunking sysname
+            sys.stderr.write("Receiver '%s' configured with unknown trunking_sysname '%s'\n" % (rx_name, rx_sysname))
 
         self.receivers[msgq_id] = {'msgq_id': msgq_id,
                                    'config' : config,
-                                   'rx_sys' : rx_sys,
-                                   'rx_type': rx_type}
+                                   'sysname': rx_sysname,
+                                   'rx_sys' : rx_sys}
 
+    # post_init is called once after all receivers have been created
     def post_init(self):
         for rx in self.receivers:
             if self.receivers[rx]['rx_sys'] is not None:
                 self.receivers[rx]['rx_sys'].post_init()
 
+    # process_qmsg is the main message dispatch handler connecting the 'radios' to python
     def process_qmsg(self, msg):
+        curr_time = time.time()
         m_rxid = int(msg.arg1()) >> 1
         if m_rxid in self.receivers and self.receivers[m_rxid]['rx_sys'] is not None:
-            self.receivers[m_rxid]['rx_sys'].process_qmsg(msg)
-
-    def request_voice_receiver(self):
-        rx_sys = None
-        for rx in self.receivers:
-            if (self.receivers[rx]['rx_type'] == 2) and self.receivers[rx]['rx_sys'].available():
-                rx_sys = self.receivers[rx]['rx_sys']
-                break
-        return rx_sys
+            self.receivers[m_rxid]['rx_sys'].process_qmsg(msg, curr_time)        # First dispatch the message to the intended receiver
+            for rx in self.systems[self.receivers[m_rxid]['sysname']]['voice']:  # then have all the voice receivers scan for activity
+                rx.scan_for_talkgroups(curr_time)
 
 #################
 class osw_receiver(object):
-    def __init__(self, debug, frequency_set, request_rx, config):
+    def __init__(self, debug, frequency_set, config):
         self.debug = debug
         self.msgq_id = -1
         self.config = config
         self.frequency_set = frequency_set
-        self.request_rx = request_rx
         self.osw_q = deque(maxlen=OSW_QUEUE_SIZE)
         self.voice_frequencies = {}
         self.talkgroups = {}
-        self.blacklist = {}
-        self.whitelist = None
         self.cc_list = []
         self.cc_index = -1
         self.cc_retries = 0
         self.last_expiry_check = 0.0
+
+    def get_frequencies(self):
+        return self.voice_frequencies
+
+    def get_talkgroups(self):
+        return self.talkgroups
 
     def get_msgq_id(self):
         return self.msgq_id
@@ -161,14 +177,6 @@ class osw_receiver(object):
         for f in self.config['control_channel_list'].split(','):
             self.cc_list.append(get_frequency(f))
 
-        if 'blacklist' in self.config and self.config['blacklist'] != "":
-            sys.stderr.write("%s [%d] reading blacklist file: %s\n" % (log_ts.get(), self.msgq_id, self.config['blacklist']))
-            self.blacklist = get_int_dict(self.config['blacklist'])
-
-        if 'whitelist' in self.config and self.config['whitelist'] != "":
-            sys.stderr.write("%s [%d] reading whitelist file: %s\n" % (log_ts.get(), self.msgq_id, self.config['whitelist']))
-            self.whitelist = get_int_dict(self.config['whitelist'])
-
         self.tune_next_cc()
 
     def tune_next_cc(self):
@@ -180,7 +188,7 @@ class osw_receiver(object):
                        'freq': self.cc_list[self.cc_index]}
         self.frequency_set(tune_params)
 
-    def process_qmsg(self, msg):
+    def process_qmsg(self, msg, curr_time):
         m_proto = ctypes.c_int16(msg.type() >> 16).value  # upper 16 bits of msg.type() is signed protocol
         if m_proto != 2: # Smartnet m_proto=2
             return
@@ -204,10 +212,8 @@ class osw_receiver(object):
             osw_cmd  = (ord(s[3]) << 8) + ord(s[4])
             self.enqueue(osw_addr, osw_grp, osw_cmd)
 
-        time_now = time.time()
         self.process_osws()
-        self.expire_talkgroups(time_now)
-        self.assign_voice_receivers(time_now)
+        self.expire_talkgroups(curr_time)
 
     def is_chan(self, cmd): # Is the 'cmd' a valid frequency or an actual command
         band = self.config['bandplan'][:3]
@@ -363,12 +369,74 @@ class osw_receiver(object):
         if srcaddr >= 0:
             self.talkgroups[base_tgid]['srcaddr'] = srcaddr
 
+    def expire_talkgroups(self, curr_time):
+        if curr_time < self.last_expiry_check + EXPIRY_TIMER:
+            return
+
+        self.last_expiry_check = curr_time
+        for tgid in self.talkgroups:
+            if (self.talkgroups[tgid]['receiver'] is not None) and (curr_time >= self.talkgroups[tgid]['time'] + TGID_EXPIRY_TIME):
+                if self.debug > 1:
+                    sys.stderr.write("%s [%d] expiring tg(%d), freq(%f)\n" % (log_ts.get(), self.msgq_id, tgid, self.talkgroups[tgid]['frequency']))
+                self.talkgroups[tgid]['receiver'].expire_talkgroup()
+
+#################
+class voice_receiver(object):
+    def __init__(self, debug, msgq_id, frequency_set, slot_set, control, config):
+        self.debug = debug
+        self.msgq_id = msgq_id
+        self.frequency_set = frequency_set
+        self.slot_set = slot_set
+        self.control = control
+        self.config = config
+        self.talkgroups = None
+        self.tuned_frequency = 0
+        self.current_tgid = None
+        self.blacklist = {}
+        self.whitelist = None
+        self.vc_retries = 0
+
+    def post_init(self):
+        if self.debug >= 1:
+            sys.stderr.write("%s [%d] Initializing voice channel\n" % (log_ts.get(), self.msgq_id))
+        self.slot_set({'tuner': self.msgq_id,'slot': 4})     # disable voice
+
+        if self.control is not None:
+            self.talkgroups = self.control.get_talkgroups()
+
+        if 'blacklist' in self.config and self.config['blacklist'] != "":
+            sys.stderr.write("%s [%d] reading blacklist file: %s\n" % (log_ts.get(), self.msgq_id, self.config['blacklist']))
+            self.blacklist = get_int_dict(self.config['blacklist'])
+
+        if 'whitelist' in self.config and self.config['whitelist'] != "":
+            sys.stderr.write("%s [%d] reading whitelist file: %s\n" % (log_ts.get(), self.msgq_id, self.config['whitelist']))
+            self.whitelist = get_int_dict(self.config['whitelist'])
+ 
+    def process_qmsg(self, msg, curr_time):
+        m_type = ctypes.c_int16(msg.type() & 0xffff).value
+        m_rxid = int(msg.arg1()) >> 1
+        m_ts = float(msg.arg2())
+
+        if (m_type == -1):   # Voice Channel Timeout
+            pass
+        elif (m_type == 7):  # DUID-7  (call termination without channel release)
+            pass 
+        elif (m_type == 15): # DUID-15 (call termination with channel release)
+            self.expire_talkgroup()
+
+    def blacklist_update(self, start_time):
+        expired_tgs = [tg for tg in list(self.blacklist.keys())
+                            if self.blacklist[tg] is not None
+                            and self.blacklist[tg] < start_time]
+        for tg in expired_tgs:
+            self.blacklist.pop(tg)
+
     def find_talkgroup(self, start_time, tgid=None, hold=False):
         tgt_tgid = None
         self.blacklist_update(start_time)
 
         # tgid status >=8 indicates encryption
-        if (tgid is not None) and (tgid in self.talkgroups) and (self.talkgroups[tgid]['status'] < 8) and (self.talkgroups[tgid]['receiver'] is None):
+        if (tgid is not None) and (tgid in self.talkgroups) and (self.talkgroups[tgid]['status'] < 8) and ((self.talkgroups[tgid]['receiver'] is None) or (self.talkgroups[tgid]['receiver'] == self)):
             tgt_tgid = tgid
 
         for active_tgid in self.talkgroups:
@@ -389,94 +457,38 @@ class osw_receiver(object):
             return self.talkgroups[tgt_tgid]['frequency'], tgt_tgid, self.talkgroups[tgt_tgid]['srcaddr']
         return None, None, None
 
-    def blacklist_update(self, start_time):
-        expired_tgs = [tg for tg in list(self.blacklist.keys())
-                            if self.blacklist[tg] is not None
-                            and self.blacklist[tg] < start_time]
-        for tg in expired_tgs:
-            self.blacklist.pop(tg)
-
-    def expire_talkgroups(self, curr_time):
-        if curr_time < self.last_expiry_check + EXPIRY_TIMER:
+    def scan_for_talkgroups(self, curr_time):
+        freq, tgid, src = self.find_talkgroup(curr_time, tgid=self.current_tgid)
+        if tgid is None or tgid == self.current_tgid:
             return
 
-        self.last_expiry_check = curr_time
-        for tgid in self.talkgroups:
-            if (self.talkgroups[tgid]['receiver'] is not None) and (curr_time >= self.talkgroups[tgid]['time'] + TGID_EXPIRY_TIME):
-                if self.debug > 1:
-                    sys.stderr.write("%s [%d] expiring tg(%d), freq(%f)\n" % (log_ts.get(), self.msgq_id, tgid, self.talkgroups[tgid]['frequency']))
-                self.talkgroups[tgid]['receiver'].release_voice()
-
-    def assign_voice_receivers(self, curr_time):
-        done_assigning = False
-        while not done_assigning:
-            freq, tgid, src = self.find_talkgroup(curr_time)
-            if tgid is None:    # No tgid needs assigning
-                done_assigning = True
-                break
-
-            rx_sys = self.request_rx()
-            if rx_sys is None:  # No receiver available
-                if self.debug > 1:
-                    sys.stderr.write("%s [%d] no voice receiver available for tg(%d), freq(%f)\n" % (log_ts.get(), self.msgq_id, tgid, freq))
-                done_assigning = True
-                break
-
+        if self.current_tgid is None:
             if self.debug > 1:
                 sys.stderr.write("%s [%d] voice update:  tg(%d), freq(%f)\n" % (log_ts.get(), self.msgq_id, tgid, freq))
-            rx_sys.tune_voice(freq, self.talkgroups[tgid])
+            self.tune_voice(freq, tgid)
+        else:
+            if self.debug > 1:
+                sys.stderr.write("%s [%d] voice preempt: tg(%d), freq(%f)\n" % (log_ts.get(), self.msgq_id, tgid, freq))
+            self.expire_talkgroup()
+            self.tune_voice(freq, tgid)
 
-#################
-class voice_receiver(object):
-    def __init__(self, debug, msgq_id, frequency_set, slot_set):
-        self.debug = debug
-        self.msgq_id = msgq_id
-        self.frequency_set = frequency_set
-        self.slot_set = slot_set
-        self.current_talkgroup = None
-        self.tuned_frequency = 0
-        self.vc_retries = 0
-
-    def post_init(self):
-        if self.debug >= 1:
-            sys.stderr.write("%s [%d] Initializing voice channel\n" % (log_ts.get(), self.msgq_id))
-        self.slot_set({'tuner': self.msgq_id,'slot': 4})     # disable voice
-
-    def process_qmsg(self, msg):
-        m_type = ctypes.c_int16(msg.type() & 0xffff).value
-        m_rxid = int(msg.arg1()) >> 1
-        m_ts = float(msg.arg2())
-
-        if (m_type == -1):  # Voice Channel Timeout
-            pass
-            #if self.current_talkgroup is not None and self.debug > 1:
-            #    sys.stderr.write("%s [%d] voice timeout\n" % (log_ts.get(), self.msgq_id))
-            #self.vc_retries += 1
-            #if self.vc_retries >= VC_TIMEOUT_RETRIES:
-            #    if self.debug > 1:
-            #        sys.stderr.write("%s [%d] releasing tg(%d), freq(%f) due to excess timeouts\n" % (log_ts.get(), self.msgq_id, self.current_talkgroup['tgid'], self.tuned_frequency))
-            #    self.vc_retries = 0
-            #    self.release_voice()
-
-    def tune_voice(self, freq, talkgroup):
-        if talkgroup is None:
-            return
-
-        tune_params = {'tuner': self.msgq_id,
-                       'freq': get_frequency(freq)}
+    def tune_voice(self, freq, tgid):
         if freq != self.tuned_frequency:
+            tune_params = {'tuner': self.msgq_id,
+                           'freq': get_frequency(freq)}
             self.frequency_set(tune_params)
-            self.slot_set({'tuner': self.msgq_id,'slot': 0}) # enable voice
+            self.tuned_frequency = freq
+        self.slot_set({'tuner': self.msgq_id,'slot': 0})     # enable voice
+        self.current_tgid = tgid
+        self.talkgroups[tgid]['receiver'] = self
 
-        self.current_talkgroup = talkgroup
-        self.tuned_frequency = freq
-        talkgroup['receiver'] = self
-
-    def release_voice(self):
-        self.current_talkgroup['receiver'] = None
-        self.current_talkgroup = None
+    def expire_talkgroup(self, tgid=None):
         self.slot_set({'tuner': self.msgq_id,'slot': 4})     # disable voice
-
-    def available(self):
-        return (self.current_talkgroup is None)
+        if self.current_tgid is None:
+            return
+            
+        self.talkgroups[self.current_tgid]['receiver'] = None
+        if self.debug > 1:
+            sys.stderr.write("%s [%d] releasing:  tg(%d), freq(%f)\n" % (log_ts.get(), self.msgq_id, self.current_tgid, self.tuned_frequency))
+        self.current_tgid = None
 
