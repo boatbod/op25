@@ -174,7 +174,12 @@ class osw_receiver(object):
         if self.debug >= 1:
             sys.stderr.write("%s [%d] Initializing Smartnet system\n" % (log_ts.get(), self.msgq_id))
 
-        for f in self.config['control_channel_list'].split(','):
+        cc_list = from_dict(self.config, 'control_channel_list', "")
+        if cc_list == "":
+            sys.stderr.write("Aborting. Smartnet Trunking 'control_channel_list' parameter is empty or not found\n")
+            sys.exit(1)
+
+        for f in cc_list.split(','):
             self.cc_list.append(get_frequency(f))
 
         self.tune_next_cc()
@@ -216,8 +221,9 @@ class osw_receiver(object):
         self.expire_talkgroups(curr_time)
 
     def is_chan(self, cmd): # Is the 'cmd' a valid frequency or an actual command
-        band = self.config['bandplan'][:3]
-        subtype = self.config['bandplan'][3:len(self.config['bandplan'])].lower().lstrip("_-:")
+        bandplan = from_dict(self.config, 'bandplan', "800_reband")
+        band = bandplan[:3]
+        subtype = bandplan[3:len(bandplan)].lower().lstrip("_-:")
         if band == "800":
             if subtype == "reband" and cmd > 0x22f:
                 return False
@@ -227,7 +233,8 @@ class osw_receiver(object):
             if cmd >= 0 and cmd <= 0x1DE:
                 return True
         elif band == "400":
-            if (cmd >= int(self.config['bp_offset']) and cmd <= (int(self.config['bp_offset']) + 380)):
+            bp_offset = int(from_dict(self.config, 'bp_offset', "0"))
+            if (cmd >= bp_offset) and cmd <= (bp_offset + 380):
                 return True
             else:
                 return False
@@ -235,8 +242,9 @@ class osw_receiver(object):
 
     def get_freq(self, cmd): # Convert 'cmd' into band-dependent frequency
         freq = 0.0
-        band = self.config['bandplan'][:3]
-        subtype = self.config['bandplan'][3:len(self.config['bandplan'])].lower().lstrip("_-:")
+        bandplan = from_dict(self.config, 'bandplan', "800_reband")
+        band = bandplan[:3]
+        subtype = bandplan[3:len(bandplan)].lower().lstrip("_-:")
 
         if band == "800":
             if cmd <= 0x2CF:
@@ -262,10 +270,10 @@ class osw_receiver(object):
             freq = 935.0125 + (0.0125 * cmd)
 
         elif band == "400":
-            bp_offset = self.config['bp_offset']
-            bp_high = self.config['bp_high']
-            bp_base = self.config['bp_base']
-            bp_spacing = self.config['bp_spacing']
+            bp_offset = int(from_dict(self.config, 'bp_offset', "0"))
+            bp_high = float(from_dict(self.config, 'bp_high', "0.0"))
+            bp_base = float(from_dict(self.config, 'bp_base', "0.0"))
+            bp_spacing = float(from_dict(self.config, 'bp_spacing', "0.025"))
             high_cmd = bp_offset + bp_high - bp_base / bp_spacing
 
             if (cmd >= bp_offset) and (cmd < high_cmd):
