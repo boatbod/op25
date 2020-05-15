@@ -31,6 +31,7 @@ from collections import deque
 OSW_QUEUE_SIZE = 3       # Some OSWs can be 3 commands long
 CC_TIMEOUT_RETRIES = 3   # Number of control channel framing timeouts before hunting
 VC_TIMEOUT_RETRIES = 3   # Number of voice channel framing timeouts before expiry
+TGID_HOLD_TIME = 2.0     # Number of seconds to give previously active tgid exclusive channel access
 TGID_EXPIRY_TIME = 1.0   # Number of seconds to allow tgid to remain active with no updates received
 EXPIRY_TIMER = 0.2       # Number of seconds between checks for tgid expiry
 
@@ -400,6 +401,8 @@ class voice_receiver(object):
         self.talkgroups = None
         self.tuned_frequency = 0
         self.current_tgid = None
+        self.hold_tgid = None
+        self.hold_until = 0.0
         self.blacklist = {}
         self.whitelist = None
         self.vc_retries = 0
@@ -466,7 +469,10 @@ class voice_receiver(object):
         return None, None, None
 
     def scan_for_talkgroups(self, curr_time):
-        freq, tgid, src = self.find_talkgroup(curr_time, tgid=self.current_tgid)
+        if self.current_tgid is None and self.hold_tgid is not None and self.hold_until > (curr_time + TGID_HOLD_TIME):
+            freq, tgid, src = self.find_talkgroup(curr_time, tgid=self.hold_tgid)
+        else:
+            freq, tgid, src = self.find_talkgroup(curr_time, tgid=self.current_tgid)
         if tgid is None or tgid == self.current_tgid:
             return
 
@@ -498,5 +504,7 @@ class voice_receiver(object):
         self.talkgroups[self.current_tgid]['receiver'] = None
         if self.debug > 1:
             sys.stderr.write("%s [%d] releasing:  tg(%d), freq(%f)\n" % (log_ts.get(), self.msgq_id, self.current_tgid, self.tuned_frequency))
+        self.hold_tgid = self.current_tgid
+        self.hold_until = time.time() + TGID_HOLD_TIME
         self.current_tgid = None
 
