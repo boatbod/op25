@@ -42,7 +42,7 @@ def get_frequency( f):    # return frequency in Hz
     else:     # assume in MHz due to '.'
         return int(float(f) * 1000000)
 
-def get_int_dict(s):      # used to read blacklist/whitelist files
+def get_int_dict(s, msgq_id = 0):      # used to read blacklist/whitelist files
     d = {}
     try:
         with open(s,"r") as f:
@@ -57,7 +57,7 @@ def get_int_dict(s):      # used to read blacklist/whitelist files
                     for tg in range(v0, (v1 + 1)):
                             if tg not in d:      # is this a new tg?
                                     d[tg] = []   # if so, add to dict (key only, value null)
-                                    sys.stderr.write('%s added talkgroup %d from %s\n' % (log_ts.get(),tg,s))
+                                    sys.stderr.write('%s [%d] added talkgroup %d from %s\n' % (log_ts.get(), msgq_id, tg,s))
 
                 except (IndexError, ValueError) as ex:
                     continue
@@ -150,6 +150,8 @@ class osw_receiver(object):
         self.osw_q = deque(maxlen=OSW_QUEUE_SIZE)
         self.voice_frequencies = {}
         self.talkgroups = {}
+        self.blacklist = {}
+        self.whitelist = None
         self.cc_list = []
         self.cc_index = -1
         self.cc_retries = 0
@@ -160,6 +162,12 @@ class osw_receiver(object):
 
     def get_talkgroups(self):
         return self.talkgroups
+
+    def get_blacklist(self):
+        return self.blacklist
+
+    def get_whitelist(self):
+        return self.whitelist
 
     def get_msgq_id(self):
         return self.msgq_id
@@ -174,6 +182,14 @@ class osw_receiver(object):
 
         if self.debug >= 1:
             sys.stderr.write("%s [%d] Initializing Smartnet system\n" % (log_ts.get(), self.msgq_id))
+
+        if 'blacklist' in self.config and self.config['blacklist'] != "":
+            sys.stderr.write("%s [%d] reading system blacklist file: %s\n" % (log_ts.get(), self.msgq_id, self.config['blacklist']))
+            self.blacklist = get_int_dict(self.config['blacklist'], self.msgq_id)
+
+        if 'whitelist' in self.config and self.config['whitelist'] != "":
+            sys.stderr.write("%s [%d] reading system whitelist file: %s\n" % (log_ts.get(), self.msgq_id, self.config['whitelist']))
+            self.whitelist = get_int_dict(self.config['whitelist'], self.msgq_id)
 
         cc_list = from_dict(self.config, 'control_channel_list', "")
         if cc_list == "":
@@ -416,12 +432,16 @@ class voice_receiver(object):
             self.talkgroups = self.control.get_talkgroups()
 
         if 'blacklist' in self.config and self.config['blacklist'] != "":
-            sys.stderr.write("%s [%d] reading blacklist file: %s\n" % (log_ts.get(), self.msgq_id, self.config['blacklist']))
-            self.blacklist = get_int_dict(self.config['blacklist'])
+            sys.stderr.write("%s [%d] reading channel blacklist file: %s\n" % (log_ts.get(), self.msgq_id, self.config['blacklist']))
+            self.blacklist = get_int_dict(self.config['blacklist'], self.msgq_id)
+        else:
+            self.blacklist = self.control.get_blacklist()
 
         if 'whitelist' in self.config and self.config['whitelist'] != "":
-            sys.stderr.write("%s [%d] reading whitelist file: %s\n" % (log_ts.get(), self.msgq_id, self.config['whitelist']))
-            self.whitelist = get_int_dict(self.config['whitelist'])
+            sys.stderr.write("%s [%d] reading channel whitelist file: %s\n" % (log_ts.get(), self.msgq_id, self.config['whitelist']))
+            self.whitelist = get_int_dict(self.config['whitelist'], self.msgq_id)
+        else:
+            self.whitelist = self.control.get_whitelist()
  
     def process_qmsg(self, msg, curr_time):
         m_type = ctypes.c_int16(msg.type() & 0xffff).value

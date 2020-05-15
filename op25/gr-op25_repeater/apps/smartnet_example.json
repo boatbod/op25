@@ -17,6 +17,8 @@
             "name": "voice channel", 
             "trunking_sysname": "Example",
             "device": "rtl1",
+            "blacklist": "",
+            "whitelist": "",
             "raw_output": "",
             "demod_type": "fsk4", 
             "destination": "udp://127.0.0.1:23456", 
@@ -24,9 +26,7 @@
             "filter_type": "widepulse", 
             "if_rate": 24000, 
             "plot": "",
-            "symbol_rate": 4800,
-            "blacklist": "",
-            "whitelist": ""
+            "symbol_rate": 4800
         }
     ], 
     "devices": [
@@ -57,6 +57,8 @@
             {
                 "sysname": "Example",
                 "control_channel_list": "854.4125",
+                "blacklist": "",
+                "whitelist": "",
                 "bandplan": "800_reband"
             }
         ]
