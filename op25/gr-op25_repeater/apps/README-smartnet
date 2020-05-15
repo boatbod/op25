@@ -24,3 +24,4 @@ Known Issues & Limitations
 --------------------------
 There is currently no support for an interactive terminal or built-in audio player (see above).
 TGID Priority is not yet implemented, nor are interactive features such as Hold or Lockout.
+Analog talkgroups are not yet supported.
