@@ -22,6 +22,6 @@ If you want to hear audio, you will also need to start an audio server in a sepa
 
 Known Issues & Limitations
 --------------------------
-There is currently no support for an interactive terminal or built-in audio player (see above).
-TGID Priority is not yet implemented, nor are interactive features such as Hold or Lockout.
+There is currently no support for a terminal or interactive features such as Hold or Lockout.
+No built-in audio player (see above).
 Analog talkgroups are not yet supported.

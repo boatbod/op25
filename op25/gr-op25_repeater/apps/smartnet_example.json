@@ -57,6 +57,7 @@
             {
                 "sysname": "Example",
                 "control_channel_list": "854.4125",
+                "tgid_tags_file": "",
                 "blacklist": "",
                 "whitelist": "",
                 "bandplan": "800_reband"

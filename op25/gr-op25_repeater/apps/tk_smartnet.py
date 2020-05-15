@@ -28,14 +28,20 @@ import json
 from log_ts import log_ts
 from collections import deque
 
+#################
+
 OSW_QUEUE_SIZE = 3       # Some OSWs can be 3 commands long
 CC_TIMEOUT_RETRIES = 3   # Number of control channel framing timeouts before hunting
 VC_TIMEOUT_RETRIES = 3   # Number of voice channel framing timeouts before expiry
+TGID_DEFAULT_PRIO = 3    # Default tgid priority when unassigned
 TGID_HOLD_TIME = 2.0     # Number of seconds to give previously active tgid exclusive channel access
 TGID_EXPIRY_TIME = 1.0   # Number of seconds to allow tgid to remain active with no updates received
 EXPIRY_TIMER = 0.2       # Number of seconds between checks for tgid expiry
 
 #################
+def utf_ascii(ustr):
+    return (ustr.decode("utf-8")).encode("ascii", "ignore")
+
 def get_frequency( f):    # return frequency in Hz
     if str(f).find('.') == -1:    # assume in Hz
         return int(f)
@@ -183,6 +189,10 @@ class osw_receiver(object):
         if self.debug >= 1:
             sys.stderr.write("%s [%d] Initializing Smartnet system\n" % (log_ts.get(), self.msgq_id))
 
+        if 'tgid_tags_file' in self.config and self.config['tgid_tags_file'] != "":
+            sys.stderr.write("%s [%d] reading system tgid_tags_file: %s\n" % (log_ts.get(), self.msgq_id, self.config['tgid_tags_file']))
+            self.read_tags_file(self.config['tgid_tags_file'])
+
         if 'blacklist' in self.config and self.config['blacklist'] != "":
             sys.stderr.write("%s [%d] reading system blacklist file: %s\n" % (log_ts.get(), self.msgq_id, self.config['blacklist']))
             self.blacklist = get_int_dict(self.config['blacklist'], self.msgq_id)
@@ -200,6 +210,34 @@ class osw_receiver(object):
             self.cc_list.append(get_frequency(f))
 
         self.tune_next_cc()
+
+    def read_tags_file(self, tags_file):
+        import csv
+        with open(tags_file, 'rb') as csvfile:
+            sreader = csv.reader(csvfile, delimiter='\t', quotechar='"', quoting=csv.QUOTE_ALL)
+            for row in sreader:
+                try:
+                    tgid = int(row[0])
+                    tag = utf_ascii(row[1])
+                except (IndexError, ValueError) as ex:
+                    continue
+                if len(row) >= 3:
+                    try:
+                        prio = int(row[2])
+                    except ValueError as ex:
+                        prio = TGID_DEFAULT_PRIO
+                else:
+                    prio = TGID_DEFAULT_PRIO
+
+                if tgid not in self.talkgroups:
+                    self.talkgroups[tgid] = {'counter':0}
+                    self.talkgroups[tgid]['tgid'] = tgid
+                    self.talkgroups[tgid]['srcaddr'] = 0
+                    self.talkgroups[tgid]['receiver'] = None
+                    self.talkgroups[tgid]['time'] = 0
+                self.talkgroups[tgid]['tag'] = tag
+                self.talkgroups[tgid]['prio'] = prio
+                sys.stderr.write("%s [%d] setting tgid(%d), prio(%d), tag(%s)\n" % (log_ts.get(), self.msgq_id, tgid, prio, tag))
 
     def tune_next_cc(self):
         self.cc_retries = 0
@@ -382,15 +420,16 @@ class osw_receiver(object):
         if base_tgid not in self.talkgroups:
             self.talkgroups[base_tgid] = {'counter':0}
             self.talkgroups[base_tgid]['tgid'] = base_tgid
-            self.talkgroups[base_tgid]['status'] = tgid_stat
+            self.talkgroups[base_tgid]['prio'] = TGID_DEFAULT_PRIO
+            self.talkgroups[base_tgid]['tag'] = "TGID[" + str(base_tgid) + "]"
             self.talkgroups[base_tgid]['srcaddr'] = 0
             self.talkgroups[base_tgid]['receiver'] = None
             if self.debug >= 5:
-                #sys.stderr.write('%s new tgid=%s %s prio %d\n' % (log_ts.get(), base_tgid, self.get_tag(base_tgid), self.get_prio(base_tgid)))
+                sys.stderr.write('%s [%d] new tgid=%s %s prio %d\n' % (log_ts.get(), self.msgq_id, base_tgid, self.talkgroups[base_tgid]['tag'], self.talkgroups[base_tgid]['prio']))
                 sys.stderr.write('%s [%d] new tgid=%s\n' % (log_ts.get(), self.msgq_id, base_tgid))
         self.talkgroups[base_tgid]['time'] = time.time()
         self.talkgroups[base_tgid]['frequency'] = frequency
-        #self.talkgroups[base_tgid]['prio'] = self.get_prio(base_tgid)
+        self.talkgroups[base_tgid]['status'] = tgid_stat
         if srcaddr >= 0:
             self.talkgroups[base_tgid]['srcaddr'] = srcaddr
 
@@ -481,8 +520,8 @@ class voice_receiver(object):
                 continue
             if (tgt_tgid is None) and (self.talkgroups[active_tgid]['status'] < 8) and (self.talkgroups[active_tgid]['receiver'] is None):
                 tgt_tgid = active_tgid
-            #elif self.talkgroups[active_tgid]['prio'] < self.talkgroups[tgt_tgid]['prio']:
-            #    tgt_tgid = active_tgid
+            elif self.talkgroups[active_tgid]['prio'] < self.talkgroups[tgt_tgid]['prio']:
+                tgt_tgid = active_tgid
                    
         if tgt_tgid is not None and self.talkgroups[tgt_tgid]['time'] >= start_time:
             return self.talkgroups[tgt_tgid]['frequency'], tgt_tgid, self.talkgroups[tgt_tgid]['srcaddr']
