@@ -1,0 +1,64 @@
+{
+    "channels": [
+        {
+            "name": "control channel", 
+            "trunking_sysname": "Example",
+            "device": "rtl0",
+            "raw_output": "",
+            "demod_type": "fsk", 
+            "destination": "smartnet", 
+            "excess_bw": 0.35, 
+            "filter_type": "fsk", 
+            "if_rate": 18000, 
+            "plot": "mixer",
+            "symbol_rate": 3600
+        },
+        {
+            "name": "voice channel", 
+            "trunking_sysname": "Example",
+            "device": "rtl1",
+            "raw_output": "",
+            "demod_type": "fsk4", 
+            "destination": "udp://127.0.0.1:23456", 
+            "excess_bw": 0.2, 
+            "filter_type": "widepulse", 
+            "if_rate": 24000, 
+            "plot": "",
+            "symbol_rate": 4800,
+            "blacklist": "",
+            "whitelist": ""
+        }
+    ], 
+    "devices": [
+        {
+            "args": "rtl=0", 
+            "frequency": 854000000, 
+            "gains": "LNA:39", 
+            "name": "rtl0", 
+            "offset": 0, 
+            "ppm": 0, 
+            "rate": 1000000, 
+            "tunable": true
+        },
+        {
+            "args": "rtl=1", 
+            "frequency": 854000000, 
+            "gains": "LNA:39", 
+            "name": "rtl1", 
+            "offset": 0, 
+            "ppm": 0, 
+            "rate": 1000000, 
+            "tunable": true
+        }
+    ],
+    "trunking": {
+        "module": "tk_smartnet.py",
+        "chans": [
+            {
+                "sysname": "Example",
+                "control_channel_list": "854.4125",
+                "bandplan": "800_reband"
+            }
+        ]
+    }
+}
