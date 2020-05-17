@@ -563,7 +563,7 @@ class voice_receiver(object):
         else:
             if self.debug > 1:
                 sys.stderr.write("%s [%d] voice preempt: tg(%d), freq(%f)\n" % (log_ts.get(), self.msgq_id, tgid, freq))
-            self.expire_talkgroup(meta_update=False)
+            self.expire_talkgroup(update_meta=False)
             self.tune_voice(freq, tgid)
 
         meta_update(self.meta_q, tgid, self.talkgroups[tgid]['tag'])
@@ -578,7 +578,7 @@ class voice_receiver(object):
         self.current_tgid = tgid
         self.talkgroups[tgid]['receiver'] = self
 
-    def expire_talkgroup(self, tgid=None, meta_update = True):
+    def expire_talkgroup(self, tgid=None, update_meta = True):
         self.slot_set({'tuner': self.msgq_id,'slot': 4})     # disable voice
         if self.current_tgid is None:
             return
@@ -590,6 +590,6 @@ class voice_receiver(object):
         self.hold_until = time.time() + TGID_HOLD_TIME
         self.current_tgid = None
 
-        if meta_update:
+        if update_meta:
             meta_update(self.meta_q)
 
