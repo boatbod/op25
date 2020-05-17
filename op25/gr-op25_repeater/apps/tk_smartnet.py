@@ -27,6 +27,7 @@ import time
 import json
 from log_ts import log_ts
 from collections import deque
+from gnuradio import gr
 
 #################
 
@@ -39,6 +40,7 @@ TGID_EXPIRY_TIME = 1.0   # Number of seconds to allow tgid to remain active with
 EXPIRY_TIMER = 0.2       # Number of seconds between checks for tgid expiry
 
 #################
+# Helper functions
 def utf_ascii(ustr):
     return (ustr.decode("utf-8")).encode("ascii", "ignore")
 
@@ -79,8 +81,21 @@ def from_dict(d, key, def_val):
     else:
         return def_val
 
+def meta_update(meta_q, tgid = None, tag = None):
+    if meta_q is None:
+        return
+
+    if tgid is None:
+        metadata = "[idle]"
+    else:
+        metadata = "[" + str(tgid) + "]"
+    if tag is not None:
+        metadata += " " + tag
+    msg = gr.message().make_from_string(metadata, -2, time.time(), 0)
+    meta_q.insert_tail(msg)
 
 #################
+# Main trunking class
 class rx_ctl(object):
     def __init__(self, debug=0, frequency_set=None, slot_set=None, chans={}):
         self.frequency_set = frequency_set
@@ -99,7 +114,7 @@ class rx_ctl(object):
                                                                 config        = chan)
 
     # add_receiver is called once per radio channel defined in cfg.json
-    def add_receiver(self, msgq_id, config):
+    def add_receiver(self, msgq_id, config, meta_q = None):
         if msgq_id in self.receivers: # should be impossible
             return
 
@@ -121,7 +136,8 @@ class rx_ctl(object):
                                         frequency_set = self.frequency_set,
                                         slot_set      = self.slot_set,
                                         control       = rx_ctl,
-                                        config        = config)
+                                        config        = config,
+                                        meta_q        = meta_q)
                 self.systems[rx_sysname]['voice'].append(rx_sys)
         else:                            # undefined or mis-configured trunking sysname
             sys.stderr.write("Receiver '%s' configured with unknown trunking_sysname '%s'\n" % (rx_name, rx_sysname))
@@ -147,6 +163,7 @@ class rx_ctl(object):
                 rx.scan_for_talkgroups(curr_time)
 
 #################
+# Smartnet control channel class
 class osw_receiver(object):
     def __init__(self, debug, frequency_set, config):
         self.debug = debug
@@ -445,14 +462,16 @@ class osw_receiver(object):
                 self.talkgroups[tgid]['receiver'].expire_talkgroup()
 
 #################
+# Voice channel class
 class voice_receiver(object):
-    def __init__(self, debug, msgq_id, frequency_set, slot_set, control, config):
+    def __init__(self, debug, msgq_id, frequency_set, slot_set, control, config, meta_q = None):
         self.debug = debug
         self.msgq_id = msgq_id
         self.frequency_set = frequency_set
         self.slot_set = slot_set
         self.control = control
         self.config = config
+        self.meta_q = meta_q
         self.talkgroups = None
         self.tuned_frequency = 0
         self.current_tgid = None
@@ -481,6 +500,8 @@ class voice_receiver(object):
             self.whitelist = get_int_dict(self.config['whitelist'], self.msgq_id)
         else:
             self.whitelist = self.control.get_whitelist()
+
+        meta_update(self.meta_q)
  
     def process_qmsg(self, msg, curr_time):
         m_type = ctypes.c_int16(msg.type() & 0xffff).value
@@ -542,8 +563,10 @@ class voice_receiver(object):
         else:
             if self.debug > 1:
                 sys.stderr.write("%s [%d] voice preempt: tg(%d), freq(%f)\n" % (log_ts.get(), self.msgq_id, tgid, freq))
-            self.expire_talkgroup()
+            self.expire_talkgroup(meta_update=False)
             self.tune_voice(freq, tgid)
+
+        meta_update(self.meta_q, tgid, self.talkgroups[tgid]['tag'])
 
     def tune_voice(self, freq, tgid):
         if freq != self.tuned_frequency:
@@ -555,7 +578,7 @@ class voice_receiver(object):
         self.current_tgid = tgid
         self.talkgroups[tgid]['receiver'] = self
 
-    def expire_talkgroup(self, tgid=None):
+    def expire_talkgroup(self, tgid=None, meta_update = True):
         self.slot_set({'tuner': self.msgq_id,'slot': 4})     # disable voice
         if self.current_tgid is None:
             return
@@ -566,4 +589,7 @@ class voice_receiver(object):
         self.hold_tgid = self.current_tgid
         self.hold_until = time.time() + TGID_HOLD_TIME
         self.current_tgid = None
+
+        if meta_update:
+            meta_update(self.meta_q)
 

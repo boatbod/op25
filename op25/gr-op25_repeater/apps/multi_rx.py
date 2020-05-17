@@ -241,6 +241,11 @@ class rx_block (gr.top_block):
         gr.top_block.__init__(self)
         self.device_id_by_name = {}
 
+        self.metadata = None
+        self.meta_streams = {}
+        if "metadata" in config:
+            self.configure_metadata(config['metadata'])
+
         self.trunking = None
         self.du_watcher = None
         self.rx_q = gr.msg_queue(100)
@@ -271,6 +276,28 @@ class rx_block (gr.top_block):
             self.trunk_rx = self.trunking.rx_ctl(frequency_set = self.change_freq, slot_set = self.set_slot, debug = self.verbosity, chans = config['chans'])
             self.du_watcher = du_queue_watcher(self.rx_q, self.trunk_rx.process_qmsg)
             sys.stderr.write("Enabled trunking module: %s\n" % config['module'])
+
+    def configure_metadata(self, config):
+        meta_mod = config['module']
+        if meta_mod.endswith('.py'):
+            meta_mod = meta_mod[:-3]
+        try:
+            self.metadata = importlib.import_module(meta_mod)
+        except:
+            self.metadata = None
+            sys.stderr.write("Error: unable to import metadata module: %s\n%s\n" % (config['module'], sys.exc_info()[1]))
+
+        idx = 0
+        for stream in config['streams']:
+            if 'stream_name' in stream and stream['stream_name'] != "":
+                stream_name = stream['stream_name']
+                meta_q = gr.msg_queue(10)
+                meta_s = self.metadata.meta_server(meta_q, stream, debug=self.verbosity)
+                self.meta_streams[stream_name] = (meta_s, meta_q)
+                sys.stderr.write("Configuring metadata stream #%d [%s]: %s\n" % (idx, stream_name, stream['icecastServerAddress'] + "/" + stream['icecastMountpoint']))
+            else:
+                sys.stderr.write("Ignoring unnamed metadata stream #%d\n" % idx)
+            idx += 1
 
     def configure_devices(self, config):
         self.devices = []
@@ -311,9 +338,12 @@ class rx_block (gr.top_block):
                         break
                 if dev == None:
                     continue    
+            meta_s, meta_q = None, None
+            if self.metadata is not None and 'meta_stream_name' in cfg and cfg['meta_stream_name'] != "" and cfg['meta_stream_name'] in self.meta_streams:
+                meta_s, meta_q = self.meta_streams[cfg['meta_stream_name']]
             if self.trunking is not None:
                 msgq_id = len(self.channels)
-                self.trunk_rx.add_receiver(msgq_id, config=cfg)
+                self.trunk_rx.add_receiver(msgq_id, config=cfg, meta_q=meta_q)
             else:
                 msgq_id = -1 - len(self.channels)
             chan = channel(cfg, dev, self.verbosity, msgq_id, self.rx_q)

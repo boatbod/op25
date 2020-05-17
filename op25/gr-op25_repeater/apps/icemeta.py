@@ -38,19 +38,22 @@ class meta_server(threading.Thread):
         self.logging = debug
         self.keep_running = True
         self.last_metadata = ""
-        self.cfg = {}
         self.delay = 0
         self.msg = None
         self.urlBase = ""
-        self.load_json(metacfg)
+        if isinstance(metacfg,dict):
+            self.cfg = metacfg
+        else:
+            self.cfg = {}
+            self.load_json(metacfg)
+        self.urlBase = "http://" + self.cfg['icecastServerAddress'] + "/admin/metadata?mount=/" + self.cfg['icecastMountpoint'] + "&mode=updinfo&song="
+        self.delay = float(self.cfg['delay'])
         self.start()
 
     def load_json(self, metacfg):
         try:
             with open(metacfg) as json_file:
                 self.cfg = json.load(json_file)
-            self.urlBase = "http://" + self.cfg['icecastServerAddress'] + "/admin/metadata?mount=/" + self.cfg['icecastMountpoint'] + "&mode=updinfo&song="
-            self.delay = float(self.cfg['delay'])
         except (ValueError, KeyError):
             sys.stderr.write("%f meta_server::load_json(): Error reading metadata config file: %s\n" % (time.time(), metacfg))
 

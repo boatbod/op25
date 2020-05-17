@@ -27,6 +27,7 @@ import json
 sys.path.append('tdma')
 import lfsr
 from log_ts import log_ts
+from gnuradio import gr
 
 def utf_ascii(ustr):
     return (ustr.decode("utf-8")).encode("ascii", "ignore")
@@ -733,6 +734,7 @@ class rx_ctl (object):
         self.meta_update = meta_update
         self.crypt_behavior = crypt_behavior
         self.meta_state = 0
+        self.meta_q = None
         self.debug = debug
         self.tgid_hold = None
         self.tgid_hold_until = time.time()
@@ -771,8 +773,24 @@ class rx_ctl (object):
                 self.build_config(conf_file)
                 self.post_init()
 
-    def add_receiver(self, msgq_id, config):
-        self.receivers[msgq_id] = msgq_id # TODO: fill this placeholder
+    def add_receiver(self, msgq_id, config, meta_q = None):
+        self.receivers[msgq_id] = msgq_id
+        if meta_q is not None:
+            self.meta_q = meta_q
+            self.meta_update = self.update_meta
+
+    def update_meta(self, tgid = None, tag = None):
+        if self.meta_q is None:
+            return
+
+        if tgid is None:
+            metadata = "[idle]"
+        else:
+            metadata = "[" + str(tgid) + "]"
+        if tag is not None:
+            metadata += " " + tag
+        msg = gr.message().make_from_string(metadata, -2, time.time(), 0)
+        self.meta_q.insert_tail(msg)
 
     def post_init(self):
         #for rx_id in self.receivers:
