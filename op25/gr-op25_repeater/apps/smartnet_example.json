@@ -16,6 +16,7 @@
         {
             "name": "voice channel", 
             "trunking_sysname": "Example",
+            "meta_stream_name": "stream_0",
             "device": "rtl1",
             "blacklist": "",
             "whitelist": "",
@@ -61,6 +62,27 @@
                 "blacklist": "",
                 "whitelist": "",
                 "bandplan": "800_reband"
+            }
+        ]
+    },
+    "metadata": {
+        "module": "icemeta.py",
+        "streams": [
+            {
+                "stream_name": "streami_0",
+                "icecastServerAddress": "your_stream_host_and_port",
+                "icecastMountpoint": "your_mountpoint_name",
+                "icecastPass": "your_password",
+                "icecastMountExt": ".xspf",
+                "delay": 0.0
+            },
+            {
+                "stream_name": "stream_1",
+                "icecastServerAddress": "your_second stream_host_and_port",
+                "icecastMountpoint": "your_second_mountpoint_name",
+                "icecastPass": "your_second_password",
+                "icecastMountExt": ".xspf",
+                "delay": 0.0
             }
         ]
     }
