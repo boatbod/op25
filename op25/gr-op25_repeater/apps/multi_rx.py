@@ -37,6 +37,7 @@ import op25
 import op25_repeater
 import p25_demodulator
 import p25_decoder
+import op25_nbfm
 from log_ts import log_ts
 
 from gr_gnuplot import constellation_sink_c
@@ -98,6 +99,7 @@ class channel(object):
         self.raw_sink = None
         self.raw_file = None
         self.throttle = None
+        self.nbfm = None
         self.scope_sink = None
         self.sinks = []
         self.kill_sink = []
@@ -133,6 +135,11 @@ class channel(object):
 
         if 'key' in config and (config['key'] != ""):
             self.set_key(int(config['key'], 0))
+
+        if 'enable_analog' in config and config['enable_analog'] == True:
+            self.nbfm = op25_nbfm.op25_nbfm_f(str(config['destination']), verbosity, config['if_rate'], msgq_id, rx_q)
+            if not self.demod.connect_nbfm(self.nbfm):
+                self.nbfm = None
 
         if ('plot' not in list(config.keys())) or (config['plot'] == ""):
             return
@@ -273,7 +280,7 @@ class rx_block (gr.top_block):
             self.trunking = None
 
         if self.trunking is not None:
-            self.trunk_rx = self.trunking.rx_ctl(frequency_set = self.change_freq, slot_set = self.set_slot, debug = self.verbosity, chans = config['chans'])
+            self.trunk_rx = self.trunking.rx_ctl(frequency_set = self.change_freq, slot_set = self.set_slot, nbfm_ctrl = self.nbfm_control, debug = self.verbosity, chans = config['chans'])
             self.du_watcher = du_queue_watcher(self.rx_q, self.trunk_rx.process_qmsg)
             sys.stderr.write("Enabled trunking module: %s\n" % config['module'])
 
@@ -405,6 +412,10 @@ class rx_block (gr.top_block):
         chan = self.channels[tuner]
         if 'slot' in params:
             chan.set_slot(params['slot'])
+
+    def nbfm_control(self, msgq_id, action):
+        if (msgq_id >= 0 and msgq_id < len(self.channels)) and self.channels[msgq_id].nbfm is not None:
+            self.channels[msgq_id].nbfm.control(action)
 
     def kill(self):
         for chan in self.channels:

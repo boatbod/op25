@@ -42,6 +42,7 @@ list(APPEND op25_repeater_sources
     gardner_costas_cc_impl.cc
     p25_frame_assembler_impl.cc
     frame_assembler_impl.cc
+    analog_udp_impl.cc
     fsk4_slicer_fb_impl.cc )
 
 list(APPEND op25_repeater_sources

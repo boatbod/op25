@@ -43,7 +43,7 @@ class dmr_chan:
         self.slot.append(_grant_info)
 
 class dmr_receiver:
-    def __init__(self, msgq_id, frequency_set=None, slot_set=None, chans={}, debug=0):
+    def __init__(self, msgq_id, frequency_set=None, slot_set=None, nbfm_ctrl=None, chans={}, debug=0):
         class _states(object):
             IDLE = 0
             CC   = 1

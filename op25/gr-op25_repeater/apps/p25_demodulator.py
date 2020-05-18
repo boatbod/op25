@@ -3,6 +3,8 @@
 #
 # OP25 Demodulator Block
 # Copyright 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020 Max H. Parke KA1RBI
+#
+# Copyright 2020 Graham J. Norbury - gnorbury@bondcar.com
 # 
 # This file is part of GNU Radio and part of OP25
 # 
@@ -259,6 +261,7 @@ class p25_demod_cb(p25_demod_base):
         self.symbol_rate = symbol_rate
         self.connect_state = None
         self.aux_fm_connected = False
+        self.nbfm = None
         self.offset = 0
         self.sps = 0.0
         self.lo_freq = 0
@@ -400,6 +403,9 @@ class p25_demod_cb(p25_demod_base):
 
     # assumes lock held or init
     def disconnect_chain(self):
+        if self.nbfm is not None:
+            self.disconnect(self.nbfm)
+            self.nbfm = None
         if self.connect_state == 'cqpsk':
             self.disconnect_fm_demod()
             self.disconnect(self.if_out, self.cutoff, self.agc, self.clock, self.diffdec, self.to_float, self.rescale, self.slicer)
@@ -494,3 +500,10 @@ class p25_demod_cb(p25_demod_base):
             self.connect(self.agc, sink)
             self.complex_sink = [self.agc, sink]
 
+    def connect_nbfm(self, nbfm_blk):
+        if self.connect_state == 'fsk4':
+            self.nbfm = nbfm_blk
+            self.connect(self.fm_demod, nbfm_blk)
+            return True
+        else:
+            return False

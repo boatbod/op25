@@ -720,7 +720,7 @@ def get_int_dict(s):
     return dict.fromkeys(d)
 
 class rx_ctl (object):
-    def __init__(self, debug=0, frequency_set=None, conf_file=None, logfile_workers=None, meta_update=None, crypt_behavior=0, slot_set=None, chans={}):
+    def __init__(self, debug=0, frequency_set=None, conf_file=None, logfile_workers=None, meta_update=None, crypt_behavior=0, slot_set=None, nbfm_ctrl=None, chans={}):
         class _states(object):
             ACQ = 0
             CC = 1

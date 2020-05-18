@@ -97,9 +97,10 @@ def meta_update(meta_q, tgid = None, tag = None):
 #################
 # Main trunking class
 class rx_ctl(object):
-    def __init__(self, debug=0, frequency_set=None, slot_set=None, chans={}):
+    def __init__(self, debug=0, frequency_set=None, slot_set=None, nbfm_ctrl=None, chans={}):
         self.frequency_set = frequency_set
         self.slot_set = slot_set
+        self.nbfm_ctrl = nbfm_ctrl
         self.debug = debug
         self.receivers = {}
         self.systems = {}
@@ -135,6 +136,7 @@ class rx_ctl(object):
                                         msgq_id       = msgq_id,
                                         frequency_set = self.frequency_set,
                                         slot_set      = self.slot_set,
+                                        nbfm_ctrl     = self.nbfm_ctrl,
                                         control       = rx_ctl,
                                         config        = config,
                                         meta_q        = meta_q)
@@ -252,6 +254,7 @@ class osw_receiver(object):
                     self.talkgroups[tgid]['srcaddr'] = 0
                     self.talkgroups[tgid]['receiver'] = None
                     self.talkgroups[tgid]['time'] = 0
+                    self.talkgroups[tgid]['mode'] = -1
                 self.talkgroups[tgid]['tag'] = tag
                 self.talkgroups[tgid]['prio'] = prio
                 sys.stderr.write("%s [%d] setting tgid(%d), prio(%d), tag(%s)\n" % (log_ts.get(), self.msgq_id, tgid, prio, tag))
@@ -399,7 +402,7 @@ class osw_receiver(object):
         if not frequency:    # e.g., channel identifier not yet known
             return
 
-        self.update_talkgroups(frequency, tgid, srcaddr)
+        self.update_talkgroups(frequency, tgid, srcaddr, mode)
 
         base_tgid = tgid & 0xfff0
         tgid_stat = tgid & 0x000f
@@ -412,22 +415,19 @@ class osw_receiver(object):
 
         if 'tgid' not in self.voice_frequencies[frequency]:
             self.voice_frequencies[frequency]['tgid'] = [None]
-            self.voice_frequencies[frequency]['mode'] = 0
         self.voice_frequencies[frequency]['tgid'] = base_tgid
         self.voice_frequencies[frequency]['counter'] += 1
         self.voice_frequencies[frequency]['time'] = time.time()
-        if mode >= 0:
-            self.voice_frequencies[frequency]['mode'] = mode
 
-    def update_talkgroups(self, frequency, tgid, srcaddr):
-        self.update_talkgroup(frequency, tgid, srcaddr)
+    def update_talkgroups(self, frequency, tgid, srcaddr, mode=-1):
+        self.update_talkgroup(frequency, tgid, srcaddr, mode)
         #if tgid in self.patches:
         #    for ptgid in self.patches[tgid]['ga']:
         #        self.update_talkgroup(frequency, ptgid, srcaddr)
         #        if self.debug >= 5:
         #            sys.stderr.write('%s update_talkgroups: sg(%d) patched tgid(%d)\n' % (log_ts.get(), tgid, ptgid))
 
-    def update_talkgroup(self, frequency, tgid, srcaddr):
+    def update_talkgroup(self, frequency, tgid, srcaddr, mode=-1):
         base_tgid = tgid & 0xfff0
         tgid_stat = tgid & 0x000f
 
@@ -440,6 +440,7 @@ class osw_receiver(object):
             self.talkgroups[base_tgid]['prio'] = TGID_DEFAULT_PRIO
             self.talkgroups[base_tgid]['tag'] = "TGID[" + str(base_tgid) + "]"
             self.talkgroups[base_tgid]['srcaddr'] = 0
+            self.talkgroups[base_tgid]['mode'] = -1
             self.talkgroups[base_tgid]['receiver'] = None
             if self.debug >= 5:
                 sys.stderr.write('%s [%d] new tgid=%s %s prio %d\n' % (log_ts.get(), self.msgq_id, base_tgid, self.talkgroups[base_tgid]['tag'], self.talkgroups[base_tgid]['prio']))
@@ -449,6 +450,8 @@ class osw_receiver(object):
         self.talkgroups[base_tgid]['status'] = tgid_stat
         if srcaddr >= 0:
             self.talkgroups[base_tgid]['srcaddr'] = srcaddr
+        if mode >= 0:
+            self.talkgroups[base_tgid]['mode'] = mode
 
     def expire_talkgroups(self, curr_time):
         if curr_time < self.last_expiry_check + EXPIRY_TIMER:
@@ -464,11 +467,12 @@ class osw_receiver(object):
 #################
 # Voice channel class
 class voice_receiver(object):
-    def __init__(self, debug, msgq_id, frequency_set, slot_set, control, config, meta_q = None):
+    def __init__(self, debug, msgq_id, frequency_set, slot_set, nbfm_ctrl, control, config, meta_q = None):
         self.debug = debug
         self.msgq_id = msgq_id
         self.frequency_set = frequency_set
         self.slot_set = slot_set
+        self.nbfm_ctrl = nbfm_ctrl
         self.control = control
         self.config = config
         self.meta_q = meta_q
@@ -502,6 +506,8 @@ class voice_receiver(object):
             self.whitelist = self.control.get_whitelist()
 
         meta_update(self.meta_q)
+
+        #self.nbfm_ctrl(self.msgq_id, True)
  
     def process_qmsg(self, msg, curr_time):
         m_type = ctypes.c_int16(msg.type() & 0xffff).value
@@ -558,11 +564,11 @@ class voice_receiver(object):
 
         if self.current_tgid is None:
             if self.debug > 1:
-                sys.stderr.write("%s [%d] voice update:  tg(%d), freq(%f)\n" % (log_ts.get(), self.msgq_id, tgid, freq))
+                sys.stderr.write("%s [%d] voice update:  tg(%d), freq(%f), mode(%d)\n" % (log_ts.get(), self.msgq_id, tgid, freq, self.talkgroups[tgid]['mode']))
             self.tune_voice(freq, tgid)
         else:
             if self.debug > 1:
-                sys.stderr.write("%s [%d] voice preempt: tg(%d), freq(%f)\n" % (log_ts.get(), self.msgq_id, tgid, freq))
+                sys.stderr.write("%s [%d] voice preempt: tg(%d), freq(%f), mode(%d)\n" % (log_ts.get(), self.msgq_id, tgid, freq, self.talkgroups[tgid]['mode']))
             self.expire_talkgroup(update_meta=False)
             self.tune_voice(freq, tgid)
 
@@ -574,12 +580,18 @@ class voice_receiver(object):
                            'freq': get_frequency(freq)}
             self.frequency_set(tune_params)
             self.tuned_frequency = freq
-        self.slot_set({'tuner': self.msgq_id,'slot': 0})     # enable voice
         self.current_tgid = tgid
         self.talkgroups[tgid]['receiver'] = self
 
+        if self.talkgroups[tgid]['mode'] == 0:                  # analog nbfm
+            self.nbfm_ctrl(self.msgq_id, True)
+        else:                                                   # digital p25cai
+            self.nbfm_ctrl(self.msgq_id, False)
+            self.slot_set({'tuner': self.msgq_id,'slot': 0})        # enable voice
+
     def expire_talkgroup(self, tgid=None, update_meta = True):
-        self.slot_set({'tuner': self.msgq_id,'slot': 4})     # disable voice
+        self.nbfm_ctrl(self.msgq_id, False)
+        self.slot_set({'tuner': self.msgq_id,'slot': 4})            # disable voice
         if self.current_tgid is None:
             return
             
