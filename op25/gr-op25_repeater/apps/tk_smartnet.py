@@ -555,7 +555,7 @@ class voice_receiver(object):
         return None, None, None
 
     def scan_for_talkgroups(self, curr_time):
-        if self.current_tgid is None and self.hold_tgid is not None and self.hold_until > (curr_time + TGID_HOLD_TIME):
+        if self.current_tgid is None and self.hold_tgid is not None and (curr_time < self.hold_until):
             freq, tgid, src = self.find_talkgroup(curr_time, tgid=self.hold_tgid)
         else:
             freq, tgid, src = self.find_talkgroup(curr_time, tgid=self.current_tgid)
