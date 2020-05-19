@@ -547,9 +547,11 @@ class voice_receiver(object):
                 continue
             if self.whitelist and active_tgid not in self.whitelist:
                 continue
-            if (tgt_tgid is None) and (self.talkgroups[active_tgid]['status'] < 8) and (self.talkgroups[active_tgid]['receiver'] is None):
-                tgt_tgid = active_tgid
-            elif self.talkgroups[active_tgid]['prio'] < self.talkgroups[tgt_tgid]['prio']:
+            if tgt_tgid is None:
+                if (self.talkgroups[active_tgid]['status'] < 8) and (self.talkgroups[active_tgid]['receiver'] is None):
+                    tgt_tgid = active_tgid
+                    continue
+            elif (self.talkgroups[active_tgid]['prio'] < self.talkgroups[tgt_tgid]['prio']) and (self.talkgroups[active_tgid]['status'] < 8) and (self.talkgroups[active_tgid]['receiver'] is None):
                 tgt_tgid = active_tgid
                    
         if tgt_tgid is not None and self.talkgroups[tgt_tgid]['time'] >= start_time:
