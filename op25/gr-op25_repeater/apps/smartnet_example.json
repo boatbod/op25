@@ -24,6 +24,7 @@
             "demod_type": "fsk4", 
             "destination": "udp://127.0.0.1:23456", 
             "enable_analog": true,
+            "nbfm_deviation": 5000,
             "excess_bw": 0.2, 
             "filter_type": "widepulse", 
             "if_rate": 24000, 

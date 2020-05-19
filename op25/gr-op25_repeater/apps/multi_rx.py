@@ -53,6 +53,14 @@ os.environ['IMBE'] = 'soft'
 
 _def_symbol_rate = 4800
 
+# Helper function
+#
+def from_dict(d, key, def_val):
+    if key in d and d[key] != "":
+        return d[key]
+    else:
+        return def_val
+
 # The P25 receiver
 #
 
@@ -137,7 +145,8 @@ class channel(object):
             self.set_key(int(config['key'], 0))
 
         if 'enable_analog' in config and config['enable_analog'] == True:
-            self.nbfm = op25_nbfm.op25_nbfm_f(str(config['destination']), verbosity, config['if_rate'], msgq_id, rx_q)
+            nbfm_dev = int(from_dict(config, 'nbfm_deviation', 5000))
+            self.nbfm = op25_nbfm.op25_nbfm_f(str(config['destination']), verbosity, config['if_rate'], nbfm_dev, msgq_id, rx_q)
             if not self.demod.connect_nbfm(self.nbfm):
                 self.nbfm = None
 

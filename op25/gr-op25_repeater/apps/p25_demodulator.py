@@ -503,7 +503,7 @@ class p25_demod_cb(p25_demod_base):
     def connect_nbfm(self, nbfm_blk):
         if self.connect_state == 'fsk4':
             self.nbfm = nbfm_blk
-            self.connect(self.fm_demod, nbfm_blk)
+            self.connect(self.cutoff, nbfm_blk)
             return True
         else:
             return False
