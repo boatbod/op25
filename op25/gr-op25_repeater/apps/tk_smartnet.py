@@ -76,7 +76,7 @@ def get_int_dict(s, msgq_id = 0):      # used to read blacklist/whitelist files
     return dict.fromkeys(d)
 
 def from_dict(d, key, def_val):
-    if key in d:
+    if key in d and d[key] != "":
         return d[key]
     else:
         return def_val
@@ -481,6 +481,7 @@ class voice_receiver(object):
         self.current_tgid = None
         self.hold_tgid = None
         self.hold_until = 0.0
+        self.tgid_hold_time = TGID_HOLD_TIME
         self.blacklist = {}
         self.whitelist = None
         self.vc_retries = 0
@@ -505,9 +506,10 @@ class voice_receiver(object):
         else:
             self.whitelist = self.control.get_whitelist()
 
+        self.tgid_hold_time = float(from_dict(self.control.config, 'tgid_hold_time', TGID_HOLD_TIME))
+
         meta_update(self.meta_q)
 
-        #self.nbfm_ctrl(self.msgq_id, True)
  
     def process_qmsg(self, msg, curr_time):
         m_type = ctypes.c_int16(msg.type() & 0xffff).value
