@@ -44,7 +44,7 @@ class op25_nbfm_f(gr.hier_block2):
 
         # 'switch' enables the analog decoding to be turned on/off
         self.switch = blocks.copy(gr.sizeof_gr_complex)
-        #self.switch.set_enabled(False)
+        self.switch.set_enabled(False)
 
         # quadrature demod
         fm_demod_gain = input_rate / (2 * pi * deviation)
