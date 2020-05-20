@@ -48,7 +48,7 @@ class op25_nbfm_f(gr.hier_block2):
         self.switch.set_enabled(False)
 
         # quadrature demod
-        fm_demod_gain = input_rate / (2 * pi * deviation)
+        fm_demod_gain = input_rate / (4 * pi * deviation)
         self.fm_demod = analog.quadrature_demod_cf(fm_demod_gain)
 
         # fm deemphasis
