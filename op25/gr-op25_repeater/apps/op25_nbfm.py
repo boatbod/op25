@@ -41,6 +41,7 @@ class op25_nbfm_f(gr.hier_block2):
                                 gr.io_signature(0, 0, 0))                    # Output signature
 
         self.debug = debug
+        self.msgq_id = msgq_id
 
         # 'switch' enables the analog decoding to be turned on/off
         self.switch = blocks.copy(gr.sizeof_gr_complex)
@@ -70,4 +71,6 @@ class op25_nbfm_f(gr.hier_block2):
 
     def control(self, action):
         self.switch.set_enabled(action)
+        if self.debug >= 5:
+            sys.stderr.write("%s [%d] op25_nbfm::control: analog audio %s\n" % (log_ts.get(), self.msgq_id, ('enabled' if action else 'disabled')))
 
