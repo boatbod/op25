@@ -358,8 +358,12 @@ class osw_receiver(object):
     def enqueue(self, addr, grp, cmd):
         if self.is_chan(cmd):
             freq = self.get_freq(cmd)
+            if self.debug >= 9:
+                sys.stderr.write("%s [%d] SMARTNET OSW (0x%04x,%s,0x%03x,%f)\n" % (log_ts.get(), self.msgq_id, addr, "true", cmd, freq))
         else:
             freq = 0.0
+            if self.debug >= 9:
+                sys.stderr.write("%s [%d] SMARTNET OSW (0x%04x,%s,0x%03x)\n" % (log_ts.get(), self.msgq_id, addr, "false", cmd))
         self.osw_q.append((addr, (grp != 0), cmd, self.is_chan(cmd), freq))
 
     def process_osws(self):
@@ -367,11 +371,6 @@ class osw_receiver(object):
             return
 
         osw_addr, osw_grp, osw_cmd, osw_ch, osw_f = self.osw_q.popleft()
-        if self.debug >= 9:
-            if osw_ch:
-                sys.stderr.write("%s [%d] SMARTNET OSW (0x%04x,%s,0x%03x,%f)\n" % (log_ts.get(), self.msgq_id, osw_addr, osw_grp, osw_cmd, osw_f))
-            else:
-                sys.stderr.write("%s [%d] SMARTNET OSW (0x%04x,%s,0x%03x)\n" % (log_ts.get(), self.msgq_id, osw_addr, osw_grp, osw_cmd))
 
         if osw_cmd == 0x308:
             src_rid = osw_addr
@@ -382,6 +381,8 @@ class osw_receiver(object):
                 self.update_voice_frequency(tgt_freq, dst_tgid, src_rid, mode=0)
                 if self.debug >= 11:
                     sys.stderr.write("%s [%d] SMARTNET GROUP GRANT src(%d), tgid(%d), freq(%f)\n" % (log_ts.get(), self.msgq_id, src_rid, dst_tgid, tgt_freq))
+            else: # OSW did not match, so put it back in the queue 
+                self.osw_q.appendleft((osw_addr, osw_grp, osw_cmd, osw_ch, osw_f))
         elif osw_cmd == 0x321:   # Two-OSW digital group voice grant
             src_rid = osw_addr
             osw_addr, osw_grp, osw_cmd, osw_ch, osw_f = self.osw_q.popleft()
@@ -391,6 +392,8 @@ class osw_receiver(object):
                 self.update_voice_frequency(tgt_freq, dst_tgid, src_rid, mode=1)
                 if self.debug >= 11:
                     sys.stderr.write("%s [%d] SMARTNET ASTRO GRANT src(%d), tgid(%d), freq(%f)\n" % (log_ts.get(), self.msgq_id, src_rid, dst_tgid, tgt_freq))
+            else: # OSW did not match, so put it back in the queue 
+                self.osw_q.appendleft((osw_addr, osw_grp, osw_cmd, osw_ch, osw_f))
         elif osw_ch and osw_grp: # Single-OSW voice update
             dst_tgid = osw_addr
             tgt_freq = osw_f
@@ -432,7 +435,7 @@ class osw_receiver(object):
         tgid_stat = tgid & 0x000f
 
         if self.debug >= 5:
-            sys.stderr.write('%s [%d] set tgid=%s, srcaddr=%s\n' % (log_ts.get(), self.msgq_id, base_tgid, srcaddr))
+            sys.stderr.write('%s [%d] set tgid=%s, status=0x%x, srcaddr=%s\n' % (log_ts.get(), self.msgq_id, base_tgid, tgid_stat, srcaddr))
         
         if base_tgid not in self.talkgroups:
             self.talkgroups[base_tgid] = {'counter':0}
