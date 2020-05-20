@@ -465,7 +465,7 @@ class osw_receiver(object):
             if (self.talkgroups[tgid]['receiver'] is not None) and (curr_time >= self.talkgroups[tgid]['time'] + TGID_EXPIRY_TIME):
                 if self.debug > 1:
                     sys.stderr.write("%s [%d] expiring tg(%d), freq(%f)\n" % (log_ts.get(), self.msgq_id, tgid, self.talkgroups[tgid]['frequency']))
-                self.talkgroups[tgid]['receiver'].expire_talkgroup()
+                self.talkgroups[tgid]['receiver'].expire_talkgroup(reason="expiry")
 
 #################
 # Voice channel class
@@ -524,7 +524,7 @@ class voice_receiver(object):
         elif (m_type == 3):  # DUID-3  (call termination without channel release)
             pass 
         elif (m_type == 15): # DUID-15 (call termination with channel release)
-            self.expire_talkgroup()
+            self.expire_talkgroup(reason="duid15")
 
     def blacklist_update(self, start_time):
         expired_tgs = [tg for tg in list(self.blacklist.keys())
@@ -576,7 +576,7 @@ class voice_receiver(object):
         else:
             if self.debug > 1:
                 sys.stderr.write("%s [%d] voice preempt: tg(%d), freq(%f), mode(%d)\n" % (log_ts.get(), self.msgq_id, tgid, freq, self.talkgroups[tgid]['mode']))
-            self.expire_talkgroup(update_meta=False)
+            self.expire_talkgroup(update_meta=False, reason="preempt")
             self.tune_voice(freq, tgid)
 
         meta_update(self.meta_q, tgid, self.talkgroups[tgid]['tag'])
@@ -596,7 +596,7 @@ class voice_receiver(object):
             self.nbfm_ctrl(self.msgq_id, False)
             self.slot_set({'tuner': self.msgq_id,'slot': 0})        # enable voice
 
-    def expire_talkgroup(self, tgid=None, update_meta = True):
+    def expire_talkgroup(self, tgid=None, update_meta = True, reason="unk"):
         self.nbfm_ctrl(self.msgq_id, False)
         self.slot_set({'tuner': self.msgq_id,'slot': 4})            # disable voice
         if self.current_tgid is None:
@@ -604,7 +604,7 @@ class voice_receiver(object):
             
         self.talkgroups[self.current_tgid]['receiver'] = None
         if self.debug > 1:
-            sys.stderr.write("%s [%d] releasing:  tg(%d), freq(%f)\n" % (log_ts.get(), self.msgq_id, self.current_tgid, self.tuned_frequency))
+            sys.stderr.write("%s [%d] releasing:  tg(%d), freq(%f), reason(%s)\n" % (log_ts.get(), self.msgq_id, self.current_tgid, self.tuned_frequency, reason))
         self.hold_tgid = self.current_tgid
         self.hold_until = time.time() + TGID_HOLD_TIME
         self.current_tgid = None
