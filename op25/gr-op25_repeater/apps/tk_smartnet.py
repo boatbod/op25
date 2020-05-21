@@ -523,7 +523,7 @@ class voice_receiver(object):
             pass
         elif (m_type == -4): # P25 sync established (indicates this is a digital channel)
             if self.current_tgid is not None:
-                if self.debug > 1:
+                if self.debug >= 9:
                     sys.stderr.write("%s [%d] digital sync detected:  tg(%d), freq(%f), mode(%d)\n" % (log_ts.get(), self.msgq_id, self.current_tgid, self.tuned_frequency, self.talkgroups[self.current_tgid]['mode']))
                 self.nbfm_ctrl(self.msgq_id, False)              # disable nbfm
                 self.talkgroups[self.current_tgid]['mode'] = 1   # set mode to digital
