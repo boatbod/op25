@@ -1054,6 +1054,10 @@ class rx_ctl (object):
             if self.logfile_workers:
                 self.logging_scheduler(curr_time)
             return
+        elif m_type == -4:  # P25 sync established
+            if self.debug > 10:
+                sys.stderr.write('%s P25 sync established\n' % log_ts.get())
+            return
         elif m_type < 0:
             sys.stderr.write('unknown message type %d\n' % (m_type))
             return

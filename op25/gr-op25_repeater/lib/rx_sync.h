@@ -122,6 +122,7 @@ public:
 
 private:
 	void sync_timeout(rx_types proto);
+	void sync_established(rx_types proto);
 	void cbuf_insert(const uint8_t c);
 	void ysf_sync(const uint8_t dibitbuf[], bool& ysf_fullrate, bool& unmute);
 	void codeword(const uint8_t* cw, const enum codeword_types codeword_type, int slot_id);

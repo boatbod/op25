@@ -34,6 +34,7 @@ static const int16_t PROTOCOL_SMARTNET  =  2;
 static const int16_t M_P25_TIMEOUT      = -1;
 static const int16_t M_P25_UI_REQ       = -2;
 static const int16_t M_P25_JSON_DATA    = -3;
+static const int16_t M_P25_SYNC_ESTAB   = -4;
 
 // DMR Messages
 static const int16_t M_DMR_TIMEOUT      = -1;

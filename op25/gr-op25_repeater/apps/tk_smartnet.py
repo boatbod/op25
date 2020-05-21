@@ -521,6 +521,12 @@ class voice_receiver(object):
 
         if (m_type == -1):   # Voice Channel Timeout
             pass
+        elif (m_type == -4): # P25 sync established (indicates this is a digital channel)
+            if self.current_tgid is not None:
+                if self.debug > 1:
+                    sys.stderr.write("%s [%d] digital sync detected:  tg(%d), freq(%f), mode(%d)\n" % (log_ts.get(), self.msgq_id, self.current_tgid, self.tuned_frequency, self.talkgroups[tgid]['mode']))
+                self.nbfm_ctrl(self.msgq_id, False)              # disable nbfm
+                self.talkgroups[self.current_tgid]['mode'] = 1   # set mode to digital
         elif (m_type == 3):  # DUID-3  (call termination without channel release)
             pass 
         elif (m_type == 15): # DUID-15 (call termination with channel release)
@@ -589,16 +595,12 @@ class voice_receiver(object):
             self.tuned_frequency = freq
         self.current_tgid = tgid
         self.talkgroups[tgid]['receiver'] = self
-
-        if self.talkgroups[tgid]['mode'] == 0:                  # analog nbfm
-            self.nbfm_ctrl(self.msgq_id, True)
-        else:                                                   # digital p25cai
-            self.nbfm_ctrl(self.msgq_id, False)
-            self.slot_set({'tuner': self.msgq_id,'slot': 0})        # enable voice
+        self.slot_set({'tuner': self.msgq_id,'slot': 0})                      # always enable digital p25cai
+        self.nbfm_ctrl(self.msgq_id, (self.talkgroups[tgid]['mode'] != 1) )   # enable nbfm unless mode is digital
 
     def expire_talkgroup(self, tgid=None, update_meta = True, reason="unk"):
-        self.nbfm_ctrl(self.msgq_id, False)
-        self.slot_set({'tuner': self.msgq_id,'slot': 4})            # disable voice
+        self.nbfm_ctrl(self.msgq_id, False)                                   # disable nbfm
+        self.slot_set({'tuner': self.msgq_id,'slot': 4})                      # disable p25cai
         if self.current_tgid is None:
             return
             

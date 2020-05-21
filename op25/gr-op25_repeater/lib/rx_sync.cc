@@ -245,6 +245,25 @@ void rx_sync::sync_timeout(rx_types proto)
 	reset_timer();
 }
 
+void rx_sync::sync_established(rx_types proto)
+{
+	if ((d_msgq_id >= 0) && (!d_msg_queue->full_p())) {
+		std::string m_buf;
+		gr::message::sptr msg;
+		switch(proto) {
+		case RX_TYPE_NONE:
+            break;
+		case RX_TYPE_P25P1:
+		case RX_TYPE_P25P2:
+			msg = gr::message::make_from_string(m_buf, get_msg_type(PROTOCOL_P25, M_P25_SYNC_ESTAB), (d_msgq_id << 1), logts.get_ts());
+			d_msg_queue->insert_tail(msg);
+			break;
+		case RX_TYPE_DMR:
+			break;
+        }
+    }
+}
+
 void rx_sync::codeword(const uint8_t* cw, const enum codeword_types codeword_type, int slot_id) {
 	static const int x=4;
 	static const int y=26;
@@ -393,6 +412,7 @@ void rx_sync::rx_sym(const uint8_t sym)
 			d_current_type = sync_detected;
 			d_expires = d_symbol_count + MODE_DATA[d_current_type].expiration;
 			d_rx_count = MODE_DATA[d_current_type].sync_offset + (MODE_DATA[d_current_type].sync_len >> 1);
+            sync_established(d_current_type);
 		}
 		if (d_rx_count != MODE_DATA[d_current_type].sync_offset + (MODE_DATA[d_current_type].sync_len >> 1)) {
 			if (d_debug >= 10)
