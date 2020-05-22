@@ -91,7 +91,7 @@ namespace gr{
             if (!crc_ok)
                 return;
 
-            if ((d_msgq_id >= 0) && (d_debug >= 10))  // log if no trunking, otherwise trunking can do the logging
+            if ((d_msgq_id < 0) && (d_debug >= 10))  // log if no trunking, otherwise trunking can do the logging
                 fprintf(stderr, "%s SMARTNET OSW received: (%05d,%s,0x%03x)\n", logts.get(d_msgq_id), d_pkt.address, ((d_pkt.group) ? "g" : "i"), d_pkt.command);
 
             send_msg((const char*)d_pkt.raw_data);
