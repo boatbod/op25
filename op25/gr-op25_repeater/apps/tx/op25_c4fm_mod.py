@@ -54,7 +54,7 @@ def transfer_function_rx(symbol_rate=_def_symbol_rate, rate_multiplier=1.0):
 	# Specs undefined above 2,880 Hz.  It would be nice to have a sharper
 	# rolloff, but this filter is cheap enough....
 	xfer = []	# frequency domain transfer function
-	rate = symbol_rate * 2.0
+	rate = symbol_rate * rate_multiplier
 	for f in range(0,int(rate)):
 		# D(f)
 		t = pi * f / rate
