@@ -145,7 +145,7 @@ class channel(object):
             self.set_key(int(config['key'], 0))
 
         if 'enable_analog' in config and config['enable_analog'] == True:
-            nbfm_dev = int(from_dict(config, 'nbfm_deviation', 5000))
+            nbfm_dev = int(from_dict(config, 'nbfm_deviation', 4000))
             self.nbfm = op25_nbfm.op25_nbfm_f(str(config['destination']), verbosity, config['if_rate'], nbfm_dev, msgq_id, rx_q)
             if not self.demod.connect_nbfm(self.nbfm):
                 self.nbfm = None
