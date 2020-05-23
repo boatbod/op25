@@ -184,7 +184,7 @@ class channel(object):
             elif plot == 'mixer':
                 i = len(self.sinks)
                 self.sinks.append(mixer_sink_c(plot_name=self.name))
-                self.demod.connect_complex('mixer', self.sinks[i])
+                self.demod.connect_complex('cutoff', self.sinks[i])
                 self.kill_sink.append(self.sinks[i])
                 self.sinks[i].set_width(config['if_rate'])
             else:
