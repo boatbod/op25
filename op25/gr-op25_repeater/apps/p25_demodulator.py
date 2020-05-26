@@ -134,21 +134,12 @@ class p25_demod_base(gr.hier_block2):
             levels = [ -2.0, 0.0, 2.0, 4.0 ]
             self.slicer = op25_repeater.fsk4_slicer_fb(levels)
         elif filter_type == 'fsk':
-            # Theoretically pfb_clock_sync is supposed to be 'better' than clock_recovery_mm but something
-            # must not be right because it can permanently loose timing lock under high ber conditions
-            #
-            #nfilts = 32
-            #ntaps = 7 * sps
-            #pfb_taps = filter.firdes.root_raised_cosine(nfilts, sps*nfilts, 1.0, excess_bw, ntaps*nfilts)
-            ##self.fsk4_demod = digital.pfb_clock_sync_fff(sps, 0.062832, pfb_taps, nfilts, nfilts//2, 1)
-            #self.fsk4_demod = digital.pfb_clock_sync_fff(sps, 0.031411, pfb_taps, nfilts, nfilts//4, 1)
-            #self.symbol_filter = blocks.multiply_const_ff(1.0) # do nothing since filtering is done in pfb_clock_sync
-
             ntaps = 7 * sps
             if ntaps & 1 == 0:
                 ntaps += 1
             coeffs = filter.firdes.root_raised_cosine(1.0, self.if_rate, self.symbol_rate, excess_bw, ntaps)
             self.fsk4_demod = digital.clock_recovery_mm_ff(sps, 0.1, 0.5, 0.05, 0.005)
+            self.baseband_amp = op25_repeater.rmsagc_ff(alpha=0.01, k=1.0)
             self.symbol_filter = filter.fir_filter_fff(1, coeffs)
             self.slicer = digital.binary_slicer_fb()
         elif filter_type == "widepulse":
@@ -272,8 +263,6 @@ class p25_demod_cb(p25_demod_base):
         self.t_cache = {}
         if filter_type == 'rrc':
             self.set_baseband_gain(0.61)
-        elif filter_type == 'fsk':
-            self.set_baseband_gain(1.0)
         elif filter_type == 'widepulse':
             self.set_baseband_gain(0.6)
 
@@ -321,8 +310,8 @@ class p25_demod_cb(p25_demod_base):
             self.if_out = self.lpf
 
         if filter_type == 'fsk':
-            fa = 3600
-            fb = fa + 600
+            fa = 8000
+            fb = fa + 625
         else:
             fa = 6250
             fb = fa + 625
@@ -352,7 +341,7 @@ class p25_demod_cb(p25_demod_base):
 
         # fm demodulator (needed in fsk4 case)
         if filter_type == 'fsk':
-            fm_demod_gain = if_rate / (2.0 * pi * 1800)
+            fm_demod_gain = if_rate / (2.0 * pi * 3600)
         else:
             fm_demod_gain = if_rate / (2.0 * pi * _def_symbol_deviation)
         self.fm_demod = analog.quadrature_demod_cf(fm_demod_gain)

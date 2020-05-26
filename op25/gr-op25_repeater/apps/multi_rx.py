@@ -88,10 +88,10 @@ class device(object):
         self.src.set_sample_rate(config['rate'])
         self.sample_rate = config['rate']
 
-        self.src.set_center_freq(config['frequency'])
-        self.frequency = config['frequency']
+        self.offset = int(from_dict(config, 'offset', 0))
 
-        self.offset = config['offset']
+        self.src.set_center_freq(config['frequency'] + self.offset)
+        self.frequency = config['frequency']
 
 class channel(object):
     def __init__(self, config, dev, verbosity, msgq_id, rx_q):
@@ -123,7 +123,7 @@ class channel(object):
                              demod_type = 'fsk4',
                              filter_type = 'fsk',
                              excess_bw = config['excess_bw'],
-                             relative_freq = dev.frequency + dev.offset - self.frequency,
+                             relative_freq = dev.frequency - self.frequency,
                              offset = dev.offset,
                              if_rate = config['if_rate'],
                              symbol_rate = self.symbol_rate)
@@ -135,7 +135,7 @@ class channel(object):
                              demod_type = config['demod_type'],
                              filter_type = config['filter_type'],
                              excess_bw = config['excess_bw'],
-                             relative_freq = dev.frequency + dev.offset - self.frequency,
+                             relative_freq = dev.frequency - self.frequency,
                              offset = dev.offset,
                              if_rate = config['if_rate'],
                              symbol_rate = self.symbol_rate)
@@ -173,7 +173,7 @@ class channel(object):
                 self.kill_sink.append(self.sinks[i])
                 self.sinks[i].set_offset(self.device.offset)
                 self.sinks[i].set_center_freq(self.device.frequency)
-                self.sinks[i].set_relative_freq(self.device.frequency + self.device.offset - self.frequency)
+                self.sinks[i].set_relative_freq(self.device.frequency - self.frequency)
                 self.sinks[i].set_width(self.device.sample_rate)
             elif plot == 'constellation':
                 i = len(self.sinks)
@@ -196,13 +196,13 @@ class channel(object):
             return True
         old_freq = self.frequency
         self.frequency = freq
-        if not self.demod.set_relative_frequency(self.device.frequency + self.device.offset - freq): # First attempt relative tune
+        if not self.demod.set_relative_frequency(self.device.offset + self.device.frequency - freq): # First attempt relative tune
             if self.device.tunable:                                                                  # then hard tune if allowed
-                self.device.src.set_center_freq(self.frequency)
+                self.device.src.set_center_freq(self.frequency + self.device.offset)
                 self.device.frequency = self.frequency
-                self.demod.set_relative_frequency(self.device.frequency + self.device.offset - freq)
+                self.demod.set_relative_frequency(self.device.offset + self.device.frequency - freq)
             else:                                                                                    # otherwise fail and reset to prev freq
-                self.demod.set_relative_frequency(self.device.frequency + self.device.offset - old_freq)
+                self.demod.set_relative_frequency(self.device.offset + self.device.frequency - old_freq)
                 self.frequency = old_freq
                 if self.verbosity:
                     sys.stderr.write("%s [%d] Unable to tune %s to frequency %f\n" % (log_ts.get(), self.msgq_id, self.name, (freq/1e6)))
@@ -210,7 +210,7 @@ class channel(object):
         for sink in self.sinks:
             if sink.name() == "fft_sink_c":
                 sink.set_center_freq(self.device.frequency)
-                sink.set_relative_freq(self.device.frequency + self.device.offset - freq)
+                sink.set_relative_freq(self.device.frequency - freq)
         if self.verbosity >= 9:
             sys.stderr.write("%s [%d] Tuning to frequency %f\n" % (log_ts.get(), self.msgq_id, (freq/1e6)))
         self.decoder.sync_reset()

@@ -13,6 +13,7 @@
 #include "op25_repeater/p25_frame_assembler.h"
 #include "op25_repeater/frame_assembler.h"
 #include "op25_repeater/analog_udp.h"
+#include "op25_repeater/rmsagc_ff.h"
 #include "op25_repeater/fsk4_slicer_fb.h"
 #include "op25_repeater/ambe_encoder_sb.h"
 #include "op25_repeater/dmr_bs_tx_bb.h"
@@ -43,6 +44,9 @@ GR_SWIG_BLOCK_MAGIC2(op25_repeater, p25_frame_assembler);
 
 %include "op25_repeater/frame_assembler.h"
 GR_SWIG_BLOCK_MAGIC2(op25_repeater, frame_assembler);
+
+%include "op25_repeater/rmsagc_ff.h"
+GR_SWIG_BLOCK_MAGIC2(op25_repeater, rmsagc_ff);
 
 %include "op25_repeater/analog_udp.h"
 GR_SWIG_BLOCK_MAGIC2(op25_repeater, analog_udp);
