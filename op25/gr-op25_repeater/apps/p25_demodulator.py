@@ -309,12 +309,8 @@ class p25_demod_cb(p25_demod_base):
         else:
             self.if_out = self.lpf
 
-        if filter_type == 'fsk':
-            fa = 8000
-            fb = fa + 625
-        else:
-            fa = 6250
-            fb = fa + 625
+        fa = 6250
+        fb = fa + 625
         cutoff_coeffs = filter.firdes.low_pass(1.0, self.if_rate, (fb+fa)/2, fb-fa, filter.firdes.WIN_HANN)
         self.cutoff = filter.fir_filter_ccf(1, cutoff_coeffs)
 
