@@ -33,10 +33,10 @@ from log_ts import log_ts
 
 _PCM_RATE       = 8000   # PCM is 8kHz S16LE format
 
-class op25_nbfm_f(gr.hier_block2):
-    def __init__(self, dest, debug, input_rate, deviation, msgq_id, msg_q):
+class op25_nbfm_c(gr.hier_block2):
+    def __init__(self, dest, debug, input_rate, deviation, squelch, msgq_id, msg_q):
 
-        gr.hier_block2.__init__(self, "op25_nbfm_f",
+        gr.hier_block2.__init__(self, "op25_nbfm_c",
                                 gr.io_signature(1, 1, gr.sizeof_gr_complex), # Input signature
                                 gr.io_signature(0, 0, 0))                    # Output signature
 
@@ -46,6 +46,9 @@ class op25_nbfm_f(gr.hier_block2):
         # 'switch' enables the analog decoding to be turned on/off
         self.switch = blocks.copy(gr.sizeof_gr_complex)
         self.switch.set_enabled(False)
+
+        # power squelch
+        self.squelch = analog.simple_squelch_cc(squelch, 0.0015)
 
         # quadrature demod
         fm_demod_gain = input_rate / (4 * pi * deviation)
@@ -66,7 +69,7 @@ class op25_nbfm_f(gr.hier_block2):
         # analog_udp block converts +/-1.0 float samples to S16LE PCM and sends over UDP 
         self.analog_udp = op25_repeater.analog_udp(dest, debug, msgq_id, msg_q)
 
-        self.connect(self, self.switch, self.fm_demod, self.deemph, self.audio_filter, self.analog_udp)
+        self.connect(self, self.switch, self.squelch, self.fm_demod, self.deemph, self.audio_filter, self.analog_udp)
         sys.stderr.write("%s [%d] Enabling nbfm analog audio\n" % (log_ts.get(), msgq_id))
 
     def control(self, action):

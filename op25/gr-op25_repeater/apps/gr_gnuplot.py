@@ -54,6 +54,7 @@ class wrap_gp(object):
         self.freqs = ()
         self.avg_pwr = np.zeros(FFT_BINS)
         self.avg_sum_pwr = 0.0
+        self.min_y = -100.0
         self.buf = []
         self.plot_count = 0
         self.last_plot = 0
@@ -158,6 +159,8 @@ class wrap_gp(object):
                 s += 'e\n'
                 self.buf = []
                 plots.append('"-" with lines')
+                self.min_y = ((20 * np.log10(min(self.avg_pwr))) // 20) * 20  # round to floor by 20's
+                self.min_y = -100 if self.min_y > -100 else self.min_y
         self.buf = []
 
         # FFT processing needs to be completed to maintain the weighted average buckets
@@ -201,7 +204,7 @@ class wrap_gp(object):
             h+= 'set xlabel "Frequency"\n'
             h+= 'set ylabel "Power(dB)"\n'
             h+= 'set grid\n'
-            h+= 'set yrange [-100:0]\n'
+            h+= 'set yrange [%d:0]\n' % int(self.min_y)
             if mode == 'mixer': # mixer
                                 h+= 'set title "%sMixer: balance %3.0f (smaller is better)"\n' % (self.plot_name, (np.abs(self.avg_sum_pwr * 1000)))
             else:           # fft

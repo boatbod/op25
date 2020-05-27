@@ -108,6 +108,7 @@ class channel(object):
         self.raw_file = None
         self.throttle = None
         self.nbfm = None
+        self.nbfm_mode = 0
         self.scope_sink = None
         self.sinks = []
         self.kill_sink = []
@@ -123,7 +124,7 @@ class channel(object):
                              demod_type = 'fsk4',
                              filter_type = 'fsk',
                              excess_bw = config['excess_bw'],
-                             relative_freq = dev.frequency - self.frequency,
+                             relative_freq = (dev.frequency + dev.offset) - self.frequency,
                              offset = dev.offset,
                              if_rate = config['if_rate'],
                              symbol_rate = self.symbol_rate)
@@ -135,7 +136,7 @@ class channel(object):
                              demod_type = config['demod_type'],
                              filter_type = config['filter_type'],
                              excess_bw = config['excess_bw'],
-                             relative_freq = dev.frequency - self.frequency,
+                             relative_freq = (dev.frequency + dev.offset) - self.frequency,
                              offset = dev.offset,
                              if_rate = config['if_rate'],
                              symbol_rate = self.symbol_rate)
@@ -144,10 +145,22 @@ class channel(object):
         if 'key' in config and (config['key'] != ""):
             self.set_key(int(config['key'], 0))
 
-        if 'enable_analog' in config and config['enable_analog'] == True:
+        enable_analog = str(from_dict(config, 'enable_analog', "auto")).lower()
+        if enable_analog == "off":
+            self.nbfm_mode = 0;
+        elif enable_analog == "on":
+            self.nbfm_mode = 2;
+        else:
+            self.nbfm_mode = 1;
+        
+        if self.nbfm_mode > 0:
             nbfm_dev = int(from_dict(config, 'nbfm_deviation', 4000))
-            self.nbfm = op25_nbfm.op25_nbfm_f(str(config['destination']), verbosity, config['if_rate'], nbfm_dev, msgq_id, rx_q)
-            if not self.demod.connect_nbfm(self.nbfm):
+            nbfm_sq = int(from_dict(config, 'nbfm_squelch', -60))
+            self.nbfm = op25_nbfm.op25_nbfm_c(str(config['destination']), verbosity, config['if_rate'], nbfm_dev, nbfm_sq, msgq_id, rx_q)
+            if self.demod.connect_nbfm(self.nbfm):
+                if self.nbfm_mode == 2:
+                    self.nbfm.control(True)
+            else:
                 self.nbfm = None
 
         if ('plot' not in list(config.keys())) or (config['plot'] == ""):
