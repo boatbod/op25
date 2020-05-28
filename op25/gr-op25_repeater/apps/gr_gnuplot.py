@@ -149,6 +149,8 @@ class wrap_gp(object):
                         self.avg_pwr[i] = ((1.0 - FFT_AVG) * self.avg_pwr[i]) + (FFT_AVG * np.abs(self.ffts[i]))
                     else:
                         self.avg_pwr[i] = ((1.0 - MIX_AVG) * self.avg_pwr[i]) + (MIX_AVG * np.abs(self.ffts[i]))
+                    if self.avg_pwr[i] == 0: # guard against divide by zero
+                        break
                     s += '%f\t%f\n' % (self.freqs[i], 20 * np.log10(self.avg_pwr[i]))
                     if (mode == 'mixer') and (self.avg_pwr[i] > 1e-5):
                         if (self.freqs[i] - self.center_freq) < 0:
@@ -159,6 +161,8 @@ class wrap_gp(object):
                 s += 'e\n'
                 self.buf = []
                 plots.append('"-" with lines')
+                if min(self.avg_pwr) == 0: # plot is broken, probably because source device was missing
+                    return
                 self.min_y = ((20 * np.log10(min(self.avg_pwr))) // 20) * 20  # round to floor by 20's
                 self.min_y = -100 if self.min_y > -100 else self.min_y
         self.buf = []

@@ -89,5 +89,18 @@
                 "delay": 0.0
             }
         ]
+    },
+    "audio": {
+        "module": "sockaudio.py",
+        "instances": [
+            {
+                "instance_name": "audio0",
+                "device_name": "default",
+                "udp_port": 23456,
+                "audio_gain": "1.0",
+                "number_channels": 1
+            }
+        ]
     }
+
 }

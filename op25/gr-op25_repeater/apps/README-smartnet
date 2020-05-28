@@ -12,15 +12,14 @@ Trunking requires configuration of the appropriate trunking module name ("tk_sma
 
 Control over which tgids are candidates for monitoring is via the 'blacklist' and 'whitelist' parameters associated with each of the voice channel(s).  These parameters take the name of a file which contains tgids in the same format as used by rx.py blacklist/whitelist; either a single numeric tgid per line, or a pair of tgids separated by a <tab> character, denoting the start and end of a range.  Each voice channel would normally have it's own non-overlapping blacklist/whitelist definitions to avoid the same audio being played simultaneously.
 
+multi_rx.py has support for enabling a built-in audio player. See the "audio" section of the smartnet-example.json for configuration parameter syntax.  Note that the "instance_name" must be specified for the player to be enabled.  Leaving this parameter absent or blank will cause the player to be disabled.  Consistent configuration of the "udp_port" parameter is required between the audio player and the channel destinations.  Default port is 23456.
+
 Startup
 -------
 Much like op25's rx.py, multi_rx.py is best started using a shell script.
      ./multi_rx.py -v 9 -c smartnet_example.json 2> stderr.2
 
-If you want to hear audio, you will also need to start an audio server in a separate terminal window.
-     ./audio.py -u 23466
 
 Known Issues & Limitations
 --------------------------
 There is currently no support for a terminal or interactive features such as Hold or Lockout.
-No built-in audio player (see above).

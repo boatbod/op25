@@ -492,6 +492,7 @@ class socket_audio(object):
         return
 
     def setup_sockets(self, udp_host, udp_port):
+        sys.stderr.write("Listening on %s:%d\n" % (udp_host, udp_port))
         self.sock_a = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sock_b = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sock_a.setblocking(0)

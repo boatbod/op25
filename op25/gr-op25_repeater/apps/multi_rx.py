@@ -270,6 +270,11 @@ class rx_block (gr.top_block):
         gr.top_block.__init__(self)
         self.device_id_by_name = {}
 
+        self.audio = None
+        self.audio_instances = {}
+        if "audio" in config:
+            self.configure_audio(config['audio'])
+
         self.metadata = None
         self.meta_streams = {}
         if "metadata" in config:
@@ -286,6 +291,39 @@ class rx_block (gr.top_block):
 
         if self.trunking is not None: # post-initialization after channels and devices created
             self.trunk_rx.post_init()
+
+    def configure_audio(self, config):
+        audio_mod = config['module']
+        if audio_mod.endswith('.py'):
+            audio_mod = audio_mod[:-3]
+        try:
+            self.audio = importlib.import_module(audio_mod)
+        except:
+            self.audio = None
+            sys.stderr.write("Error: unable to import audio module: %s\n%s\n" % (config['module'], sys.exc_info()[1]))
+
+        idx = 0
+        for instance in config['instances']:
+            if 'instance_name' in instance and instance['instance_name'] != "":
+                instance_name = instance['instance_name']
+                if instance_name in self.audio_instances:
+                    sys.stderr.write("Ignoring duplicate audio instance #%d [%s]\n" % (idx, instance_name))
+                    break
+                audio_port = int(from_dict(instance,'udp_port', 23456))
+                audio_device = str(from_dict(instance,'device_name', "default"))
+                audio_gain = float(from_dict(instance,'audio_gain', "0.0"))
+                audio_2chan = True if int(from_dict(instance,'number_channels', 1)) == 2 else False
+                sys.stderr.write("Configuring audio instance #%d [%s]\n" % (idx, instance_name))
+                try:
+                    audio_s = self.audio.audio_thread("127.0.0.1", audio_port, audio_device, audio_2chan, audio_gain)
+                    self.audio_instances[instance_name] = audio_s
+                except:
+                    sys.stderr.write("Error configuring audio instance #%d; %s\n" % (idx, sys.exc_info()[1]))
+                    sys.exc_clear()
+                    self.audio_instances[instance_name] = None
+            else:
+                sys.stderr.write("Ignoring unnamed audio instance #%d\n" % idx)
+            idx += 1
 
     def configure_trunking(self, config):
         if (("module" in config and (config['module'] == "")) or 
@@ -320,6 +358,9 @@ class rx_block (gr.top_block):
         for stream in config['streams']:
             if 'stream_name' in stream and stream['stream_name'] != "":
                 stream_name = stream['stream_name']
+                if stream_name in self.meta_streams:
+                    sys.stderr.write("Ignoring duplicate metadata stream #%d [%s]\n" % (idx, stream_name))
+                    break
                 meta_q = gr.msg_queue(10)
                 meta_s = self.metadata.meta_server(meta_q, stream, debug=self.verbosity)
                 self.meta_streams[stream_name] = (meta_s, meta_q)
@@ -442,6 +483,10 @@ class rx_block (gr.top_block):
     def kill(self):
         for chan in self.channels:
             chan.kill()
+
+        for instance in self.audio_instances:
+            if self.audio_instances[instance] is not None:
+                self.audio_instances[instance].stop()
 
 # data unit receive queue
 #
