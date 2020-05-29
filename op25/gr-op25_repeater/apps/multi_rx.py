@@ -82,16 +82,17 @@ class device(object):
             name, gain = tup.split(':')
             self.src.set_gain(int(gain), str(name))
 
-        self.src.set_freq_corr(config['ppm'])
-        self.ppm = config['ppm']
+        self.ppm = float(from_dict(config, 'ppm', "0.0"))
+        self.src.set_freq_corr(int(self.ppm))
 
         self.src.set_sample_rate(config['rate'])
         self.sample_rate = config['rate']
 
         self.offset = int(from_dict(config, 'offset', 0))
 
-        self.src.set_center_freq(config['frequency'] + self.offset)
-        self.frequency = config['frequency']
+        self.frequency = int(from_dict(config, 'frequency', 800000000))
+        self.fractional_corr = (self.ppm - int(self.ppm)) * (self.frequency/1e6)
+        self.src.set_center_freq(config['frequency'] + self.offset + self.fractional_corr)
 
 class channel(object):
     def __init__(self, config, dev, verbosity, msgq_id, rx_q):
@@ -211,8 +212,9 @@ class channel(object):
         self.frequency = freq
         if not self.demod.set_relative_frequency(self.device.offset + self.device.frequency - freq): # First attempt relative tune
             if self.device.tunable:                                                                  # then hard tune if allowed
-                self.device.src.set_center_freq(self.frequency + self.device.offset)
                 self.device.frequency = self.frequency
+                self.device.fractional_corr = (self.device.ppm - int(self.device.ppm)) * (self.device.frequency/1e6)
+                self.device.src.set_center_freq(self.frequency + self.device.offset + self.device.fractional_corr)
                 self.demod.set_relative_frequency(self.device.offset + self.device.frequency - freq)
             else:                                                                                    # otherwise fail and reset to prev freq
                 self.demod.set_relative_frequency(self.device.offset + self.device.frequency - old_freq)

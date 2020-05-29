@@ -40,7 +40,7 @@
             "gains": "LNA:39", 
             "name": "rtl0", 
             "offset": 0, 
-            "ppm": 0, 
+            "ppm": 0.0, 
             "rate": 1000000, 
             "tunable": true
         },
@@ -50,7 +50,7 @@
             "gains": "LNA:39", 
             "name": "rtl1", 
             "offset": 0, 
-            "ppm": 0, 
+            "ppm": 0.0, 
             "rate": 1000000, 
             "tunable": true
         }
@@ -62,7 +62,7 @@
                 "sysname": "Example",
                 "control_channel_list": "854.4125",
                 "tgid_tags_file": "",
-                "tgid_hold_time": "2.0",
+                "tgid_hold_time": 2.0,
                 "blacklist": "",
                 "whitelist": "",
                 "bandplan": "800_reband"
@@ -97,7 +97,7 @@
                 "instance_name": "audio0",
                 "device_name": "default",
                 "udp_port": 23456,
-                "audio_gain": "1.0",
+                "audio_gain": 1.0,
                 "number_channels": 1
             }
         ]
