@@ -36,6 +36,7 @@ _def_sps_mult = 2
 
 GNUPLOT = '/usr/bin/gnuplot'
 
+Y_AVG    = 0.03
 FFT_AVG  = 0.05
 MIX_AVG  = 0.10
 BAL_AVG  = 0.05
@@ -163,8 +164,8 @@ class wrap_gp(object):
                 plots.append('"-" with lines')
                 if min(self.avg_pwr) == 0: # plot is broken, probably because source device was missing
                     return
-                self.min_y = ((20 * np.log10(min(self.avg_pwr))) // 20) * 20  # round to floor by 20's
-                self.min_y = -100 if self.min_y > -100 else self.min_y
+                min_y = 20 * np.log10(min(self.avg_pwr))
+                self.min_y = ((1.0 - Y_AVG) * self.min_y) + (Y_AVG * min_y) 
         self.buf = []
 
         # FFT processing needs to be completed to maintain the weighted average buckets
@@ -208,7 +209,7 @@ class wrap_gp(object):
             h+= 'set xlabel "Frequency"\n'
             h+= 'set ylabel "Power(dB)"\n'
             h+= 'set grid\n'
-            h+= 'set yrange [%d:0]\n' % int(self.min_y)
+            h+= 'set yrange [%d:0]\n' % ((self.min_y // 20) * 20)
             if mode == 'mixer': # mixer
                                 h+= 'set title "%sMixer: balance %3.0f (smaller is better)"\n' % (self.plot_name, (np.abs(self.avg_sum_pwr * 1000)))
             else:           # fft
