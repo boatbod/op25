@@ -202,9 +202,6 @@ namespace gr{
 
             // Timers reset
             reset_timer();
-            if (d_debug >= 11) {
-                fprintf(stderr, "%s rx_smartzone::sync_reset:\n", logts.get(d_msgq_id));
-            }
         }
 
         void rx_smartnet::reset_timer(void) {
