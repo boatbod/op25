@@ -164,6 +164,18 @@ class rx_ctl(object):
             for rx in self.systems[self.receivers[m_rxid]['sysname']]['voice']:  # then have all the voice receivers scan for activity
                 rx.scan_for_talkgroups(curr_time)
 
+    def to_json(self):
+        d = {'json_type': 'trunk_update'}
+        syid = 0;
+        for system in self.systems:
+            d[syid] = json.loads(self.systems[system]['control'].to_json())
+            syid += 1
+        d['srcaddr'] = 0
+        d['grpaddr'] = 0
+        d['encrypted'] = 0
+        d['nac'] = 0
+        return json.dumps(d)
+
 #################
 # Smartnet control channel class
 class osw_receiver(object):
@@ -181,8 +193,11 @@ class osw_receiver(object):
         self.cc_index = -1
         self.cc_retries = 0
         self.last_expiry_check = 0.0
+        self.last_osw = 0.0
         self.rx_cc_freq = None
         self.rx_sys_id = None
+        self.stats = {}
+        self.stats['osw_count'] = 0
 
     def get_frequencies(self):
         return self.voice_frequencies
@@ -293,6 +308,8 @@ class osw_receiver(object):
             osw_grp  =  ord(s[2])
             osw_cmd  = (ord(s[3]) << 8) + ord(s[4])
             self.enqueue(osw_addr, osw_grp, osw_cmd)
+            self.stats['osw_count'] += 1
+            self.last_osw = curr_time
 
         self.process_osws()
         self.expire_talkgroups(curr_time)
@@ -506,6 +523,29 @@ class osw_receiver(object):
                 if self.debug > 1:
                     sys.stderr.write("%s [%d] expiring tg(%d), freq(%f)\n" % (log_ts.get(), self.msgq_id, tgid, self.talkgroups[tgid]['frequency']))
                 self.talkgroups[tgid]['receiver'].expire_talkgroup(reason="expiry")
+
+    def to_json(self):  # ugly but required for compatibility with P25 trunking and terminal modules
+        d = {}
+        d['syid'] = ""
+        d['rfid'] = ""
+        d['stid'] = ""
+        d['sysid'] = self.rx_sys_id if self.rx_sys_id is not None else 0
+        d['rxchan'] = (self.rx_cc_freq * 1e6) if self.rx_cc_freq is not None else self.cc_list[self.cc_index]
+        d['txchan'] = 0
+        d['wacn'] = 0
+        d['secondary'] = ""
+        d['tsbks'] = self.stats['osw_count']
+        d['frequencies'] = {}
+        d['frequency_data'] = {}
+        d['last_tsbk'] = self.last_osw
+        t = time.time()
+        for f in list(self.voice_frequencies.keys()):
+            tgs = '%s' % (self.voice_frequencies[f]['tgid'])
+            d['frequencies'][f] = 'voice frequency %f tgid %s %4.1fs ago count %d' %  (f, tgs, t - self.voice_frequencies[f]['time'], self.voice_frequencies[f]['counter'])
+
+            d['frequency_data'][f] = {'tgids': self.voice_frequencies[f]['tgid'], 'last_activity': '%7.1f' % (t - self.voice_frequencies[f]['time']), 'counter': self.voice_frequencies[f]['counter']}
+        d['adjacent_data'] = ""
+        return json.dumps(d)
 
 #################
 # Voice channel class

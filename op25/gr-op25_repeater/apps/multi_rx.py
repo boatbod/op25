@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 # Copyright 2011, 2012, 2013, 2014, 2015, 2016, 2017 Max H. Parke KA1RBI
+# Copyright 2020 Graham J. Norbury - gnorbury@bondcar.com
 # 
 # This file is part of OP25
 # 
@@ -285,6 +286,8 @@ class rx_block (gr.top_block):
         self.trunking = None
         self.du_watcher = None
         self.rx_q = gr.msg_queue(100)
+        self.ui_in_q = gr.msg_queue(10)
+        self.ui_out_q = gr.msg_queue(10)
         if "trunking" in config:
             self.configure_trunking(config['trunking'])
 
@@ -293,6 +296,10 @@ class rx_block (gr.top_block):
 
         if self.trunking is not None: # post-initialization after channels and devices created
             self.trunk_rx.post_init()
+
+        self.terminal = None
+        if "terminal" in config:
+            self.configure_terminal(config['terminal'])
 
     def configure_audio(self, config):
         audio_mod = config['module']
@@ -326,6 +333,18 @@ class rx_block (gr.top_block):
             else:
                 sys.stderr.write("Ignoring unnamed audio instance #%d\n" % idx)
             idx += 1
+
+    def configure_terminal(self, config):
+        term_mod = config['module']
+        if term_mod.endswith('.py'):
+            term_mod = term_mod[:-3]
+        try:
+            terminal = importlib.import_module(term_mod)
+        except:
+            terminal = None
+            sys.stderr.write("Error: unable to import terminal module: %s\n%s\n" % (config['module'], sys.exc_info()[1]))
+        term_type = str(from_dict(config,'terminal_type', "curses"))
+        self.terminal = terminal.op25_terminal(self.ui_in_q, self.ui_out_q, term_type)
 
     def configure_trunking(self, config):
         if (("module" in config and (config['module'] == "")) or 
@@ -482,6 +501,38 @@ class rx_block (gr.top_block):
         if (msgq_id >= 0 and msgq_id < len(self.channels)) and self.channels[msgq_id].nbfm is not None:
             self.channels[msgq_id].nbfm.control(action)
 
+    def process_qmsg(self, msg):
+        # return true = end top block
+        RX_COMMANDS = 'skip lockout hold whitelist reload'
+        s = msg.to_string()
+        if s == 'quit': return True
+        elif s == 'update':                 # UI requested update
+            #self.freq_update()
+            if self.trunking is None or self.trunk_rx is None:
+                return False
+            js = self.trunk_rx.to_json()    # extract data from trunking module
+            msg = gr.message().make_from_string(js, -4, 0, 0)
+            self.ui_in_q.insert_tail(msg)   # send info back to UI
+            #self.process_ajax()
+        #elif s == 'set_freq':
+        #    freq = msg.arg1()
+        #    self.last_freq_params['freq'] = freq
+        #    self.set_freq(freq)
+        #elif s == 'adj_tune':
+        #    freq = msg.arg1()
+        #    self.adj_tune(freq)
+        #elif s == 'toggle_plot':
+        #    plot_type = msg.arg1()
+        #    self.toggle_plot(plot_type)
+        #elif s == 'dump_tgids':
+        #    self.trunk_rx.dump_tgids()
+        #elif s == 'add_default_config':
+        #    nac = msg.arg1()
+        #    self.trunk_rx.add_default_config(int(nac))
+        #elif s in RX_COMMANDS:
+        #    self.rx_q.insert_tail(msg)
+        return False
+
     def kill(self):
         for chan in self.channels:
             chan.kill()
@@ -489,6 +540,10 @@ class rx_block (gr.top_block):
         for instance in self.audio_instances:
             if self.audio_instances[instance] is not None:
                 self.audio_instances[instance].stop()
+
+    def stop(self):
+        self.kill()
+        gr.top_block.stop(self)
 
 # data unit receive queue
 #
@@ -542,6 +597,12 @@ class rx_main(object):
         else:
             config = json.loads(open(options.config_file).read())
         self.tb = rx_block(options.verbosity, config = byteify(config))
+        self.q_watcher = du_queue_watcher(self.tb.ui_out_q, self.process_qmsg)
+
+    def process_qmsg(self, msg):
+        if self.tb.process_qmsg(msg):
+            self.tb.stop()
+            self.keep_running = False
 
     def run(self):
         try:
