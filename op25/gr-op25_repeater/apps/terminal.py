@@ -263,12 +263,7 @@ class curses_terminal(threading.Thread):
                 times = {msg[nac]['last_tsbk']:nac for nac in nacs}
                 current_nac = times[ sorted(list(times.keys()), reverse=True)[0] ]
             self.current_nac = current_nac
-            s = 'NAC 0x%x' % (int(current_nac))
-            s += ' WACN 0x%x' % (msg[current_nac]['wacn'])
-            s += ' SYSID 0x%x' % (msg[current_nac]['sysid'])
-            s += ' %f' % (msg[current_nac]['rxchan']/ 1000000.0)
-            s += '/%f' % (msg[current_nac]['txchan']/ 1000000.0)
-            s += ' tsbks %d' % (msg[current_nac]['tsbks'])
+            s = str(msg[current_nac]['top_line'])
             freqs = sorted(msg[current_nac]['frequencies'].keys())
             s = s[:(self.maxx - 1)]
             self.top_bar.erase()

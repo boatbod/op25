@@ -124,6 +124,11 @@ class trunked_system (object):
 
     def to_json(self):
         d = {}
+        d['top_line']  = 'WACN 0x%x' % (self.ns_wacn)
+        d['top_line'] += ' SYSID 0x%x' % (self.ns_syid)
+        d['top_line'] += ' %f' % (self.rfss_chan/ 1000000.0)
+        d['top_line'] += '/%f' % (self.rfss_txchan/ 1000000.0)
+        d['top_line'] += ' tsbks %d' % (self.stats['tsbks'])
         d['syid'] = self.rfss_syid
         d['rfid'] = self.rfss_rfid
         d['stid'] = self.rfss_stid
@@ -132,7 +137,6 @@ class trunked_system (object):
         d['txchan'] = self.rfss_txchan
         d['wacn'] = self.ns_wacn
         d['secondary'] = list(self.secondary.keys())
-        d['tsbks'] = self.stats['tsbks']
         d['frequencies'] = {}
         d['frequency_data'] = {}
         d['last_tsbk'] = self.last_tsbk
@@ -991,6 +995,7 @@ class rx_ctl (object):
         d = {'json_type': 'trunk_update'}
         for nac in list(self.trunked_systems.keys()):
             d[nac] = json.loads(self.trunked_systems[nac].to_json())
+            d[nac]['top_line'] = 'NAC 0x%x %s' % (nac, d[nac]['top_line']) # prepend NAC which is not known by trunked_systems 
         d['srcaddr'] = self.current_srcaddr
         d['grpaddr'] = self.current_grpaddr
         d['encrypted'] = self.current_encrypted

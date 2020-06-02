@@ -38,6 +38,7 @@ var SEND_QLIMIT = 5;
 var c_freq = 0;
 var c_system = null;
 var c_tag = null;
+var c_stream_url = null;
 var c_srcaddr = 0;
 var c_grpaddr = 0;
 var c_encrypted = 0;
@@ -254,18 +255,14 @@ function trunk_update(d) {
         if (nac != c_nac)
             continue;
         html += "<span class=\"nac\">";
-        html += "NAC " + "0x" + parseInt(nac).toString(16) + " ";
-        html += d[nac]['rxchan'] / 1000000.0;
-        html += " / ";
-        html += d[nac]['txchan'] / 1000000.0;
-        html += " tsbks " + d[nac]['tsbks'];
+        html += d[nac]['top_line'];
         html += "</span><br>";
 
-        html += "<span class=\"label\">WACN: </span>" + "<span class=\"value\">0x" + parseInt(d[nac]['wacn']).toString(16) + " </span>";
-        html += "<span class=\"label\">System ID: </span>" + "<span class=\"value\">0x" + parseInt(d[nac]['sysid']).toString(16) + " </span>";
-        html += "<span class=\"label\">RFSS ID: </span><span class=\"value\">" + d[nac]['rfid'] + " </span>";
-        html += "<span class=\"label\">Site ID: </span><span class=\"value\">" + d[nac]['stid'] + "</span><br>";
-        if (d[nac]["secondary"].length) {
+        if (d[nac]['rfid'] != undefined)
+            html += "<span class=\"label\">RFSS ID: </span><span class=\"value\">" + d[nac]['rfid'] + " </span>";
+        if (d[nac]['stid'] != undefined)
+            html += "<span class=\"label\">Site ID: </span><span class=\"value\">" + d[nac]['stid'] + "</span><br>";
+        if (d[nac]['secondary'] != undefined && d[nac]["secondary"].length) {
             html += "<span class=\"label\">Secondary control channel(s): </span><span class=\"value\"> ";
             for (i=0; i<d[nac]["secondary"].length; i++) {
                 html += d[nac]["secondary"][i] / 1000000.0;
@@ -293,7 +290,7 @@ function trunk_update(d) {
         for (var freq in d[nac]['frequency_data']) {
             tg2 = d[nac]['frequency_data'][freq]['tgids'][1];
             if (tg2 == null)
-                tg2 = "&nbsp;";
+                tg2 = "&nbsp;-";
             var color = "#d0d0d0";
             if ((ct & 1) == 0)
                 color = "#c0c0c0";

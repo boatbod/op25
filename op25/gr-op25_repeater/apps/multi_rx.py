@@ -501,13 +501,13 @@ class rx_block (gr.top_block):
         if (msgq_id >= 0 and msgq_id < len(self.channels)) and self.channels[msgq_id].nbfm is not None:
             self.channels[msgq_id].nbfm.control(action)
 
-    def process_qmsg(self, msg):
+    def process_qmsg(self, msg):            # Handle UI requests
         # return true = end top block
         RX_COMMANDS = 'skip lockout hold whitelist reload'
         s = msg.to_string()
         if s == 'quit': return True
         elif s == 'update':                 # UI requested update
-            #self.freq_update()
+            #self.ui_freq_update()
             if self.trunking is None or self.trunk_rx is None:
                 return False
             js = self.trunk_rx.to_json()    # extract data from trunking module
@@ -532,6 +532,16 @@ class rx_block (gr.top_block):
         #elif s in RX_COMMANDS:
         #    self.rx_q.insert_tail(msg)
         return False
+
+    def ui_freq_update(self):
+        if self.trunking is None or self.trunk_rx is None:
+            return False
+        params = json_loads(self.trunk_rx.chans_to_json())    # extract data from voice channels
+        #params['fine_tune'] = self.options.fine_tune
+        #params['stream_url'] = self.stream_url
+        js = json.dumps(params)
+        msg = gr.message().make_from_string(js, -4, 0, 0)
+        self.ui_in_q.insert_tail(msg)
 
     def kill(self):
         for chan in self.channels:

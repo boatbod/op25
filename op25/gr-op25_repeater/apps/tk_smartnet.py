@@ -176,6 +176,15 @@ class rx_ctl(object):
         d['nac'] = 0
         return json.dumps(d)
 
+    def to_json2(self):
+        d = {'json_type': 'change_freq'}
+        syid = 0;
+        for system in self.systems:
+            d[syid] = json.loads(self.systems[system]['voice'].to_json())
+            syid += 1
+        return json.dumps(d)
+
+
 #################
 # Smartnet control channel class
 class osw_receiver(object):
@@ -402,21 +411,21 @@ class osw_receiver(object):
                     sys.stderr.write("%s [%d] SMARTNET GROUP GRANT src(%d), tgid(%d), freq(%f)\n" % (log_ts.get(), self.msgq_id, src_rid, dst_tgid, tgt_freq))
             elif osw1_ch and not osw1_grp and ((osw1_addr & 0xff00) == 0x1f00):  # SysId + Control Channel Frequency broadcast
                 self.rx_sys_id = osw2_addr
-                self.rx_cc_freq = osw1_f
+                self.rx_cc_freq = osw1_f * 1e6
                 if self.debug >= 11:
                     sys.stderr.write("%s [%d] SMARTNET SYSID (%x) CONTROL CHANNEL (%f)\n" % (log_ts.get(), self.msgq_id, osw2_addr, osw1_f))
             elif osw1_cmd == 0x30b:
                 osw0_addr, osw0_grp, osw0_cmd, osw0_ch, osw0_f = self.osw_q.popleft()
                 if osw0_ch and ((osw0_addr & 0xff00) == 0x1F00) and ((osw1_addr & 0xfc00) == 0x2800) and ((osw1_addr & 0x3ff) == osw0_cmd):
                     self.rx_sys_id = osw2_addr
-                    self.rx_cc_freq = osw0_f
+                    self.rx_cc_freq = osw0_f * 1e6
                     if self.debug >= 11:
                         sys.stderr.write("%s [%d] SMARTNET SYSID (%x) CONTROL CHANNEL (%f)\n" % (log_ts.get(), self.msgq_id, osw2_addr, osw1_f))
                 else:
                     self.osw_q.appendleft((osw0_addr, osw0_grp, osw0_cmd, osw0_ch, osw0_f)) # put back unused OSW0
                     if ((osw1_addr & 0xfc00) == 0x2800):
                         self.rx_sys_id = osw2_addr
-                        self.rx_cc_freq = self.get_freq(osw1_addr & 0x3ff)
+                        self.rx_cc_freq = self.get_freq(osw1_addr & 0x3ff) * 1e6
                         if self.debug >= 11:
                             sys.stderr.write("%s [%d] SMARTNET SYSID (%x) CONTROL CHANNEL (%f)\n" % (log_ts.get(), self.msgq_id, osw2_addr, osw1_f))
             elif osw1_cmd == 0x320:
@@ -454,13 +463,15 @@ class osw_receiver(object):
             if self.debug >= 11:
                 sys.stderr.write("%s [%d] SMARTNET GROUP UPDATE tgid(%d), freq(%f)\n" % (log_ts.get(), self.msgq_id, dst_tgid, tgt_freq))
         elif osw2_ch and not osw2_grp and ((osw2_addr & 0xff00) == 0x1f00):      # Control Channel Frequency broadcast
-            self.rx_cc_freq = osw2_f
+            self.rx_cc_freq = osw2_f * 1e6
             if self.debug >= 11:
                 sys.stderr.write("%s [%d] SMARTNET CONTROL CHANNEL freq (%f)\n" % (log_ts.get(), self.msgq_id, osw2_f))
 
-    def update_voice_frequency(self, frequency, tgid=None, srcaddr=-1, mode=-1):
-        if not frequency:    # e.g., channel identifier not yet known
+    def update_voice_frequency(self, float_freq, tgid=None, srcaddr=-1, mode=-1):
+        if not float_freq:    # e.g., channel identifier not yet known
             return
+
+        frequency = int(float_freq * 1e6) # use integer not float as dictionary keys
 
         self.update_talkgroups(frequency, tgid, srcaddr, mode)
 
@@ -471,7 +482,7 @@ class osw_receiver(object):
             sorted_freqs = collections.OrderedDict(sorted(self.voice_frequencies.items()))
             self.voice_frequencies = sorted_freqs
             if self.debug >= 5:
-                sys.stderr.write('%s [%d] new freq=%f\n' % (log_ts.get(), self.msgq_id, frequency))
+                sys.stderr.write('%s [%d] new freq=%f\n' % (log_ts.get(), self.msgq_id, (frequency/1e6)))
 
         if 'tgid' not in self.voice_frequencies[frequency]:
             self.voice_frequencies[frequency]['tgid'] = [None]
@@ -521,29 +532,23 @@ class osw_receiver(object):
         for tgid in self.talkgroups:
             if (self.talkgroups[tgid]['receiver'] is not None) and (curr_time >= self.talkgroups[tgid]['time'] + TGID_EXPIRY_TIME):
                 if self.debug > 1:
-                    sys.stderr.write("%s [%d] expiring tg(%d), freq(%f)\n" % (log_ts.get(), self.msgq_id, tgid, self.talkgroups[tgid]['frequency']))
+                    sys.stderr.write("%s [%d] expiring tg(%d), freq(%f)\n" % (log_ts.get(), self.msgq_id, tgid, (self.talkgroups[tgid]['frequency']/1e6)))
                 self.talkgroups[tgid]['receiver'].expire_talkgroup(reason="expiry")
 
     def to_json(self):  # ugly but required for compatibility with P25 trunking and terminal modules
         d = {}
-        d['syid'] = ""
-        d['rfid'] = ""
-        d['stid'] = ""
-        d['sysid'] = self.rx_sys_id if self.rx_sys_id is not None else 0
-        d['rxchan'] = (self.rx_cc_freq * 1e6) if self.rx_cc_freq is not None else self.cc_list[self.cc_index]
-        d['txchan'] = 0
-        d['wacn'] = 0
+        d['top_line']  = 'Smartnet/Smartzone SysId %04x' % (self.rx_sys_id if self.rx_sys_id is not None else 0)
+        d['top_line'] += ' Control Ch %f' % ((self.rx_cc_freq if self.rx_cc_freq is not None else self.cc_list[self.cc_index]) / 1e6)
+        d['top_line'] += ' OSW count %d' % (self.stats['osw_count'])
         d['secondary'] = ""
-        d['tsbks'] = self.stats['osw_count']
         d['frequencies'] = {}
         d['frequency_data'] = {}
         d['last_tsbk'] = self.last_osw
         t = time.time()
         for f in list(self.voice_frequencies.keys()):
-            tgs = '%s' % (self.voice_frequencies[f]['tgid'])
-            d['frequencies'][f] = 'voice frequency %f tgid %s %4.1fs ago count %d' %  (f, tgs, t - self.voice_frequencies[f]['time'], self.voice_frequencies[f]['counter'])
+            d['frequencies'][f] = 'voice frequency %f tgid %5d %4.1fs ago count %d' %  ((f/1e6), self.voice_frequencies[f]['tgid'], t - self.voice_frequencies[f]['time'], self.voice_frequencies[f]['counter'])
 
-            d['frequency_data'][f] = {'tgids': self.voice_frequencies[f]['tgid'], 'last_activity': '%7.1f' % (t - self.voice_frequencies[f]['time']), 'counter': self.voice_frequencies[f]['counter']}
+            d['frequency_data'][f] = {'tgids': [self.voice_frequencies[f]['tgid']], 'last_activity': '%7.1f' % (t - self.voice_frequencies[f]['time']), 'counter': self.voice_frequencies[f]['counter']}
         d['adjacent_data'] = ""
         return json.dumps(d)
 
@@ -604,7 +609,7 @@ class voice_receiver(object):
         elif (m_type == -4): # P25 sync established (indicates this is a digital channel)
             if self.current_tgid is not None:
                 if self.debug >= 9:
-                    sys.stderr.write("%s [%d] digital sync detected:  tg(%d), freq(%f), mode(%d)\n" % (log_ts.get(), self.msgq_id, self.current_tgid, self.tuned_frequency, self.talkgroups[self.current_tgid]['mode']))
+                    sys.stderr.write("%s [%d] digital sync detected:  tg(%d), freq(%f), mode(%d)\n" % (log_ts.get(), self.msgq_id, self.current_tgid, (self.tuned_frequency/1e6), self.talkgroups[self.current_tgid]['mode']))
                 self.nbfm_ctrl(self.msgq_id, False)              # disable nbfm
                 self.talkgroups[self.current_tgid]['mode'] = 1   # set mode to digital
         elif (m_type == 3):  # DUID-3  (call termination without channel release)
@@ -657,11 +662,11 @@ class voice_receiver(object):
 
         if self.current_tgid is None:
             if self.debug > 1:
-                sys.stderr.write("%s [%d] voice update:  tg(%d), freq(%f), mode(%d)\n" % (log_ts.get(), self.msgq_id, tgid, freq, self.talkgroups[tgid]['mode']))
+                sys.stderr.write("%s [%d] voice update:  tg(%d), freq(%f), mode(%d)\n" % (log_ts.get(), self.msgq_id, tgid, (freq/1e6), self.talkgroups[tgid]['mode']))
             self.tune_voice(freq, tgid)
         else:
             if self.debug > 1:
-                sys.stderr.write("%s [%d] voice preempt: tg(%d), freq(%f), mode(%d)\n" % (log_ts.get(), self.msgq_id, tgid, freq, self.talkgroups[tgid]['mode']))
+                sys.stderr.write("%s [%d] voice preempt: tg(%d), freq(%f), mode(%d)\n" % (log_ts.get(), self.msgq_id, tgid, (freq/1e6), self.talkgroups[tgid]['mode']))
             self.expire_talkgroup(update_meta=False, reason="preempt")
             self.tune_voice(freq, tgid)
 
@@ -670,7 +675,10 @@ class voice_receiver(object):
     def tune_voice(self, freq, tgid):
         if freq != self.tuned_frequency:
             tune_params = {'tuner': self.msgq_id,
-                           'freq': get_frequency(freq)}
+                           'freq': get_frequency(freq),
+                           'tgid': tgid,
+                           'tag': self.talkgroups[tgid]['tag'],
+                           'system': self.config['trunking_sysname']}
             self.frequency_set(tune_params)
             self.tuned_frequency = freq
         self.current_tgid = tgid
@@ -686,7 +694,7 @@ class voice_receiver(object):
             
         self.talkgroups[self.current_tgid]['receiver'] = None
         if self.debug > 1:
-            sys.stderr.write("%s [%d] releasing:  tg(%d), freq(%f), reason(%s)\n" % (log_ts.get(), self.msgq_id, self.current_tgid, self.tuned_frequency, reason))
+            sys.stderr.write("%s [%d] releasing:  tg(%d), freq(%f), reason(%s)\n" % (log_ts.get(), self.msgq_id, self.current_tgid, (self.tuned_frequency/1e6), reason))
         self.hold_tgid = self.current_tgid
         self.hold_until = time.time() + TGID_HOLD_TIME
         self.current_tgid = None
@@ -694,3 +702,6 @@ class voice_receiver(object):
         if update_meta:
             meta_update(self.meta_q)
 
+    def to_json(self):  # more uglyness
+        d = {}
+        return json.dumps(d)
