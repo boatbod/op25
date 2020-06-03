@@ -157,8 +157,9 @@ class channel(object):
         
         if self.nbfm_mode > 0:
             nbfm_dev = int(from_dict(config, 'nbfm_deviation', 4000))
-            nbfm_sq = int(from_dict(config, 'nbfm_squelch', -60))
-            self.nbfm = op25_nbfm.op25_nbfm_c(str(config['destination']), verbosity, config['if_rate'], nbfm_dev, nbfm_sq, msgq_id, rx_q)
+            nbfm_sq_thresh = int(from_dict(config, 'nbfm_squelch_threshold', -60))
+            nbfm_sq_gain = float(from_dict(config, 'nbfm_squelch_gain', 0.0015))
+            self.nbfm = op25_nbfm.op25_nbfm_c(str(config['destination']), verbosity, config['if_rate'], nbfm_dev, nbfm_sq_thresh, nbfm_sq_gain, msgq_id, rx_q)
             if self.demod.connect_nbfm(self.nbfm):
                 if self.nbfm_mode == 2:
                     self.nbfm.control(True)
@@ -610,6 +611,9 @@ class rx_main(object):
         if options.config_file == '-':
             config = json.loads(sys.stdin.read())
         else:
+            if options.config_file is None:
+                parser.print_help()
+                exit(1)
             config = json.loads(open(options.config_file).read())
         self.tb = rx_block(options.verbosity, config = byteify(config))
         self.q_watcher = du_queue_watcher(self.tb.ui_out_q, self.process_qmsg)

@@ -34,7 +34,7 @@ from log_ts import log_ts
 _PCM_RATE       = 8000   # PCM is 8kHz S16LE format
 
 class op25_nbfm_c(gr.hier_block2):
-    def __init__(self, dest, debug, input_rate, deviation, squelch, msgq_id, msg_q):
+    def __init__(self, dest, debug, input_rate, deviation, squelch, gain, msgq_id, msg_q):
 
         gr.hier_block2.__init__(self, "op25_nbfm_c",
                                 gr.io_signature(1, 1, gr.sizeof_gr_complex), # Input signature
@@ -48,7 +48,7 @@ class op25_nbfm_c(gr.hier_block2):
         self.switch.set_enabled(False)
 
         # power squelch
-        self.squelch = analog.simple_squelch_cc(squelch, 0.0015)
+        self.squelch = analog.simple_squelch_cc(squelch, gain)
 
         # quadrature demod
         fm_demod_gain = input_rate / (4 * pi * deviation)
