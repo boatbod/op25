@@ -166,6 +166,18 @@ function change_freq(d) {
     channel_status();
 }
 
+function voice_update(d) {
+    if (d['voice_count'] > 0) {             //TODO: enhance to display all voice receivers, not just the first
+        c_freq = d['0']['freq'];
+        c_system = d['0']['system'];
+        current_tgid = d['0']['tgid'];
+        c_tag = d['0']['tag'];
+        c_srcaddr = d['0']['srcaddr'];
+        c_stream_url = d['0']['stream_url'];
+        channel_status();
+    }
+}
+
 function channel_status() {
     var html;
     var s2_freq = document.getElementById("s2_freq");
@@ -331,7 +343,7 @@ function http_req_cb() {
     }
     r200_count += 1;
     var dl = JSON.parse(http_req.responseText);
-    var dispatch = {'trunk_update': trunk_update, 'change_freq': change_freq, 'rx_update': rx_update}
+    var dispatch = {'trunk_update': trunk_update, 'change_freq': change_freq, 'voice_update': voice_update, 'rx_update': rx_update}
     for (var i=0; i<dl.length; i++) {
         var d = dl[i];
         if (!("json_type" in d))

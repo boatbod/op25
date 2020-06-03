@@ -58,6 +58,7 @@ class curses_terminal(threading.Thread):
         self.last_update = 0
         self.auto_update = True
         self.current_nac = None
+        self.current_srcaddr = 0
         self.maxx = 0
         self.maxy = 0
         self.sock = sock
@@ -277,23 +278,24 @@ class curses_terminal(threading.Thread):
                 s = s[:(self.maxx - 1)]
                 self.freq_list.addstr(i, 0, s)
             self.freq_list.refresh()
-            self.status1.erase()
             if 'srcaddr' in msg:
+                self.status1.erase()
                 srcaddr = msg['srcaddr']
                 if (srcaddr != 0) and (srcaddr != 0xffffff):
                     s = '%d' % (srcaddr)
                     s = s[:14]
                     self.status1.addstr(0, (14-len(s)), s)
-            self.status1.refresh()
-            self.status2.erase()
+                    self.current_srcaddr = srcaddr
+                self.status1.refresh()
             if 'encrypted' in msg:
+                self.status2.erase()
                 encrypted = msg['encrypted']
                 if encrypted != 0:
                     s = 'ENCRYPTED'
                     self.status2.addstr(0, (14-len(s)), s, curses.A_REVERSE)
-            self.status2.refresh()
+                self.status2.refresh()
             self.stdscr.refresh()
-        elif msg['json_type'] == 'change_freq':
+        elif msg['json_type'] == 'change_freq': # from rx.py trunking
             s = 'Frequency %f' % (msg['freq'] / 1000000.0)
             if msg['fine_tune'] is not None:
                 s +='(%d)' % msg['fine_tune']
@@ -306,12 +308,56 @@ class curses_terminal(threading.Thread):
             self.active2.erase()
             self.active1.addstr(0, 0, s)
             self.active1.refresh()
+            s = ""
             if msg['tag']:
                 s = msg['tag']
                 s = s[:(self.maxx - 16)]
                 self.active2.addstr(0, 0, s)
             self.active2.refresh()
             self.stdscr.refresh()
+        elif msg['json_type'] == 'voice_update': # from multi_rx.py trunking
+            voice_count = msg['voice_count']
+            if voice_count <= 0: # the curses terminal only has room to display the first voice receiver info
+                return
+            s = 'Frequency %f' % (msg['0']['freq'] / 1000000.0)
+            if msg['0']['tgid'] is not None:
+                s += ' Talkgroup ID %s' % (msg['0']['tgid'])
+                if 'tdma' in msg['0'] and msg['0']['tdma'] is not None:
+                    s += ' TDMA Slot %s' % msg['0']['tdma']
+                if 'mode' in msg['0']:
+                    mode  = msg['0']['mode']
+                    if mode == 0:
+                        mode_str = "Analog"
+                    elif mode == 1:
+                        mode_str = "Digital"
+                    else:
+                        mode_str = ""
+                    s += " %s" % mode_str
+            s = s[:(self.maxx - 16)]
+            self.active1.erase()
+            self.active2.erase()
+            self.active1.addstr(0, 0, s)
+            self.active1.refresh()
+            s = ""
+            if msg['0']['tag']:
+                s = msg['0']['tag']
+            s = s[:(self.maxx - 16)]
+            self.active2.addstr(0, 0, s)
+            self.active2.refresh()
+            self.stdscr.refresh()
+            if 'srcaddr' in msg['0']:
+                srcaddr = msg['0']['srcaddr']
+                if srcaddr == 0xffffffff:
+                    srcaddr = 0
+                if self.current_srcaddr != srcaddr:
+                    self.status1.erase()
+                    if srcaddr != 0:
+                        s = '%d' % (srcaddr)
+                        s = s[:14]
+                        self.status1.addstr(0, (14-len(s)), s)
+                    self.current_srcaddr = srcaddr
+                    self.status1.refresh()
+ 
         return False
 
     def process_q_events(self):

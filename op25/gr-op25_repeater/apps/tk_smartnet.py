@@ -170,18 +170,17 @@ class rx_ctl(object):
         for system in self.systems:
             d[syid] = json.loads(self.systems[system]['control'].to_json())
             syid += 1
-        d['srcaddr'] = 0
-        d['grpaddr'] = 0
-        d['encrypted'] = 0
         d['nac'] = 0
         return json.dumps(d)
 
     def to_json2(self):
-        d = {'json_type': 'change_freq'}
+        d = {'json_type': 'voice_update'}
         syid = 0;
-        for system in self.systems:
-            d[syid] = json.loads(self.systems[system]['voice'].to_json())
+        for sysname in self.systems:
+            for voice in self.systems[sysname]['voice']:
+                d[syid] = json.loads(voice.to_json())
             syid += 1
+        d['voice_count'] = syid
         return json.dumps(d)
 
 
@@ -693,6 +692,7 @@ class voice_receiver(object):
             return
             
         self.talkgroups[self.current_tgid]['receiver'] = None
+        self.talkgroups[self.current_tgid]['srcaddr'] = 0
         if self.debug > 1:
             sys.stderr.write("%s [%d] releasing:  tg(%d), freq(%f), reason(%s)\n" % (log_ts.get(), self.msgq_id, self.current_tgid, (self.tuned_frequency/1e6), reason))
         self.hold_tgid = self.current_tgid
@@ -704,4 +704,11 @@ class voice_receiver(object):
 
     def to_json(self):  # more uglyness
         d = {}
+        d['freq'] = self.tuned_frequency
+        d['tgid'] = self.current_tgid
+        d['system'] = self.config['trunking_sysname']
+        d['tag'] = self.talkgroups[self.current_tgid]['tag'] if self.current_tgid is not None else ""
+        d['srcaddr'] = self.talkgroups[self.current_tgid]['srcaddr'] if self.current_tgid is not None else 0
+        d['mode'] = self.talkgroups[self.current_tgid]['mode'] if self.current_tgid is not None else -1
+        d['stream'] = self.config['meta_stream_name'] if 'meta_stream_name' in self.config else ""
         return json.dumps(d)

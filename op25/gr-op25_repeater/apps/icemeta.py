@@ -41,12 +41,14 @@ class meta_server(threading.Thread):
         self.delay = 0
         self.msg = None
         self.urlBase = ""
+        self.url = ""
         if isinstance(metacfg,dict):
             self.cfg = metacfg
         else:
             self.cfg = {}
             self.load_json(metacfg)
         self.urlBase = "http://" + self.cfg['icecastServerAddress'] + "/admin/metadata?mount=/" + self.cfg['icecastMountpoint'] + "&mode=updinfo&song="
+        self.url = "http://" + self.cfg['icecastServerAddress'] + "/" + self.cfg['icecastMountpoint'] + self.cfg['icecastMountExt']
         self.delay = float(self.cfg['delay'])
         self.start()
 
@@ -93,4 +95,7 @@ class meta_server(threading.Thread):
             except (requests.ConnectionError, requests.Timeout):
                 if self.logging >= 1:
                     sys.stderr.write("%f meta_server::send_metadata(): exception %s\n" % (time.time(), sys.exc_info()[1]))
+
+    def get_url(self):
+        return self.url
 

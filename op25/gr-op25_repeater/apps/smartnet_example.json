@@ -101,5 +101,10 @@
                 "number_channels": 1
             }
         ]
+    },
+    "terminal": {
+        "module": "terminal.py",
+        "terminal_type": "curses",
+        "#terminal_type": "http:127.0.0.1:8080"
     }
 }

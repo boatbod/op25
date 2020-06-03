@@ -507,7 +507,7 @@ class rx_block (gr.top_block):
         s = msg.to_string()
         if s == 'quit': return True
         elif s == 'update':                 # UI requested update
-            #self.ui_freq_update()
+            self.ui_freq_update()
             if self.trunking is None or self.trunk_rx is None:
                 return False
             js = self.trunk_rx.to_json()    # extract data from trunking module
@@ -536,9 +536,14 @@ class rx_block (gr.top_block):
     def ui_freq_update(self):
         if self.trunking is None or self.trunk_rx is None:
             return False
-        params = json_loads(self.trunk_rx.chans_to_json())    # extract data from voice channels
-        #params['fine_tune'] = self.options.fine_tune
-        #params['stream_url'] = self.stream_url
+        params = json.loads(self.trunk_rx.to_json2())   # extract data from voice channels
+        for rx_id in range(params['voice_count']):      # iterate and convert stream name to url
+            voice_data = params[str(rx_id)]
+            s_name = voice_data['stream']
+            if s_name not in self.meta_streams:
+                continue
+            meta_s, meta_q = self.meta_streams[s_name]
+            voice_data['stream_url'] = meta_s.get_url()
         js = json.dumps(params)
         msg = gr.message().make_from_string(js, -4, 0, 0)
         self.ui_in_q.insert_tail(msg)
