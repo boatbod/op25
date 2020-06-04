@@ -178,7 +178,9 @@ class rx_ctl(object):
         syid = 0;
         for sysname in self.systems:
             for voice in self.systems[sysname]['voice']:
+                vc_name = from_dict(voice.config, 'name', ("[%d]" % voice.msgq_id))
                 d[syid] = json.loads(voice.to_json())
+                d[syid]['name'] = vc_name
             syid += 1
         d['voice_count'] = syid
         return json.dumps(d)

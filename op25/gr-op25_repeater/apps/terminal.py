@@ -319,7 +319,7 @@ class curses_terminal(threading.Thread):
             voice_count = msg['voice_count']
             if voice_count <= 0: # the curses terminal only has room to display the first voice receiver info
                 return
-            s = 'Frequency %f' % (msg['0']['freq'] / 1000000.0)
+            s = '%s Frequency %f' % (msg['0']['name'], msg['0']['freq'] / 1000000.0)
             if msg['0']['tgid'] is not None:
                 s += ' Talkgroup ID %s' % (msg['0']['tgid'])
                 if 'tdma' in msg['0'] and msg['0']['tdma'] is not None:

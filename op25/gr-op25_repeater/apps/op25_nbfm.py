@@ -59,17 +59,23 @@ class op25_nbfm_c(gr.hier_block2):
 
         # decimate and filter
         audio_decim = input_rate // _PCM_RATE
-        audio_taps = filter.firdes.low_pass(1.0,            # gain
-                                            input_rate,     # sampling rate
-                                            2.9e3,          # Audio LPF cutoff
-                                            0.5e3,          # Transition band
-                                            filter.firdes.WIN_HAMMING)  # filter type
-        self.audio_filter = filter.fir_filter_fff(audio_decim, audio_taps)
+        lpf_taps = filter.firdes.low_pass(1.0,            # gain
+                                          input_rate,     # sampling rate
+                                          2995.0,         # Audio high cutoff (remove aliasing)
+                                          0.5e3,          # transition
+                                          filter.firdes.WIN_HAMMING)  # filter type
+        hpf_taps = filter.firdes.high_pass(1.0,           # gain
+                                          _PCM_RATE,      # sampling rate
+                                          200.0,          # Audio low cutoff  (remove sub-audio signaling)
+                                          5.0,            # Sharp transition band
+                                          filter.firdes.WIN_HAMMING)  # filter type
+        self.lp_filter = filter.fir_filter_fff(audio_decim, lpf_taps)
+        self.hp_filter = filter.fir_filter_fff(1, hpf_taps)
 
         # analog_udp block converts +/-1.0 float samples to S16LE PCM and sends over UDP 
         self.analog_udp = op25_repeater.analog_udp(dest, debug, msgq_id, msg_q)
 
-        self.connect(self, self.switch, self.squelch, self.fm_demod, self.deemph, self.audio_filter, self.analog_udp)
+        self.connect(self, self.switch, self.squelch, self.fm_demod, self.deemph, self.lp_filter, self.hp_filter, self.analog_udp)
         sys.stderr.write("%s [%d] Enabling nbfm analog audio\n" % (log_ts.get(), msgq_id))
 
     def control(self, action):

@@ -99,7 +99,7 @@ class channel(object):
     def __init__(self, config, dev, verbosity, msgq_id, rx_q):
         sys.stderr.write('channel (dev %s): %s\n' % (dev.name, config))
         self.verbosity = verbosity
-        self.name = config['name']
+        self.name = from_dict(config, 'name', ("[%d]" % msgq_id))
         self.device = dev
         if 'frequency' in config and (config['frequency'] != ""):
             self.frequency = config['frequency']
