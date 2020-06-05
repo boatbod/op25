@@ -61,13 +61,13 @@ class op25_nbfm_c(gr.hier_block2):
         audio_decim = input_rate // _PCM_RATE
         lpf_taps = filter.firdes.low_pass(1.0,            # gain
                                           input_rate,     # sampling rate
-                                          2995.0,         # Audio high cutoff (remove aliasing)
-                                          0.5e3,          # transition
+                                          3000.0,         # Audio high cutoff (remove aliasing)
+                                          200.0,          # transition
                                           filter.firdes.WIN_HAMMING)  # filter type
         hpf_taps = filter.firdes.high_pass(1.0,           # gain
                                           _PCM_RATE,      # sampling rate
                                           200.0,          # Audio low cutoff  (remove sub-audio signaling)
-                                          5.0,            # Sharp transition band
+                                          10.0,           # Sharp transition band
                                           filter.firdes.WIN_HAMMING)  # filter type
         self.lp_filter = filter.fir_filter_fff(audio_decim, lpf_taps)
         self.hp_filter = filter.fir_filter_fff(1, hpf_taps)
