@@ -66,6 +66,7 @@ class curses_terminal(threading.Thread):
 
     def setup_curses(self):
         self.stdscr = curses.initscr()
+        self.stdscr.keypad(1)
         self.maxy, self.maxx = self.stdscr.getmaxyx()
         if (self.maxy < 6) or (self.maxx < 60):
             sys.stderr.write("Terminal window too small! Minimum size [70 x 6], actual [%d x %d]\n" % (self.maxx, self.maxy))
@@ -249,6 +250,14 @@ class curses_terminal(threading.Thread):
             self.send_command('dump_tgids', 0)
         elif c == ord('x'):
             assert 1 == 0
+        elif c == curses.KEY_UP:
+            pass
+        elif c == curses.KEY_DOWN:
+            pass
+        elif c == curses.KEY_LEFT:
+            pass
+        elif c == curses.KEY_RIGHT:
+            pass
         return False
 
     def process_json(self, js):

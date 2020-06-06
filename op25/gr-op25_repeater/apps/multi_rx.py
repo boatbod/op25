@@ -170,7 +170,6 @@ class channel(object):
             return
 
         for plot in config['plot'].split(','):
-            # fixme: allow multiple complex consumers (fft and constellation currently mutually exclusive)
             if plot == 'datascope':
                 assert (config['demod_type'] == 'fsk4' or
                         config['demod_type'] == 'fsk')   ## datascope plot requires fsk or fsk4 demod type

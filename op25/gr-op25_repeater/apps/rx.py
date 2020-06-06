@@ -618,7 +618,7 @@ class p25_rx_block (gr.top_block):
             self.unlock()
         elif (self.mixer_sink is not None):
             self.lock()
-            self.demod.disconnect_complex()
+            self.demod.disconnect_complex(self.mixer_sink)
             self.unlock()
             self.mixer_sink.kill()
             self.remove_plot_sink(self.mixer_sink)
@@ -646,7 +646,7 @@ class p25_rx_block (gr.top_block):
             self.lock()
             if self.spectrum_decim is not None:
                 self.disconnect(self.spectrum_decim, self.fft_sink)
-            self.demod.disconnect_complex()
+            self.demod.disconnect_complex(self.fft_sink)
             self.unlock()
             self.fft_sink.kill()
             self.remove_plot_sink(self.fft_sink)
@@ -665,7 +665,7 @@ class p25_rx_block (gr.top_block):
             self.unlock()
         elif (self.constellation_sink is not None):
             self.lock()
-            self.demod.disconnect_complex()
+            self.demod.disconnect_complex(self.constellation_sink)
             self.unlock()
             self.constellation_sink.kill()
             self.remove_plot_sink(self.constellation_sink)
@@ -680,7 +680,7 @@ class p25_rx_block (gr.top_block):
             self.unlock()
         elif (self.symbol_sink is not None):
             self.lock()
-            self.demod.disconnect_float()
+            self.demod.disconnect_float(self.symbol_sink)
             self.unlock()
             self.symbol_sink.kill()
             self.remove_plot_sink(self.symbol_sink)
@@ -696,7 +696,7 @@ class p25_rx_block (gr.top_block):
             self.unlock()
         elif (self.eye_sink is not None):
             self.lock()
-            self.demod.disconnect_bb()    # attempt to remove fm demod if not needed
+            self.demod.disconnect_bb(self.eye_sink)    # attempt to remove fm demod if not needed
             self.demod.disconnect_fm_demod()
             self.unlock()
             self.eye_sink.kill()

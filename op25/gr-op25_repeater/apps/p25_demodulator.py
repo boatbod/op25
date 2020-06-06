@@ -90,7 +90,7 @@ class p25_demod_base(gr.hier_block2):
         """
         self.if_rate = if_rate
         self.symbol_rate = symbol_rate
-        self.bb_sink = None
+        self.bb_sink = {}
 
         self.null_sink = blocks.null_sink(gr.sizeof_float)
         self.baseband_amp = blocks.multiply_const_ff(_def_bb_gain)
@@ -162,22 +162,22 @@ class p25_demod_base(gr.hier_block2):
     def set_baseband_gain(self, k):
         self.baseband_amp.set_k(k)
 
-    def disconnect_bb(self):
+    def disconnect_bb(self, sink):
         # assumes lock held or init
-        if not self.bb_sink:
+        if sink not in self.bb_sink:
             return
-        self.disconnect(self.bb_sink[0], self.bb_sink[1])
-        self.bb_sink = None
+        self.disconnect(self.bb_sink[sink], sink)
+        self.bb_sink.pop(sink)
 
     def connect_bb(self, src, sink):
         # assumes lock held or init
-        self.disconnect_bb()
+        self.disconnect_bb(sink)
         if src == 'symbol_filter':
             self.connect(self.symbol_filter, sink)
-            self.bb_sink = [self.symbol_filter, sink]
+            self.bb_sink[sink] = self.symbol_filter
         elif src == 'baseband_amp':
             self.connect(self.baseband_amp, sink)
-            self.bb_sink = [self.baseband_amp, sink]
+            self.bb_sink[sink] = self.baseband_amp
 
     def reset(self):
         pass
@@ -204,20 +204,20 @@ class p25_demod_fb(p25_demod_base):
         p25_demod_base.__init__(self, if_rate=input_rate, symbol_rate=symbol_rate, filter_type=filter_type)
 
         self.input_rate = input_rate
-        self.float_sink = None
+        self.float_sink = {}
 
         self.connect(self, self.baseband_amp, self.symbol_filter, self.fsk4_demod, self.slicer, self)
 
-    def disconnect_float(self):
+    def disconnect_float(self, sink):
         # assumes lock held or init
-        if not self.float_sink:
+        if sink not in self.float_sink:
             return
-        self.disconnect(self.float_sink[0], self.float_sink[1])
-        self.float_sink = None
+        self.disconnect(self.float_sink[sink], sink)
+        self.float_sink.pop(sink)
 
     def connect_float(self, sink):
         # assumes lock held or init
-        self.disconnect_float()
+        self.disconnect_float(sink)
         self.connect(self.fsk4_demod, sink)
         self.float_sink = [self.fsk4_demod, sink]
 
@@ -256,8 +256,8 @@ class p25_demod_cb(p25_demod_base):
         self.offset = 0
         self.sps = 0.0
         self.lo_freq = 0
-        self.float_sink = None
-        self.complex_sink = None
+        self.float_sink = {}
+        self.complex_sink = {}
         self.if1 = 0
         self.if2 = 0
         self.t_cache = {}
@@ -411,8 +411,6 @@ class p25_demod_cb(p25_demod_base):
         else:
             sys.stderr.write("connect_chain failed, type: %s\n" % demod_type)
             assert 0 == 1
-        if self.float_sink is not None:
-            self.connect_float(self.float_sink[1])
 
     # assumes lock held or init
     def connect_fm_demod(self):
@@ -430,60 +428,60 @@ class p25_demod_cb(p25_demod_base):
         self.disconnect(self.cutoff, self.fm_demod, self.baseband_amp, self.symbol_filter, self.null_sink)
         self.aux_fm_connected = False
 
-    def disconnect_float(self):
+    def disconnect_float(self, sink):
         # assumes lock held or init
-        if not self.float_sink:
+        if sink not in self.float_sink:
             return
-        self.disconnect(self.float_sink[0], self.float_sink[1])
-        self.float_sink = None
+        self.disconnect(self.float_sink[sink], sink)
+        self.float_sink.pop(sink)
 
     def connect_float(self, sink):
         # assumes lock held or init
-        self.disconnect_float()
+        self.disconnect_float(sink)
         if self.connect_state == 'cqpsk':
             self.connect(self.rescale, sink)
-            self.float_sink = [self.rescale, sink]
+            self.float_sink[sink] = self.rescale
         elif self.connect_state == 'fsk4':
             self.connect(self.fsk4_demod, sink)
-            self.float_sink = [self.fsk4_demod, sink]
+            self.float_sink[sink] = self.fsk4_demod
         else:
             sys.stderr.write("connect_float: state error: %s\n" % self.connect_state)
             assert 0 == 1
 
-    def disconnect_complex(self):
+    def disconnect_complex(self, sink):
         # assumes lock held or init
-        if not self.complex_sink:
+        if sink not in self.complex_sink:
             return
-        self.disconnect(self.complex_sink[0], self.complex_sink[1])
-        self.complex_sink = None
+        self.disconnect(self.complex_sink[sink], sink)
+        self.complex_sink.pop(sink)
 
     def connect_complex(self, src, sink):
         # assumes lock held or init
-        self.disconnect_complex()
+        self.disconnect_complex(sink)
         if src == 'clock':
             self.connect(self.clock, sink)
-            self.complex_sink = [self.clock, sink]
+            self.complex_sink[sink] = self.clock
         elif src == 'diffdec':
             self.connect(self.diffdec, sink)
-            self.complex_sink = [self.diffdec, sink]
+            self.complex_sink[sink] = self.diffdec
         elif src == 'mixer':
             self.connect(self.mixer, sink)
-            self.complex_sink = [self.mixer, sink]
+            self.complex_sink[sink] = self.mixer
         elif src == 'cutoff':
             self.connect(self.cutoff, sink)
-            self.complex_sink = [self.cutoff, sink]
+            self.complex_sink[sink] = self.cutoff
         elif src == 'src':
             self.connect(self, sink)
-            self.complex_sink = [self, sink]
+            self.complex_sink[sink] = self
         elif src == 'bpf':
             self.connect(self.bpf, sink)
-            self.complex_sink = [self.bpf, sink]
+            self.complex_sink[sink] = self.bpf
         elif src == 'if_out':
             self.connect(self.if_out, sink)
-            self.complex_sink = [self.if_out, sink]
+            self.complex_sink[sink] = self.if_out
         elif src == 'agc':
             self.connect(self.agc, sink)
-            self.complex_sink = [self.agc, sink]
+            self.complex_sink[sink] = self.agc
 
     def connect_nbfm(self, nbfm_blk):
         if self.connect_state == 'fsk4':
