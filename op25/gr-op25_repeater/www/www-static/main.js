@@ -138,12 +138,15 @@ function is_digit(s) {
 }
 
 function rx_update(d) {
-    if (d["files"].length > 0) {
-        for (var i=0; i<d["files"].length; i++) {
+    if ((d["files"] != undefined) && (d["files"].length > 0)) {
+        for (var i=0; i < 5; i++) { // max 5 concurrent plots
             var img = document.getElementById("img" + i);
-            if (img['src'] != d["files"][i]) {
+            if ((i < d["files"].length) && (img['src'] != d["files"][i])) {
                 img['src'] = d["files"][i];
                 img.style["display"] = "";
+            }
+            else {
+                img.style["display"] = "none";
             }
         }
     }
@@ -151,8 +154,10 @@ function rx_update(d) {
         var img = document.getElementById("img0");
         img.style["display"] = "none";
     }
-    error_val = d["error"];
-    fine_tune = d['fine_tune'];
+    if (d["error"] != undefined)
+        error_val = d["error"];
+    if (d["fine_tune"] != undefined)
+        fine_tune = d["fine_tune"];
 }
 
 // frequency, system, and talkgroup display
