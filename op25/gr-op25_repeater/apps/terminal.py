@@ -59,6 +59,7 @@ class curses_terminal(threading.Thread):
         self.auto_update = True
         self.current_nac = None
         self.current_srcaddr = 0
+        self.current_msgqid = 0
         self.maxx = 0
         self.maxy = 0
         self.sock = sock
@@ -245,7 +246,7 @@ class curses_terminal(threading.Thread):
         elif c == ord('>'):
             self.send_command('adj_tune', 1200)
         elif (c >= ord('1') ) and (c <= ord('5')):
-            self.send_command('toggle_plot', (c - ord('0')))
+            self.send_command('toggle_plot', (self.current_msgqid << 4) + ((c - ord('0')) & 0xf))
         elif c == ord('d'):
             self.send_command('dump_tgids', 0)
         elif c == ord('x'):
@@ -328,7 +329,8 @@ class curses_terminal(threading.Thread):
             voice_count = msg['voice_count']
             if voice_count <= 0: # the curses terminal only has room to display the first voice receiver info
                 return
-            s = '%s Frequency %f' % (msg['0']['name'], msg['0']['freq'] / 1000000.0)
+            s = '%s ' % (msg['0']['name']) if len(msg['0']['name']) > 0 else ''
+            s += 'Frequency %f' % (msg['0']['freq'] / 1000000.0)
             if msg['0']['tgid'] is not None:
                 s += ' Talkgroup ID %s' % (msg['0']['tgid'])
                 if 'tdma' in msg['0'] and msg['0']['tdma'] is not None:

@@ -755,6 +755,7 @@ class rx_ctl (object):
         self.TSYS_HOLD_TIME = 3.0    # TODO: make more configurable
         self.wait_until = time.time()
         self.configs = {}
+        self.config = None           # multi_rx.py channel config
         self.chans = chans
         self.nacs = []
         self.logfile_workers = logfile_workers
@@ -778,6 +779,7 @@ class rx_ctl (object):
                 self.post_init()
 
     def add_receiver(self, msgq_id, config, meta_q = None):
+        self.config = config
         self.receivers[msgq_id] = msgq_id
         if meta_q is not None:
             self.meta_q = meta_q
@@ -833,6 +835,7 @@ class rx_ctl (object):
                 self.last_tune_time = time.time()
                 self.last_tune_freq = frequency
             self.frequency_set(params)
+            self.current_slot = params['tdma']
 
     def do_metadata(self, state, tgid, tag):
         if self.meta_update is None:
@@ -983,6 +986,10 @@ class rx_ctl (object):
             if 'center_frequency' in configs[nac]:
                 self.configs[nac]['center_frequency'] = get_frequency(configs[nac]['center_frequency'])
 
+            if 'crypt_behavior' in configs[nac]:
+                self.configs[nac]['crypt_behavior'] = configs[nac]['crypt_behavior']
+                self.crypt_behavior = int(configs[nac]['crypt_behavior'])
+
             self.add_trunked_system(nac)
 
     def find_next_tsys(self):
@@ -990,6 +997,9 @@ class rx_ctl (object):
         if self.current_id >= len(self.nacs):
             self.current_id = 0
         return self.nacs[self.current_id]
+
+    def find_current_tsys(self):
+        return self.trunked_systems[self.nacs[self.current_id]]
 
     def to_json(self):
         d = {'json_type': 'trunk_update'}
@@ -1000,6 +1010,22 @@ class rx_ctl (object):
         d['grpaddr'] = self.current_grpaddr
         d['encrypted'] = self.current_encrypted
         d['nac'] = self.current_nac
+        return json.dumps(d)
+
+    def to_json2(self):
+        tsys = self.find_current_tsys()
+        d = {'json_type': 'voice_update'}
+        d[0] = {}
+        d[0]['name'] = ""
+        d[0]['freq'] = self.last_tune_freq
+        d[0]['tdma'] = self.current_slot
+        d[0]['tgid'] = self.current_tgid
+        d[0]['tag'] = tsys.get_tag(self.current_tgid)
+        d[0]['srcaddr'] = self.current_srcaddr
+        d[0]['encrypted'] = self.current_encrypted
+        d[0]['msgqid'] = 0
+        d[0]['stream'] = self.config['meta_stream_name'] if self.config is not None and 'meta_stream_name' in self.config else ""
+        d['voice_count'] = 1
         return json.dumps(d)
 
     def dump_tgids(self):
@@ -1434,6 +1460,7 @@ class rx_ctl (object):
         if self.current_state != self.states.CC and self.tgid_hold_until <= curr_time and self.hold_mode is False and new_state is None:
             if self.debug > 1:
                 sys.stderr.write("%s release tg(%s)\n" % (log_ts.get(), self.current_tgid))
+                sys.stderr.write("%s command=%s, timer=%f, hold_mode=%s\n" % (log_ts.get(), command, (self.tgid_hold_until - curr_time), self.hold_mode))
             self.tgid_hold = None
             self.current_tgid = None
             self.current_srcaddr = 0

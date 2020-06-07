@@ -96,7 +96,7 @@ class device(object):
         self.src.set_center_freq(config['frequency'] + self.offset + self.fractional_corr)
 
 class channel(object):
-    def __init__(self, config, dev, verbosity, msgq_id, rx_q):
+    def __init__(self, config, dev, verbosity, msgq_id, rx_q, tb):
         sys.stderr.write('channel (dev %s): %s\n' % (dev.name, config))
         self.verbosity = verbosity
         self.name = from_dict(config, 'name', ("[%d]" % msgq_id))
@@ -106,14 +106,13 @@ class channel(object):
         else:
             self.frequency = self.device.frequency
         self.msgq_id = msgq_id
+        self.tb = tb
         self.raw_sink = None
         self.raw_file = None
         self.throttle = None
         self.nbfm = None
         self.nbfm_mode = 0
-        self.scope_sink = None
-        self.sinks = []
-        self.kill_sink = []
+        self.sinks = {}
         self.tdma_state = False
         self.xor_cache = {}
         self.symbol_rate = _def_symbol_rate
@@ -171,40 +170,109 @@ class channel(object):
 
         for plot in config['plot'].split(','):
             if plot == 'datascope':
-                assert (config['demod_type'] == 'fsk4' or
-                        config['demod_type'] == 'fsk')   ## datascope plot requires fsk or fsk4 demod type
-                sink = eye_sink_f(plot_name=self.name, sps=config['if_rate'] / self.symbol_rate)
-                self.demod.connect_bb('symbol_filter', sink)
-                self.kill_sink.append(sink)
-                self.scope_sink = sink
+                self.toggle_eye_plot()
             elif plot == 'symbol':
-                sink = symbol_sink_f(plot_name=self.name)
-                self.demod.connect_float(sink)
-                self.kill_sink.append(sink)
+                self.toggle_symbol_plot()
             elif plot == 'fft':
-                i = len(self.sinks)
-                self.sinks.append(fft_sink_c(plot_name=self.name))
-                self.demod.connect_complex('src', self.sinks[i])
-                self.kill_sink.append(self.sinks[i])
-                self.sinks[i].set_offset(self.device.offset)
-                self.sinks[i].set_center_freq(self.device.frequency)
-                self.sinks[i].set_relative_freq(self.device.frequency - self.frequency)
-                self.sinks[i].set_width(self.device.sample_rate)
+                self.toggle_fft_plot()
             elif plot == 'constellation':
-                i = len(self.sinks)
-                assert config['demod_type'] == 'cqpsk'   ## constellation plot requires cqpsk demod type
-                self.sinks.append(constellation_sink_c(plot_name=self.name))
-                self.demod.connect_complex('diffdec', self.sinks[i])
-                self.kill_sink.append(self.sinks[i])
+                self.toggle_constellation_plot()
             elif plot == 'mixer':
-                i = len(self.sinks)
-                self.sinks.append(mixer_sink_c(plot_name=self.name))
-                self.demod.connect_complex('cutoff', self.sinks[i])
-                self.kill_sink.append(self.sinks[i])
-                self.sinks[i].set_width(config['if_rate'])
+                self.toggle_mixer_plot()
             else:
                 sys.stderr.write('unrecognized plot type %s\n' % plot)
                 return
+
+    def toggle_plot(self, plot_type):
+        if plot_type == 1:
+            self.toggle_fft_plot()
+        elif plot_type == 2:
+            self.toggle_constellation_plot()
+        elif plot_type == 3:
+            self.toggle_symbol_plot()
+        elif plot_type == 4:
+            self.toggle_eye_plot()
+        elif plot_type == 5:
+            self.toggle_mixer_plot()
+
+    def toggle_eye_plot(self):
+        if 'eye' not in self.sinks:
+            sink = eye_sink_f(plot_name=self.name)
+            self.tb.lock()
+            self.demod.connect_fm_demod()                   # add fm demod to flowgraph if not already present
+            self.demod.connect_bb('symbol_filter', sink)
+            self.tb.unlock()
+            self.sinks['eye'] = sink
+        else:
+            sink = self.sinks.pop('eye')
+            self.tb.lock()
+            self.demod.disconnect_bb(sink)
+            self.demod.disconnect_fm_demod()                # remove fm demod from flowgraph if no longer needed
+            self.tb.unlock()
+            sink.kill()
+
+    def toggle_symbol_plot(self):
+        if 'symbol' not in self.sinks:
+            sink = symbol_sink_f(plot_name=self.name)
+            self.tb.lock()
+            self.demod.connect_float(sink)
+            self.tb.unlock()
+            self.sinks['symbol'] = sink
+        else:
+            sink = self.sinks.pop('symbol')
+            self.tb.lock()
+            self.demod.disconnect_float(sink)
+            self.tb.unlock()
+            sink.kill()
+
+    def toggle_fft_plot(self):
+        if 'fft' not in self.sinks:
+            sink = fft_sink_c(plot_name=self.name)
+            sink.set_offset(self.device.offset)
+            sink.set_center_freq(self.device.frequency)
+            sink.set_relative_freq(self.device.frequency - self.frequency)
+            sink.set_width(self.device.sample_rate)
+            self.tb.lock()
+            self.demod.connect_complex('src', sink)
+            self.tb.unlock()
+            self.sinks['fft'] = sink
+        else:
+            sink = self.sinks.pop('fft')
+            self.tb.lock()
+            self.demod.disconnect_complex(sink)
+            self.tb.unlock()
+            sink.kill()
+
+    def toggle_mixer_plot(self):
+        if 'mixer' not in self.sinks:
+            sink = mixer_sink_c(plot_name=self.name)
+            sink.set_width(self.config['if_rate'])
+            self.tb.lock()
+            self.demod.connect_complex('cutoff', sink)
+            self.tb.unlock()
+            self.sinks['mixer'] = sink
+        else:
+            sink = self.sinks.pop('mixer')
+            self.tb.lock()
+            self.demod.disconnect_complex(sink)
+            self.tb.unlock()
+            sink.kill()
+
+    def toggle_constellation_plot(self):
+        if str(self.config['demod_type']).lower != "cqpsk":
+            return
+        if 'constellation' not in self.sinks:
+            sink = constellation_sink_c(plot_name=self.name)
+            self.tb.lock()
+            self.demod.connect_complex('diffdec', sink)
+            self.tb.unlock()
+            self.sinks['constellation'] = sink
+        else:
+            sink = self.sinks.pop('constellation')
+            self.tb.lock()
+            self.demod.disconnect_complex(sink)
+            self.tb.unlock()
+            sink.kill()
 
     def set_freq(self, freq):
         if self.frequency == freq:
@@ -223,10 +291,9 @@ class channel(object):
                 if self.verbosity:
                     sys.stderr.write("%s [%d] Unable to tune %s to frequency %f\n" % (log_ts.get(), self.msgq_id, self.name, (freq/1e6)))
                 return False
-        for sink in self.sinks:
-            if sink.name() == "fft_sink_c":
-                sink.set_center_freq(self.device.frequency)
-                sink.set_relative_freq(self.device.frequency - freq)
+        if 'fft' in self.sinks:
+                self.sinks['fft'].set_center_freq(self.device.frequency)
+                self.sinks['fft'].set_relative_freq(self.device.frequency - freq)
         if self.verbosity >= 9:
             sys.stderr.write("%s [%d] Tuning to frequency %f\n" % (log_ts.get(), self.msgq_id, (freq/1e6)))
         self.decoder.sync_reset()
@@ -251,8 +318,8 @@ class channel(object):
 
         self.symbol_rate = rate
         self.demod.set_omega(rate)
-        if self.scope_sink is not None:
-            self.scope_sink.set_sps(self.config['if_rate'] / rate)
+        if 'eye' in self.sinks:
+            self.sinks['eye'].set_sps(self.config['if_rate'] / rate)
 
     def set_slot(self, slot):
         self.decoder.set_slotid(slot)
@@ -261,8 +328,8 @@ class channel(object):
         self.decoder.set_slotkey(key)
 
     def kill(self):
-        for sink in self.kill_sink:
-            sink.kill()
+        for sink in self.sinks:
+            self.sinks[sink].kill()
 
 class rx_block (gr.top_block):
 
@@ -411,6 +478,9 @@ class rx_block (gr.top_block):
                     return dev
         return None
 
+    def find_channel(self, msgq_id):
+        return self.channels[msgq_id]
+
     def configure_channels(self, config):
         self.channels = []
         for cfg in config:
@@ -437,7 +507,7 @@ class rx_block (gr.top_block):
                 self.trunk_rx.add_receiver(msgq_id, config=cfg, meta_q=meta_q)
             else:
                 msgq_id = -1 - len(self.channels)
-            chan = channel(cfg, dev, self.verbosity, msgq_id, self.rx_q)
+            chan = channel(cfg, dev, self.verbosity, msgq_id, self.rx_q, self)
             self.channels.append(chan)
             if ("raw_input" in cfg) and (cfg['raw_input'] != ""):
                 sys.stderr.write("%s Reading raw symbols from file: %s\n" % (log_ts.get(), cfg['raw_input']))
@@ -521,9 +591,10 @@ class rx_block (gr.top_block):
         #elif s == 'adj_tune':
         #    freq = msg.arg1()
         #    self.adj_tune(freq)
-        #elif s == 'toggle_plot':
-        #    plot_type = msg.arg1()
-        #    self.toggle_plot(plot_type)
+        elif s == 'toggle_plot':
+            plot_type = int(msg.arg1()) & 0xf
+            msgq_id = int(msg.arg1()) >> 4
+            self.find_channel(msgq_id).toggle_plot(plot_type)
         #elif s == 'dump_tgids':
         #    self.trunk_rx.dump_tgids()
         #elif s == 'add_default_config':
@@ -625,7 +696,8 @@ class rx_main(object):
     def run(self):
         try:
             self.tb.start()
-            self.tb.wait()
+            while self.keep_running:
+                self.tb.wait() # curiously it seems that wait() matures when a flowgraph gets locked
             sys.stderr.write('Flowgraph complete. Exiting\n')
         except (KeyboardInterrupt):
             self.tb.stop()

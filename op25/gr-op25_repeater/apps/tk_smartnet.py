@@ -713,4 +713,5 @@ class voice_receiver(object):
         d['srcaddr'] = self.talkgroups[self.current_tgid]['srcaddr'] if self.current_tgid is not None else 0
         d['mode'] = self.talkgroups[self.current_tgid]['mode'] if self.current_tgid is not None else -1
         d['stream'] = self.config['meta_stream_name'] if 'meta_stream_name' in self.config else ""
+        d['msgqid'] = self.msgq_id
         return json.dumps(d)
