@@ -259,7 +259,8 @@ class channel(object):
             sink.kill()
 
     def toggle_constellation_plot(self):
-        if str(self.config['demod_type']).lower != "cqpsk":
+        if str(self.config['demod_type']).lower() != "cqpsk":
+            sys.stderr.write("NOPE %s\n" % self.config['demod_type'])
             return
         if 'constellation' not in self.sinks:
             sink = constellation_sink_c(plot_name=self.name)
