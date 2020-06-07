@@ -626,8 +626,6 @@ int p25p2_tdma::handle_frame(void)
 	for (int i=0; i<sizeof(dibits); i++)
 		dibits[i] = p2framer.d_frame_body[i*2+1] + (p2framer.d_frame_body[i*2] << 1);
 	rc = handle_packet(dibits);
-	if (rc > -1)
-		send_msg(std::string(2, 0xff), rc);
 	return rc;
 }
 
@@ -677,6 +675,9 @@ int p25p2_tdma::handle_packet(const uint8_t dibits[])
 		// unsupported type duid
 		return -1;
 	}
+
+	if (rc > -1)
+		send_msg(std::string(2, 0xff), rc);
 	return rc;
 }
 
