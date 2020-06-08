@@ -106,6 +106,8 @@
     "terminal": {
         "module": "terminal.py",
         "terminal_type": "curses",
-        "#terminal_type": "http:127.0.0.1:8080"
+        "#terminal_type": "http:127.0.0.1:8080",
+        "http_plot_interval": 1.0,
+        "http_plot_directory": "../www/images"
     }
 }

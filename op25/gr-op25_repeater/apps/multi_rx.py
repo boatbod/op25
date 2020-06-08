@@ -183,6 +183,12 @@ class channel(object):
                 sys.stderr.write('unrecognized plot type %s\n' % plot)
                 return
 
+    def set_plot_destination(self, plot): # only required for http terminal
+        if plot is None or plot not in self.sinks or self.tb.terminal_type is None or self.tb.terminal_type != "http":
+            return
+        self.sinks[plot].gnuplot.set_interval(self.tb.http_plot_interval)
+        self.sinks[plot].gnuplot.set_output_dir(self.tb.http_plot_directory)
+
     def toggle_plot(self, plot_type):
         if plot_type == 1:
             self.toggle_fft_plot()
@@ -198,11 +204,12 @@ class channel(object):
     def toggle_eye_plot(self):
         if 'eye' not in self.sinks:
             sink = eye_sink_f(plot_name=self.name)
+            self.sinks['eye'] = sink
+            self.set_plot_destination('eye')
             self.tb.lock()
             self.demod.connect_fm_demod()                   # add fm demod to flowgraph if not already present
             self.demod.connect_bb('symbol_filter', sink)
             self.tb.unlock()
-            self.sinks['eye'] = sink
         else:
             sink = self.sinks.pop('eye')
             self.tb.lock()
@@ -214,10 +221,11 @@ class channel(object):
     def toggle_symbol_plot(self):
         if 'symbol' not in self.sinks:
             sink = symbol_sink_f(plot_name=self.name)
+            self.sinks['symbol'] = sink
+            self.set_plot_destination('symbol')
             self.tb.lock()
             self.demod.connect_float(sink)
             self.tb.unlock()
-            self.sinks['symbol'] = sink
         else:
             sink = self.sinks.pop('symbol')
             self.tb.lock()
@@ -228,6 +236,8 @@ class channel(object):
     def toggle_fft_plot(self):
         if 'fft' not in self.sinks:
             sink = fft_sink_c(plot_name=self.name)
+            self.sinks['fft'] = sink
+            self.set_plot_destination('fft')
             sink.set_offset(self.device.offset)
             sink.set_center_freq(self.device.frequency)
             sink.set_relative_freq(self.device.frequency - self.frequency)
@@ -235,7 +245,6 @@ class channel(object):
             self.tb.lock()
             self.demod.connect_complex('src', sink)
             self.tb.unlock()
-            self.sinks['fft'] = sink
         else:
             sink = self.sinks.pop('fft')
             self.tb.lock()
@@ -246,11 +255,12 @@ class channel(object):
     def toggle_mixer_plot(self):
         if 'mixer' not in self.sinks:
             sink = mixer_sink_c(plot_name=self.name)
+            self.sinks['mixer'] = sink
+            self.set_plot_destination('mixer')
             sink.set_width(self.config['if_rate'])
             self.tb.lock()
             self.demod.connect_complex('cutoff', sink)
             self.tb.unlock()
-            self.sinks['mixer'] = sink
         else:
             sink = self.sinks.pop('mixer')
             self.tb.lock()
@@ -260,14 +270,14 @@ class channel(object):
 
     def toggle_constellation_plot(self):
         if str(self.config['demod_type']).lower() != "cqpsk":
-            sys.stderr.write("NOPE %s\n" % self.config['demod_type'])
             return
         if 'constellation' not in self.sinks:
             sink = constellation_sink_c(plot_name=self.name)
+            self.sinks['constellation'] = sink
+            self.set_plot_destination('constellation')
             self.tb.lock()
             self.demod.connect_complex('diffdec', sink)
             self.tb.unlock()
-            self.sinks['constellation'] = sink
         else:
             sink = self.sinks.pop('constellation')
             self.tb.lock()
@@ -338,24 +348,28 @@ class rx_block (gr.top_block):
     #
     def __init__(self, verbosity, config):
         self.verbosity = verbosity
-        gr.top_block.__init__(self)
-        self.device_id_by_name = {}
-
+        self.terminal = None
+        self.terminal_type = None
+        self.interactive = True
         self.audio = None
         self.audio_instances = {}
-        if "audio" in config:
-            self.configure_audio(config['audio'])
-
         self.metadata = None
         self.meta_streams = {}
-        if "metadata" in config:
-            self.configure_metadata(config['metadata'])
-
         self.trunking = None
         self.du_watcher = None
         self.rx_q = gr.msg_queue(100)
         self.ui_in_q = gr.msg_queue(10)
         self.ui_out_q = gr.msg_queue(10)
+
+        gr.top_block.__init__(self)
+        self.device_id_by_name = {}
+
+        if "audio" in config:
+            self.configure_audio(config['audio'])
+
+        if "metadata" in config:
+            self.configure_metadata(config['metadata'])
+
         if "trunking" in config:
             self.configure_trunking(config['trunking'])
 
@@ -365,9 +379,14 @@ class rx_block (gr.top_block):
         if self.trunking is not None: # post-initialization after channels and devices created
             self.trunk_rx.post_init()
 
-        self.terminal = None
         if "terminal" in config:
             self.configure_terminal(config['terminal'])
+
+    def set_interactive(self, session_type):
+        self.interactive = session_type
+
+    def get_interactive(self):
+        return self.interactive
 
     def configure_audio(self, config):
         audio_mod = config['module']
@@ -411,8 +430,12 @@ class rx_block (gr.top_block):
         except:
             terminal = None
             sys.stderr.write("Error: unable to import terminal module: %s\n%s\n" % (config['module'], sys.exc_info()[1]))
+            return
         term_type = str(from_dict(config,'terminal_type', "curses"))
         self.terminal = terminal.op25_terminal(self.ui_in_q, self.ui_out_q, term_type)
+        self.terminal_type = self.terminal.get_terminal_type()
+        self.http_plot_interval = float(from_dict(config, 'http_plot_interval', 1.0))
+        self.http_plot_directory = str(from_dict(config, 'http_plot_directory', "../www/images"))
 
     def configure_trunking(self, config):
         if (("module" in config and (config['module'] == "")) or 
@@ -519,6 +542,7 @@ class rx_block (gr.top_block):
                 chan.throttle.set_max_noutput_items(chan.symbol_rate/50);
                 self.connect(chan.raw_file, chan.throttle)
                 self.connect(chan.throttle, chan.decoder)
+                self.set_interactive(False) # this is non-interactive 'replay' session 
             else:
                 self.connect(dev.src, chan.demod, chan.decoder)
                 if ("raw_output" in cfg) and (cfg['raw_output'] != ""):
@@ -573,18 +597,25 @@ class rx_block (gr.top_block):
             self.channels[msgq_id].nbfm.control(action)
 
     def process_qmsg(self, msg):            # Handle UI requests
-        # return true = end top block
         RX_COMMANDS = 'skip lockout hold whitelist reload'
         s = msg.to_string()
-        if s == 'quit': return True
-        elif s == 'update':                 # UI requested update
+        if s == 'quit':
+            return True
+        elif s == 'update':                 # UI initiated update request
             self.ui_freq_update()
             if self.trunking is None or self.trunk_rx is None:
                 return False
             js = self.trunk_rx.to_json()    # extract data from trunking module
             msg = gr.message().make_from_string(js, -4, 0, 0)
             self.ui_in_q.insert_tail(msg)   # send info back to UI
-            #self.process_ajax()
+            self.ui_plot_update()
+        elif s == 'toggle_plot':
+            if not self.get_interactive():
+                sys.stderr.write("%s Cannot start plots for non-realtime (replay) sessions\n" % log_ts.get())
+                return
+            plot_type = int(msg.arg1()) & 0xf
+            msgq_id = int(msg.arg1()) >> 4
+            self.find_channel(msgq_id).toggle_plot(plot_type)
         #elif s == 'set_freq':
         #    freq = msg.arg1()
         #    self.last_freq_params['freq'] = freq
@@ -592,10 +623,6 @@ class rx_block (gr.top_block):
         #elif s == 'adj_tune':
         #    freq = msg.arg1()
         #    self.adj_tune(freq)
-        elif s == 'toggle_plot':
-            plot_type = int(msg.arg1()) & 0xf
-            msgq_id = int(msg.arg1()) >> 4
-            self.find_channel(msgq_id).toggle_plot(plot_type)
         #elif s == 'dump_tgids':
         #    self.trunk_rx.dump_tgids()
         #elif s == 'add_default_config':
@@ -618,6 +645,19 @@ class rx_block (gr.top_block):
             voice_data['stream_url'] = meta_s.get_url()
         js = json.dumps(params)
         msg = gr.message().make_from_string(js, -4, 0, 0)
+        self.ui_in_q.insert_tail(msg)
+
+    def ui_plot_update(self):
+        if self.terminal_type is None or self.terminal_type != "http":
+            return
+
+        filenames = []
+        for chan in self.channels:
+            for sink in chan.sinks:
+                if chan.sinks[sink].gnuplot.filename is not None:
+                    filenames.append(chan.sinks[sink].gnuplot.filename)
+        d = {'json_type': 'rx_update', 'files': filenames}
+        msg = gr.message().make_from_string(json.dumps(d), -4, 0, 0)
         self.ui_in_q.insert_tail(msg)
 
     def kill(self):
@@ -697,15 +737,21 @@ class rx_main(object):
     def run(self):
         try:
             self.tb.start()
-            while self.keep_running:
-                self.tb.wait() # curiously it seems that wait() matures when a flowgraph gets locked
+            if self.tb.get_interactive():
+                while self.keep_running:
+                    time.sleep(1)
+            else:
+                self.tb.wait() # curiously wait() matures when a flowgraph gets locked
             sys.stderr.write('Flowgraph complete. Exiting\n')
         except (KeyboardInterrupt):
             self.tb.stop()
             self.tb.kill()
+            self.keep_running = False
+            sys.stderr.write("Ctrl-C detected\n")
         except:
             self.tb.stop()
             self.tb.kill()
+            self.keep_running = False
             sys.stderr.write('main: exception occurred\n')
             sys.stderr.write('main: exception:\n%s\n' % traceback.format_exc())
 

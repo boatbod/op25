@@ -65,6 +65,9 @@ class curses_terminal(threading.Thread):
         self.sock = sock
         self.start()
 
+    def get_terminal_type(self):
+        return "curses"
+
     def setup_curses(self):
         self.stdscr = curses.initscr()
         self.stdscr.keypad(1)
@@ -421,6 +424,9 @@ class http_terminal(threading.Thread):
 
         self.start()
 
+    def get_terminal_type(self):
+        return "http"
+
     def end_terminal(self):
         self.keep_running = False
 
@@ -442,6 +448,9 @@ class udp_terminal(threading.Thread):
         self.setup_socket(port)
         self.q_handler = q_watcher(self.input_q, self.process_qmsg)
         self.start()
+
+    def get_terminal_type(self):
+        return "udp"
 
     def setup_socket(self, port):
         self.sock =  socket.socket(socket.AF_INET, socket.SOCK_DGRAM)

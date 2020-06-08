@@ -415,7 +415,6 @@ class p25_demod_cb(p25_demod_base):
     # assumes lock held or init
     def connect_fm_demod(self):
         if self.aux_fm_connected or self.connect_state != 'cqpsk':  # only valid for cqpsk demod type
-            sys.stderr.write("connect_fm_demod() failed test\n")
             return
         self.connect(self.cutoff, self.fm_demod, self.baseband_amp, self.symbol_filter, self.null_sink)
         self.aux_fm_connected = True
@@ -423,7 +422,6 @@ class p25_demod_cb(p25_demod_base):
     # assumes lock held or init
     def disconnect_fm_demod(self):
         if not self.aux_fm_connected or self.connect_state != 'cqpsk':  # only valid for cqpsk demod type
-            sys.stderr.write("disconnect_fm_demod() failed test\n")
             return
         self.disconnect(self.cutoff, self.fm_demod, self.baseband_amp, self.symbol_filter, self.null_sink)
         self.aux_fm_connected = False
