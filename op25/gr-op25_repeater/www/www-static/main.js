@@ -1,6 +1,6 @@
 
 // Copyright 2017, 2018 Max H. Parke KA1RBI
-// Copyright 2018, 2019 gnorbury@bondcar.com
+// Copyright 2018, 2019, 2020 gnorbury@bondcar.com
 // 
 // This file is part of OP25
 // 
@@ -43,6 +43,7 @@ var c_srcaddr = 0;
 var c_grpaddr = 0;
 var c_encrypted = 0;
 var c_nac = 0;
+var channel_list = [];
 
 function find_parent(ele, tagname) {
     while (ele) {
@@ -171,14 +172,27 @@ function change_freq(d) {
     channel_status();
 }
 
-function voice_update(d) {
-    if (d['voice_count'] > 0) {             //TODO: enhance to display all voice receivers, not just the first
-        c_freq = d['0']['freq'];
-        c_system = d['0']['system'];
-        current_tgid = d['0']['tgid'];
-        c_tag = d['0']['tag'];
-        c_srcaddr = d['0']['srcaddr'];
-        c_stream_url = d['0']['stream_url'];
+function channel_update(d) {
+    if (d['channels'] != undefined) {
+        channel_list = d['channels'];    
+    
+        if (channel_list.length > 0) {
+            var c_id = channel_list[0];
+            c_freq = d[c_id]['freq'];
+            c_system = d[c_id]['system'];
+            current_tgid = d[c_id]['tgid'];
+            c_tag = d[c_id]['tag'];
+            c_srcaddr = d[c_id]['srcaddr'];
+            c_stream_url = d[c_id]['stream_url'];
+        }
+        else {
+            c_freq = 0.0;
+            c_system = "";
+            current_tgid = 0;
+            c_tag = "";
+            c_srcaddr = 0;
+            c_stream_url = "";
+        }
         channel_status();
     }
 }
@@ -348,7 +362,7 @@ function http_req_cb() {
     }
     r200_count += 1;
     var dl = JSON.parse(http_req.responseText);
-    var dispatch = {'trunk_update': trunk_update, 'change_freq': change_freq, 'voice_update': voice_update, 'rx_update': rx_update}
+    var dispatch = {'trunk_update': trunk_update, 'change_freq': change_freq, 'channel_update': channel_update, 'rx_update': rx_update}
     for (var i=0; i<dl.length; i++) {
         var d = dl[i];
         if (!("json_type" in d))

@@ -59,7 +59,8 @@ class curses_terminal(threading.Thread):
         self.auto_update = True
         self.current_nac = None
         self.current_srcaddr = 0
-        self.current_msgqid = 0
+        self.current_msgqid = '0'
+        self.channel_list = []
         self.maxx = 0
         self.maxy = 0
         self.sock = sock
@@ -249,7 +250,7 @@ class curses_terminal(threading.Thread):
         elif c == ord('>'):
             self.send_command('adj_tune', 1200)
         elif (c >= ord('1') ) and (c <= ord('5')):
-            self.send_command('toggle_plot', (self.current_msgqid << 4) + ((c - ord('0')) & 0xf))
+            self.send_command('toggle_plot', (int(self.current_msgqid) << 4) + ((c - ord('0')) & 0xf))
         elif c == ord('d'):
             self.send_command('dump_tgids', 0)
         elif c == ord('x'):
@@ -259,10 +260,19 @@ class curses_terminal(threading.Thread):
         elif c == curses.KEY_DOWN:
             pass
         elif c == curses.KEY_LEFT:
-            pass
+            self.change_chan(-1)
         elif c == curses.KEY_RIGHT:
-            pass
+            self.change_chan(+1)
         return False
+
+    def change_chan(self, incr):
+        i = self.channel_list.index(self.current_msgqid) if self.current_msgqid in self.channel_list else 0
+        i += incr
+        if i >= len(self.channel_list):
+            i = 0
+        elif i < 0:
+            i = len(self.channel_list) - 1
+        self.current_msgqid = self.channel_list[i]
 
     def process_json(self, js):
         # return true signifies end of main event loop
@@ -328,18 +338,19 @@ class curses_terminal(threading.Thread):
                 self.active2.addstr(0, 0, s)
             self.active2.refresh()
             self.stdscr.refresh()
-        elif msg['json_type'] == 'voice_update': # from multi_rx.py trunking
-            voice_count = msg['voice_count']
-            if voice_count <= 0: # the curses terminal only has room to display the first voice receiver info
+        elif msg['json_type'] == 'channel_update': # from multi_rx.py trunking
+            if ('channels' not in msg) or (len(msg['channels']) == 0):
                 return
-            s = '%s ' % (msg['0']['name']) if len(msg['0']['name']) > 0 else ''
-            s += 'Frequency %f' % (msg['0']['freq'] / 1000000.0)
-            if msg['0']['tgid'] is not None:
-                s += ' Talkgroup ID %s' % (msg['0']['tgid'])
-                if 'tdma' in msg['0'] and msg['0']['tdma'] is not None:
-                    s += ' TDMA Slot %s' % msg['0']['tdma']
-                if 'mode' in msg['0']:
-                    mode  = msg['0']['mode']
+            self.channel_list = msg['channels']
+            c_id = self.current_msgqid if self.current_msgqid in self.channel_list else self.channel_list[0]
+            s = '[%s] %s ' % (c_id, msg[c_id]['name']) if len(msg[c_id]['name']) > 0 else '[%s] ' % (c_id)
+            s += 'Frequency %f' % (msg[c_id]['freq'] / 1000000.0)
+            if msg[c_id]['tgid'] is not None:
+                s += ' Talkgroup ID %s' % (msg[c_id]['tgid'])
+                if 'tdma' in msg[c_id] and msg[c_id]['tdma'] is not None:
+                    s += ' TDMA Slot %s' % msg[c_id]['tdma']
+                if 'mode' in msg[c_id]:
+                    mode  = msg[c_id]['mode']
                     if mode == 0:
                         mode_str = "Analog"
                     elif mode == 1:
@@ -353,14 +364,14 @@ class curses_terminal(threading.Thread):
             self.active1.addstr(0, 0, s)
             self.active1.refresh()
             s = ""
-            if msg['0']['tag']:
-                s = msg['0']['tag']
+            if msg[c_id]['tag']:
+                s = msg[c_id]['tag']
             s = s[:(self.maxx - 16)]
             self.active2.addstr(0, 0, s)
             self.active2.refresh()
             self.stdscr.refresh()
-            if 'srcaddr' in msg['0']:
-                srcaddr = msg['0']['srcaddr']
+            if 'srcaddr' in msg[c_id]:
+                srcaddr = msg[c_id]['srcaddr']
                 if srcaddr == 0xffffffff:
                     srcaddr = 0
                 if self.current_srcaddr != srcaddr:

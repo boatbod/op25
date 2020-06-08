@@ -173,16 +173,16 @@ class rx_ctl(object):
         d['nac'] = 0
         return json.dumps(d)
 
-    def to_json2(self):
-        d = {'json_type': 'voice_update'}
-        syid = 0;
-        for sysname in self.systems:
-            for voice in self.systems[sysname]['voice']:
-                vc_name = from_dict(voice.config, 'name', ("[%d]" % voice.msgq_id))
-                d[syid] = json.loads(voice.to_json())
-                d[syid]['name'] = vc_name
-            syid += 1
-        d['voice_count'] = syid
+    def get_chan_status(self):
+        d = {'json_type': 'channel_update'}
+        rcvr_ids = []
+        for rcvr in self.receivers:
+            if self.receivers[rcvr]['rx_sys'] is not None:
+                rcvr_name = from_dict(self.receivers[rcvr]['config'], 'name', "")
+                d[str(rcvr)] = json.loads(self.receivers[rcvr]['rx_sys'].get_status())
+                d[str(rcvr)]['name'] = rcvr_name
+                rcvr_ids.append(str(rcvr))
+        d['channels'] = rcvr_ids
         return json.dumps(d)
 
 
@@ -553,6 +553,18 @@ class osw_receiver(object):
         d['adjacent_data'] = ""
         return json.dumps(d)
 
+    def get_status(self):
+        d = {}
+        d['freq'] = self.cc_list[self.cc_index]
+        d['tgid'] = None
+        d['system'] = self.config['sysname']
+        d['tag'] = None
+        d['srcaddr'] = 0
+        d['mode'] = None
+        d['stream'] = ""
+        d['msgqid'] = self.msgq_id
+        return json.dumps(d)
+
 #################
 # Voice channel class
 class voice_receiver(object):
@@ -704,7 +716,7 @@ class voice_receiver(object):
         if update_meta:
             meta_update(self.meta_q)
 
-    def to_json(self):  # more uglyness
+    def get_status(self):
         d = {}
         d['freq'] = self.tuned_frequency
         d['tgid'] = self.current_tgid

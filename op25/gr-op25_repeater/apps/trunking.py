@@ -1012,20 +1012,20 @@ class rx_ctl (object):
         d['nac'] = self.current_nac
         return json.dumps(d)
 
-    def to_json2(self):
+    def get_chan_status(self):
         tsys = self.find_current_tsys()
-        d = {'json_type': 'voice_update'}
-        d[0] = {}
-        d[0]['name'] = ""
-        d[0]['freq'] = self.last_tune_freq
-        d[0]['tdma'] = self.current_slot
-        d[0]['tgid'] = self.current_tgid
-        d[0]['tag'] = tsys.get_tag(self.current_tgid)
-        d[0]['srcaddr'] = self.current_srcaddr
-        d[0]['encrypted'] = self.current_encrypted
-        d[0]['msgqid'] = 0
-        d[0]['stream'] = self.config['meta_stream_name'] if self.config is not None and 'meta_stream_name' in self.config else ""
-        d['voice_count'] = 1
+        d = {'json_type': 'channel_update'}
+        d['0'] = {}
+        d['0']['name'] = ""
+        d['0']['freq'] = self.last_tune_freq
+        d['0']['tdma'] = self.current_slot
+        d['0']['tgid'] = self.current_tgid
+        d['0']['tag'] = tsys.get_tag(self.current_tgid)
+        d['0']['srcaddr'] = self.current_srcaddr
+        d['0']['encrypted'] = self.current_encrypted
+        d['0']['msgqid'] = 0
+        d['0']['stream'] = self.config['meta_stream_name'] if self.config is not None and 'meta_stream_name' in self.config else ""
+        d['channels'] = ['0']
         return json.dumps(d)
 
     def dump_tgids(self):
