@@ -1024,6 +1024,7 @@ class rx_ctl (object):
         d['0']['srcaddr'] = self.current_srcaddr
         d['0']['encrypted'] = self.current_encrypted
         d['0']['msgqid'] = 0
+        d['0']['system'] = tsys.sysname
         d['0']['stream'] = self.config['meta_stream_name'] if self.config is not None and 'meta_stream_name' in self.config else ""
         d['channels'] = ['0']
         return json.dumps(d)

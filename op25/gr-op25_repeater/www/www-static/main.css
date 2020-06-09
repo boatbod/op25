@@ -74,6 +74,22 @@ hr {
 	background: linear-gradient(#669999, #82B0B0);
 }
 
+.chan-button {
+	/* background-color: #669999; */
+	border-color: black;
+	color: white;
+	padding: 0px 10px;
+	text-decoration: none;
+	margin: 0px 0px;
+	cursor: pointer;
+	width: 30px;
+	font-size: 9px;
+	font-weight: bold;
+	box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2), 0 3px 10px 0 rgba(0,0,0,0.19);
+	background: #669999; /* For browsers that do not support gradients */
+	background: linear-gradient(#669999, #82B0B0);
+}
+
 /* flex container for top buttons */
 
 /*
@@ -214,6 +230,36 @@ div.adjacent {
 	display: table-column;
 	float: left;
 	width: 85%
+}
+
+.s2_cell_b1 {
+	display: table-column;
+	float: left;
+	width: 19%
+}
+
+.s2_cell_c {
+	display: table-column;
+	float: left;
+	width: 12%
+}
+
+.s2_cell_d {
+	display: table-column;
+	float: left;
+	width: 45%
+}
+
+.s2_cell_e {
+	display: table-column;
+	float: left;
+	width: 4%
+}
+
+.s2_cell_f {
+	display: table-column;
+	float: left;
+	width: 4%
 }
 
 .s3 {

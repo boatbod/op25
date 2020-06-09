@@ -43,7 +43,9 @@ var c_srcaddr = 0;
 var c_grpaddr = 0;
 var c_encrypted = 0;
 var c_nac = 0;
+var c_name = "";
 var channel_list = [];
+var channel_index = 0;
 
 function find_parent(ele, tagname) {
     while (ele) {
@@ -99,6 +101,7 @@ function f_select(command) {
     var div_status = document.getElementById("div_status")
     var div_plot   = document.getElementById("div_plot")
     var div_about  = document.getElementById("div_about")
+    var div_s1     = document.getElementById("div_s1")
     var div_s2     = document.getElementById("div_s2")
     var div_s3     = document.getElementById("div_s3")
     var ctl1 = document.getElementById("controls1");
@@ -107,6 +110,7 @@ function f_select(command) {
         div_status.style['display'] = "";
         div_plot.style['display'] = "none";
         div_about.style['display'] = "none";
+        div_s1.style['display'] = "";
         div_s2.style['display'] = "";
         div_s3.style['display'] = "";
         ctl1.style['display'] = "";
@@ -116,7 +120,8 @@ function f_select(command) {
         div_status.style['display'] = "";
         div_plot.style['display'] = "";
         div_about.style['display'] = "none";
-        div_s2.style['display'] = "none";
+        div_s1.style['display'] = "none";
+        div_s2.style['display'] = "";
         div_s3.style['display'] = "none";
         ctl1.style['display'] = "none";
         ctl2.style['display'] = "";
@@ -173,19 +178,42 @@ function change_freq(d) {
 }
 
 function channel_update(d) {
+    var s2_c = document.getElementById("s2_ch_lbl");
+    var s2_d = document.getElementById("s2_ch_txt");
+    var s2_e = document.getElementById("s2_ch_dn");
+    var s2_f = document.getElementById("s2_ch_up");
+
     if (d['channels'] != undefined) {
         channel_list = d['channels'];    
-    
+
         if (channel_list.length > 0) {
-            var c_id = channel_list[0];
-            c_freq = d[c_id]['freq'];
+            var c_id = channel_list[channel_index];
             c_system = d[c_id]['system'];
+            c_name = "[" + c_id + "]";
+            if ((d[c_id]['name'] != undefined) && (d[c_id]['name'] != "")) {
+                c_name += " " + d[c_id]['name'];
+            }
+            else {
+                c_name += " " + c_system;
+            }
+            s2_d.innerHTML = "<span class=\"value\">" + c_name + "</span>";
+
+            c_freq = d[c_id]['freq'];
             current_tgid = d[c_id]['tgid'];
             c_tag = d[c_id]['tag'];
             c_srcaddr = d[c_id]['srcaddr'];
             c_stream_url = d[c_id]['stream_url'];
+            s2_c.style['display'] = "";
+            s2_d.style['display'] = "";
+            s2_e.style['display'] = "";
+            s2_f.style['display'] = "";
         }
         else {
+            s2_c.style['display'] = "none";
+            s2_d.style['display'] = "none";
+            s2_e.style['display'] = "none";
+            s2_f.style['display'] = "none";
+            c_name = "";
             c_freq = 0.0;
             c_system = "";
             current_tgid = 0;
@@ -203,22 +231,22 @@ function channel_status() {
     var s2_tg = document.getElementById("s2_tg");
     var s2_grp = document.getElementById("s2_grp");
     var s2_src = document.getElementById("s2_src");
+    var s2_ch_txt = document.getElementById("s2_ch_txt");
 
     html = "";
     if (c_stream_url != "") {
         html += "<a href=\"" + c_stream_url + "\">";
     }
-    if (c_freq != 0) {
-        html += "<span class=\"value\">" + c_freq / 1000000.0 + "</span>";
-    }
-    if (c_system != null)
-    {
-        html += "<span class=\"value\"> &nbsp;" + c_system + "</span>";
-    }
+    html += "<span class=\"value\">" + c_freq / 1000000.0 + "</span>";
     if (c_stream_url != "") {
         html += "</a>"
     }
     s2_freq.innerHTML = html
+    if ((c_system != null) && (channel_list.length == 0))
+    {
+        s2_ch_txt.innerHTML = "<span class=\"value\"> &nbsp;" + c_system + "</span>";
+        s2_ch_txt.style['display'] = "";
+    }
 
     html = "";
     if (current_tgid != null) {
@@ -307,8 +335,7 @@ function trunk_update(d) {
         if (fine_tune != null) {
             html += "<span class=\"label\">Fine tune offset: </span><span class=\"value\">" + fine_tune + "</span>";
         }
-
-        var div_s1 = document.getElementById("div_s1");
+        var div_s1     = document.getElementById("div_s1")
         div_s1.innerHTML = html;
 
 // system frequencies table
@@ -347,7 +374,6 @@ function trunk_update(d) {
 
     channel_status();
 }
-
 
 function http_req_cb() {
     req_cb_count += 1;
@@ -410,12 +436,24 @@ function send_process() {
     http_req.send(cmd);
 }
 
+function f_chan_button(command) {
+    channel_index += command;
+    if (channel_index < 0) {
+        channel_index = channel_list.length - 1;
+    }
+    else if (channel_index >= channel_list.length) {
+        channel_index = 0;
+    }
+}
+
 function f_tune_button(command) {
     send_command('adj_tune', command);
 }
 
 function f_plot_button(command) {
-    send_command('toggle_plot', command);
+    var msgqid_cmd = Number(channel_list[channel_index]) << 4;
+    msgqid_cmd += (command & 0xf);
+    send_command('toggle_plot', msgqid_cmd);
 }
 
 function f_scan_button(command) {
