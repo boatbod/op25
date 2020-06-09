@@ -264,7 +264,7 @@ class p25_demod_cb(p25_demod_base):
         if filter_type == 'rrc':
             self.set_baseband_gain(0.61)
         elif filter_type == 'widepulse':
-            self.set_baseband_gain(0.6)
+            self.set_baseband_gain(0.7)
 
         self.mixer = blocks.multiply_cc()
         decimator_values = get_decim(input_rate)
