@@ -99,7 +99,8 @@ class channel(object):
     def __init__(self, config, dev, verbosity, msgq_id, rx_q, tb):
         sys.stderr.write('channel (dev %s): %s\n' % (dev.name, config))
         self.verbosity = verbosity
-        self.name = from_dict(config, 'name', ("[%d]" % msgq_id))
+        ch_name = str(from_dict(config, 'name', ""))
+        self.name = ("[%d] %s" % (msgq_id, ch_name)) if ch_name != "" else ("[%d]" % msgq_id) 
         self.device = dev
         if 'frequency' in config and (config['frequency'] != ""):
             self.frequency = config['frequency']
@@ -203,7 +204,7 @@ class channel(object):
 
     def toggle_eye_plot(self):
         if 'eye' not in self.sinks:
-            sink = eye_sink_f(plot_name=self.name)
+            sink = eye_sink_f(plot_name=("Ch:%s" % self.name), chan=self.msgq_id)
             self.sinks['eye'] = sink
             self.set_plot_destination('eye')
             self.tb.lock()
@@ -220,7 +221,7 @@ class channel(object):
 
     def toggle_symbol_plot(self):
         if 'symbol' not in self.sinks:
-            sink = symbol_sink_f(plot_name=self.name)
+            sink = symbol_sink_f(plot_name=("Ch:%s" % self.name), chan=self.msgq_id)
             self.sinks['symbol'] = sink
             self.set_plot_destination('symbol')
             self.tb.lock()
@@ -235,7 +236,7 @@ class channel(object):
 
     def toggle_fft_plot(self):
         if 'fft' not in self.sinks:
-            sink = fft_sink_c(plot_name=self.name)
+            sink = fft_sink_c(plot_name=("Ch:%s" % self.name), chan=self.msgq_id)
             self.sinks['fft'] = sink
             self.set_plot_destination('fft')
             sink.set_offset(self.device.offset)
@@ -254,7 +255,7 @@ class channel(object):
 
     def toggle_mixer_plot(self):
         if 'mixer' not in self.sinks:
-            sink = mixer_sink_c(plot_name=self.name)
+            sink = mixer_sink_c(plot_name=("Ch:%s" % self.name), chan=self.msgq_id)
             self.sinks['mixer'] = sink
             self.set_plot_destination('mixer')
             sink.set_width(self.config['if_rate'])
@@ -272,7 +273,7 @@ class channel(object):
         if str(self.config['demod_type']).lower() != "cqpsk":
             return
         if 'constellation' not in self.sinks:
-            sink = constellation_sink_c(plot_name=self.name)
+            sink = constellation_sink_c(plot_name=("Ch:%s" % self.name), chan=self.msgq_id)
             self.sinks['constellation'] = sink
             self.set_plot_destination('constellation')
             self.tb.lock()
@@ -528,11 +529,13 @@ class rx_block (gr.top_block):
                 meta_s, meta_q = self.meta_streams[cfg['meta_stream_name']]
             if self.trunking is not None:
                 msgq_id = len(self.channels)
-                self.trunk_rx.add_receiver(msgq_id, config=cfg, meta_q=meta_q)
+                chan = channel(cfg, dev, self.verbosity, msgq_id, self.rx_q, self)
+                self.channels.append(chan)
+                self.trunk_rx.add_receiver(msgq_id, config=cfg, meta_q=meta_q, freq=chan.frequency)
             else:
                 msgq_id = -1 - len(self.channels)
-            chan = channel(cfg, dev, self.verbosity, msgq_id, self.rx_q, self)
-            self.channels.append(chan)
+                chan = channel(cfg, dev, self.verbosity, msgq_id, self.rx_q, self)
+                self.channels.append(chan)
             if ("raw_input" in cfg) and (cfg['raw_input'] != ""):
                 sys.stderr.write("%s Reading raw symbols from file: %s\n" % (log_ts.get(), cfg['raw_input']))
                 chan.raw_file = blocks.file_source(gr.sizeof_char, str(cfg['raw_input']), False)

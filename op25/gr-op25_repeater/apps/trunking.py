@@ -778,9 +778,11 @@ class rx_ctl (object):
                 self.build_config(conf_file)
                 self.post_init()
 
-    def add_receiver(self, msgq_id, config, meta_q = None):
+    def add_receiver(self, msgq_id, config, meta_q = None, freq = 0):
         self.config = config
         self.receivers[msgq_id] = msgq_id
+        self.last_tune_freq = freq
+        self.last_tune_time = time.time()
         if meta_q is not None:
             self.meta_q = meta_q
             self.meta_update = self.update_meta

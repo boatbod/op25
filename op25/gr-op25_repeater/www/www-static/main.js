@@ -144,12 +144,22 @@ function is_digit(s) {
 }
 
 function rx_update(d) {
+    plotfiles = [];
     if ((d["files"] != undefined) && (d["files"].length > 0)) {
-        for (var i=0; i < 5; i++) { // max 5 concurrent plots
+        for (var i=0; i < d["files"].length; i++) {
+            expr = new RegExp("plot\-" + channel_list[channel_index] + "\-");
+            if (expr.test(d["files"][i])) {
+                plotfiles.push(d["files"][i]);
+            }
+        }
+
+        for (var i=0; i < 5; i++) {
             var img = document.getElementById("img" + i);
-            if ((i < d["files"].length) && (img['src'] != d["files"][i])) {
-                img['src'] = d["files"][i];
-                img.style["display"] = "";
+            if (i < plotfiles.length) {
+                if (img['src'] != plotfiles[i]) {
+                    img['src'] = plotfiles[i];
+                    img.style["display"] = "";
+                }
             }
             else {
                 img.style["display"] = "none";
@@ -237,7 +247,7 @@ function channel_status() {
     if (c_stream_url != "") {
         html += "<a href=\"" + c_stream_url + "\">";
     }
-    html += "<span class=\"value\">" + c_freq / 1000000.0 + "</span>";
+    html += "<span class=\"value\">" + (c_freq / 1000000.0).toFixed(6) + "</span>";
     if (c_stream_url != "") {
         html += "</a>"
     }
@@ -287,7 +297,7 @@ function adjacent_data(d) {
         if ((ct & 1) == 0)
             color = "#c0c0c0";
         ct += 1;
-        html += "<tr style=\"background-color: " + color + ";\"><td>" + freq / 1000000.0 + "</td><td>" + d[freq]["rfid"] + "</td><td>" + d[freq]["stid"] + "</td><td>" + (d[freq]["uplink"] / 1000000.0) + "</td></tr>";
+        html += "<tr style=\"background-color: " + color + ";\"><td>" + (freq / 1000000.0).toFixed(6) + "</td><td>" + d[freq]["rfid"] + "</td><td>" + d[freq]["stid"] + "</td><td>" + (d[freq]["uplink"] / 1000000.0).toFixed(6) + "</td></tr>";
     }
     html += "</table></div></div><br><br>";
 
@@ -324,7 +334,7 @@ function trunk_update(d) {
         if (d[nac]['secondary'] != undefined && d[nac]["secondary"].length) {
             html += "<span class=\"label\">Secondary control channel(s): </span><span class=\"value\"> ";
             for (i=0; i<d[nac]["secondary"].length; i++) {
-                html += d[nac]["secondary"][i] / 1000000.0;
+                html += (d[nac]["secondary"][i] / 1000000.0).toFixed(6);
                 html += " ";
             }
             html += "</span><br>";
@@ -353,7 +363,7 @@ function trunk_update(d) {
             if ((ct & 1) == 0)
                 color = "#c0c0c0";
             ct += 1;
-            html += "<tr style=\"background-color: " + color + ";\"><td>" + parseInt(freq) / 1000000.0 + "</td><td>" + d[nac]['frequency_data'][freq]['last_activity'] + "</td><td>" + d[nac]['frequency_data'][freq]['tgids'][0] + "</td><td>" + tg2 + "</td><td>" + d[nac]['frequency_data'][freq]['counter'] + "</td></tr>";
+            html += "<tr style=\"background-color: " + color + ";\"><td>" + (parseInt(freq) / 1000000.0).toFixed(6) + "</td><td>" + d[nac]['frequency_data'][freq]['last_activity'] + "</td><td>" + d[nac]['frequency_data'][freq]['tgids'][0] + "</td><td>" + tg2 + "</td><td>" + d[nac]['frequency_data'][freq]['counter'] + "</td></tr>";
         }
         html += "</table></div>";
 

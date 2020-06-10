@@ -115,7 +115,7 @@ class rx_ctl(object):
                                                                 config        = chan)
 
     # add_receiver is called once per radio channel defined in cfg.json
-    def add_receiver(self, msgq_id, config, meta_q = None):
+    def add_receiver(self, msgq_id, config, meta_q = None, freq = 0):
         if msgq_id in self.receivers: # should be impossible
             return
 
@@ -139,7 +139,8 @@ class rx_ctl(object):
                                         nbfm_ctrl     = self.nbfm_ctrl,
                                         control       = rx_ctl,
                                         config        = config,
-                                        meta_q        = meta_q)
+                                        meta_q        = meta_q,
+                                        freq          = freq)
                 self.systems[rx_sysname]['voice'].append(rx_sys)
         else:                            # undefined or mis-configured trunking sysname
             sys.stderr.write("Receiver '%s' configured with unknown trunking_sysname '%s'\n" % (rx_name, rx_sysname))
@@ -568,7 +569,7 @@ class osw_receiver(object):
 #################
 # Voice channel class
 class voice_receiver(object):
-    def __init__(self, debug, msgq_id, frequency_set, slot_set, nbfm_ctrl, control, config, meta_q = None):
+    def __init__(self, debug, msgq_id, frequency_set, slot_set, nbfm_ctrl, control, config, meta_q = None, freq = 0):
         self.debug = debug
         self.msgq_id = msgq_id
         self.frequency_set = frequency_set
@@ -578,7 +579,7 @@ class voice_receiver(object):
         self.config = config
         self.meta_q = meta_q
         self.talkgroups = None
-        self.tuned_frequency = 0
+        self.tuned_frequency = freq
         self.current_tgid = None
         self.hold_tgid = None
         self.hold_until = 0.0

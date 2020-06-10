@@ -45,7 +45,7 @@ FFT_FREQ = 0.05   # time interval between fft updates
 MIX_FREQ = 0.02   # time interval between mixer updates
 
 class wrap_gp(object):
-    def __init__(self, sps=_def_sps, plot_name=""):
+    def __init__(self, sps=_def_sps, plot_name="", chan = 0):
         self.sps = sps
         self.center_freq = 0.0
         self.relative_freq = 0.0
@@ -63,6 +63,7 @@ class wrap_gp(object):
         self.sequence = 0
         self.output_dir = None
         self.filename = None
+        self.chan = chan
         if plot_name == "":
             self.plot_name = ""
         else:
@@ -177,11 +178,11 @@ class wrap_gp(object):
         filename = None
         if self.output_dir:
             if self.sequence >= 2:
-                delete_pathname = '%s/plot-%s-%d.png' % (self.output_dir, mode, self.sequence-2)
+                delete_pathname = '%s/plot-%d-%s-%d.png' % (self.output_dir, self.chan, mode, self.sequence-2)
                 if os.access(delete_pathname, os.W_OK):
                     os.remove(delete_pathname)
             h= 'set terminal png\n'
-            filename = 'plot-%s-%d.png' % (mode, self.sequence)
+            filename = 'plot-%d-%s-%d.png' % (self.chan, mode, self.sequence)
             self.sequence += 1
             h += 'set output "%s/%s"\n' % (self.output_dir, filename)
         else:
@@ -244,14 +245,14 @@ class wrap_gp(object):
 class eye_sink_f(gr.sync_block):
     """
     """
-    def __init__(self, debug = _def_debug, sps = _def_sps, plot_name = ""):
+    def __init__(self, debug = _def_debug, sps = _def_sps, plot_name = "", chan = 0):
         gr.sync_block.__init__(self,
             name="eye_sink_f",
             in_sig=[np.float32],
             out_sig=None)
         self.debug = debug
         self.sps = sps * _def_sps_mult
-        self.gnuplot = wrap_gp(sps=self.sps, plot_name=plot_name)
+        self.gnuplot = wrap_gp(sps=self.sps, plot_name=plot_name, chan=chan)
 
     def set_sps(self, sps):
         self.sps = sps * _def_sps_mult
@@ -268,13 +269,13 @@ class eye_sink_f(gr.sync_block):
 class constellation_sink_c(gr.sync_block):
     """
     """
-    def __init__(self, debug = _def_debug, plot_name = ""):
+    def __init__(self, debug = _def_debug, plot_name = "", chan = 0):
         gr.sync_block.__init__(self,
             name="constellation_sink_c",
             in_sig=[np.complex64],
             out_sig=None)
         self.debug = debug
-        self.gnuplot = wrap_gp(plot_name=plot_name)
+        self.gnuplot = wrap_gp(plot_name=plot_name, chan=chan)
 
     def work(self, input_items, output_items):
         in0 = input_items[0]
@@ -287,13 +288,13 @@ class constellation_sink_c(gr.sync_block):
 class fft_sink_c(gr.sync_block):
     """
     """
-    def __init__(self, debug = _def_debug, plot_name = ""):
+    def __init__(self, debug = _def_debug, plot_name = "", chan = 0):
         gr.sync_block.__init__(self,
             name="fft_sink_c",
             in_sig=[np.complex64],
             out_sig=None)
         self.debug = debug
-        self.gnuplot = wrap_gp(plot_name=plot_name)
+        self.gnuplot = wrap_gp(plot_name=plot_name, chan=chan)
         self.next_due = time.time()
 
     def work(self, input_items, output_items):
@@ -322,13 +323,13 @@ class fft_sink_c(gr.sync_block):
 class mixer_sink_c(gr.sync_block):
     """
     """
-    def __init__(self, debug = _def_debug, plot_name = ""):
+    def __init__(self, debug = _def_debug, plot_name = "", chan = 0):
         gr.sync_block.__init__(self,
             name="mixer_sink_c",
             in_sig=[np.complex64],
             out_sig=None)
         self.debug = debug
-        self.gnuplot = wrap_gp(plot_name=plot_name)
+        self.gnuplot = wrap_gp(plot_name=plot_name, chan=chan)
         self.next_due = time.time()
 
     def work(self, input_items, output_items):
@@ -347,13 +348,13 @@ class mixer_sink_c(gr.sync_block):
 class symbol_sink_f(gr.sync_block):
     """
     """
-    def __init__(self, debug = _def_debug, plot_name = ""):
+    def __init__(self, debug = _def_debug, plot_name = "", chan = 0):
         gr.sync_block.__init__(self,
             name="symbol_sink_f",
             in_sig=[np.float32],
             out_sig=None)
         self.debug = debug
-        self.gnuplot = wrap_gp(plot_name=plot_name)
+        self.gnuplot = wrap_gp(plot_name=plot_name, chan=chan)
 
     def work(self, input_items, output_items):
         in0 = input_items[0]
