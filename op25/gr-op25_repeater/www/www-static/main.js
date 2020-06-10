@@ -147,7 +147,13 @@ function rx_update(d) {
     plotfiles = [];
     if ((d["files"] != undefined) && (d["files"].length > 0)) {
         for (var i=0; i < d["files"].length; i++) {
-            expr = new RegExp("plot\-" + channel_list[channel_index] + "\-");
+            if (channel_list.length > 0) {
+                expr = new RegExp("plot\-" + channel_list[channel_index] + "\-");
+            }
+            else {
+                expr = new RegExp("plot\-0\-");
+            }
+
             if (expr.test(d["files"][i])) {
                 plotfiles.push(d["files"][i]);
             }
