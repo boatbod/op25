@@ -197,10 +197,13 @@ class channel(object):
                 return
 
     def set_plot_destination(self, plot): # only required for http terminal
-        if plot is None or plot not in self.sinks or self.tb.terminal_type is None or self.tb.terminal_type != "http":
+        if plot is None or plot not in self.sinks or self.tb.terminal_type is None:
             return
-        self.sinks[plot].gnuplot.set_interval(self.tb.http_plot_interval)
-        self.sinks[plot].gnuplot.set_output_dir(self.tb.http_plot_directory)
+        if self.tb.terminal_type == "http":
+            self.sinks[plot].gnuplot.set_interval(self.tb.http_plot_interval)
+            self.sinks[plot].gnuplot.set_output_dir(self.tb.http_plot_directory)
+        else:
+            self.sinks[plot].gnuplot.set_interval(self.tb.curses_plot_interval)
 
     def toggle_plot(self, plot_type):
         if plot_type == 1:
@@ -447,6 +450,7 @@ class rx_block (gr.top_block):
         term_type = str(from_dict(config,'terminal_type', "curses"))
         self.terminal = terminal.op25_terminal(self.ui_in_q, self.ui_out_q, term_type)
         self.terminal_type = self.terminal.get_terminal_type()
+        self.curses_plot_interval = float(from_dict(config, 'curses_plot_interval', 0.0))
         self.http_plot_interval = float(from_dict(config, 'http_plot_interval', 1.0))
         self.http_plot_directory = str(from_dict(config, 'http_plot_directory', "../www/images"))
 
