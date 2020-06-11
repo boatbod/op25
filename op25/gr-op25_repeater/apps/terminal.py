@@ -242,15 +242,15 @@ class curses_terminal(threading.Thread):
             if tgid:
                 self.send_command('lockout', tgid)
         elif c == ord(','):
-            self.send_command('adj_tune', -100)
+            self.send_command('adj_tune', -100, int(self.current_msgqid))
         elif c == ord('.'):
-            self.send_command('adj_tune', 100)
+            self.send_command('adj_tune', 100, int(self.current_msgqid))
         elif c == ord('<'):
-            self.send_command('adj_tune', -1200)
+            self.send_command('adj_tune', -1200, int(self.current_msgqid))
         elif c == ord('>'):
-            self.send_command('adj_tune', 1200)
+            self.send_command('adj_tune', 1200, int(self.current_msgqid))
         elif (c >= ord('1') ) and (c <= ord('5')):
-            self.send_command('toggle_plot', (int(self.current_msgqid) << 4) + ((c - ord('0')) & 0xf))
+            self.send_command('toggle_plot', (c - ord('0')), int(self.current_msgqid))
         elif c == ord('d'):
             self.send_command('dump_tgids', 0)
         elif c == ord('x'):
@@ -345,6 +345,8 @@ class curses_terminal(threading.Thread):
             c_id = self.current_msgqid if self.current_msgqid in self.channel_list else self.channel_list[0]
             s = '[%s] %s ' % (c_id, msg[c_id]['name']) if len(msg[c_id]['name']) > 0 else '[%s] ' % (c_id)
             s += 'Frequency %f' % (msg[c_id]['freq'] / 1000000.0)
+            if msg[c_id]['ppm'] is not None:
+                s += '(%.3f)' % (msg[c_id]['ppm'])
             if msg[c_id]['tgid'] is not None:
                 s += ' Talkgroup ID %s' % (msg[c_id]['tgid'])
                 if 'tdma' in msg[c_id] and msg[c_id]['tdma'] is not None:
@@ -397,11 +399,11 @@ class curses_terminal(threading.Thread):
                 return self.process_json(msg.to_string())
         return False
 
-    def send_command(self, command, data):
+    def send_command(self, command, arg1 = 0, arg2 = 0):
         if self.sock:
-            self.sock.send(json.dumps({'command': command, 'data': data}))
+            self.sock.send(json.dumps({'command': command, 'arg1': arg1, 'arg2': arg2}))
         else:
-            msg = gr.message().make_from_string(command, -2, data, 0)
+            msg = gr.message().make_from_string(command, -2, arg1, arg2)
             self.output_q.insert_tail(msg)
 
     def run(self):
@@ -484,7 +486,7 @@ class udp_terminal(threading.Thread):
             if data['command'] == 'quit':
                 self.keepalive_until = 0
                 continue
-            msg = gr.message().make_from_string(str(data['command']), -2, data['data'], 0)
+            msg = gr.message().make_from_string(str(data['command']), -2, data['arg1'], data['arg2'])
             self.output_q.insert_tail(msg)
             self.remote_ip = addr[0]
             self.remote_port = addr[1]

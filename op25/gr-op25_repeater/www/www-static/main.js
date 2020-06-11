@@ -36,6 +36,7 @@ var n200_count = 0;
 var r200_count = 0;
 var SEND_QLIMIT = 5;
 var c_freq = 0;
+var c_ppm = null;
 var c_system = null;
 var c_tag = null;
 var c_stream_url = null;
@@ -215,6 +216,7 @@ function channel_update(d) {
             s2_d.innerHTML = "<span class=\"value\">" + c_name + "</span>";
 
             c_freq = d[c_id]['freq'];
+            c_ppm = d[c_id]['ppm'];
             current_tgid = d[c_id]['tgid'];
             c_tag = d[c_id]['tag'];
             c_srcaddr = d[c_id]['srcaddr'];
@@ -256,6 +258,9 @@ function channel_status() {
     html += "<span class=\"value\">" + (c_freq / 1000000.0).toFixed(6) + "</span>";
     if (c_stream_url != "") {
         html += "</a>"
+    }
+    if (c_ppm != null) {
+        html += "<span class=\"value\"> (" + c_ppm.toFixed(3) + ")</span>";
     }
     s2_freq.innerHTML = html
     if ((c_system != null) && (channel_list.length == 0))
@@ -428,13 +433,13 @@ function do_update() {
     f_debug();
 }
 
-function send_command(command, data) {
+function send_command(command, arg1 = 0, arg2 = 0) {
     request_count += 1;
     if (send_queue.length >= SEND_QLIMIT) {
         send_qfull += 1;
         send_queue.unshift();
     }
-    send_queue.push( {"command": command, "data": data} );
+    send_queue.push( {"command": command, "arg1": arg1, "arg2": arg2} );
     send_process();
 }
 
@@ -467,9 +472,7 @@ function f_tune_button(command) {
 }
 
 function f_plot_button(command) {
-    var msgqid_cmd = Number(channel_list[channel_index]) << 4;
-    msgqid_cmd += (command & 0xf);
-    send_command('toggle_plot', msgqid_cmd);
+    send_command('toggle_plot', command, Number(channel_list[channel_index]));
 }
 
 function f_scan_button(command) {

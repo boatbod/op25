@@ -69,7 +69,7 @@ def post_req(environ, start_response, postdata):
     try:
         data = json.loads(postdata)
         for d in data:
-            msg = gr.message().make_from_string(str(d['command']), -2, d['data'], 0)
+            msg = gr.message().make_from_string(str(d['command']), -2, d['arg1'], d['arg2'])
             my_output_q.insert_tail(msg)
         valid_req = True
         time.sleep(0.2)

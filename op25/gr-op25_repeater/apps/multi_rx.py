@@ -54,13 +54,16 @@ os.environ['IMBE'] = 'soft'
 
 _def_symbol_rate = 4800
 
-# Helper function
+# Helper functions
 #
 def from_dict(d, key, def_val):
     if key in d and d[key] != "":
         return d[key]
     else:
         return def_val
+
+def get_fractional_ppm(tuned_freq, adj_val):
+    return (adj_val * 1e6 / tuned_freq)
 
 # The P25 receiver
 #
@@ -84,7 +87,7 @@ class device(object):
             self.src.set_gain(int(gain), str(name))
 
         self.ppm = float(from_dict(config, 'ppm', "0.0"))
-        self.src.set_freq_corr(int(self.ppm))
+        self.src.set_freq_corr(int(round(self.ppm)))
 
         self.src.set_sample_rate(config['rate'])
         self.sample_rate = config['rate']
@@ -92,8 +95,17 @@ class device(object):
         self.offset = int(from_dict(config, 'offset', 0))
 
         self.frequency = int(from_dict(config, 'frequency', 800000000))
-        self.fractional_corr = (self.ppm - int(self.ppm)) * (self.frequency/1e6)
-        self.src.set_center_freq(config['frequency'] + self.offset + self.fractional_corr)
+        self.fractional_corr = (self.ppm - int(round(self.ppm))) * (self.frequency/1e6)
+        self.src.set_center_freq(self.frequency + self.offset + self.fractional_corr)
+
+    def adj_tune(self, adjustment):
+        self.ppm -= get_fractional_ppm(self.frequency, adjustment)
+        self.src.set_freq_corr(int(round(self.ppm)))
+        self.fractional_corr = (self.ppm - int(round(self.ppm))) * (self.frequency/1e6)
+        self.src.set_center_freq(self.frequency + self.offset + self.fractional_corr)
+
+    def get_ppm(self):
+        return self.ppm
 
 class channel(object):
     def __init__(self, config, dev, verbosity, msgq_id, rx_q, tb):
@@ -294,7 +306,7 @@ class channel(object):
         if not self.demod.set_relative_frequency(self.device.offset + self.device.frequency - freq): # First attempt relative tune
             if self.device.tunable:                                                                  # then hard tune if allowed
                 self.device.frequency = self.frequency
-                self.device.fractional_corr = (self.device.ppm - int(self.device.ppm)) * (self.device.frequency/1e6)
+                self.device.fractional_corr = (self.device.ppm - int(round(self.device.ppm))) * (self.device.frequency/1e6)
                 self.device.src.set_center_freq(self.frequency + self.device.offset + self.device.fractional_corr)
                 self.demod.set_relative_frequency(self.device.offset + self.device.frequency - freq)
             else:                                                                                    # otherwise fail and reset to prev freq
@@ -616,16 +628,17 @@ class rx_block (gr.top_block):
             if not self.get_interactive():
                 sys.stderr.write("%s Cannot start plots for non-realtime (replay) sessions\n" % log_ts.get())
                 return
-            plot_type = int(msg.arg1()) & 0xf
-            msgq_id = int(msg.arg1()) >> 4
+            plot_type = int(msg.arg1())
+            msgq_id = int(msg.arg2())
             self.find_channel(msgq_id).toggle_plot(plot_type)
+        elif s == 'adj_tune':
+            freq = msg.arg1()
+            msgq_id = int(msg.arg2())
+            self.find_channel(msgq_id).device.adj_tune(freq)
         #elif s == 'set_freq':
         #    freq = msg.arg1()
         #    self.last_freq_params['freq'] = freq
         #    self.set_freq(freq)
-        #elif s == 'adj_tune':
-        #    freq = msg.arg1()
-        #    self.adj_tune(freq)
         #elif s == 'dump_tgids':
         #    self.trunk_rx.dump_tgids()
         #elif s == 'add_default_config':
@@ -640,6 +653,7 @@ class rx_block (gr.top_block):
             return False
         params = json.loads(self.trunk_rx.get_chan_status())   # extract data from all channels
         for rx_id in params['channels']:                       # iterate and convert stream name to url
+            params[rx_id]['ppm'] = self.find_channel(int(rx_id)).device.get_ppm()
             s_name = params[rx_id]['stream']
             if s_name not in self.meta_streams:
                 continue

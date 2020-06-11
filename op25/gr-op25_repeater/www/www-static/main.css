@@ -235,19 +235,19 @@ div.adjacent {
 .s2_cell_b1 {
 	display: table-column;
 	float: left;
-	width: 19%
+	width: 23%
 }
 
 .s2_cell_c {
 	display: table-column;
 	float: left;
-	width: 12%
+	width: 10%
 }
 
 .s2_cell_d {
 	display: table-column;
 	float: left;
-	width: 45%
+	width: 43%
 }
 
 .s2_cell_e {
