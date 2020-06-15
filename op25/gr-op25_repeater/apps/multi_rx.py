@@ -96,13 +96,7 @@ class device(object):
 
         self.frequency = int(from_dict(config, 'frequency', 800000000))
         self.fractional_corr = (self.ppm - int(round(self.ppm))) * (self.frequency/1e6)
-        self.src.set_center_freq(self.frequency + self.offset + self.fractional_corr)
-
-    def adj_tune(self, adjustment):
-        self.ppm -= get_fractional_ppm(self.frequency, adjustment)
-        self.src.set_freq_corr(int(round(self.ppm)))
-        self.fractional_corr = (self.ppm - int(round(self.ppm))) * (self.frequency/1e6)
-        self.src.set_center_freq(self.frequency + self.offset + self.fractional_corr)
+        self.src.set_center_freq(self.frequency + self.offset)
 
     def get_ppm(self):
         return self.ppm
@@ -138,7 +132,7 @@ class channel(object):
                              demod_type = 'fsk4',
                              filter_type = 'fsk',
                              excess_bw = config['excess_bw'],
-                             relative_freq = (dev.frequency + dev.offset) - self.frequency,
+                             relative_freq = (dev.frequency + dev.offset + dev.fractional_corr) - self.frequency,
                              offset = dev.offset,
                              if_rate = config['if_rate'],
                              symbol_rate = self.symbol_rate)
@@ -150,7 +144,7 @@ class channel(object):
                              demod_type = config['demod_type'],
                              filter_type = config['filter_type'],
                              excess_bw = config['excess_bw'],
-                             relative_freq = (dev.frequency + dev.offset) - self.frequency,
+                             relative_freq = (dev.frequency + dev.offset + dev.fractional_corr) - self.frequency,
                              offset = dev.offset,
                              if_rate = config['if_rate'],
                              symbol_rate = self.symbol_rate)
@@ -306,14 +300,14 @@ class channel(object):
             return True
         old_freq = self.frequency
         self.frequency = freq
-        if not self.demod.set_relative_frequency(self.device.offset + self.device.frequency - freq): # First attempt relative tune
+        if not self.demod.set_relative_frequency(self.device.offset + self.device.frequency + self.device.fractional_corr - freq): # First attempt relative tune
             if self.device.tunable:                                                                  # then hard tune if allowed
                 self.device.frequency = self.frequency
                 self.device.fractional_corr = (self.device.ppm - int(round(self.device.ppm))) * (self.device.frequency/1e6)
-                self.device.src.set_center_freq(self.frequency + self.device.offset + self.device.fractional_corr)
-                self.demod.set_relative_frequency(self.device.offset + self.device.frequency - freq)
+                self.device.src.set_center_freq(self.frequency + self.device.offset)
+                self.demod.set_relative_frequency(self.device.offset + self.device.frequency + self.device.fractional_corr - freq)
             else:                                                                                    # otherwise fail and reset to prev freq
-                self.demod.set_relative_frequency(self.device.offset + self.device.frequency - old_freq)
+                self.demod.set_relative_frequency(self.device.offset + self.device.frequency + self.device.fractional_corr - old_freq)
                 self.frequency = old_freq
                 if self.verbosity:
                     sys.stderr.write("%s [%d] Unable to tune %s to frequency %f\n" % (log_ts.get(), self.msgq_id, self.name, (freq/1e6)))
@@ -325,6 +319,13 @@ class channel(object):
             sys.stderr.write("%s [%d] Tuning to frequency %f\n" % (log_ts.get(), self.msgq_id, (freq/1e6)))
         self.decoder.sync_reset()
         return True
+
+    def adj_tune(self, adjustment):     # ideally this would all be done at the device level but the demod belongs to the channel object
+        self.device.ppm += get_fractional_ppm(self.device.frequency, adjustment)
+        self.device.src.set_freq_corr(int(round(self.device.ppm)))
+        self.device.src.set_center_freq(self.device.frequency + self.device.offset)
+        self.device.fractional_corr = (self.device.ppm - int(round(self.device.ppm))) * (self.device.frequency/1e6)
+        self.demod.set_relative_frequency(self.device.offset + self.device.frequency + self.device.fractional_corr - self.frequency)
 
     def configure_p25_tdma(self, params):
         set_tdma = False
@@ -638,7 +639,7 @@ class rx_block (gr.top_block):
         elif s == 'adj_tune':
             freq = msg.arg1()
             msgq_id = int(msg.arg2())
-            self.find_channel(msgq_id).device.adj_tune(freq)
+            self.find_channel(msgq_id).adj_tune(freq)
         #elif s == 'set_freq':
         #    freq = msg.arg1()
         #    self.last_freq_params['freq'] = freq
