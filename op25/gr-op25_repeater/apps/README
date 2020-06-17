@@ -50,6 +50,7 @@ terminal window there are several keyboard commands:
  3 - toggle symbol plot
  4 - toggle datascope plot
  5 - toggle mixer plot
+ 6 - toggle tuner plot
 There are also two experimental commands (should not be used in -T mode)
  f - manually change frequencies
  t - if currently tuned to a CC, autostart scanning talkgroups
@@ -149,7 +150,7 @@ Options:
   -D DEMOD_TYPE, --demod-type=DEMOD_TYPE
                         cqpsk | fsk4
   -P PLOT_MODE, --plot-mode=PLOT_MODE
-                        constellation | fft | symbol | datascope | mixer
+                        constellation | fft | symbol | datascope | mixer | tuner
   -f Hz, --frequency=Hz
                         USRP center frequency
   -F IFILE, --ifile=IFILE
