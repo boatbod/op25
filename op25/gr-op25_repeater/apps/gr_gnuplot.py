@@ -123,6 +123,11 @@ class wrap_gp(object):
                 s += 'e\n'
                 self.buf=self.buf[self.sps:]
                 plots.append('"-" with lines')
+            elif mode == 'tuner':
+                s += '%f\n' % self.buf[0] # we only care about 1 data point
+                s += 'e\n'
+                self.buf=self.buf[self.sps:]
+                plots.append('"-" with boxes')
             elif mode == 'constellation':
                 for b in self.buf:
                     s += '%f\t%f\n' % (b.real, b.imag)
@@ -200,6 +205,13 @@ class wrap_gp(object):
             h+= background
             h+= 'set yrange [-4:4]\n'
             h+= 'set title "%sDatascope"\n' % self.plot_name
+        elif mode == 'tuner':
+            h+= 'set xrange [-1:1]\n'
+            h+= 'set xzeroaxis\n'
+            h+= 'set yrange [-1:1]\n'
+            h+= 'set boxwidth 0.25\n'
+            h+= 'set style fill solid\n'
+            h+= 'set title "%sTuner"\n' % self.plot_name
         elif mode == 'symbol':
             h+= background
             h+= 'set yrange [-4:4]\n'
@@ -262,6 +274,25 @@ class eye_sink_f(gr.sync_block):
         in0 = input_items[0]
         consumed = self.gnuplot.plot(in0, 100 * self.sps, mode='eye')
         return consumed ### len(input_items[0])
+
+    def kill(self):
+        self.gnuplot.kill()
+
+class tuner_sink_f(gr.sync_block):
+    """
+    """
+    def __init__(self, debug = _def_debug, plot_name = "", chan = 0):
+        gr.sync_block.__init__(self,
+            name="tuner_sink_f",
+            in_sig=[np.float32],
+            out_sig=None)
+        self.debug = debug
+        self.gnuplot = wrap_gp(plot_name=plot_name, chan=chan)
+
+    def work(self, input_items, output_items):
+        in0 = input_items[0]
+        self.gnuplot.plot(in0, 1, mode='tuner')
+        return len(input_items[0])
 
     def kill(self):
         self.gnuplot.kill()

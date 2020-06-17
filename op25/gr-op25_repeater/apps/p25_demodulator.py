@@ -91,6 +91,8 @@ class p25_demod_base(gr.hier_block2):
         self.if_rate = if_rate
         self.symbol_rate = symbol_rate
         self.bb_sink = {}
+        self.bb_tuner_sink = {}
+        self.spiir = filter.single_pole_iir_filter_ff(0.0001)
 
         self.null_sink = blocks.null_sink(gr.sizeof_float)
         self.baseband_amp = blocks.multiply_const_ff(_def_bb_gain)
@@ -178,6 +180,19 @@ class p25_demod_base(gr.hier_block2):
         elif src == 'baseband_amp':
             self.connect(self.baseband_amp, sink)
             self.bb_sink[sink] = self.baseband_amp
+
+    def disconnect_bb_tuner(self, sink):
+        # assumes lock held or init
+        if sink not in self.bb_tuner_sink:
+            return
+        self.disconnect(self.bb_tuner_sink[sink], self.spiir, sink)
+        self.bb_tuner_sink.pop(sink)
+
+    def connect_bb_tuner(self, src, sink):
+        # assumes lock held or init
+        self.disconnect_bb_tuner(sink)
+        self.connect(self.symbol_filter, self.spiir, sink)
+        self.bb_tuner_sink[sink] = self.symbol_filter
 
     def reset(self):
         pass

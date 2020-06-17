@@ -472,7 +472,12 @@ function f_tune_button(command) {
 }
 
 function f_plot_button(command) {
-    send_command('toggle_plot', command, Number(channel_list[channel_index]));
+    if (channel_list.length == 0) {
+        send_command('toggle_plot', command, 0);
+    }
+    else {
+        send_command('toggle_plot', command, Number(channel_list[channel_index]));
+    }
 }
 
 function f_scan_button(command) {

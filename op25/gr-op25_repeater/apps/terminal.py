@@ -130,7 +130,7 @@ class curses_terminal(threading.Thread):
 
     def title_help(self):
         title_str = "OP25"
-        help_str = "(f)req (h)old (s)kip (l)ock (W)list (B)list (q)uit (1-5)plot (,.<>)tune"
+        help_str = "(f)req (h)old (s)kip (l)ock (W)list (B)list (q)uit (1-6)plot (,.<>)tune"
         self.title_bar.erase()
         self.help_bar.erase()
         self.title_bar.addstr(0, 0, title_str.center(self.maxx-1, " "), curses.A_REVERSE)
@@ -249,7 +249,7 @@ class curses_terminal(threading.Thread):
             self.send_command('adj_tune', -1200, int(self.current_msgqid))
         elif c == ord('>'):
             self.send_command('adj_tune', 1200, int(self.current_msgqid))
-        elif (c >= ord('1') ) and (c <= ord('5')):
+        elif (c >= ord('1') ) and (c <= ord('6')):
             self.send_command('toggle_plot', (c - ord('0')), int(self.current_msgqid))
         elif c == ord('d'):
             self.send_command('dump_tgids', 0)

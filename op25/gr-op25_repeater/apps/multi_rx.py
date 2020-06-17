@@ -46,6 +46,7 @@ from gr_gnuplot import fft_sink_c
 from gr_gnuplot import symbol_sink_f
 from gr_gnuplot import eye_sink_f
 from gr_gnuplot import mixer_sink_c
+from gr_gnuplot import tuner_sink_f
 
 sys.path.append('tdma')
 import lfsr
@@ -186,6 +187,8 @@ class channel(object):
                 self.toggle_constellation_plot()
             elif plot == 'mixer':
                 self.toggle_mixer_plot()
+            elif plot == 'tuner':
+                self.toggle_tuner_plot()
             else:
                 sys.stderr.write('unrecognized plot type %s\n' % plot)
                 return
@@ -210,6 +213,8 @@ class channel(object):
             self.toggle_eye_plot()
         elif plot_type == 5:
             self.toggle_mixer_plot()
+        elif plot_type == 6:
+            self.toggle_tuner_plot()
 
     def toggle_eye_plot(self):
         if 'eye' not in self.sinks:
@@ -224,6 +229,23 @@ class channel(object):
             sink = self.sinks.pop('eye')
             self.tb.lock()
             self.demod.disconnect_bb(sink)
+            self.demod.disconnect_fm_demod()                # remove fm demod from flowgraph if no longer needed
+            self.tb.unlock()
+            sink.kill()
+
+    def toggle_tuner_plot(self):
+        if 'tuner' not in self.sinks:
+            sink = tuner_sink_f(plot_name=("Ch:%s" % self.name), chan=self.msgq_id)
+            self.sinks['tuner'] = sink
+            self.set_plot_destination('tuner')
+            self.tb.lock()
+            self.demod.connect_fm_demod()                   # add fm demod to flowgraph if not already present
+            self.demod.connect_bb_tuner('symbol_filter', sink)
+            self.tb.unlock()
+        else:
+            sink = self.sinks.pop('tuner')
+            self.tb.lock()
+            self.demod.disconnect_bb_tuner(sink)
             self.demod.disconnect_fm_demod()                # remove fm demod from flowgraph if no longer needed
             self.tb.unlock()
             sink.kill()
