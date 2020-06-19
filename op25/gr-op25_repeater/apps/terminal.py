@@ -266,6 +266,9 @@ class curses_terminal(threading.Thread):
         return False
 
     def change_chan(self, incr):
+        if len(self.channel_list) == 0:
+            return
+
         i = self.channel_list.index(self.current_msgqid) if self.current_msgqid in self.channel_list else 0
         i += incr
         if i >= len(self.channel_list):
