@@ -36,6 +36,7 @@ CC_TIMEOUT_RETRIES = 3   # Number of control channel framing timeouts before hun
 VC_TIMEOUT_RETRIES = 3   # Number of voice channel framing timeouts before expiry
 TGID_DEFAULT_PRIO = 3    # Default tgid priority when unassigned
 TGID_HOLD_TIME = 2.0     # Number of seconds to give previously active tgid exclusive channel access
+TGID_SKIP_TIME = 4.0     # Number of seconds to blacklist a previously skipped tgid
 TGID_EXPIRY_TIME = 1.0   # Number of seconds to allow tgid to remain active with no updates received
 EXPIRY_TIMER = 0.2       # Number of seconds between checks for tgid expiry
 
@@ -638,7 +639,7 @@ class voice_receiver(object):
             self.add_whitelist(data)
         elif cmd == 'skip':
             if self.current_tgid is not None:
-                self.add_blacklist(self.current_tgid, curr_time)
+                self.add_blacklist(self.current_tgid, curr_time + TGID_SKIP_TIME)
         elif cmd == 'lockout':
             if (data == 0) and self.current_tgid is not None:
                 self.add_blacklist(self.current_tgid)
