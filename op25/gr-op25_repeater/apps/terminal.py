@@ -161,14 +161,14 @@ class curses_terminal(threading.Thread):
         COMMANDS = {_ORD_S: 'skip', _ORD_L: 'lockout', _ORD_H: 'hold', _ORD_R: 'reload'}
         c = self.stdscr.getch()
         if c == ord('u') or self.do_auto_update():
-            self.send_command('update', 0)
+            self.send_command('update', 0, int(self.current_msgqid))
         if c in list(COMMANDS.keys()):
-            self.send_command(COMMANDS[c], 0)
+            self.send_command(COMMANDS[c], 0, int(self.current_msgqid))
         elif c == ord('q'):
             return True
         elif c == ord('t'):
             if self.current_nac:
-                self.send_command('add_default_config', int(self.current_nac))
+                self.send_command('add_default_config', int(self.current_nac), int(self.current_msgqid))
         elif c == ord('f'):
             self.prompt.addstr(0, 0, 'Frequency')
             self.prompt.refresh()
@@ -186,7 +186,7 @@ class curses_terminal(threading.Thread):
             except:
                 freq = None
             if freq:
-                self.send_command('set_freq', freq)
+                self.send_command('set_freq', freq, int(self.current_msgqid))
         elif c == ord('H'):
             self.prompt.addstr(0, 0, 'Hold tgid')
             self.prompt.refresh()
@@ -204,7 +204,7 @@ class curses_terminal(threading.Thread):
             except:
                 tgid = 0
             if tgid:
-                self.send_command('hold', tgid)
+                self.send_command('hold', tgid, int(self.current_msgqid))
         elif c == ord('W'):
             self.prompt.addstr(0, 0, 'W/L tgid ')
             self.prompt.refresh()
@@ -222,7 +222,7 @@ class curses_terminal(threading.Thread):
             except:
                 tgid = 0
             if tgid:
-                self.send_command('whitelist', tgid)
+                self.send_command('whitelist', tgid, int(self.current_msgqid))
         elif c == ord('B'):
             self.prompt.addstr(0, 0, 'B/L tgid ')
             self.prompt.refresh()
@@ -240,7 +240,7 @@ class curses_terminal(threading.Thread):
             except:
                 tgid = 0
             if tgid:
-                self.send_command('lockout', tgid)
+                self.send_command('lockout', tgid, int(self.current_msgqid))
         elif c == ord(','):
             self.send_command('adj_tune', -100, int(self.current_msgqid))
         elif c == ord('.'):
@@ -252,7 +252,7 @@ class curses_terminal(threading.Thread):
         elif (c >= ord('1') ) and (c <= ord('6')):
             self.send_command('toggle_plot', (c - ord('0')), int(self.current_msgqid))
         elif c == ord('d'):
-            self.send_command('dump_tgids', 0)
+            self.send_command('dump_tgids', 0, int(self.current_msgqid))
         elif c == ord('x'):
             assert 1 == 0
         elif c == curses.KEY_UP:
@@ -348,9 +348,9 @@ class curses_terminal(threading.Thread):
             if msg[c_id]['ppm'] is not None:
                 s += '(%.3f)' % (msg[c_id]['ppm'])
             if msg[c_id]['tgid'] is not None:
-                s += ' Talkgroup ID %s' % (msg[c_id]['tgid'])
+                s += ' Talkgroup ID %s' % (int(msg[c_id]['tgid']))
                 if 'tdma' in msg[c_id] and msg[c_id]['tdma'] is not None:
-                    s += ' TDMA Slot %s' % msg[c_id]['tdma']
+                    s += ' TDMA Slot %s' % int(msg[c_id]['tdma'])
                 if 'mode' in msg[c_id]:
                     mode  = msg[c_id]['mode']
                     if mode == 0:
