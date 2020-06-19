@@ -612,10 +612,13 @@ class voice_receiver(object):
         if self.debug >= 1:
             sys.stderr.write("%s [%d] Initializing voice channel\n" % (log_ts.get(), self.msgq_id))
         self.slot_set({'tuner': self.msgq_id,'slot': 4})     # disable voice
-
         if self.control is not None:
             self.talkgroups = self.control.get_talkgroups()
+        self.load_bl_wl()
+        self.tgid_hold_time = float(from_dict(self.control.config, 'tgid_hold_time', TGID_HOLD_TIME))
+        meta_update(self.meta_q)
 
+    def load_bl_wl(self):
         if 'blacklist' in self.config and self.config['blacklist'] != "":
             sys.stderr.write("%s [%d] reading channel blacklist file: %s\n" % (log_ts.get(), self.msgq_id, self.config['blacklist']))
             self.blacklist = get_int_dict(self.config['blacklist'], self.msgq_id)
@@ -627,10 +630,6 @@ class voice_receiver(object):
             self.whitelist = get_int_dict(self.config['whitelist'], self.msgq_id)
         else:
             self.whitelist = self.control.get_whitelist()
-
-        self.tgid_hold_time = float(from_dict(self.control.config, 'tgid_hold_time', TGID_HOLD_TIME))
-
-        meta_update(self.meta_q)
 
     def ui_command(self, cmd, data, curr_time):
         if cmd == 'hold':
@@ -645,6 +644,10 @@ class voice_receiver(object):
                 self.add_blacklist(self.current_tgid)
             elif data > 0:
                 self.add_blacklist(data)
+        elif cmd == 'reload':
+            self.blacklist = {}
+            self.whitelist = None
+            self.load_bl_wl()
  
     def process_qmsg(self, msg, curr_time):
         m_type = ctypes.c_int16(msg.type() & 0xffff).value
