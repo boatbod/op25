@@ -1042,6 +1042,12 @@ class rx_ctl (object):
             s += self.trunked_systems[nac].to_string()
         return s
 
+    def ui_command(self, cmd, data, msgq_id):
+        curr_time = time.time()
+        if self.debug > 10:
+            sys.stderr.write('ui_command: command: %s, data: %d\n' % (cmd, int(data)))
+        self.update_state(cmd, curr_time, int(data))
+
     def process_qmsg(self, msg):
         m_proto = ctypes.c_int16(msg.type() >> 16).value
         m_type = ctypes.c_int16(msg.type() & 0xffff).value

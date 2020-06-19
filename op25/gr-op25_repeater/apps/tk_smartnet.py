@@ -165,6 +165,12 @@ class rx_ctl(object):
             for rx in self.systems[self.receivers[m_rxid]['sysname']]['voice']:  # then have all the voice receivers scan for activity
                 rx.scan_for_talkgroups(curr_time)
 
+    # ui_command handles all requests from user interface
+    def ui_command(self, cmd, data, msgq_id):
+        curr_time = time.time()
+        if msgq_id in self.receivers and self.receivers[msgq_id]['rx_sys'] is not None:
+            self.receivers[msgq_id]['rx_sys'].ui_command(cmd = cmd, data = data, curr_time = curr_time)    # Dispatch message to the intended receiver
+
     def to_json(self):
         d = {'json_type': 'trunk_update'}
         syid = 0;
@@ -173,6 +179,10 @@ class rx_ctl(object):
             syid += 1
         d['nac'] = 0
         return json.dumps(d)
+
+    def dump_tgids(self):
+        for system in self.systems:
+            self.systems[system]['control'].dump_tgids()
 
     def get_chan_status(self):
         d = {'json_type': 'channel_update'}
@@ -277,12 +287,7 @@ class osw_receiver(object):
                     prio = TGID_DEFAULT_PRIO
 
                 if tgid not in self.talkgroups:
-                    self.talkgroups[tgid] = {'counter':0}
-                    self.talkgroups[tgid]['tgid'] = tgid
-                    self.talkgroups[tgid]['srcaddr'] = 0
-                    self.talkgroups[tgid]['receiver'] = None
-                    self.talkgroups[tgid]['time'] = 0
-                    self.talkgroups[tgid]['mode'] = -1
+                    self.add_default_tgid(tgid)
                 self.talkgroups[tgid]['tag'] = tag
                 self.talkgroups[tgid]['prio'] = prio
                 sys.stderr.write("%s [%d] setting tgid(%d), prio(%d), tag(%s)\n" % (log_ts.get(), self.msgq_id, tgid, prio, tag))
@@ -295,6 +300,9 @@ class osw_receiver(object):
         tune_params = {'tuner': self.msgq_id,
                        'freq': self.cc_list[self.cc_index]}
         self.frequency_set(tune_params)
+
+    def ui_command(self, cmd, data, curr_time):
+        pass
 
     def process_qmsg(self, msg, curr_time):
         m_proto = ctypes.c_int16(msg.type() >> 16).value  # upper 16 bits of msg.type() is signed protocol
@@ -508,16 +516,9 @@ class osw_receiver(object):
             sys.stderr.write('%s [%d] set tgid=%s, status=0x%x, srcaddr=%s\n' % (log_ts.get(), self.msgq_id, base_tgid, tgid_stat, srcaddr))
         
         if base_tgid not in self.talkgroups:
-            self.talkgroups[base_tgid] = {'counter':0}
-            self.talkgroups[base_tgid]['tgid'] = base_tgid
-            self.talkgroups[base_tgid]['prio'] = TGID_DEFAULT_PRIO
-            self.talkgroups[base_tgid]['tag'] = "TGID[" + str(base_tgid) + "]"
-            self.talkgroups[base_tgid]['srcaddr'] = 0
-            self.talkgroups[base_tgid]['mode'] = -1
-            self.talkgroups[base_tgid]['receiver'] = None
+            self.add_default_tgid(base_tgid)
             if self.debug >= 5:
                 sys.stderr.write('%s [%d] new tgid=%s %s prio %d\n' % (log_ts.get(), self.msgq_id, base_tgid, self.talkgroups[base_tgid]['tag'], self.talkgroups[base_tgid]['prio']))
-                sys.stderr.write('%s [%d] new tgid=%s\n' % (log_ts.get(), self.msgq_id, base_tgid))
         self.talkgroups[base_tgid]['time'] = time.time()
         self.talkgroups[base_tgid]['frequency'] = frequency
         self.talkgroups[base_tgid]['status'] = tgid_stat
@@ -525,6 +526,18 @@ class osw_receiver(object):
             self.talkgroups[base_tgid]['srcaddr'] = srcaddr
         if mode >= 0:
             self.talkgroups[base_tgid]['mode'] = mode
+
+    def add_default_tgid(self, tgid):
+        if tgid not in self.talkgroups:
+            self.talkgroups[tgid] = {'counter':0}
+            self.talkgroups[tgid]['tgid'] = tgid
+            self.talkgroups[tgid]['prio'] = TGID_DEFAULT_PRIO
+            self.talkgroups[tgid]['tag'] = "TGID[" + str(int(tgid)) + "]"
+            self.talkgroups[tgid]['srcaddr'] = 0
+            self.talkgroups[tgid]['time'] = 0
+            self.talkgroups[tgid]['mode'] = -1
+            self.talkgroups[tgid]['receiver'] = None
+            self.talkgroups[tgid]['status'] = 0
 
     def expire_talkgroups(self, curr_time):
         if curr_time < self.last_expiry_check + EXPIRY_TIMER:
@@ -536,6 +549,12 @@ class osw_receiver(object):
                 if self.debug > 1:
                     sys.stderr.write("%s [%d] expiring tg(%d), freq(%f)\n" % (log_ts.get(), self.msgq_id, tgid, (self.talkgroups[tgid]['frequency']/1e6)))
                 self.talkgroups[tgid]['receiver'].expire_talkgroup(reason="expiry")
+
+    def dump_tgids(self):
+        sys.stderr.write("Known tgids: { ")
+        for tgid in sorted(self.talkgroups.keys()):
+            sys.stderr.write("%d " % tgid);
+        sys.stderr.write("}\n") 
 
     def to_json(self):  # ugly but required for compatibility with P25 trunking and terminal modules
         d = {}
@@ -583,6 +602,7 @@ class voice_receiver(object):
         self.current_tgid = None
         self.hold_tgid = None
         self.hold_until = 0.0
+        self.hold_mode = False
         self.tgid_hold_time = TGID_HOLD_TIME
         self.blacklist = {}
         self.whitelist = None
@@ -612,6 +632,19 @@ class voice_receiver(object):
 
         meta_update(self.meta_q)
 
+    def ui_command(self, cmd, data, curr_time):
+        if cmd == 'hold':
+            self.hold_talkgroup(data, curr_time)
+        elif cmd == 'whitelist':
+            self.add_whitelist(data)
+        elif cmd == 'skip':
+            if self.current_tgid is not None:
+                self.add_blacklist(self.current_tgid, curr_time)
+        elif cmd == 'lockout':
+            if (data == 0) and self.current_tgid is not None:
+                self.add_blacklist(self.current_tgid)
+            elif data > 0:
+                self.add_blacklist(data)
  
     def process_qmsg(self, msg, curr_time):
         m_type = ctypes.c_int16(msg.type() & 0xffff).value
@@ -630,6 +663,50 @@ class voice_receiver(object):
             pass 
         elif (m_type == 15): # DUID-15 (call termination with channel release)
             self.expire_talkgroup(reason="duid15")
+
+    def add_blacklist(self, tgid, end_time=None):
+        if not tgid or (tgid <= 0) or (tgid > 65534):
+            if self.debug > 0:
+                sys.stderr.write("%s [%d] blacklist tgid(%d) out of range (1-65534)\n" % (log_ts.get(), self.msgq_id, tgid))
+            return
+        if tgid in self.blacklist:
+            return
+        if end_time is None and self.whitelist and tgid in self.whitelist:
+            self.whitelist.pop(tgid)
+            if len(self.whitelist) == 0:
+                self.whitelist = None
+            if self.debug > 1:
+                sys.stderr.write("%s [%d] de-whitelisting tgid(%d)\n" % (log_ts.get(), self.msgq_id, tgid))
+        self.blacklist[tgid] = end_time
+        if self.debug > 1:
+            sys.stderr.write("%s [%d] blacklisting tgid(%d)\n" % (log_ts.get(), self.msgq_id, tgid))
+        if self.current_tgid and self.current_tgid in self.blacklist:
+            self.expire_talkgroup(reason = "blacklisted")
+            self.hold_mode = False
+            self.hold_tgid = None
+            self.hold_until = time.time()
+
+    def add_whitelist(self, tgid):
+        if not tgid or (tgid <= 0) or (tgid > 65534):
+            if self.debug > 0:
+                sys.stderr.write("%s [%d] whitelist tgid(%d) out of range (1-65534)\n" % (log_ts.get(), self.msgq_id, tgid))
+            return
+        if self.blacklist and tgid in self.blacklist:
+            self.blacklist.pop(tgid)
+            if self.debug > 1:
+                sys.stderr.write("%s [%d] de-blacklisting tgid(%d)\n" % (log_ts.get(), self.msgq_id, tgid))
+        if self.whitelist is None:
+            self.whitelist = {}
+        if tgid in self.whitelist:
+            return
+        self.whitelist[tgid] = None
+        if self.debug > 1:
+            sys.stderr.write("%s [%d] whitelisting tgid(%d)\n" % (log_ts.get(), self.msgq_id, tgid))
+        if self.current_tgid and self.current_tgid not in self.whitelist:
+            self.expire_talkgroup(reason = "not whitelisted")
+            self.hold_mode = False
+            self.hold_tgid = None
+            self.hold_until = time.time()
 
     def blacklist_update(self, start_time):
         expired_tgs = [tg for tg in list(self.blacklist.keys())
@@ -685,6 +762,36 @@ class voice_receiver(object):
             self.tune_voice(freq, tgid)
 
         meta_update(self.meta_q, tgid, self.talkgroups[tgid]['tag'])
+
+    def hold_talkgroup(self, tgid, curr_time):
+        if tgid > 0:
+            if self.whitelist is not None and tgid not in self.whitelist:
+                if self.debug > 1:
+                    sys.stderr.write("%s [%d] hold tg(%d) not in whitelist\n" % (log_ts.get(), self.msgq_id, tgid))
+                return
+            self.control.add_default_tgid(tgid)
+            self.hold_tgid = tgid
+            self.hold_until = curr_time + 86400 * 10000
+            self.hold_mode = True
+            if self.debug > 0:
+                sys.stderr.write ('%s [%d] set hold tg(%d) until %f\n' % (log_ts.get(), self.msgq_id, self.hold_tgid, self.hold_until))
+            if self.current_tgid != self.hold_tgid:
+                self.expire_talkgroup(reason="new hold")
+                self.current_tgid = self.hold_tgid
+        elif self.hold_mode is False:
+            if self.current_tgid:
+                self.hold_tgid = self.current_tgid
+                self.hold_until = curr_time + 86400 * 10000
+                self.hold_mode = True
+                if self.debug > 0:
+                    sys.stderr.write ('%s [%d] set hold tg(%d) until %f\n' % (log_ts.get(), self.msgq_id, self.hold_tgid, self.hold_until))
+        elif self.hold_mode is True:
+            if self.debug > 0:
+                sys.stderr.write ('%s [%d] clear hold tg(%d)\n' % (log_ts.get(), self.msgq_id, self.hold_tgid))
+            self.hold_tgid = None
+            self.hold_until = curr_time
+            self.hold_mode = False
+            self.expire_talkgroup(reason="clear hold")
 
     def tune_voice(self, freq, tgid):
         if freq != self.tuned_frequency:

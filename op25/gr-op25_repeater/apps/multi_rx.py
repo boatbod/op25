@@ -666,13 +666,14 @@ class rx_block (gr.top_block):
         #    freq = msg.arg1()
         #    self.last_freq_params['freq'] = freq
         #    self.set_freq(freq)
-        #elif s == 'dump_tgids':
-        #    self.trunk_rx.dump_tgids()
         #elif s == 'add_default_config':
         #    nac = msg.arg1()
         #    self.trunk_rx.add_default_config(int(nac))
-        #elif s in RX_COMMANDS:
-        #    self.rx_q.insert_tail(msg)
+        elif s == 'dump_tgids':
+            self.trunk_rx.dump_tgids()
+        elif s in RX_COMMANDS:
+            if self.trunking is not None and self.trunk_rx is not None:
+                self.trunk_rx.ui_command(msg.to_string(), msg.arg1(), msg.arg2())
         return False
 
     def ui_freq_update(self):

@@ -429,7 +429,12 @@ function do_onload() {
 }
 
 function do_update() {
-    send_command("update", 0);
+    if (channel_list.length == 0) {
+        send_command("update", 0, 0);
+    }
+    else {
+        send_command("update", 0, Number(channel_list[channel_index]));
+    }
     f_debug();
 }
 
@@ -468,7 +473,12 @@ function f_chan_button(command) {
 }
 
 function f_tune_button(command) {
-    send_command('adj_tune', command);
+    if (channel_list.length == 0) {
+        send_command('adj_tune', command, 0);
+    }
+    else {
+        send_command('adj_tune', command, Number(channel_list[channel_index]));
+    }
 }
 
 function f_plot_button(command) {
@@ -502,7 +512,12 @@ function f_scan_button(command) {
             return;
     }
 
-    send_command(command, _tgid);
+    if (channel_list.length == 0) {
+        send_command(command, _tgid);
+    }
+    else {
+        send_command(command, _tgid, Number(channel_list[channel_index]));
+    }
 }
 
 function f_debug() {
