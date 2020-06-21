@@ -35,6 +35,7 @@
 
 #include "frame_sync_magics.h"
 #include "p25p1_fdma.h"
+#include "p25p2_tdma.h"
 #include "p25p2_vf.h"
 #include "mbelib.h"
 #include "ambe.h"
@@ -49,12 +50,15 @@
 #include "op25_audio.h"
 #include "log_ts.h"
 
+#include "rx_base.h"
+
 namespace gr{
     namespace op25_repeater{
 
 enum rx_types {
 	RX_TYPE_NONE=0,
-	RX_TYPE_P25,
+	RX_TYPE_P25P1,
+	RX_TYPE_P25P2,
 	RX_TYPE_DMR,
 	RX_TYPE_DSTAR,
 	RX_TYPE_YSF,
@@ -69,18 +73,20 @@ static const struct _mode_data {
 	int expiration;
 } MODE_DATA[RX_N_TYPES] = {
 	{"NONE",   0,0,0,0},
-	{"P25",    48,0,36,1728},
+	{"P25P1",  48,0,36,1728},
+	{"P25P2",  40,0,180,2160},
 	{"DMR",    48,66,144,1728},
 	{"DSTAR",  48,72,96,2016*2},
 	{"YSF",    40,0,480,480*2}
 };   // index order must match rx_types enum
 
-static const int KNOWN_MAGICS = 12;
+static const int KNOWN_MAGICS = 13;
 static const struct _sync_magic {
 	int type;
 	uint64_t magic;
 } SYNC_MAGIC[KNOWN_MAGICS] = {
-	{RX_TYPE_P25, P25_FRAME_SYNC_MAGIC},
+	{RX_TYPE_P25P1, P25_FRAME_SYNC_MAGIC},
+	{RX_TYPE_P25P2, P25P2_FRAME_SYNC_MAGIC},
 	{RX_TYPE_DMR, DMR_BS_VOICE_SYNC_MAGIC},
 	{RX_TYPE_DMR, DMR_BS_DATA_SYNC_MAGIC},
 	{RX_TYPE_DMR, DMR_MS_VOICE_SYNC_MAGIC},
@@ -103,17 +109,20 @@ enum codeword_types {
 	CODEWORD_YSF_HALFRATE
 };
 
-class rx_sync {
+class rx_sync : public rx_base {
 public:
 	void rx_sym(const uint8_t sym);
 	void sync_reset(void);
+	void reset_timer(void);
 	void set_slot_mask(int mask);
-	void set_xor_mask(int mask);
+	void set_slot_key(int mask);
+	void set_xormask(const char* p);
 	rx_sync(const char * options, int debug, int msgq_id, gr::msg_queue::sptr queue);
 	~rx_sync();
 
 private:
-	void sync_timeout();
+	void sync_timeout(rx_types proto);
+	void sync_established(rx_types proto);
 	void cbuf_insert(const uint8_t c);
 	void ysf_sync(const uint8_t dibitbuf[], bool& ysf_fullrate, bool& unmute);
 	void codeword(const uint8_t* cw, const enum codeword_types codeword_type, int slot_id);
@@ -132,8 +141,10 @@ private:
 	unsigned int d_expires;
 	int d_shift_reg;
 	int d_slot_mask;
+	int d_slot_key;
 	unsigned int d_unmute_until[2];
 	p25p1_fdma p25fdma;
+	p25p2_tdma p25tdma;
 	p25p2_vf interleaver;
 	mbe_parms cur_mp[2];
 	mbe_parms prev_mp[2];
@@ -148,7 +159,6 @@ private:
 	int d_debug;
 	op25_audio d_audio;
 	log_ts logts;
-	uint16_t d_xor_mask;
 };
 
     } // end namespace op25_repeater

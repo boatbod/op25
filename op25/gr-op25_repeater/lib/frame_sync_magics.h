@@ -50,5 +50,8 @@ static const uint64_t DSTAR_FRAME_SYNC_MAGIC   = 0x444445101440LL;
 // YSF
 static const uint64_t YSF_FRAME_SYNC_MAGIC     = 0xd471c9634dLL;   // 40 bits
 
+// MOTO SMARTNET
+static const uint64_t SMARTNET_SYNC_MAGIC      = 0xACLL; // 8 bits
+
 
 #endif /* INCLUDED_FRAME_SYNC_MAGICS */

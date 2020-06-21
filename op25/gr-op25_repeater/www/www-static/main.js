@@ -1,6 +1,6 @@
 
 // Copyright 2017, 2018 Max H. Parke KA1RBI
-// Copyright 2018, 2019 gnorbury@bondcar.com
+// Copyright 2018, 2019, 2020 gnorbury@bondcar.com
 // 
 // This file is part of OP25
 // 
@@ -36,12 +36,17 @@ var n200_count = 0;
 var r200_count = 0;
 var SEND_QLIMIT = 5;
 var c_freq = 0;
+var c_ppm = null;
 var c_system = null;
 var c_tag = null;
+var c_stream_url = null;
 var c_srcaddr = 0;
 var c_grpaddr = 0;
 var c_encrypted = 0;
 var c_nac = 0;
+var c_name = "";
+var channel_list = [];
+var channel_index = 0;
 
 function find_parent(ele, tagname) {
     while (ele) {
@@ -97,6 +102,7 @@ function f_select(command) {
     var div_status = document.getElementById("div_status")
     var div_plot   = document.getElementById("div_plot")
     var div_about  = document.getElementById("div_about")
+    var div_s1     = document.getElementById("div_s1")
     var div_s2     = document.getElementById("div_s2")
     var div_s3     = document.getElementById("div_s3")
     var ctl1 = document.getElementById("controls1");
@@ -105,6 +111,7 @@ function f_select(command) {
         div_status.style['display'] = "";
         div_plot.style['display'] = "none";
         div_about.style['display'] = "none";
+        div_s1.style['display'] = "";
         div_s2.style['display'] = "";
         div_s3.style['display'] = "";
         ctl1.style['display'] = "";
@@ -114,7 +121,8 @@ function f_select(command) {
         div_status.style['display'] = "";
         div_plot.style['display'] = "";
         div_about.style['display'] = "none";
-        div_s2.style['display'] = "none";
+        div_s1.style['display'] = "none";
+        div_s2.style['display'] = "";
         div_s3.style['display'] = "none";
         ctl1.style['display'] = "none";
         ctl2.style['display'] = "";
@@ -137,12 +145,31 @@ function is_digit(s) {
 }
 
 function rx_update(d) {
-    if (d["files"].length > 0) {
-        for (var i=0; i<d["files"].length; i++) {
+    plotfiles = [];
+    if ((d["files"] != undefined) && (d["files"].length > 0)) {
+        for (var i=0; i < d["files"].length; i++) {
+            if (channel_list.length > 0) {
+                expr = new RegExp("plot\-" + channel_list[channel_index] + "\-");
+            }
+            else {
+                expr = new RegExp("plot\-0\-");
+            }
+
+            if (expr.test(d["files"][i])) {
+                plotfiles.push(d["files"][i]);
+            }
+        }
+
+        for (var i=0; i < 5; i++) {
             var img = document.getElementById("img" + i);
-            if (img['src'] != d["files"][i]) {
-                img['src'] = d["files"][i];
-                img.style["display"] = "";
+            if (i < plotfiles.length) {
+                if (img['src'] != plotfiles[i]) {
+                    img['src'] = plotfiles[i];
+                    img.style["display"] = "";
+                }
+            }
+            else {
+                img.style["display"] = "none";
             }
         }
     }
@@ -150,8 +177,10 @@ function rx_update(d) {
         var img = document.getElementById("img0");
         img.style["display"] = "none";
     }
-    error_val = d["error"];
-    fine_tune = d['fine_tune'];
+    if (d["error"] != undefined)
+        error_val = d["error"];
+    if (d["fine_tune"] != undefined)
+        fine_tune = d["fine_tune"];
 }
 
 // frequency, system, and talkgroup display
@@ -165,28 +194,80 @@ function change_freq(d) {
     channel_status();
 }
 
+function channel_update(d) {
+    var s2_c = document.getElementById("s2_ch_lbl");
+    var s2_d = document.getElementById("s2_ch_txt");
+    var s2_e = document.getElementById("s2_ch_dn");
+    var s2_f = document.getElementById("s2_ch_up");
+
+    if (d['channels'] != undefined) {
+        channel_list = d['channels'];    
+
+        if (channel_list.length > 0) {
+            var c_id = channel_list[channel_index];
+            c_system = d[c_id]['system'];
+            c_name = "[" + c_id + "]";
+            if ((d[c_id]['name'] != undefined) && (d[c_id]['name'] != "")) {
+                c_name += " " + d[c_id]['name'];
+            }
+            else {
+                c_name += " " + c_system;
+            }
+            s2_d.innerHTML = "<span class=\"value\">" + c_name + "</span>";
+
+            c_freq = d[c_id]['freq'];
+            c_ppm = d[c_id]['ppm'];
+            current_tgid = d[c_id]['tgid'];
+            c_tag = d[c_id]['tag'];
+            c_srcaddr = d[c_id]['srcaddr'];
+            c_stream_url = d[c_id]['stream_url'];
+            s2_c.style['display'] = "";
+            s2_d.style['display'] = "";
+            s2_e.style['display'] = "";
+            s2_f.style['display'] = "";
+        }
+        else {
+            s2_c.style['display'] = "none";
+            s2_d.style['display'] = "none";
+            s2_e.style['display'] = "none";
+            s2_f.style['display'] = "none";
+            c_name = "";
+            c_freq = 0.0;
+            c_system = "";
+            current_tgid = 0;
+            c_tag = "";
+            c_srcaddr = 0;
+            c_stream_url = "";
+        }
+        channel_status();
+    }
+}
+
 function channel_status() {
     var html;
     var s2_freq = document.getElementById("s2_freq");
     var s2_tg = document.getElementById("s2_tg");
     var s2_grp = document.getElementById("s2_grp");
     var s2_src = document.getElementById("s2_src");
+    var s2_ch_txt = document.getElementById("s2_ch_txt");
 
     html = "";
     if (c_stream_url != "") {
         html += "<a href=\"" + c_stream_url + "\">";
     }
-    if (c_freq != 0) {
-        html += "<span class=\"value\">" + c_freq / 1000000.0 + "</span>";
-    }
-    if (c_system != null)
-    {
-        html += "<span class=\"value\"> &nbsp;" + c_system + "</span>";
-    }
+    html += "<span class=\"value\">" + (c_freq / 1000000.0).toFixed(6) + "</span>";
     if (c_stream_url != "") {
         html += "</a>"
     }
+    if (c_ppm != null) {
+        html += "<span class=\"value\"> (" + c_ppm.toFixed(3) + ")</span>";
+    }
     s2_freq.innerHTML = html
+    if ((c_system != null) && (channel_list.length == 0))
+    {
+        s2_ch_txt.innerHTML = "<span class=\"value\"> &nbsp;" + c_system + "</span>";
+        s2_ch_txt.style['display'] = "";
+    }
 
     html = "";
     if (current_tgid != null) {
@@ -227,7 +308,7 @@ function adjacent_data(d) {
         if ((ct & 1) == 0)
             color = "#c0c0c0";
         ct += 1;
-        html += "<tr style=\"background-color: " + color + ";\"><td>" + freq / 1000000.0 + "</td><td>" + d[freq]["rfid"] + "</td><td>" + d[freq]["stid"] + "</td><td>" + (d[freq]["uplink"] / 1000000.0) + "</td></tr>";
+        html += "<tr style=\"background-color: " + color + ";\"><td>" + (freq / 1000000.0).toFixed(6) + "</td><td>" + d[freq]["rfid"] + "</td><td>" + d[freq]["stid"] + "</td><td>" + (d[freq]["uplink"] / 1000000.0).toFixed(6) + "</td></tr>";
     }
     html += "</table></div></div><br><br>";
 
@@ -254,21 +335,17 @@ function trunk_update(d) {
         if (nac != c_nac)
             continue;
         html += "<span class=\"nac\">";
-        html += "NAC " + "0x" + parseInt(nac).toString(16) + " ";
-        html += d[nac]['rxchan'] / 1000000.0;
-        html += " / ";
-        html += d[nac]['txchan'] / 1000000.0;
-        html += " tsbks " + d[nac]['tsbks'];
+        html += d[nac]['top_line'];
         html += "</span><br>";
 
-        html += "<span class=\"label\">WACN: </span>" + "<span class=\"value\">0x" + parseInt(d[nac]['wacn']).toString(16) + " </span>";
-        html += "<span class=\"label\">System ID: </span>" + "<span class=\"value\">0x" + parseInt(d[nac]['sysid']).toString(16) + " </span>";
-        html += "<span class=\"label\">RFSS ID: </span><span class=\"value\">" + d[nac]['rfid'] + " </span>";
-        html += "<span class=\"label\">Site ID: </span><span class=\"value\">" + d[nac]['stid'] + "</span><br>";
-        if (d[nac]["secondary"].length) {
+        if (d[nac]['rfid'] != undefined)
+            html += "<span class=\"label\">RFSS ID: </span><span class=\"value\">" + d[nac]['rfid'] + " </span>";
+        if (d[nac]['stid'] != undefined)
+            html += "<span class=\"label\">Site ID: </span><span class=\"value\">" + d[nac]['stid'] + "</span><br>";
+        if (d[nac]['secondary'] != undefined && d[nac]["secondary"].length) {
             html += "<span class=\"label\">Secondary control channel(s): </span><span class=\"value\"> ";
             for (i=0; i<d[nac]["secondary"].length; i++) {
-                html += d[nac]["secondary"][i] / 1000000.0;
+                html += (d[nac]["secondary"][i] / 1000000.0).toFixed(6);
                 html += " ";
             }
             html += "</span><br>";
@@ -279,8 +356,7 @@ function trunk_update(d) {
         if (fine_tune != null) {
             html += "<span class=\"label\">Fine tune offset: </span><span class=\"value\">" + fine_tune + "</span>";
         }
-
-        var div_s1 = document.getElementById("div_s1");
+        var div_s1     = document.getElementById("div_s1")
         div_s1.innerHTML = html;
 
 // system frequencies table
@@ -293,12 +369,12 @@ function trunk_update(d) {
         for (var freq in d[nac]['frequency_data']) {
             tg2 = d[nac]['frequency_data'][freq]['tgids'][1];
             if (tg2 == null)
-                tg2 = "&nbsp;";
+                tg2 = "&nbsp;-";
             var color = "#d0d0d0";
             if ((ct & 1) == 0)
                 color = "#c0c0c0";
             ct += 1;
-            html += "<tr style=\"background-color: " + color + ";\"><td>" + parseInt(freq) / 1000000.0 + "</td><td>" + d[nac]['frequency_data'][freq]['last_activity'] + "</td><td>" + d[nac]['frequency_data'][freq]['tgids'][0] + "</td><td>" + tg2 + "</td><td>" + d[nac]['frequency_data'][freq]['counter'] + "</td></tr>";
+            html += "<tr style=\"background-color: " + color + ";\"><td>" + (parseInt(freq) / 1000000.0).toFixed(6) + "</td><td>" + d[nac]['frequency_data'][freq]['last_activity'] + "</td><td>" + d[nac]['frequency_data'][freq]['tgids'][0] + "</td><td>" + tg2 + "</td><td>" + d[nac]['frequency_data'][freq]['counter'] + "</td></tr>";
         }
         html += "</table></div>";
 
@@ -320,7 +396,6 @@ function trunk_update(d) {
     channel_status();
 }
 
-
 function http_req_cb() {
     req_cb_count += 1;
     s = http_req.readyState;
@@ -334,7 +409,7 @@ function http_req_cb() {
     }
     r200_count += 1;
     var dl = JSON.parse(http_req.responseText);
-    var dispatch = {'trunk_update': trunk_update, 'change_freq': change_freq, 'rx_update': rx_update}
+    var dispatch = {'trunk_update': trunk_update, 'change_freq': change_freq, 'channel_update': channel_update, 'rx_update': rx_update}
     for (var i=0; i<dl.length; i++) {
         var d = dl[i];
         if (!("json_type" in d))
@@ -354,17 +429,22 @@ function do_onload() {
 }
 
 function do_update() {
-    send_command("update", 0);
+    if (channel_list.length == 0) {
+        send_command("update", 0, 0);
+    }
+    else {
+        send_command("update", 0, Number(channel_list[channel_index]));
+    }
     f_debug();
 }
 
-function send_command(command, data) {
+function send_command(command, arg1 = 0, arg2 = 0) {
     request_count += 1;
     if (send_queue.length >= SEND_QLIMIT) {
         send_qfull += 1;
         send_queue.unshift();
     }
-    send_queue.push( {"command": command, "data": data} );
+    send_queue.push( {"command": command, "arg1": arg1, "arg2": arg2} );
     send_process();
 }
 
@@ -382,12 +462,32 @@ function send_process() {
     http_req.send(cmd);
 }
 
+function f_chan_button(command) {
+    channel_index += command;
+    if (channel_index < 0) {
+        channel_index = channel_list.length - 1;
+    }
+    else if (channel_index >= channel_list.length) {
+        channel_index = 0;
+    }
+}
+
 function f_tune_button(command) {
-    send_command('adj_tune', command);
+    if (channel_list.length == 0) {
+        send_command('adj_tune', command, 0);
+    }
+    else {
+        send_command('adj_tune', command, Number(channel_list[channel_index]));
+    }
 }
 
 function f_plot_button(command) {
-    send_command('toggle_plot', command);
+    if (channel_list.length == 0) {
+        send_command('toggle_plot', command, 0);
+    }
+    else {
+        send_command('toggle_plot', command, Number(channel_list[channel_index]));
+    }
 }
 
 function f_scan_button(command) {
@@ -412,7 +512,12 @@ function f_scan_button(command) {
             return;
     }
 
-    send_command(command, _tgid);
+    if (channel_list.length == 0) {
+        send_command(command, _tgid);
+    }
+    else {
+        send_command(command, _tgid, Number(channel_list[channel_index]));
+    }
 }
 
 function f_debug() {

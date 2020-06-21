@@ -1,6 +1,6 @@
 /* -*- c++ -*- */
 /* 
- * Copyright 2017 Max H. Parke KA1RBI
+ * Copyright 2020 Graham J. Norbury - gnorbury@bondcar.com
  * 
  * This is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,8 +19,8 @@
  */
 
 
-#ifndef INCLUDED_OP25_REPEATER_FRAME_ASSEMBLER_H
-#define INCLUDED_OP25_REPEATER_FRAME_ASSEMBLER_H
+#ifndef INCLUDED_OP25_ANALOG_UDP_H
+#define INCLUDED_OP25_ANALOG_UDP_H
 
 #include <op25_repeater/api.h>
 #include <gnuradio/block.h>
@@ -34,28 +34,24 @@ namespace gr {
          * \ingroup op25_repeater
          *
          */
-        class OP25_REPEATER_API frame_assembler : virtual public gr::block
+        class OP25_REPEATER_API analog_udp : virtual public gr::block
         {
             public:
-                typedef boost::shared_ptr<frame_assembler> sptr;
+                typedef boost::shared_ptr<analog_udp> sptr;
 
                 /*!
-                 * \brief Return a shared_ptr to a new instance of op25_repeater::frame_assembler.
+                 * \brief Return a shared_ptr to a new instance of op25_repeater::analog_udp.
                  *
-                 * To avoid accidental use of raw pointers, op25_repeater::frame_assembler's
+                 * To avoid accidental use of raw pointers, op25_repeater::analog_udp's
                  * constructor is in a private implementation
-                 * class. op25_repeater::frame_assembler::make is the public interface for
+                 * class. op25_repeater::analog_udp::make is the public interface for
                  * creating new instances.
                  */
                 static sptr make(const char* options, int debug, int msgq_id, gr::msg_queue::sptr queue);
-                virtual void set_xormask(const char*p) {}
-                virtual void set_slotid(int slotid) {}
-                virtual void set_slotkey(int key) {}
-                virtual void sync_reset(void) {}
         };
 
     } // namespace op25_repeater
 } // namespace gr
 
-#endif /* INCLUDED_OP25_REPEATER_FRAME_ASSEMBLER_H */
+#endif /* INCLUDED_OP25_REPEATER_ANALOG_UDP_H */
 

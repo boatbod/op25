@@ -43,7 +43,7 @@ class dmr_chan:
         self.slot.append(_grant_info)
 
 class dmr_receiver:
-    def __init__(self, msgq_id, frequency_set=None, slot_set=None, chans={}, debug=0):
+    def __init__(self, msgq_id, frequency_set=None, slot_set=None, nbfm_ctrl=None, chans={}, debug=0):
         class _states(object):
             IDLE = 0
             CC   = 1
@@ -132,13 +132,16 @@ class dmr_receiver:
         if (self.msgq_id == 0) and (self.debug >= 1):
             sys.stderr.write("%f [%d] Searching for control channel: lcn(%d), freq(%f)\n" % (time.time(), self.msgq_id, self.chan_list[self.current_chan], (self.chans[self.chan_list[self.current_chan]].frequency/1e6)))
 
+    def ui_command(self, msg):
+        pass          # TODO: handle these requests
+
     def process_qmsg(self, msg):
         m_type = ctypes.c_int16(msg.type() & 0xffff).value  # lower 16 bits of msg.type() is signed message type
         m_slot = int(msg.arg1()) & 0x1                      # message slot id
         m_ts   = float(msg.arg2())                          # message sender timestamp
         m_buf = msg.to_string()                             # message data
 
-        if m_type == -1:  # Sync Timeout
+        if m_type == -1:    # Sync Timeout
             if self.debug >= 9:
                 sys.stderr.write("%f [%d] Timeout waiting for sync sequence\n" % (time.time(), self.msgq_id))
 
@@ -152,7 +155,7 @@ class dmr_receiver:
             else:                 # secondary/voice channel
                 pass
 
-        elif m_type >= 0: # Receiving a PDU means sync must be present
+        elif m_type >= 0:   # Receiving a PDU means sync must be present
             if self.msgq_id == 0:
                 self.cc_timeouts = 0
 
@@ -347,7 +350,7 @@ class rx_ctl(object):
         for rx_id in self.receivers:
             self.receivers[rx_id].post_init()
 
-    def add_receiver(self, msgq_id):
+    def add_receiver(self, msgq_id, config, meta_q = None):
         self.receivers[msgq_id] = dmr_receiver(msgq_id, self.frequency_set, self.slot_set, self.chans, self.debug)
 
     def process_qmsg(self, msg):

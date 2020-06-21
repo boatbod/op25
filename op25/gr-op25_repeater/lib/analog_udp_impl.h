@@ -1,6 +1,6 @@
 /* -*- c++ -*- */
 /* 
- * Copyright 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017 Max H. Parke KA1RBI
+ * Copyright 2020 Graham Norbury - gnorbury@bondcar.com
  * 
  * This is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,10 +18,10 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef INCLUDED_OP25_REPEATER_FRAME_ASSEMBLER_IMPL_H
-#define INCLUDED_OP25_REPEATER_FRAME_ASSEMBLER_IMPL_H
+#ifndef INCLUDED_OP25_REPEATER_ANALOG_UDP_IMPL_H
+#define INCLUDED_OP25_REPEATER_ANALOG_UDP_IMPL_H
 
-#include <op25_repeater/frame_assembler.h>
+#include <op25_repeater/analog_udp.h>
 
 #include <gnuradio/msg_queue.h>
 #include <sys/socket.h>
@@ -29,38 +29,34 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <deque>
-
-#include "rx_base.h"
+#include "op25_audio.h"
+#include "log_ts.h"
 
 typedef std::deque<uint8_t> dibit_queue;
 
 namespace gr {
     namespace op25_repeater {
 
-        class frame_assembler_impl : public frame_assembler
+        static const int UDP_FRAME_SIZE = 160;
+        typedef std::vector<int16_t> pcm_samples;
+
+        class analog_udp_impl : public analog_udp
         {
             private:
                 int d_debug;
                 int d_msgq_id;
                 gr::msg_queue::sptr d_msg_queue;
-                rx_base* d_sync;
+                op25_audio d_audio;
+                pcm_samples d_pcm;
+                log_ts logts;
 
                 // internal functions
 
-                void queue_msg(int duid);
-                void set_xormask(const char* p);
-                void set_slotid(int slotid);
-                void set_slotkey(int key);
-                void sync_reset();
-
             public:
-
-            public:
-                frame_assembler_impl(const char* options, int debug, int msgq_id, gr::msg_queue::sptr queue);
-                ~frame_assembler_impl();
+                analog_udp_impl(const char* options, int debug, int msgq_id, gr::msg_queue::sptr queue);
+                ~analog_udp_impl();
 
                 // Where all the action really happens
-
                 int general_work(int noutput_items,
                         gr_vector_int &ninput_items,
                         gr_vector_const_void_star &input_items,
@@ -70,4 +66,4 @@ namespace gr {
     } // namespace op25_repeater
 } // namespace gr
 
-#endif /* INCLUDED_OP25_REPEATER_FRAME_ASSEMBLER_IMPL_H */
+#endif /* INCLUDED_OP25_REPEATER_ANALOG_UDP_IMPL_H */

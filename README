@@ -1,5 +1,6 @@
 Forked from git://git.osmocom.org/op25 "max" branch on 9/10/2017
-Up to date with "max" branch as of 3/3/2018
+Up to date with osmocom "max" branch as of 3/3/2018
+Note: as of 2019, codebase has diverged too far to continue syncing with osmocom
 
 Many changes:
 - udp python audio server sockaudio.py and remote player audio.py
@@ -9,7 +10,7 @@ Many changes:
 - ability to adjust fine tuning in real time (,./<> keys in terminal) 
 - ability to dynamically resize the curses terminal
 - ability to dunamically turn plots on and off from the terminal (keys 1-5)
-- new 'mixer' output plot (terminal key 5) to assist with fine tuning
+- new 'mixer' and 'tuner' output plots (terminal keys 5 & 6) to assist with fine tuning
 - reworked trunking hold/release logic that improves Phase 1 audio on some systems
 - decoding and logging of encryption sync info ("ESS") at log level 10 (-v 10)
 - ability to silence the playing of encrypted audio
@@ -19,6 +20,9 @@ Many changes:
 - decode and pass voice channel sourced trunk signaling up to trunking module
 - added optional trunk group priority parameter to end of tgid-tags.tsv file
 - added ability to handle ranges of tgid in blacklist/whitelist files
+- support for streaming metadata updates (both rx.py and multi_rx.py)
+- support for MotoTrbo Connect+ and Motorola Smartnet/Smartzone trunking (multi_rx.py)
+- enhanced multi_rx.py now supports P25, DMR, Smartnet trunking, terminal and built-in audio player
 
 New command line options:
   --fine-tune      : sub-ppm tuning adjustment

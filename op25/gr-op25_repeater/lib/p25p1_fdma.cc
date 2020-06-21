@@ -189,13 +189,14 @@ block_deinterleave(bit_vector& bv, unsigned int start, uint8_t* buf)
 	return 0;
 }
 
-p25p1_fdma::p25p1_fdma(const op25_audio& udp, int debug, bool do_imbe, bool do_output, bool do_msgq, gr::msg_queue::sptr queue, std::deque<int16_t> &output_queue, bool do_audio_output, bool do_nocrypt) :
+p25p1_fdma::p25p1_fdma(const op25_audio& udp, int debug, bool do_imbe, bool do_output, bool do_msgq, gr::msg_queue::sptr queue, std::deque<int16_t> &output_queue, bool do_audio_output, bool do_nocrypt, int msgq_id) :
         qtimer(op25_timer(TIMEOUT_THRESHOLD)),
         op25audio(udp),
 	write_bufp(0),
 	d_debug(debug),
 	d_do_imbe(do_imbe),
 	d_do_output(do_output),
+	d_msgq_id(msgq_id),
 	d_do_msgq(do_msgq),
 	d_msg_queue(queue),
 	output_queue(output_queue),
@@ -651,7 +652,7 @@ void p25p1_fdma::send_msg(const std::string msg_str, long msg_type)
 	if (!d_do_msgq || d_msg_queue->full_p())
 		return;
 
-	gr::message::sptr msg = gr::message::make_from_string(msg_str, get_msg_type(PROTOCOL_P25, msg_type), 0, logts.get_ts());
+	gr::message::sptr msg = gr::message::make_from_string(msg_str, get_msg_type(PROTOCOL_P25, msg_type), (d_msgq_id << 1), logts.get_ts());
 	d_msg_queue->insert_tail(msg);
 }
 
@@ -720,7 +721,7 @@ p25p1_fdma::rx_sym (const uint8_t *syms, int nsyms)
   if (d_do_msgq && !d_msg_queue->full_p()) {
     // check for timeout
     if (qtimer.expired()) {
-      if (d_debug > 10)
+      if (d_debug >= 10)
         fprintf(stderr, "%s p25p1_fdma::rx_sym() timeout\n", logts.get());
 
       if (d_do_audio_output) {

@@ -58,13 +58,20 @@ class curses_terminal(threading.Thread):
         self.last_update = 0
         self.auto_update = True
         self.current_nac = None
+        self.current_srcaddr = 0
+        self.current_msgqid = '0'
+        self.channel_list = []
         self.maxx = 0
         self.maxy = 0
         self.sock = sock
         self.start()
 
+    def get_terminal_type(self):
+        return "curses"
+
     def setup_curses(self):
         self.stdscr = curses.initscr()
+        self.stdscr.keypad(1)
         self.maxy, self.maxx = self.stdscr.getmaxyx()
         if (self.maxy < 6) or (self.maxx < 60):
             sys.stderr.write("Terminal window too small! Minimum size [70 x 6], actual [%d x %d]\n" % (self.maxx, self.maxy))
@@ -123,7 +130,7 @@ class curses_terminal(threading.Thread):
 
     def title_help(self):
         title_str = "OP25"
-        help_str = "(f)req (h)old (s)kip (l)ock (W)list (B)list (q)uit (1-5)plot (,.<>)tune"
+        help_str = "(f)req (h)old (s)kip (l)ock (W)list (B)list (q)uit (1-6)plot (,.<>)tune"
         self.title_bar.erase()
         self.help_bar.erase()
         self.title_bar.addstr(0, 0, title_str.center(self.maxx-1, " "), curses.A_REVERSE)
@@ -154,14 +161,14 @@ class curses_terminal(threading.Thread):
         COMMANDS = {_ORD_S: 'skip', _ORD_L: 'lockout', _ORD_H: 'hold', _ORD_R: 'reload'}
         c = self.stdscr.getch()
         if c == ord('u') or self.do_auto_update():
-            self.send_command('update', 0)
+            self.send_command('update', 0, int(self.current_msgqid))
         if c in list(COMMANDS.keys()):
-            self.send_command(COMMANDS[c], 0)
+            self.send_command(COMMANDS[c], 0, int(self.current_msgqid))
         elif c == ord('q'):
             return True
         elif c == ord('t'):
             if self.current_nac:
-                self.send_command('add_default_config', int(self.current_nac))
+                self.send_command('add_default_config', int(self.current_nac), int(self.current_msgqid))
         elif c == ord('f'):
             self.prompt.addstr(0, 0, 'Frequency')
             self.prompt.refresh()
@@ -179,7 +186,7 @@ class curses_terminal(threading.Thread):
             except:
                 freq = None
             if freq:
-                self.send_command('set_freq', freq)
+                self.send_command('set_freq', freq, int(self.current_msgqid))
         elif c == ord('H'):
             self.prompt.addstr(0, 0, 'Hold tgid')
             self.prompt.refresh()
@@ -197,7 +204,7 @@ class curses_terminal(threading.Thread):
             except:
                 tgid = 0
             if tgid:
-                self.send_command('hold', tgid)
+                self.send_command('hold', tgid, int(self.current_msgqid))
         elif c == ord('W'):
             self.prompt.addstr(0, 0, 'W/L tgid ')
             self.prompt.refresh()
@@ -215,7 +222,7 @@ class curses_terminal(threading.Thread):
             except:
                 tgid = 0
             if tgid:
-                self.send_command('whitelist', tgid)
+                self.send_command('whitelist', tgid, int(self.current_msgqid))
         elif c == ord('B'):
             self.prompt.addstr(0, 0, 'B/L tgid ')
             self.prompt.refresh()
@@ -233,22 +240,42 @@ class curses_terminal(threading.Thread):
             except:
                 tgid = 0
             if tgid:
-                self.send_command('lockout', tgid)
+                self.send_command('lockout', tgid, int(self.current_msgqid))
         elif c == ord(','):
-            self.send_command('adj_tune', -100)
+            self.send_command('adj_tune', -100, int(self.current_msgqid))
         elif c == ord('.'):
-            self.send_command('adj_tune', 100)
+            self.send_command('adj_tune', 100, int(self.current_msgqid))
         elif c == ord('<'):
-            self.send_command('adj_tune', -1200)
+            self.send_command('adj_tune', -1200, int(self.current_msgqid))
         elif c == ord('>'):
-            self.send_command('adj_tune', 1200)
-        elif (c >= ord('1') ) and (c <= ord('5')):
-            self.send_command('toggle_plot', (c - ord('0')))
+            self.send_command('adj_tune', 1200, int(self.current_msgqid))
+        elif (c >= ord('1') ) and (c <= ord('6')):
+            self.send_command('toggle_plot', (c - ord('0')), int(self.current_msgqid))
         elif c == ord('d'):
-            self.send_command('dump_tgids', 0)
+            self.send_command('dump_tgids', 0, int(self.current_msgqid))
         elif c == ord('x'):
             assert 1 == 0
+        elif c == curses.KEY_UP:
+            pass
+        elif c == curses.KEY_DOWN:
+            pass
+        elif c == curses.KEY_LEFT:
+            self.change_chan(-1)
+        elif c == curses.KEY_RIGHT:
+            self.change_chan(+1)
         return False
+
+    def change_chan(self, incr):
+        if len(self.channel_list) == 0:
+            return
+
+        i = self.channel_list.index(self.current_msgqid) if self.current_msgqid in self.channel_list else 0
+        i += incr
+        if i >= len(self.channel_list):
+            i = 0
+        elif i < 0:
+            i = len(self.channel_list) - 1
+        self.current_msgqid = self.channel_list[i]
 
     def process_json(self, js):
         # return true signifies end of main event loop
@@ -263,12 +290,7 @@ class curses_terminal(threading.Thread):
                 times = {msg[nac]['last_tsbk']:nac for nac in nacs}
                 current_nac = times[ sorted(list(times.keys()), reverse=True)[0] ]
             self.current_nac = current_nac
-            s = 'NAC 0x%x' % (int(current_nac))
-            s += ' WACN 0x%x' % (msg[current_nac]['wacn'])
-            s += ' SYSID 0x%x' % (msg[current_nac]['sysid'])
-            s += ' %f' % (msg[current_nac]['rxchan']/ 1000000.0)
-            s += '/%f' % (msg[current_nac]['txchan']/ 1000000.0)
-            s += ' tsbks %d' % (msg[current_nac]['tsbks'])
+            s = str(msg[current_nac]['top_line'])
             freqs = sorted(msg[current_nac]['frequencies'].keys())
             s = s[:(self.maxx - 1)]
             self.top_bar.erase()
@@ -282,23 +304,24 @@ class curses_terminal(threading.Thread):
                 s = s[:(self.maxx - 1)]
                 self.freq_list.addstr(i, 0, s)
             self.freq_list.refresh()
-            self.status1.erase()
             if 'srcaddr' in msg:
+                self.status1.erase()
                 srcaddr = msg['srcaddr']
                 if (srcaddr != 0) and (srcaddr != 0xffffff):
                     s = '%d' % (srcaddr)
                     s = s[:14]
                     self.status1.addstr(0, (14-len(s)), s)
-            self.status1.refresh()
-            self.status2.erase()
+                    self.current_srcaddr = srcaddr
+                self.status1.refresh()
             if 'encrypted' in msg:
+                self.status2.erase()
                 encrypted = msg['encrypted']
                 if encrypted != 0:
                     s = 'ENCRYPTED'
                     self.status2.addstr(0, (14-len(s)), s, curses.A_REVERSE)
-            self.status2.refresh()
+                self.status2.refresh()
             self.stdscr.refresh()
-        elif msg['json_type'] == 'change_freq':
+        elif msg['json_type'] == 'change_freq': # from rx.py trunking
             s = 'Frequency %f' % (msg['freq'] / 1000000.0)
             if msg['fine_tune'] is not None:
                 s +='(%d)' % msg['fine_tune']
@@ -311,12 +334,60 @@ class curses_terminal(threading.Thread):
             self.active2.erase()
             self.active1.addstr(0, 0, s)
             self.active1.refresh()
+            s = ""
             if msg['tag']:
                 s = msg['tag']
                 s = s[:(self.maxx - 16)]
                 self.active2.addstr(0, 0, s)
             self.active2.refresh()
             self.stdscr.refresh()
+        elif msg['json_type'] == 'channel_update': # from multi_rx.py trunking
+            if ('channels' not in msg) or (len(msg['channels']) == 0):
+                return
+            self.channel_list = msg['channels']
+            c_id = self.current_msgqid if self.current_msgqid in self.channel_list else self.channel_list[0]
+            s = '[%s] %s ' % (c_id, msg[c_id]['name']) if len(msg[c_id]['name']) > 0 else '[%s] ' % (c_id)
+            s += 'Frequency %f' % (msg[c_id]['freq'] / 1000000.0)
+            if msg[c_id]['ppm'] is not None:
+                s += '(%.3f)' % (msg[c_id]['ppm'])
+            if msg[c_id]['tgid'] is not None:
+                s += ' Talkgroup ID %s' % (int(msg[c_id]['tgid']))
+                if 'tdma' in msg[c_id] and msg[c_id]['tdma'] is not None:
+                    s += ' TDMA Slot %s' % int(msg[c_id]['tdma'])
+                if 'mode' in msg[c_id]:
+                    mode  = msg[c_id]['mode']
+                    if mode == 0:
+                        mode_str = "Analog"
+                    elif mode == 1:
+                        mode_str = "Digital"
+                    else:
+                        mode_str = ""
+                    s += " %s" % mode_str
+            s = s[:(self.maxx - 16)]
+            self.active1.erase()
+            self.active2.erase()
+            self.active1.addstr(0, 0, s)
+            self.active1.refresh()
+            s = ""
+            if msg[c_id]['tag']:
+                s = msg[c_id]['tag']
+            s = s[:(self.maxx - 16)]
+            self.active2.addstr(0, 0, s)
+            self.active2.refresh()
+            self.stdscr.refresh()
+            if 'srcaddr' in msg[c_id]:
+                srcaddr = msg[c_id]['srcaddr']
+                if srcaddr == 0xffffffff:
+                    srcaddr = 0
+                if self.current_srcaddr != srcaddr:
+                    self.status1.erase()
+                    if srcaddr != 0:
+                        s = '%d' % (srcaddr)
+                        s = s[:14]
+                        self.status1.addstr(0, (14-len(s)), s)
+                    self.current_srcaddr = srcaddr
+                    self.status1.refresh()
+ 
         return False
 
     def process_q_events(self):
@@ -331,11 +402,11 @@ class curses_terminal(threading.Thread):
                 return self.process_json(msg.to_string())
         return False
 
-    def send_command(self, command, data):
+    def send_command(self, command, arg1 = 0, arg2 = 0):
         if self.sock:
-            self.sock.send(json.dumps({'command': command, 'data': data}))
+            self.sock.send(json.dumps({'command': command, 'arg1': arg1, 'arg2': arg2}))
         else:
-            msg = gr.message().make_from_string(command, -2, data, 0)
+            msg = gr.message().make_from_string(command, -2, arg1, arg2)
             self.output_q.insert_tail(msg)
 
     def run(self):
@@ -369,6 +440,9 @@ class http_terminal(threading.Thread):
 
         self.start()
 
+    def get_terminal_type(self):
+        return "http"
+
     def end_terminal(self):
         self.keep_running = False
 
@@ -391,6 +465,9 @@ class udp_terminal(threading.Thread):
         self.q_handler = q_watcher(self.input_q, self.process_qmsg)
         self.start()
 
+    def get_terminal_type(self):
+        return "udp"
+
     def setup_socket(self, port):
         self.sock =  socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sock.bind(('0.0.0.0', port))
@@ -412,7 +489,7 @@ class udp_terminal(threading.Thread):
             if data['command'] == 'quit':
                 self.keepalive_until = 0
                 continue
-            msg = gr.message().make_from_string(str(data['command']), -2, data['data'], 0)
+            msg = gr.message().make_from_string(str(data['command']), -2, data['arg1'], data['arg2'])
             self.output_q.insert_tail(msg)
             self.remote_ip = addr[0]
             self.remote_port = addr[1]

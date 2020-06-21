@@ -87,7 +87,7 @@ static const uint8_t mac_msg_len[256] = {
 	 0,  0,  0,  0,  0,  0,  0,  0,  0,  8, 11,  0,  0,  0,  0,  0, 
 	 0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 11, 13, 11,  0,  0,  0 };
 
-p25p2_tdma::p25p2_tdma(const op25_audio& udp, int slotid, int debug, bool do_msgq, gr::msg_queue::sptr queue, std::deque<int16_t> &qptr, bool do_audio_output, bool do_nocrypt) :	// constructor
+p25p2_tdma::p25p2_tdma(const op25_audio& udp, int slotid, int debug, bool do_msgq, gr::msg_queue::sptr queue, std::deque<int16_t> &qptr, bool do_audio_output, bool do_nocrypt, int msgq_id) :	// constructor
         op25audio(udp),
 	write_bufp(0),
 	tdma_xormask(new uint8_t[SUPERFRAME_SIZE]),
@@ -96,6 +96,7 @@ p25p2_tdma::p25p2_tdma(const op25_audio& udp, int slotid, int debug, bool do_msg
 	d_slotid(slotid),
 	d_do_msgq(do_msgq),
 	d_msg_queue(queue),
+	d_msgq_id(msgq_id),
 	output_queue_decode(qptr),
 	d_debug(debug),
 	d_do_audio_output(do_audio_output),
@@ -625,8 +626,6 @@ int p25p2_tdma::handle_frame(void)
 	for (int i=0; i<sizeof(dibits); i++)
 		dibits[i] = p2framer.d_frame_body[i*2+1] + (p2framer.d_frame_body[i*2] << 1);
 	rc = handle_packet(dibits);
-	if (rc > -1)
-		send_msg(std::string(2, 0xff), rc);
 	return rc;
 }
 
@@ -676,6 +675,9 @@ int p25p2_tdma::handle_packet(const uint8_t dibits[])
 		// unsupported type duid
 		return -1;
 	}
+
+	if (rc > -1)
+		send_msg(std::string(2, 0xff), rc);
 	return rc;
 }
 
@@ -730,6 +732,6 @@ void p25p2_tdma::send_msg(const std::string msg_str, long msg_type)
 	if (!d_do_msgq || d_msg_queue->full_p())
 		return;
 
-	gr::message::sptr msg = gr::message::make_from_string(msg_str, get_msg_type(PROTOCOL_P25, msg_type), 0, logts.get_ts());
+	gr::message::sptr msg = gr::message::make_from_string(msg_str, get_msg_type(PROTOCOL_P25, msg_type), (d_msgq_id << 1), logts.get_ts());
 	d_msg_queue->insert_tail(msg);
 }

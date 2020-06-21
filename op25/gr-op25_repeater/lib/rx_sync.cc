@@ -1,4 +1,5 @@
 // P25 Decoder (C) Copyright 2013, 2014, 2015, 2016, 2017 Max H. Parke KA1RBI
+//             (C) Copyright 2019, 2020 Graham J. Norbury (DMR & P25 additions)
 // 
 // This file is part of OP25
 // 
@@ -57,14 +58,21 @@ void rx_sync::cbuf_insert(const uint8_t c) {
 	d_cbuf_idx = (d_cbuf_idx + 1) % CBUF_SIZE;
 }
 
+void rx_sync::reset_timer(void) {
+	sync_timer.reset();
+	p25fdma.reset_timer();
+}
+
 void rx_sync::sync_reset(void) {
 	// Sync counters and registers reset
 	d_symbol_count = 0;
+    d_cbuf_idx = 0;
 	d_rx_count = 0;
 	d_threshold = 0;
 	d_shift_reg = 0;
 	d_sync_reg = 0;
 	d_expires = 0;
+	d_current_type = RX_TYPE_NONE;
 
 	// Audio reset
 	for (int chan = 0; chan <= 1; chan++) {
@@ -75,6 +83,12 @@ void rx_sync::sync_reset(void) {
 				fprintf(stderr, "%s mute channel(%d)\n", logts.get(d_msgq_id), chan);
 			}
 		}
+	}
+
+	// Timers reset
+	reset_timer();
+	if (d_debug >= 10) {
+		fprintf(stderr, "%s rx_sync::sync_reset:\n", logts.get(d_msgq_id));
 	}
 }
 
@@ -87,17 +101,22 @@ void rx_sync::set_slot_mask(int mask) {
 	}
 
 	if (d_slot_mask == 4) {
-		sync_timer.reset();
+		reset_timer();
 		sync_reset();
 	}
 	d_slot_mask = mask;
+	p25tdma.set_slotid(mask & 0x1);
 }
 
-void rx_sync::set_xor_mask(int mask) {
+void rx_sync::set_xormask(const char* p) {
+	p25tdma.set_xormask(p);
+}
+
+void rx_sync::set_slot_key(int mask) {
 	if (d_debug >= 10) {
-		fprintf(stderr, "%s rx_sync::set_xor_mask: current(%d), new(%d)\n", logts.get(d_msgq_id), d_xor_mask, mask);
+		fprintf(stderr, "%s rx_sync::set_slot_key: current(%d), new(%d)\n", logts.get(d_msgq_id), d_slot_key, mask);
 	}
-	d_xor_mask = mask;
+	d_slot_key = mask;
 }
 
 static int ysf_decode_fich(const uint8_t src[100], uint8_t dest[32]) {   // input is 100 dibits, result is 32 bits
@@ -170,7 +189,7 @@ void rx_sync::ysf_sync(const uint8_t dibitbuf[], bool& ysf_fullrate, bool& unmut
 }
 
 rx_sync::rx_sync(const char * options, int debug, int msgq_id, gr::msg_queue::sptr queue) :	// constructor
-	d_xor_mask(0),
+	d_slot_key(0),
 	d_slot_mask(3),
 	d_symbol_count(0),
 	d_sync_reg(0),
@@ -185,7 +204,8 @@ rx_sync::rx_sync(const char * options, int debug, int msgq_id, gr::msg_queue::sp
 	sync_timer(op25_timer(1000000)),
 	d_audio(options, debug),
 	dmr(debug, msgq_id, queue),
-	p25fdma(d_audio, debug, true, false, true, queue, d_output_queue[0], true, true)
+	p25fdma(d_audio, debug, true, false, true, queue, d_output_queue[0], true, true, msgq_id),
+	p25tdma(d_audio, 0, debug, true, queue, d_output_queue[0], true, true, msgq_id)
 {
 	if (msgq_id >= 0)
 		d_stereo = false; // single channel audio for trunking
@@ -194,7 +214,6 @@ rx_sync::rx_sync(const char * options, int debug, int msgq_id, gr::msg_queue::sp
 	mbe_initMbeParms (&cur_mp[1], &prev_mp[1], &enh_mp[1]);
 	mbe_initToneParms (&tone_mp[0]);
 	mbe_initToneParms (&tone_mp[1]);
-	sync_timer.reset();
 	sync_reset();
 }
 
@@ -202,16 +221,47 @@ rx_sync::~rx_sync()	// destructor
 {
 }
 
-void rx_sync::sync_timeout()
+void rx_sync::sync_timeout(rx_types proto)
 {
-	if ((d_msgq_id < 0) || (d_msg_queue->full_p()))
-	return;
+	if ((d_msgq_id >= 0) && (!d_msg_queue->full_p())) {
+		std::string m_buf;
+		gr::message::sptr msg;
+		switch(proto) {
+		case RX_TYPE_NONE:
+		case RX_TYPE_P25P1:
+		case RX_TYPE_P25P2:
+			msg = gr::message::make_from_string(m_buf, get_msg_type(PROTOCOL_P25, M_P25_TIMEOUT), (d_msgq_id << 1), logts.get_ts());
+			d_msg_queue->insert_tail(msg);
+			break;
+		case RX_TYPE_DMR:
+			msg = gr::message::make_from_string(m_buf, get_msg_type(PROTOCOL_DMR, M_DMR_TIMEOUT), (d_msgq_id << 1), logts.get_ts());
+			d_msg_queue->insert_tail(msg);
+			break;
+		}
+		if (d_debug >= 10) {
+			fprintf(stderr, "%s rx_sync::sync_timeout: protocol %s\n", logts.get(d_msgq_id), MODE_DATA[proto].type);
+		}
+    }
+	reset_timer();
+}
 
-	std::string m_buf;
-	gr::message::sptr msg = gr::message::make_from_string(m_buf, get_msg_type(PROTOCOL_DMR, M_DMR_TIMEOUT), (d_msgq_id << 1), logts.get_ts());
-	d_msg_queue->insert_tail(msg);
-
-	sync_timer.reset();
+void rx_sync::sync_established(rx_types proto)
+{
+	if ((d_msgq_id >= 0) && (!d_msg_queue->full_p())) {
+		std::string m_buf;
+		gr::message::sptr msg;
+		switch(proto) {
+		case RX_TYPE_NONE:
+            break;
+		case RX_TYPE_P25P1:
+		case RX_TYPE_P25P2:
+			msg = gr::message::make_from_string(m_buf, get_msg_type(PROTOCOL_P25, M_P25_SYNC_ESTAB), (d_msgq_id << 1), logts.get_ts());
+			d_msg_queue->insert_tail(msg);
+			break;
+		case RX_TYPE_DMR:
+			break;
+        }
+    }
 }
 
 void rx_sync::codeword(const uint8_t* cw, const enum codeword_types codeword_type, int slot_id) {
@@ -240,10 +290,10 @@ void rx_sync::codeword(const uint8_t* cw, const enum codeword_types codeword_typ
 			fprintf(stderr, "%s AMBE %02x %02x %02x %02x %02x %02x %02x errs %lu\n", logts.get(d_msgq_id),
 			       	p_cw[0], p_cw[1], p_cw[2], p_cw[3], p_cw[4], p_cw[5], p_cw[6], errs);
 		}
-		if (d_xor_mask) {
+		if (d_slot_key) {
 			uint8_t skipped_bits = p_cw[1] & 0xf0;
 			for (int i = 0; i <= 6; i++)
-				p_cw[i]   ^= (d_xor_mask >> ((i + 1) % 2) * 8);
+				p_cw[i]   ^= (d_slot_key >> ((i + 1) % 2) * 8);
 			p_cw[1] = (p_cw[1] & 0x0f) + skipped_bits;
 			interleaver.unpack_cw(p_cw, U);
 			interleaver.unpack_b(b, U);
@@ -281,22 +331,9 @@ void rx_sync::codeword(const uint8_t* cw, const enum codeword_types codeword_typ
 			mbe_dequantizeAmbe2250Parms(&cur_mp[slot_id], &prev_mp[slot_id], b);
 		break;
 	case CODEWORD_P25P2:
-		break;
-	case CODEWORD_P25P1:	// 144 bits
-		for (int i=0; i<144; i++)
-			fullrate_cw[i] = cw[i];
-		errs = imbe_header_decode(fullrate_cw, u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7], E0, ET);
-		do_fullrate = true;
-		if (d_debug >= 10) {
-			packed_codeword p_cw;
-			imbe_pack(p_cw, u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7]);
-			fprintf(stderr, "%s IMBE %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x errs %lu\n",
-					logts.get(d_msgq_id),
-					p_cw[0], p_cw[1], p_cw[2], p_cw[3], p_cw[4], p_cw[5],
-				       	p_cw[6], p_cw[7], p_cw[8], p_cw[9], p_cw[10], errs);
-		}
-
-		break;
+		break; // Not used; handled by p25p2_tdma
+	case CODEWORD_P25P1:
+		break; // Not used; handled by p25p1_fdma
 	case CODEWORD_YSF_FULLRATE:	// 144 bits
 		for (int i=0; i<144; i++)
 			fullrate_cw[i] = cw[ysf_permutation[i]];
@@ -365,7 +402,7 @@ void rx_sync::rx_sym(const uint8_t sym)
 	cbuf_insert(sym);
 	if (d_current_type == RX_TYPE_NONE && sync_detected == RX_TYPE_NONE) {
 		if (sync_timer.expired()) {
-			sync_timeout();
+			sync_timeout(RX_TYPE_NONE);
 		}
 		return;
         }
@@ -375,6 +412,7 @@ void rx_sync::rx_sym(const uint8_t sym)
 			d_current_type = sync_detected;
 			d_expires = d_symbol_count + MODE_DATA[d_current_type].expiration;
 			d_rx_count = MODE_DATA[d_current_type].sync_offset + (MODE_DATA[d_current_type].sync_len >> 1);
+            sync_established(d_current_type);
 		}
 		if (d_rx_count != MODE_DATA[d_current_type].sync_offset + (MODE_DATA[d_current_type].sync_len >> 1)) {
 			if (d_debug >= 10)
@@ -389,8 +427,8 @@ void rx_sync::rx_sym(const uint8_t sym)
 	if (d_symbol_count >= d_expires) {
 		if (d_debug >= 10)
 			fprintf(stderr, "%s %s: timeout, symbol %d\n", logts.get(d_msgq_id), MODE_DATA[d_current_type].type, d_symbol_count);
+		sync_timeout(d_current_type);
 		d_current_type = RX_TYPE_NONE;
-		sync_timeout();
 		return;
 	}
 	if (d_rx_count < MODE_DATA[d_current_type].fragment_len)
@@ -407,8 +445,11 @@ void rx_sync::rx_sym(const uint8_t sym)
 	switch (d_current_type) {
 	case RX_TYPE_NONE:
 		break;
-	case RX_TYPE_P25:
+	case RX_TYPE_P25P1:
 		p25fdma.rx_sym(symbol_ptr, MODE_DATA[d_current_type].fragment_len); // reassemble and process each 36 symbol fragment
+		break;
+	case RX_TYPE_P25P2:
+		p25tdma.handle_packet(symbol_ptr); // passing 180 dibit packets is faster than bit-shuffling via p25tdma::rx_sym()
 		break;
 	case RX_TYPE_DMR:
 		// frame with explicit sync resets expiration counter

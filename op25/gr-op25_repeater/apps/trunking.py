@@ -27,6 +27,7 @@ import json
 sys.path.append('tdma')
 import lfsr
 from log_ts import log_ts
+from gnuradio import gr
 
 def utf_ascii(ustr):
     return (ustr.decode("utf-8")).encode("ascii", "ignore")
@@ -123,6 +124,11 @@ class trunked_system (object):
 
     def to_json(self):
         d = {}
+        d['top_line']  = 'WACN 0x%x' % (self.ns_wacn)
+        d['top_line'] += ' SYSID 0x%x' % (self.ns_syid)
+        d['top_line'] += ' %f' % (self.rfss_chan/ 1000000.0)
+        d['top_line'] += '/%f' % (self.rfss_txchan/ 1000000.0)
+        d['top_line'] += ' tsbks %d' % (self.stats['tsbks'])
         d['syid'] = self.rfss_syid
         d['rfid'] = self.rfss_rfid
         d['stid'] = self.rfss_stid
@@ -131,7 +137,6 @@ class trunked_system (object):
         d['txchan'] = self.rfss_txchan
         d['wacn'] = self.ns_wacn
         d['secondary'] = list(self.secondary.keys())
-        d['tsbks'] = self.stats['tsbks']
         d['frequencies'] = {}
         d['frequency_data'] = {}
         d['last_tsbk'] = self.last_tsbk
@@ -719,20 +724,21 @@ def get_int_dict(s):
     return dict.fromkeys(d)
 
 class rx_ctl (object):
-    def __init__(self, debug=0, frequency_set=None, conf_file=None, logfile_workers=None, meta_update=None, crypt_behavior=0):
+    def __init__(self, debug=0, frequency_set=None, conf_file=None, logfile_workers=None, meta_update=None, crypt_behavior=0, slot_set=None, nbfm_ctrl=None, chans={}):
         class _states(object):
             ACQ = 0
             CC = 1
             TO_VC = 2
             VC = 3
         self.states = _states
-
         self.current_state = self.states.CC
         self.trunked_systems = {}
+        self.receivers = {}
         self.frequency_set = frequency_set
         self.meta_update = meta_update
         self.crypt_behavior = crypt_behavior
         self.meta_state = 0
+        self.meta_q = None
         self.debug = debug
         self.tgid_hold = None
         self.tgid_hold_until = time.time()
@@ -749,46 +755,81 @@ class rx_ctl (object):
         self.TSYS_HOLD_TIME = 3.0    # TODO: make more configurable
         self.wait_until = time.time()
         self.configs = {}
+        self.config = None           # multi_rx.py channel config
+        self.chans = chans
         self.nacs = []
         self.logfile_workers = logfile_workers
-        self.active_talkgroups = {}
         self.working_frequencies = {}
         self.xor_cache = {}
         self.last_garbage_collect = 0
         self.last_tune_time = 0.0;
         self.last_tune_freq = 0;
+
         if self.logfile_workers:
             self.input_rate = self.logfile_workers[0]['demod'].input_rate
 
-        if conf_file:
-            if conf_file.endswith('.tsv'):
+        if conf_file or len(chans) > 0:
+            if len(chans) > 0:               # called from multi_rx.py
+                self.build_config_chans(self.chans)
+            elif conf_file.endswith('.tsv'): # called from rx.py
                 self.build_config_tsv(conf_file)
+                self.post_init()
             else:
                 self.build_config(conf_file)
-            self.nacs = list(self.configs.keys())
-            self.current_nac = self.find_next_tsys()
-            self.current_state = self.states.CC
+                self.post_init()
 
-            tsys = self.trunked_systems[self.current_nac]
+    def add_receiver(self, msgq_id, config, meta_q = None, freq = 0):
+        self.config = config
+        self.receivers[msgq_id] = msgq_id
+        self.last_tune_freq = freq
+        self.last_tune_time = time.time()
+        if meta_q is not None:
+            self.meta_q = meta_q
+            self.meta_update = self.update_meta
 
-            if self.logfile_workers and tsys.modulation == 'c4fm':
-                for worker in self.logfile_workers:
-                    worker['demod'].connect_chain('fsk4')
+    def update_meta(self, tgid = None, tag = None):
+        if self.meta_q is None:
+            return
 
-            self.set_frequency({
-                'freq':   tsys.trunk_cc,
-                'tgid':   None,
-                'offset': tsys.offset,
-                'tag':    "",
-                'nac':    self.current_nac,
-                'system': tsys.sysname,
-                'center_frequency': tsys.center_frequency,
-                'tdma':   None, 
-                'wacn':   None, 
-                'sysid':  None})
+        if tgid is None:
+            metadata = "[idle]"
+        else:
+            metadata = "[" + str(tgid) + "]"
+        if tag is not None:
+            metadata += " " + tag
+        msg = gr.message().make_from_string(metadata, -2, time.time(), 0)
+        self.meta_q.insert_tail(msg)
+
+    def post_init(self):
+        #for rx_id in self.receivers:
+        #    self.receivers[rx_id].post_init()
+
+        self.nacs = list(self.configs.keys())
+        self.current_nac = self.find_next_tsys()
+        self.current_state = self.states.CC
+
+        tsys = self.trunked_systems[self.current_nac]
+
+        if self.logfile_workers and tsys.modulation == 'c4fm':
+            for worker in self.logfile_workers:
+                worker['demod'].connect_chain('fsk4')
+
+        self.set_frequency({
+            'freq':   tsys.trunk_cc,
+            'tgid':   None,
+            'offset': tsys.offset,
+            'tag':    "",
+            'nac':    self.current_nac,
+            'system': tsys.sysname,
+            'center_frequency': tsys.center_frequency,
+            'tdma':   None, 
+            'wacn':   None, 
+            'sysid':  None})
 
     def set_frequency(self, params):
         frequency = params['freq']
+        params['tuner'] = 0
+        params['sigtype'] = "P25"
         if frequency and self.frequency_set:
             if self.debug > 10:
                 sys.stderr.write("%s set_frequency(%s)\n" % (log_ts.get(), frequency))
@@ -796,8 +837,12 @@ class rx_ctl (object):
                 self.last_tune_time = time.time()
                 self.last_tune_freq = frequency
             self.frequency_set(params)
+            self.current_slot = params['tdma']
 
     def do_metadata(self, state, tgid, tag):
+        if self.meta_update is None:
+            return
+
         if (state == 1) and (self.meta_state == 1): # don't update more than once for an idle channel (state=1)
             return
 
@@ -858,6 +903,13 @@ class rx_ctl (object):
 
         self.setup_config(configs)
 
+    def build_config_chans(self, config):
+        configs = {}
+        for cfg in config:
+            nac = eval(cfg['nac'])
+            configs[nac] = cfg
+        self.setup_config(configs)
+
     def build_config(self, config_filename):
         import configparser
         config = configparser.ConfigParser()
@@ -911,7 +963,7 @@ class rx_ctl (object):
             else:
                 self.configs[nac]['modulation'] = 'cqpsk'
             for k in ['whitelist', 'blacklist']:
-                if k in configs[nac]:
+                if (k in configs[nac]) and (configs[nac][k] != ""):
                     sys.stderr.write("%s Reading %s file\n" % (log_ts.get(), k))
                     self.configs[nac][k + ".file"] = configs[nac][k]
                     self.configs[nac][k] = get_int_dict(configs[nac][k])
@@ -936,6 +988,10 @@ class rx_ctl (object):
             if 'center_frequency' in configs[nac]:
                 self.configs[nac]['center_frequency'] = get_frequency(configs[nac]['center_frequency'])
 
+            if 'crypt_behavior' in configs[nac]:
+                self.configs[nac]['crypt_behavior'] = configs[nac]['crypt_behavior']
+                self.crypt_behavior = int(configs[nac]['crypt_behavior'])
+
             self.add_trunked_system(nac)
 
     def find_next_tsys(self):
@@ -944,14 +1000,35 @@ class rx_ctl (object):
             self.current_id = 0
         return self.nacs[self.current_id]
 
+    def find_current_tsys(self):
+        return self.trunked_systems[self.nacs[self.current_id]]
+
     def to_json(self):
         d = {'json_type': 'trunk_update'}
         for nac in list(self.trunked_systems.keys()):
             d[nac] = json.loads(self.trunked_systems[nac].to_json())
+            d[nac]['top_line'] = 'NAC 0x%x %s' % (nac, d[nac]['top_line']) # prepend NAC which is not known by trunked_systems 
         d['srcaddr'] = self.current_srcaddr
         d['grpaddr'] = self.current_grpaddr
         d['encrypted'] = self.current_encrypted
         d['nac'] = self.current_nac
+        return json.dumps(d)
+
+    def get_chan_status(self):
+        tsys = self.find_current_tsys()
+        d = {'json_type': 'channel_update'}
+        d['0'] = {}
+        d['0']['name'] = ""
+        d['0']['freq'] = self.last_tune_freq
+        d['0']['tdma'] = self.current_slot
+        d['0']['tgid'] = self.current_tgid
+        d['0']['tag'] = tsys.get_tag(self.current_tgid)
+        d['0']['srcaddr'] = self.current_srcaddr
+        d['0']['encrypted'] = self.current_encrypted
+        d['0']['msgqid'] = 0
+        d['0']['system'] = tsys.sysname
+        d['0']['stream'] = self.config['meta_stream_name'] if self.config is not None and 'meta_stream_name' in self.config else ""
+        d['channels'] = ['0']
         return json.dumps(d)
 
     def dump_tgids(self):
@@ -964,6 +1041,12 @@ class rx_ctl (object):
             s += '\n====== NAC 0x%x ====== %s ======\n' % (nac, self.trunked_systems[nac].sysname)
             s += self.trunked_systems[nac].to_string()
         return s
+
+    def ui_command(self, cmd, data, msgq_id):
+        curr_time = time.time()
+        if self.debug > 10:
+            sys.stderr.write('ui_command: command: %s, data: %d\n' % (cmd, int(data)))
+        self.update_state(cmd, curr_time, int(data))
 
     def process_qmsg(self, msg):
         m_proto = ctypes.c_int16(msg.type() >> 16).value
@@ -1010,6 +1093,10 @@ class rx_ctl (object):
             self.update_state('timeout', curr_time)
             if self.logfile_workers:
                 self.logging_scheduler(curr_time)
+            return
+        elif m_type == -4:  # P25 sync established
+            if self.debug > 10:
+                sys.stderr.write('%s P25 sync established\n' % log_ts.get())
             return
         elif m_type < 0:
             sys.stderr.write('unknown message type %d\n' % (m_type))
@@ -1382,6 +1469,7 @@ class rx_ctl (object):
         if self.current_state != self.states.CC and self.tgid_hold_until <= curr_time and self.hold_mode is False and new_state is None:
             if self.debug > 1:
                 sys.stderr.write("%s release tg(%s)\n" % (log_ts.get(), self.current_tgid))
+                sys.stderr.write("%s command=%s, timer=%f, hold_mode=%s\n" % (log_ts.get(), command, (self.tgid_hold_until - curr_time), self.hold_mode))
             self.tgid_hold = None
             self.current_tgid = None
             self.current_srcaddr = 0

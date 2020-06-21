@@ -1,75 +1,55 @@
 {
     "channels": [
         {
-            "device": "",
-            "demod_type": "cqpsk", 
-            "destination": "udp://127.0.0.1:56120", 
-            "excess_bw": 0.2, 
-            "filter_type": "rc", 
-            "frequency": 460412500, 
-            "if_rate": 24000, 
-            "name": "p25", 
-            "plot": "symbol", 
-            "symbol_rate": 4800,
+            "name": "control channel", 
+            "trunking_sysname": "Example",
+            "device": "rtl0",
             "raw_output": "",
-            "raw_input": "",
-            "raw_seek": 0,
-            "enable_analog": "off",
-            "nbfm_deviation": 4000,
-            "nbfm_squelch": -60
-
-        }, 
+            "demod_type": "fsk", 
+            "destination": "smartnet", 
+            "excess_bw": 0.35, 
+            "filter_type": "fsk", 
+            "if_rate": 18000, 
+            "plot": "mixer",
+            "symbol_rate": 3600
+        },
         {
-            "device": "device_0",
-            "demod_type": "fsk4", 
-            "destination": "file:///tmp/out1.raw", 
-            "excess_bw": 0.2, 
-            "filter_type": "rrc", 
-            "frequency": 460500000, 
-            "if_rate": 24000, 
-            "name": "ysf", 
-            "plot": "datascope", 
-            "symbol_rate": 4800,
+            "name": "voice channel", 
+            "trunking_sysname": "Example",
+            "meta_stream_name": "stream_0",
+            "device": "rtl1",
+            "blacklist": "",
+            "whitelist": "",
             "raw_output": "",
-            "raw_input": "",
-            "enable_analog": "off",
-            "nbfm_deviation": 4000,
-            "nbfm_squelch": -60
-        }, 
-        {
-            "device": "device_1",
             "demod_type": "fsk4", 
-            "destination": "udp://127.0.0.1:56122", 
-            "excess_bw": 0.2, 
-            "filter_type": "rrc", 
-            "frequency": 460050000, 
-            "if_rate": 24000, 
-            "name": "dmr", 
-            "plot": "symbol", 
-            "symbol_rate": 4800,
-            "raw_output": "",
-            "raw_input": "",
-            "enable_analog": "off",
+            "destination": "udp://127.0.0.1:23456", 
+            "enable_analog": "auto",
             "nbfm_deviation": 4000,
-            "nbfm_squelch": -60
+            "nbfm_squelch_threshold": -60,
+            "nbfm_squelch_gain": 0.0050,
+            "excess_bw": 0.2, 
+            "filter_type": "widepulse", 
+            "if_rate": 24000, 
+            "plot": "",
+            "symbol_rate": 4800
         }
     ], 
     "devices": [
         {
             "args": "rtl=0", 
-            "frequency": 460100000, 
-            "gains": "lna:39", 
-            "name": "device_0", 
+            "frequency": 854000000, 
+            "gains": "LNA:39", 
+            "name": "rtl0", 
             "offset": 0, 
             "ppm": 0.0, 
             "rate": 1000000, 
-            "tunable": false
+            "tunable": true
         },
         {
             "args": "rtl=1", 
-            "frequency": 464100000, 
-            "gains": "lna:39", 
-            "name": "device_1", 
+            "frequency": 854000000, 
+            "gains": "LNA:39", 
+            "name": "rtl1", 
             "offset": 0, 
             "ppm": 0.0, 
             "rate": 1000000, 
@@ -77,17 +57,16 @@
         }
     ],
     "trunking": {
-        "module": "",
+        "module": "tk_smartnet.py",
         "chans": [
             {
-                "lcn": 1,
-                "frequency": 111222222,
-                "cc": 0
-            },
-            {
-                "lcn": 2,
-                "frequency": 111333333,
-                "cc": 0
+                "sysname": "Example",
+                "control_channel_list": "854.4125",
+                "tgid_tags_file": "",
+                "tgid_hold_time": 2.0,
+                "blacklist": "",
+                "whitelist": "",
+                "bandplan": "800_reband"
             }
         ]
     },

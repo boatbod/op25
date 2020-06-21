@@ -1,0 +1,36 @@
+How to Install OP25
+----------------------------------------------------------------------
+These high level instructions will lead you through installing op25
+on Debian based Linux systems such as Ubuntu, Linux Mint and similar.
+
+Note 1: op25 is currently tested against gnuradio-3.7 and python2.  The code
+is written to be largely python-version agnostic but there are elements of
+the build process (e.g. swig scripts) that may rely on python2.  Patches
+for gnuradio-3.8 are included for those wishing to experiment, but at this
+point they are not tested and may not function as intended.
+
+Note 2: versions of cmake later than 3.10.3 have been known to cause dependency
+issues while building the swig libraries. At the current time if you experience
+build difficulties of this sort, try dropping back to cmake-3.10.3, delete the
+contents of ~/op25/build/ and start over.
+
+
+1. Install op25
+---------------
+sudo apt-get install git
+cd ~
+git clone https://github.com/boatbod/op25
+cd op25
+./install.sh 
+
+2. Configure op25
+-----------------
+cd ~/op25/op25/gr-op25_repeater/apps
+<<<all configuration takes place in the 'apps' directory>>>
+
+See "~/op25/op25/gr-op25_repeater/apps/README-configuration" for more information.
+
+3. Run op25
+-----------
+cd ~/op25/op25/gr-op25_repeater/apps
+./op25.sh
