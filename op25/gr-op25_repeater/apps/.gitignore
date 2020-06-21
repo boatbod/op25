@@ -8,9 +8,12 @@ stderr*
 *.sh
 *.txt
 *.liq
+*.bin
 
 # Tracked files that would otherwise be excluded
 !op25.sh
+!op25.liq
+!example_liquidsoap.liq
 !trunk.tsv
 !cfg.json
 !meta.json
