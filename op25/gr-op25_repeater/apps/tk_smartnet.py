@@ -271,27 +271,30 @@ class osw_receiver(object):
 
     def read_tags_file(self, tags_file):
         import csv
-        with open(tags_file, 'rb') as csvfile:
-            sreader = csv.reader(csvfile, delimiter='\t', quotechar='"', quoting=csv.QUOTE_ALL)
-            for row in sreader:
-                try:
-                    tgid = int(row[0])
-                    tag = utf_ascii(row[1])
-                except (IndexError, ValueError) as ex:
-                    continue
-                if len(row) >= 3:
+        try:
+            with open(tags_file, 'rb') as csvfile:
+                sreader = csv.reader(csvfile, delimiter='\t', quotechar='"', quoting=csv.QUOTE_ALL)
+                for row in sreader:
                     try:
-                        prio = int(row[2])
-                    except ValueError as ex:
+                        tgid = int(row[0])
+                        tag = utf_ascii(row[1])
+                    except (IndexError, ValueError) as ex:
+                        continue
+                    if len(row) >= 3:
+                        try:
+                            prio = int(row[2])
+                        except ValueError as ex:
+                            prio = TGID_DEFAULT_PRIO
+                    else:
                         prio = TGID_DEFAULT_PRIO
-                else:
-                    prio = TGID_DEFAULT_PRIO
 
-                if tgid not in self.talkgroups:
-                    self.add_default_tgid(tgid)
-                self.talkgroups[tgid]['tag'] = tag
-                self.talkgroups[tgid]['prio'] = prio
-                sys.stderr.write("%s [%d] setting tgid(%d), prio(%d), tag(%s)\n" % (log_ts.get(), self.msgq_id, tgid, prio, tag))
+                    if tgid not in self.talkgroups:
+                        self.add_default_tgid(tgid)
+                    self.talkgroups[tgid]['tag'] = tag
+                    self.talkgroups[tgid]['prio'] = prio
+                    sys.stderr.write("%s [%d] setting tgid(%d), prio(%d), tag(%s)\n" % (log_ts.get(), self.msgq_id, tgid, prio, tag))
+        except IOError as ex:
+            sys.stderr.write("%s [%d] Error: %s: %s\n" % (log_ts.get(), self.msgq_id, ex.strerror, tags_file))
 
     def tune_next_cc(self):
         self.cc_retries = 0
