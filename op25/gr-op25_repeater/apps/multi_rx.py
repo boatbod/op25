@@ -351,7 +351,7 @@ class channel(object):
 
     def configure_p25_tdma(self, params):
         set_tdma = False
-        if params['tdma'] is not None:
+        if 'tdma' in params and params['tdma'] is not None:
             set_tdma = True
             self.decoder.set_slotid(params['tdma'])
         if set_tdma == self.tdma_state:
