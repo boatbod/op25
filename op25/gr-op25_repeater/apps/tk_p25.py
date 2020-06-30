@@ -37,6 +37,7 @@ TGID_HOLD_TIME = 2.0     # Number of seconds to give previously active tgid excl
 TGID_SKIP_TIME = 4.0     # Number of seconds to blacklist a previously skipped tgid
 TGID_EXPIRY_TIME = 1.0   # Number of seconds to allow tgid to remain active with no updates received
 EXPIRY_TIMER = 0.2       # Number of seconds between checks for tgid expiry
+PATCH_EXPIRY_TIME = 20.0 # Number of seconds until patch expiry
 
 #################
 # Helper functions
@@ -176,9 +177,8 @@ class rx_ctl(object):
             else:
                 self.receivers[m_rxid]['rx_rcvr'].process_qmsg(msg, curr_time)      # send in-call messaging to p25_receiver objects
 
-            # TODO:
-            #for rx in self.systems[self.receivers[m_rxid]['sysname']]['receivers']: # then have all the voice receivers scan for activity
-            #    rx.scan_for_talkgroups(curr_time)
+            for rx in self.systems[self.receivers[m_rxid]['sysname']]['receivers']: # then have all the voice receivers scan for activity
+                rx.scan_for_talkgroups(curr_time)
 
     # ui_command handles all requests from user interface
     def ui_command(self, cmd, data, msgq_id):
@@ -190,7 +190,7 @@ class rx_ctl(object):
         d = {'json_type': 'trunk_update'}
         syid = 0;
         for system in self.systems:
-        #    d[syid] = json.loads(self.systems[system]['control'].to_json())
+            d[syid] = json.loads(self.systems[system]['system'].to_json())
             syid += 1
         d['nac'] = 0
         return json.dumps(d)
@@ -227,6 +227,7 @@ class p25_system(object):
         self.cc_list = []
         self.cc_index = -1
         self.cc_timeouts = 0
+        self.cc_msgq_id = None
         self.last_tsbk = 0.0
         self.secondary = {}
         self.adjacent = {}
@@ -236,8 +237,8 @@ class p25_system(object):
         self.rfss_stid = 0
         self.rfss_chan = 0
         self.rfss_txchan = 0
-        self.ns_syid = -1
-        self.ns_wacn = -1
+        self.ns_syid = 0
+        self.ns_wacn = 0
         self.ns_chan = 0
         self.rx_cc_freq = None
         self.rx_sys_id = None
@@ -269,7 +270,7 @@ class p25_system(object):
 
         for f in cc_list.split(','):
             self.cc_list.append(get_frequency(f))
-        self.get_next_cc()
+        self.next_cc()
 
     def get_frequencies(self):
         return self.voice_frequencies
@@ -282,6 +283,9 @@ class p25_system(object):
 
     def get_whitelist(self):
         return self.whitelist
+    
+    def get_tdma_params(self):
+        return self.nac, self.ns_wacn, self.ns_syid
 
     def get_tdma_slot(self, id):
         table = (id >> 12) & 0xf
@@ -333,15 +337,36 @@ class p25_system(object):
                 self.talkgroups[tgid]['prio'] = prio
                 sys.stderr.write("%s [%s] setting tgid(%d), prio(%d), tag(%s)\n" % (log_ts.get(), self.sysname, tgid, prio, tag))
 
-    def get_next_cc(self):
+    def get_cc(self, msgq_id):
+        if msgq_id is None:
+            return None
+
+        if (self.cc_msgq_id is None) or (msgq_id == self.cc_msgq_id):
+            self.cc_msgq_id = msgq_id
+            return self.cc_list[self.cc_index]
+        else:
+            return None 
+
+    def next_cc(self):
         self.cc_retries = 0
         self.cc_index += 1
         if self.cc_index >= len(self.cc_list):
             self.cc_index = 0
-        return self.cc_list[self.cc_index]
 
-    def get_current_cc(self):
-        return self.cc_list[self.cc_index]
+    def release_cc(self, msgq_id):
+        if msgq_id is None or self.cc_msgq_id is None:
+            return
+
+        if self.cc_msgq_id == msgq_id:
+            self.msgq_id = None
+
+    def timeout_cc(self, msgq_id):
+        if msgq_id is None or self.cc_msgq_id is None or msgq_id != self.cc_msgq_id:
+            return False;
+        self.cc_retries += 1
+        if self.cc_retries >= CC_TIMEOUT_RETRIES:
+            self.next_cc()
+        return self.get_cc(msgq_id)
 
     def get_nac(self):
         return self.nac
@@ -381,6 +406,8 @@ class p25_system(object):
                 return
             opcode = (header >> 16) & 0x3f
             updated += self.decode_mbt(m_rxid, opcode, src, header << 16, mbt_data << 32)
+
+        self.expire_patches()
         return updated
 
     def decode_mbt_data(self, m_rxid, opcode, src, header, mbt_data):
@@ -454,8 +481,6 @@ class p25_system(object):
                 self.rfss_txchan = f2
             if self.debug > 10:
                 sys.stderr.write('%s [%d] mbt3a rfss stat sys %x rfid %x stid %x ch1 %s ch2 %s\n' %(log_ts.get(), m_rxid, syid, rfid, stid, self.channel_id_to_string(ch1), self.channel_id_to_string(ch2)))
-        #else:
-        #    sys.stderr.write('mbt other %x\n' % opcode
         return updated
 
     def decode_tsbk(self, m_rxid, tsbk):
@@ -732,7 +757,7 @@ class p25_system(object):
         if tgid not in self.talkgroups:
             add_default_tgid(self.talkgroups, tgid)
             if self.debug >= 5:
-                sys.stderr.write('%s [%s] new tgid=%s %s prio %d\n' % (log_ts.get(), self.sysname, tgid, self.get_tag(tgid), self.get_prio(tgid)))
+                sys.stderr.write('%s [%s] new tgid=%s %s prio %d\n' % (log_ts.get(), self.sysname, tgid, self.talkgroups[tgid]['tag'], self.talkgroups[tgid]['prio']))
         self.talkgroups[tgid]['time'] = time.time()
         self.talkgroups[tgid]['frequency'] = frequency
         self.talkgroups[tgid]['tdma_slot'] = tdma_slot
@@ -746,9 +771,48 @@ class p25_system(object):
         for tgid in self.talkgroups:
             if (self.talkgroups[tgid]['receiver'] is not None) and (curr_time >= self.talkgroups[tgid]['time'] + TGID_EXPIRY_TIME):
                 if self.debug > 1:
-                    sys.stderr.write("%s [%s] expiring tg(%d), freq(%f)\n" % (log_ts.get(), self.sysname, tgid, (self.talkgroups[tgid]['frequency']/1e6)))
-                # TODO
-                #self.talkgroups[tgid]['receiver'].expire_talkgroup(reason="expiry")
+                    sys.stderr.write("%s [%s] expiring tg(%d), freq(%f), slot(%d)\n" % (log_ts.get(), self.sysname, tgid, (self.talkgroups[tgid]['frequency']/1e6), self.talkgroups[tgid]['tdma_slot']))
+                self.talkgroups[tgid]['receiver'].expire_talkgroup(reason="expiry")
+
+    def add_patch(self, sg, ga1, ga2, ga3):
+        if sg not in self.patches:
+            self.patches[sg] = {}
+            self.patches[sg]['ga'] = set()
+            self.patches[sg]['ts'] = time.time()
+
+        for ga in [ga1, ga2, ga3]:
+            if (ga != sg):
+                self.patches[sg]['ts'] = time.time() # update timestamp
+                if ga not in self.patches[sg]['ga']:
+                    self.patches[sg]['ga'].add(ga)
+                    if self.debug >= 5:
+                        sys.stderr.write("%s [%s] add_patch: tgid(%d) is patched to sg(%d)\n" % (log_ts.get(), self.sysname, ga, sg))
+
+        if len(self.patches[sg]['ga']) == 0:
+            del self.patches[sg]
+
+    def del_patch(self, sg, ga1, ga2, ga3):
+        if sg not in self.patches:
+            return
+
+        for ga in [ga1, ga2, ga3]:
+            if ga in self.patches[sg]['ga']:
+                self.patches[sg]['ga'].discard(ga)
+                if self.debug >= 5:
+                    sys.stderr.write("%s [%s] del_patch: tgid(%d) is unpatched from sg(%d)\n" % (log_ts.get(), self.sysname, ga, sg))
+
+        if ((ga1, ga2, ga3) == (0, 0, 0)) or (len(self.patches[sg]['ga']) == 0):
+            del self.patches[sg]
+            if self.debug >= 5:
+                sys.stderr.write("%s del_patch: deleting patch sg(%d)\n" % (log_ts.get(), sg))
+
+    def expire_patches(self):
+        time_now = time.time()
+        for sg in list(self.patches):
+            if time_now > (self.patches[sg]['ts'] + PATCH_EXPIRY_TIME):
+                del self.patches[sg]
+                if self.debug >= 5:
+                    sys.stderr.write("%s [%s] expired_patches: expiring patch sg(%d)\n" % (log_ts.get(), self.sysname, sg))
 
     def dump_tgids(self):
         sys.stderr.write("Known tgids: { ")
@@ -758,16 +822,18 @@ class p25_system(object):
 
     def to_json(self):  # ugly but required for compatibility with P25 trunking and terminal modules
         d = {}
-        d['top_line']  = 'P25 SysId %04x' % (self.rx_sys_id if self.rx_sys_id is not None else 0)
-        d['top_line'] += ' Control Ch %f' % ((self.rx_cc_freq if self.rx_cc_freq is not None else self.cc_list[self.cc_index]) / 1e6)
-        d['top_line'] += ' TSBK count %d' % (self.stats['tsbk_count'])
+        d['top_line']  = 'P25 WACN 0x%x' % (self.ns_wacn if self.ns_wacn is not None else 0)
+        d['top_line'] += ' SYSID 0x%x' % (self.ns_syid if self.ns_syid is not None else 0)
+        d['top_line'] += ' %f' % ((self.rfss_chan if self.rfss_chan is not None else self.cc_list[self.cc_index]) / 1e6)
+        d['top_line'] += '/%f' % ((self.rfss_txchan if self.rfss_txchan is not None else 0) / 1e6)
+        d['top_line'] += ' tsbks %d' % (self.stats['tsbk_count'])
         d['secondary'] = ""
         d['frequencies'] = {}
         d['frequency_data'] = {}
         d['last_tsbk'] = self.last_tsbk
         t = time.time()
         for f in list(self.voice_frequencies.keys()):
-            d['frequencies'][f] = 'voice frequency %f tgid %5d %4.1fs ago count %d' %  ((f/1e6), self.voice_frequencies[f]['tgid'], t - self.voice_frequencies[f]['time'], self.voice_frequencies[f]['counter'])
+            d['frequencies'][f] = 'voice frequency %f tgid(s) %5s %5s %4.1fs ago count %d' %  ((f/1e6), self.voice_frequencies[f]['tgid'][0], self.voice_frequencies[f]['tgid'][1], t - self.voice_frequencies[f]['time'], self.voice_frequencies[f]['counter'])
 
             d['frequency_data'][f] = {'tgids': [self.voice_frequencies[f]['tgid']], 'last_activity': '%7.1f' % (t - self.voice_frequencies[f]['time']), 'counter': self.voice_frequencies[f]['counter']}
         d['adjacent_data'] = ""
@@ -785,17 +851,27 @@ class p25_receiver(object):
         self.system = system
         self.meta_q = meta_q
         self.tuned_frequency = freq
+        self.tuner_idle = False
         self.voice_frequencies = self.system.get_frequencies()
         self.talkgroups = self.system.get_talkgroups()
         self.blacklist = {}
         self.whitelist = None
+        self.current_tgid = None
+        self.current_slot = None
+        self.hold_tgid = None
+        self.hold_until = 0.0
+        self.hold_mode = False
+        self.tgid_hold_time = TGID_HOLD_TIME
+        self.vc_retries = 0
 
     def post_init(self):
         if self.debug >= 1:
             sys.stderr.write("%s [%d] Initializing P25 receiver\n" % (log_ts.get(), self.msgq_id))
 
         self.load_bl_wl()
-        self.tune_cc(self.system.get_current_cc())
+        self.tgid_hold_time = float(from_dict(self.system.config, 'tgid_hold_time', TGID_HOLD_TIME))
+        self.tune_cc(self.system.get_cc(self.msgq_id))
+        meta_update(self.meta_q)
 
     def load_bl_wl(self):
         if 'blacklist' in self.config and self.config['blacklist'] != "":
@@ -811,10 +887,53 @@ class p25_receiver(object):
             self.whitelist = self.system.get_whitelist()
 
     def tune_cc(self, freq):
-        tune_params = {'tuner': self.msgq_id,
+        if freq is None:   # freq will be None when there is already another receiver listening to the control channel
+            if not self.tuner_idle:
+                self.slot_set({'tuner': self.msgq_id,'slot': 4}) # disable receiver (idle)
+                self.tuner_idle = True
+                self.current_slot = None
+            return
+
+        if self.tuner_idle:
+            self.slot_set({'tuner': self.msgq_id,'slot': 0})     # enable receiver
+            self.tuner_idle = False
+        tune_params = {'tuner':   self.msgq_id,
                        'sigtype': "P25",
-                       'freq': freq}
+                       'freq':    freq,
+                       'tdma':    None}
         self.frequency_set(tune_params)
+        self.tuned_frequency = freq
+        self.current_slot = None
+
+    def tune_voice(self, freq, tgid, slot):
+        if freq is None:
+            return
+
+        if self.tuner_idle:
+            self.slot_set({'tuner': self.msgq_id,'slot': 0})     # enable receiver
+            self.tuner_idle = False
+        else:
+            self.system.release_cc(self.msgq_id)                 # release control channel responsibility
+
+        if (freq != self.tuned_frequency) and (slot != self.current_slot):
+            nac, wacn, sysid = self.system.get_tdma_params()
+            tune_params = {'tuner':   self.msgq_id,
+                           'sigtype': "P25",
+                           'freq':    get_frequency(freq),
+                           'tgid':    tgid,
+                           'tdma':    slot,
+                           'tag':     self.talkgroups[tgid]['tag'],
+                           'system':  self.config['trunking_sysname'],
+                           'nac':     nac,
+                           'wacn':    wacn,
+                           'sysid':   sysid}
+            self.frequency_set(tune_params)
+            self.tuned_frequency = freq
+
+        self.vc_retries = 0
+        self.current_tgid = tgid
+        self.current_slot = slot
+        self.talkgroups[tgid]['receiver'] = self
 
     def ui_command(self, cmd, data, curr_time):
         pass
@@ -829,9 +948,16 @@ class p25_receiver(object):
         m_ts = float(msg.arg2())
 
         if (m_type == -1):  # Channel Timeout
-            if self.debug > 10:
-                sys.stderr.write("%s [%d] control channel timeout\n" % (log_ts.get(), self.msgq_id))
-            # TODO: handle channel timeout (could be control or voice)
+            if self.current_tgid is None:
+                if self.debug > 10:
+                    sys.stderr.write("%s [%d] control channel timeout\n" % (log_ts.get(), self.msgq_id))
+                self.tune_cc(self.system.timeout_cc(self.msgq_id))
+            else:
+                if self.debug > 10:
+                    sys.stderr.write("%s [%d] voice channel timeout\n" % (log_ts.get(), self.msgq_id))
+                self.vc_retries += 1
+                if self.vc_retries >= VC_TIMEOUT_RETRIES:
+                    self.expire_talkgroup(reason="timeout")
             return
 
         elif m_type == -3: # P25 call data (srcaddr, grpaddr, encryption)
@@ -839,23 +965,96 @@ class p25_receiver(object):
             return
 
         elif m_type == -4: # P25 sync established
-            # TODO: handle sync (if needed?)
             return
 
         elif m_type >= 0: # Channel Signaling (m_type is duid)
             s = msg.to_string()
             nac = (ord(s[0]) << 8) + ord(s[1]) # first two bytes are NAC
-            # TODO: validate NAC
+            if (nac != 0xffff) and (nac != self.system.get_nac()):
+                return
 
             if   m_type ==  3: # call termination, no release
-                pass
-
+                return
             elif m_type == 15: # call termination, with release
-                pass
-
+                self.expire_talkgroup(reason="duid15")
             else:
                 # unhandled message
                 return
+
+    def blacklist_update(self, start_time):
+        expired_tgs = [tg for tg in list(self.blacklist.keys())
+                            if self.blacklist[tg] is not None
+                            and self.blacklist[tg] < start_time]
+        for tg in expired_tgs:
+            self.blacklist.pop(tg)
+
+    def find_talkgroup(self, start_time, tgid=None, hold=False):
+        tgt_tgid = None
+        self.blacklist_update(start_time)
+
+        if (tgid is not None) and (tgid in self.talkgroups) and ((self.talkgroups[tgid]['receiver'] is None) or (self.talkgroups[tgid]['receiver'] == self)):
+            tgt_tgid = tgid
+
+        for active_tgid in self.talkgroups:
+            if hold:
+                break
+            if self.talkgroups[active_tgid]['time'] < start_time:
+                continue
+            if active_tgid in self.blacklist and (not self.whitelist or active_tgid not in self.whitelist):
+                continue
+            if self.whitelist and active_tgid not in self.whitelist:
+                continue
+            if tgt_tgid is None:
+                if self.talkgroups[active_tgid]['receiver'] is None:
+                    tgt_tgid = active_tgid
+                    continue
+            elif (self.talkgroups[active_tgid]['prio'] < self.talkgroups[tgt_tgid]['prio']) and (self.talkgroups[active_tgid]['receiver'] is None):
+                tgt_tgid = active_tgid
+                   
+        if tgt_tgid is not None and self.talkgroups[tgt_tgid]['time'] >= start_time:
+            return self.talkgroups[tgt_tgid]['frequency'], tgt_tgid, self.talkgroups[tgt_tgid]['tdma_slot'], self.talkgroups[tgt_tgid]['srcaddr']
+        return None, None, None, None
+
+    def scan_for_talkgroups(self, curr_time):
+        if self.current_tgid is None and self.hold_tgid is not None and (curr_time < self.hold_until):
+            freq, tgid, slot, src = self.find_talkgroup(curr_time, tgid=self.hold_tgid)
+        else:
+            freq, tgid, slot, src = self.find_talkgroup(curr_time, tgid=self.current_tgid)
+        if tgid is None or tgid == self.current_tgid:
+            return
+
+        if self.current_tgid is None:
+            if self.debug > 1:
+                sys.stderr.write("%s [%d] voice update:  tg(%d), freq(%f), slot(%d), prio(%d)\n" % (log_ts.get(), self.msgq_id, tgid, (freq/1e6), slot, self.talkgroups[tgid]['prio']))
+            self.tune_voice(freq, tgid, slot)
+        else:
+            if self.debug > 1:
+                sys.stderr.write("%s [%d] voice preempt: tg(%d), freq(%f), slot(%d), prio(%d)\n" % (log_ts.get(), self.msgq_id, tgid, (freq/1e6), slot, self.talkgroups[tgid]['prio']))
+            self.expire_talkgroup(update_meta=False, reason="preempt")
+            self.tune_voice(freq, tgid, slot)
+
+        meta_update(self.meta_q, tgid, self.talkgroups[tgid]['tag'])
+
+    def expire_talkgroup(self, tgid=None, update_meta = True, reason="unk"):
+        if self.current_tgid is None:
+            return
+            
+        self.talkgroups[self.current_tgid]['receiver'] = None
+        self.talkgroups[self.current_tgid]['tdma_slot'] = None
+        self.talkgroups[self.current_tgid]['srcaddr'] = 0
+        if self.debug > 1:
+            sys.stderr.write("%s [%d] releasing:  tg(%d), freq(%f), slot(%d), reason(%s)\n" % (log_ts.get(), self.msgq_id, self.current_tgid, (self.tuned_frequency/1e6), self.current_slot, reason))
+        self.hold_tgid = self.current_tgid
+        self.hold_until = time.time() + TGID_HOLD_TIME
+        self.current_tgid = None
+        self.current_slot = None
+
+        if reason == "preempt":                         # Do not retune or update metadata if in middle of tuning to a different tgid
+            return
+
+        if update_meta:
+            meta_update(self.meta_q)                    # Send Idle metadata update
+        self.tune_cc(self.system.get_cc(self.msgq_id))  # Retune to control channel (if needed)
 
     def get_status(self):
         d = {}
@@ -866,7 +1065,7 @@ class p25_receiver(object):
         d['srcaddr'] = 0
         d['mode'] = None
         d['stream'] = ""
-        d['msgqid'] = self.msgq_id # TODO: this is not going to work!
+        d['msgqid'] = self.msgq_id
         return json.dumps(d)
 
 #################

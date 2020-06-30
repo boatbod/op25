@@ -234,7 +234,7 @@ void
 p25p1_fdma::process_HDU(const bit_vector& A)
 {
 	if (d_debug >= 10) {
-		fprintf (stderr, "%s NAC 0x%03x HDU:  ", logts.get(), framer->nac);
+		fprintf (stderr, "%s NAC 0x%03x HDU:  ", logts.get(d_msgq_id), framer->nac);
 	}
 
         uint32_t MFID;
@@ -297,7 +297,7 @@ void
 p25p1_fdma::process_LDU1(const bit_vector& A)
 {
 	if (d_debug >= 10) {
-		fprintf (stderr, "%s NAC 0x%03x LDU1: ", logts.get(), framer->nac);
+		fprintf (stderr, "%s NAC 0x%03x LDU1: ", logts.get(d_msgq_id), framer->nac);
 	}
 
 	std::vector<uint8_t> HB(63,0); // hexbit vector
@@ -315,7 +315,7 @@ void
 p25p1_fdma::process_LDU2(const bit_vector& A)
 {
 	if (d_debug >= 10) {
-		fprintf (stderr, "%s NAC 0x%03x LDU2: ", logts.get(), framer->nac);
+		fprintf (stderr, "%s NAC 0x%03x LDU2: ", logts.get(d_msgq_id), framer->nac);
 	}
 
 	std::vector<uint8_t> HB(63,0); // hexbit vector
@@ -358,7 +358,7 @@ void
 p25p1_fdma::process_TDU3()
 {
 	if (d_debug >= 10) {
-		fprintf (stderr, "%s NAC 0x%03x TDU3:  ", logts.get(), framer->nac);
+		fprintf (stderr, "%s NAC 0x%03x TDU3:  ", logts.get(d_msgq_id), framer->nac);
 	}
 
 	process_TTDU();
@@ -372,7 +372,7 @@ void
 p25p1_fdma::process_TDU15(const bit_vector& A)
 {
 	if (d_debug >= 10) {
-		fprintf (stderr, "%s NAC 0x%03x TDU15:  ", logts.get(), framer->nac);
+		fprintf (stderr, "%s NAC 0x%03x TDU15:  ", logts.get(d_msgq_id), framer->nac);
 	}
 
 	process_TTDU();
@@ -501,7 +501,7 @@ p25p1_fdma::process_TSBK(const bit_vector& fr, uint32_t fr_len)
 
 			if (d_debug >= 10) {
 				fprintf (stderr, "%s NAC 0x%03x TSBK: op=%02x : %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x\n",
-					 logts.get(), framer->nac, op,
+					 logts.get(d_msgq_id), framer->nac, op,
 					 deinterleave_buf[j][0], deinterleave_buf[j][1], deinterleave_buf[j][2], deinterleave_buf[j][3],
 					 deinterleave_buf[j][4], deinterleave_buf[j][5], deinterleave_buf[j][6], deinterleave_buf[j][7],
 					 deinterleave_buf[j][8], deinterleave_buf[j][9], deinterleave_buf[j][10], deinterleave_buf[j][11]);
@@ -562,10 +562,10 @@ p25p1_fdma::process_PDU(const bit_vector& fr, uint32_t fr_len)
 					    deinterleave_buf[3][4], deinterleave_buf[3][5], deinterleave_buf[3][6], deinterleave_buf[3][7],
 					    deinterleave_buf[3][8], deinterleave_buf[3][9], deinterleave_buf[3][10], deinterleave_buf[3][11]);
 				fprintf (stderr, "%s NAC 0x%03x PDU:  fmt=%02x, op=0x%02x : %s %s %s %s\n",
-					 logts.get(), framer->nac, fmt, op, s0, s1, s2, s3);
+					 logts.get(d_msgq_id), framer->nac, fmt, op, s0, s1, s2, s3);
 			}
 		} else if (d_debug >= 10) {
-			fprintf(stderr, "%s NAC 0x%03x PDU:  non-MBT message ignored\n", logts.get(), framer->nac);
+			fprintf(stderr, "%s NAC 0x%03x PDU:  non-MBT message ignored\n", logts.get(d_msgq_id), framer->nac);
 		}
 
 	}
@@ -618,7 +618,7 @@ p25p1_fdma::process_voice(const bit_vector& A)
 				sprintf(s,"%02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x",
 						p_cw[0], p_cw[1], p_cw[2], p_cw[3], p_cw[4], p_cw[5],
 					       	p_cw[6], p_cw[7], p_cw[8], p_cw[9], p_cw[10]);
-				fprintf(stderr, "%s IMBE %s errs %lu\n", logts.get(), s, errs); // print to log in one operation
+				fprintf(stderr, "%s IMBE %s errs %lu\n", logts.get(d_msgq_id), s, errs); // print to log in one operation
 			}
 			if (d_do_audio_output) {
 				if (!d_do_nocrypt || !encrypted()) {
@@ -722,7 +722,7 @@ p25p1_fdma::rx_sym (const uint8_t *syms, int nsyms)
     // check for timeout
     if (qtimer.expired()) {
       if (d_debug >= 10)
-        fprintf(stderr, "%s p25p1_fdma::rx_sym() timeout\n", logts.get());
+        fprintf(stderr, "%s p25p1_fdma::rx_sym() timeout\n", logts.get(d_msgq_id));
 
       if (d_do_audio_output) {
         op25audio.send_audio_flag(op25_audio::DRAIN);

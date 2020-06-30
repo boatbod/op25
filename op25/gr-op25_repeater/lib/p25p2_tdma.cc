@@ -179,7 +179,7 @@ void p25p2_tdma::handle_mac_ptt(const uint8_t byte_buf[], const unsigned int len
         send_msg(s, -3);
 
         if (d_debug >= 10) {
-                fprintf(stderr, "%s MAC_PTT: srcaddr=%u, grpaddr=%u", logts.get(), srcaddr, grpaddr);
+                fprintf(stderr, "%s MAC_PTT: srcaddr=%u, grpaddr=%u", logts.get(d_msgq_id), srcaddr, grpaddr);
         }
 
         for (int i = 0; i < 9; i++) {
@@ -204,7 +204,7 @@ void p25p2_tdma::handle_mac_end_ptt(const uint8_t byte_buf[], const unsigned int
         uint16_t grpaddr = (byte_buf[16] << 8) + byte_buf[17];
 
         if (d_debug >= 10)
-                fprintf(stderr, "%s MAC_END_PTT: colorcd=0x%03x, srcaddr=%u, grpaddr=%u, rs_errs=%d\n", logts.get(), colorcd, srcaddr, grpaddr, rs_errs);
+                fprintf(stderr, "%s MAC_END_PTT: colorcd=0x%03x, srcaddr=%u, grpaddr=%u, rs_errs=%d\n", logts.get(d_msgq_id), colorcd, srcaddr, grpaddr, rs_errs);
 
         //std::string s = "{\"srcaddr\" : " + std::to_string(srcaddr) + ", \"grpaddr\": " + std::to_string(grpaddr) + "}";
         //send_msg(s, -3);	// can cause data display issues if this message is processed after the DUID15
@@ -214,7 +214,7 @@ void p25p2_tdma::handle_mac_end_ptt(const uint8_t byte_buf[], const unsigned int
 void p25p2_tdma::handle_mac_idle(const uint8_t byte_buf[], const unsigned int len, const int rs_errs) 
 {
         if (d_debug >= 10)
-                fprintf(stderr, "%s MAC_IDLE: ", logts.get());
+                fprintf(stderr, "%s MAC_IDLE: ", logts.get(d_msgq_id));
 
         decode_mac_msg(byte_buf, len);
         op25audio.send_audio_flag(op25_audio::DRAIN);
@@ -226,7 +226,7 @@ void p25p2_tdma::handle_mac_idle(const uint8_t byte_buf[], const unsigned int le
 void p25p2_tdma::handle_mac_active(const uint8_t byte_buf[], const unsigned int len, const int rs_errs) 
 {
         if (d_debug >= 10)
-                fprintf(stderr, "%s MAC_ACTIVE: ", logts.get());
+                fprintf(stderr, "%s MAC_ACTIVE: ", logts.get(d_msgq_id));
 
         decode_mac_msg(byte_buf, len);
 
@@ -237,7 +237,7 @@ void p25p2_tdma::handle_mac_active(const uint8_t byte_buf[], const unsigned int 
 void p25p2_tdma::handle_mac_hangtime(const uint8_t byte_buf[], const unsigned int len, const int rs_errs) 
 {
         if (d_debug >= 10)
-                fprintf(stderr, "%s MAC_HANGTIME: ", logts.get());
+                fprintf(stderr, "%s MAC_HANGTIME: ", logts.get(d_msgq_id));
 
         decode_mac_msg(byte_buf, len);
         op25audio.send_audio_flag(op25_audio::DRAIN);
@@ -557,7 +557,7 @@ void p25p2_tdma::handle_voice_frame(const uint8_t dibits[])
 	if (d_debug >= 9) {
 		packed_codeword p_cw;
 		vf.pack_cw(p_cw, u);
-		fprintf(stderr, "%s AMBE %02x %02x %02x %02x %02x %02x %02x errs %lu\n", logts.get(),
+		fprintf(stderr, "%s AMBE %02x %02x %02x %02x %02x %02x %02x errs %lu\n", logts.get(d_msgq_id),
 			       	p_cw[0], p_cw[1], p_cw[2], p_cw[3], p_cw[4], p_cw[5], p_cw[6], errs);
 	}
 	rc = mbe_dequantizeAmbeTone(&tone_mp, u);
@@ -611,7 +611,7 @@ void p25p2_tdma::handle_voice_frame(const uint8_t dibits[])
 
 	// This should never happen; audio samples should never be left in buffer
 	if (software_decoder.audio()->size() != 0) {
-		fprintf(stderr, "%s p25p2_tdma::handle_voice_frame(): residual audio sample buffer non-zero (len=%lu)\n", logts.get(), software_decoder.audio()->size());
+		fprintf(stderr, "%s p25p2_tdma::handle_voice_frame(): residual audio sample buffer non-zero (len=%lu)\n", logts.get(d_msgq_id), software_decoder.audio()->size());
 		software_decoder.audio()->clear();
 	}
 
@@ -686,7 +686,7 @@ void p25p2_tdma::handle_4V2V_ess(const uint8_t dibits[])
 	int ec = 0;
 
         if (d_debug >= 10) {
-		fprintf(stderr, "%s %s_BURST ", logts.get(), (burst_id < 4) ? "4V" : "2V");
+		fprintf(stderr, "%s %s_BURST ", logts.get(d_msgq_id), (burst_id < 4) ? "4V" : "2V");
 	}
 
         if (burst_id < 4) {
