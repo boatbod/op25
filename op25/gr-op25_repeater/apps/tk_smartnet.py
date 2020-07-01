@@ -759,11 +759,11 @@ class voice_receiver(object):
             return
 
         if self.current_tgid is None:
-            if self.debug > 1:
+            if self.debug > 0:
                 sys.stderr.write("%s [%d] voice update:  tg(%d), freq(%f), mode(%d)\n" % (log_ts.get(), self.msgq_id, tgid, (freq/1e6), self.talkgroups[tgid]['mode']))
             self.tune_voice(freq, tgid)
         else:
-            if self.debug > 1:
+            if self.debug > 0:
                 sys.stderr.write("%s [%d] voice preempt: tg(%d), freq(%f), mode(%d)\n" % (log_ts.get(), self.msgq_id, tgid, (freq/1e6), self.talkgroups[tgid]['mode']))
             self.expire_talkgroup(update_meta=False, reason="preempt")
             self.tune_voice(freq, tgid)

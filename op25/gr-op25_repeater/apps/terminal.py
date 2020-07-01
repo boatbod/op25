@@ -59,6 +59,7 @@ class curses_terminal(threading.Thread):
         self.auto_update = True
         self.current_nac = None
         self.current_srcaddr = 0
+        self.current_encrypted = 0
         self.current_msgqid = '0'
         self.channel_list = []
         self.maxx = 0
@@ -314,12 +315,14 @@ class curses_terminal(threading.Thread):
                     self.current_srcaddr = srcaddr
                 self.status1.refresh()
             if 'encrypted' in msg:
-                self.status2.erase()
                 encrypted = msg['encrypted']
-                if encrypted != 0:
-                    s = 'ENCRYPTED'
-                    self.status2.addstr(0, (14-len(s)), s, curses.A_REVERSE)
-                self.status2.refresh()
+                if self.current_encrypted != encrypted:
+                    self.status2.erase()
+                    if encrypted != 0:
+                        s = 'ENCRYPTED'
+                        self.status2.addstr(0, (14-len(s)), s, curses.A_REVERSE)
+                    self.status2.refresh()
+                    self.current_encrypted = encrypted
             self.stdscr.refresh()
         elif msg['json_type'] == 'change_freq': # from rx.py trunking
             s = 'Frequency %f' % (msg['freq'] / 1000000.0)
@@ -387,6 +390,15 @@ class curses_terminal(threading.Thread):
                         self.status1.addstr(0, (14-len(s)), s)
                     self.current_srcaddr = srcaddr
                     self.status1.refresh()
+            if 'encrypted' in msg[c_id]:
+                encrypted = msg[c_id]['encrypted']
+                if self.current_encrypted != encrypted:
+                    self.status2.erase()
+                    if encrypted != 0:
+                        s = 'ENCRYPTED'
+                        self.status2.addstr(0, (14-len(s)), s, curses.A_REVERSE)
+                    self.status2.refresh()
+                    self.current_encrypted = encrypted
  
         return False
 

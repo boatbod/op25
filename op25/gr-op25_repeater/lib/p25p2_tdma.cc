@@ -175,8 +175,6 @@ void p25p2_tdma::handle_mac_ptt(const uint8_t byte_buf[], const unsigned int len
 {
         uint32_t srcaddr = (byte_buf[13] << 16) + (byte_buf[14] << 8) + byte_buf[15];
         uint16_t grpaddr = (byte_buf[16] << 8) + byte_buf[17];
-        std::string s = "{\"srcaddr\" : " + std::to_string(srcaddr) + ", \"grpaddr\": " + std::to_string(grpaddr) + "}";
-        send_msg(s, -3);
 
         if (d_debug >= 10) {
                 fprintf(stderr, "%s MAC_PTT: srcaddr=%u, grpaddr=%u", logts.get(d_msgq_id), srcaddr, grpaddr);
@@ -193,6 +191,11 @@ void p25p2_tdma::handle_mac_ptt(const uint8_t byte_buf[], const unsigned int len
 			ess_mi[0], ess_mi[1], ess_mi[2], ess_mi[3], ess_mi[4], ess_mi[5],ess_mi[6], ess_mi[7], ess_mi[8],
 			rs_errs);
         }
+
+        std::string s = "{\"srcaddr\" : "   + std::to_string(srcaddr) + \
+                        ", \"grpaddr\": "   + std::to_string(grpaddr) + \
+                        ", \"encrypted\": " + std::to_string(encrypted() ? 1 : 0 ) + "}";
+        send_msg(s, -3);
 
         reset_vb();
 }
