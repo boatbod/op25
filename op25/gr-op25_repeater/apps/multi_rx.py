@@ -530,7 +530,6 @@ class rx_block (gr.top_block):
     def find_device(self, chan):
         if 'device' in chan and (chan['device'] != "") and (chan['device'] in self.device_id_by_name):
             dev_id = self.device_id_by_name[chan['device']]
-            sys.stderr.write("DEVICE ID=%d\n" % dev_id)
             if dev_id < len(self.devices):
                 return self.devices[dev_id]
             

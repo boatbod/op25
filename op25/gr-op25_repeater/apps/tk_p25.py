@@ -81,7 +81,7 @@ def from_dict(d, key, def_val):
     else:
         return def_val
 
-def meta_update(meta_q, tgid = None, tag = None):
+def meta_update(meta_q, tgid = None, tag = None, msgq_id = 0):
     if meta_q is None:
         return
 
@@ -249,8 +249,7 @@ class p25_system(object):
         self.stats = {}
         self.stats['tsbk_count'] = 0
 
-        if self.debug >= 1:
-            sys.stderr.write("%s [%s] Initializing P25 system\n" % (log_ts.get(), self.sysname))
+        sys.stderr.write("%s [%s] Initializing P25 system\n" % (log_ts.get(), self.sysname))
 
         if 'tgid_tags_file' in self.config and self.config['tgid_tags_file'] != "":
             sys.stderr.write("%s [%s] reading system tgid_tags_file: %s\n" % (log_ts.get(), self.sysname, self.config['tgid_tags_file']))
@@ -341,7 +340,8 @@ class p25_system(object):
                     add_default_tgid(self.talkgroups, tgid)
                 self.talkgroups[tgid]['tag'] = tag
                 self.talkgroups[tgid]['prio'] = prio
-                sys.stderr.write("%s [%s] setting tgid(%d), prio(%d), tag(%s)\n" % (log_ts.get(), self.sysname, tgid, prio, tag))
+                if self.debug > 1:
+                    sys.stderr.write("%s [%s] setting tgid(%d), prio(%d), tag(%s)\n" % (log_ts.get(), self.sysname, tgid, prio, tag))
 
     def get_cc(self, msgq_id):
         if msgq_id is None:
@@ -349,6 +349,8 @@ class p25_system(object):
 
         if (self.cc_msgq_id is None) or (msgq_id == self.cc_msgq_id):
             self.cc_msgq_id = msgq_id
+
+            assert self.cc_list[self.cc_index]
             return self.cc_list[self.cc_index]
         else:
             return None 
@@ -778,7 +780,7 @@ class p25_system(object):
         for tgid in self.talkgroups:
             if (self.talkgroups[tgid]['receiver'] is not None) and (curr_time >= self.talkgroups[tgid]['time'] + TGID_EXPIRY_TIME):
                 if self.debug > 1:
-                    sys.stderr.write("%s [%s] expiring tg(%d), freq(%f), slot(%d)\n" % (log_ts.get(), self.sysname, tgid, (self.talkgroups[tgid]['frequency']/1e6), self.talkgroups[tgid]['tdma_slot']))
+                    sys.stderr.write("%s [%s] expiring tg(%d), freq(%f), slot(%s)\n" % (log_ts.get(), self.sysname, tgid, (self.talkgroups[tgid]['frequency']/1e6), self.talkgroups[tgid]['tdma_slot']))
                 self.talkgroups[tgid]['receiver'].expire_talkgroup(reason="expiry")
 
     def add_patch(self, sg, ga1, ga2, ga3):
@@ -875,12 +877,17 @@ class p25_receiver(object):
 
     def post_init(self):
         if self.debug >= 1:
-            sys.stderr.write("%s [%d] Initializing P25 receiver\n" % (log_ts.get(), self.msgq_id))
+            sys.stderr.write("%s [%d] Initializing P25 receiver: %s\n" % (log_ts.get(), self.msgq_id, from_dict(self.config, 'name', str(self.msgq_id))))
+            if self.meta_q is None:
+                sys.stderr.write("%s [%d] metadata updates not enabled\n" % (log_ts.get(), self.msgq_id))
+            else:
+                sys.stderr.write("%s [%d] metadata stream: %s\n" % (log_ts.get(), self.msgq_id, from_dict(self.config, 'meta_stream_name', "unknown")))
+            
 
         self.load_bl_wl()
         self.tgid_hold_time = float(from_dict(self.system.config, 'tgid_hold_time', TGID_HOLD_TIME))
         self.tune_cc(self.system.get_cc(self.msgq_id))
-        meta_update(self.meta_q)
+        meta_update(self.meta_q, msgq_id=self.msgq_id)
 
     def load_bl_wl(self):
         if 'blacklist' in self.config and self.config['blacklist'] != "":
@@ -896,10 +903,10 @@ class p25_receiver(object):
             self.whitelist = self.system.get_whitelist()
 
     def tune_cc(self, freq):
-        if freq is None:   # freq will be None when there is already another receiver listening to the control channel
+        if freq is None or int(freq) == 0:  # freq will be None when there is already another receiver listening to the control channel
             if not self.tuner_idle:
-                if self.debug >= 10:
-                    sys.stderr.write("%s [%d] Idling receiver\n" % (log_ts.get(), self.msgq_id))
+                if self.debug >= 5:
+                    sys.stderr.write("%s [%d] idling receiver\n" % (log_ts.get(), self.msgq_id))
                 self.slot_set({'tuner': self.msgq_id,'slot': 4}) # disable receiver (idle)
                 self.tuner_idle = True
                 self.current_slot = None
@@ -908,7 +915,7 @@ class p25_receiver(object):
         if self.tuner_idle:
             self.slot_set({'tuner': self.msgq_id,'slot': 0})     # enable receiver
             self.tuner_idle = False
-        if self.debug >= 10:
+        if self.debug >= 5:
             sys.stderr.write("%s [%d] tuning to control channel\n" % (log_ts.get(), self.msgq_id))
         tune_params = {'tuner':   self.msgq_id,
                        'sigtype': "P25",
@@ -919,14 +926,14 @@ class p25_receiver(object):
         self.current_slot = None
 
     def tune_voice(self, freq, tgid, slot):
-        if freq is None:
+        if freq is None or int(freq) == 0:
             return
 
         if self.tuner_idle:
             self.slot_set({'tuner': self.msgq_id,'slot': 0})     # enable receiver
             self.tuner_idle = False
         else:
-            if self.debug >= 10:
+            if self.debug >= 5:
                 sys.stderr.write("%s [%d] releasing control channel\n" % (log_ts.get(), self.msgq_id))
             self.system.release_cc(self.msgq_id)                 # release control channel responsibility
 
@@ -979,11 +986,11 @@ class p25_receiver(object):
 
         if (m_type == -1):  # Channel Timeout
             if self.current_tgid is None:
-                if self.debug > 10:
+                if self.debug > 0:
                     sys.stderr.write("%s [%d] control channel timeout\n" % (log_ts.get(), self.msgq_id))
                 self.tune_cc(self.system.timeout_cc(self.msgq_id))
             else:
-                if self.debug > 10:
+                if self.debug > 1:
                     sys.stderr.write("%s [%d] voice channel timeout\n" % (log_ts.get(), self.msgq_id))
                 self.vc_retries += 1
                 if self.vc_retries >= VC_TIMEOUT_RETRIES:
@@ -1029,7 +1036,7 @@ class p25_receiver(object):
 
     def add_blacklist(self, tgid, end_time=None):
         if not tgid or (tgid <= 0) or (tgid > 65534):
-            if self.debug > 0:
+            if self.debug > 1:
                 sys.stderr.write("%s [%d] blacklist tgid(%d) out of range (1-65534)\n" % (log_ts.get(), self.msgq_id, tgid))
             return
         if tgid in self.blacklist:
@@ -1051,7 +1058,7 @@ class p25_receiver(object):
 
     def add_whitelist(self, tgid):
         if not tgid or (tgid <= 0) or (tgid > 65534):
-            if self.debug > 0:
+            if self.debug > 1:
                 sys.stderr.write("%s [%d] whitelist tgid(%d) out of range (1-65534)\n" % (log_ts.get(), self.msgq_id, tgid))
             return
         if self.blacklist and tgid in self.blacklist:
@@ -1129,7 +1136,7 @@ class p25_receiver(object):
             self.expire_talkgroup(update_meta=False, reason="preempt")
             self.tune_voice(freq, tgid, slot)
 
-        meta_update(self.meta_q, tgid, self.talkgroups[tgid]['tag'])
+        meta_update(self.meta_q, tgid, self.talkgroups[tgid]['tag'], msgq_id=self.msgq_id)
 
     def expire_talkgroup(self, tgid=None, update_meta = True, reason="unk"):
         if self.current_tgid is None:
@@ -1139,7 +1146,7 @@ class p25_receiver(object):
         self.talkgroups[self.current_tgid]['tdma_slot'] = None
         self.talkgroups[self.current_tgid]['srcaddr'] = 0
         if self.debug > 1:
-            sys.stderr.write("%s [%d] releasing:  tg(%d), freq(%f), slot(%d), reason(%s)\n" % (log_ts.get(), self.msgq_id, self.current_tgid, (self.tuned_frequency/1e6), self.current_slot, reason))
+            sys.stderr.write("%s [%d] releasing:  tg(%d), freq(%f), slot(%s), reason(%s)\n" % (log_ts.get(), self.msgq_id, self.current_tgid, (self.tuned_frequency/1e6), self.current_slot, reason))
         self.hold_tgid = self.current_tgid
         self.hold_until = time.time() + TGID_HOLD_TIME
         self.current_tgid = None
@@ -1149,7 +1156,7 @@ class p25_receiver(object):
             return
 
         if update_meta:
-            meta_update(self.meta_q)                    # Send Idle metadata update
+            meta_update(self.meta_q, msgq_id=self.msgq_id)                    # Send Idle metadata update
         self.tune_cc(self.system.get_cc(self.msgq_id))  # Retune to control channel (if needed)
 
     def hold_talkgroup(self, tgid, curr_time):
@@ -1162,7 +1169,7 @@ class p25_receiver(object):
             self.hold_tgid = tgid
             self.hold_until = curr_time + 86400 * 10000
             self.hold_mode = True
-            if self.debug > 0:
+            if self.debug > 1:
                 sys.stderr.write ('%s [%d] set hold tg(%d) until %f\n' % (log_ts.get(), self.msgq_id, self.hold_tgid, self.hold_until))
             if self.current_tgid != self.hold_tgid:
                 self.expire_talkgroup(reason="new hold")
@@ -1172,10 +1179,10 @@ class p25_receiver(object):
                 self.hold_tgid = self.current_tgid
                 self.hold_until = curr_time + 86400 * 10000
                 self.hold_mode = True
-                if self.debug > 0:
+                if self.debug > 1:
                     sys.stderr.write ('%s [%d] set hold tg(%d) until %f\n' % (log_ts.get(), self.msgq_id, self.hold_tgid, self.hold_until))
         elif self.hold_mode is True:
-            if self.debug > 0:
+            if self.debug > 1:
                 sys.stderr.write ('%s [%d] clear hold tg(%d)\n' % (log_ts.get(), self.msgq_id, self.hold_tgid))
             self.hold_tgid = None
             self.hold_until = curr_time
