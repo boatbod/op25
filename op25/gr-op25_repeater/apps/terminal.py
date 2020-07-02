@@ -58,6 +58,7 @@ class curses_terminal(threading.Thread):
         self.last_update = 0
         self.auto_update = True
         self.current_nac = None
+        self.current_sysname = None
         self.current_srcaddr = 0
         self.current_encrypted = 0
         self.current_msgqid = '0'
@@ -285,7 +286,13 @@ class curses_terminal(threading.Thread):
             nacs = [x for x in list(msg.keys()) if x.isnumeric() ]
             if not nacs:
                 return
-            if msg.get('nac'):
+            sysnames = {}
+            for nac in nacs:
+                if 'system' in msg[nac] and msg[nac]['system'] is not None:
+                    sysnames[msg[nac]['system']] = nac
+            if self.current_sysname in sysnames:
+                current_nac = str(sysnames[self.current_sysname])
+            elif msg.get('nac'):
                 current_nac = str(msg['nac'])
             else:
                 times = {msg[nac]['last_tsbk']:nac for nac in nacs}
@@ -349,6 +356,8 @@ class curses_terminal(threading.Thread):
                 return
             self.channel_list = msg['channels']
             c_id = self.current_msgqid if self.current_msgqid in self.channel_list else self.channel_list[0]
+            if 'system' in msg[c_id] and msg[c_id]['system'] is not None:
+                self.current_sysname = msg[c_id]['system']
             s = '[%s] %s ' % (c_id, msg[c_id]['name']) if len(msg[c_id]['name']) > 0 else '[%s] ' % (c_id)
             s += 'Frequency %f' % (msg[c_id]['freq'] / 1000000.0)
             if msg[c_id]['ppm'] is not None:

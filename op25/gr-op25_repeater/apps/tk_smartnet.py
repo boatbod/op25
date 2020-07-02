@@ -220,6 +220,7 @@ class osw_receiver(object):
         self.rx_sys_id = None
         self.stats = {}
         self.stats['osw_count'] = 0
+        self.sysname = config['sysname']
 
     def get_frequencies(self):
         return self.voice_frequencies
@@ -562,11 +563,12 @@ class osw_receiver(object):
 
     def to_json(self):  # ugly but required for compatibility with P25 trunking and terminal modules
         d = {}
-        d['top_line']  = 'Smartnet/Smartzone SysId %04x' % (self.rx_sys_id if self.rx_sys_id is not None else 0)
-        d['top_line'] += ' Control Ch %f' % ((self.rx_cc_freq if self.rx_cc_freq is not None else self.cc_list[self.cc_index]) / 1e6)
-        d['top_line'] += ' OSW count %d' % (self.stats['osw_count'])
-        d['secondary'] = ""
-        d['frequencies'] = {}
+        d['system']         = self.sysname
+        d['top_line']       = 'Smartnet/Smartzone SysId %04x' % (self.rx_sys_id if self.rx_sys_id is not None else 0)
+        d['top_line']      += ' Control Ch %f' % ((self.rx_cc_freq if self.rx_cc_freq is not None else self.cc_list[self.cc_index]) / 1e6)
+        d['top_line']      += ' OSW count %d' % (self.stats['osw_count'])
+        d['secondary']      = ""
+        d['frequencies']    = {}
         d['frequency_data'] = {}
         d['last_tsbk'] = self.last_osw
         t = time.time()

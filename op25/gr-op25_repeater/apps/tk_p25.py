@@ -831,14 +831,15 @@ class p25_system(object):
 
     def to_json(self):  # ugly but required for compatibility with P25 trunking and terminal modules
         d = {}
-        d['top_line']  = 'P25 NAC 0x%x' % (self.nac)
-        d['top_line'] += ' WACN 0x%x' % (self.ns_wacn if self.ns_wacn is not None else 0)
-        d['top_line'] += ' SYSID 0x%x' % (self.ns_syid if self.ns_syid is not None else 0)
-        d['top_line'] += ' %f' % ((self.rfss_chan if self.rfss_chan is not None else self.cc_list[self.cc_index]) / 1e6)
-        d['top_line'] += '/%f' % ((self.rfss_txchan if self.rfss_txchan is not None else 0) / 1e6)
-        d['top_line'] += ' tsbks %d' % (self.stats['tsbk_count'])
-        d['secondary'] = ""
-        d['frequencies'] = {}
+        d['system']         = self.sysname
+        d['top_line']       = 'P25 NAC 0x%x' % (self.nac)
+        d['top_line']      += ' WACN 0x%x' % (self.ns_wacn if self.ns_wacn is not None else 0)
+        d['top_line']      += ' SYSID 0x%x' % (self.ns_syid if self.ns_syid is not None else 0)
+        d['top_line']      += ' %f' % ((self.rfss_chan if self.rfss_chan is not None else self.cc_list[self.cc_index]) / 1e6)
+        d['top_line']      += '/%f' % ((self.rfss_txchan if self.rfss_txchan is not None else 0) / 1e6)
+        d['top_line']      += ' tsbks %d' % (self.stats['tsbk_count'])
+        d['secondary']      = ""
+        d['frequencies']    = {}
         d['frequency_data'] = {}
         d['last_tsbk'] = self.last_tsbk
         t = time.time()
