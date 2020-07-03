@@ -861,6 +861,7 @@ class p25_receiver(object):
         self.slot_set = slot_set
         self.system = system
         self.meta_q = meta_q
+        self.meta_stream = from_dict(self.config, 'meta_stream_name', "")
         self.tuned_frequency = freq
         self.tuner_idle = False
         self.voice_frequencies = self.system.get_frequencies()
@@ -879,10 +880,10 @@ class p25_receiver(object):
     def post_init(self):
         if self.debug >= 1:
             sys.stderr.write("%s [%d] Initializing P25 receiver: %s\n" % (log_ts.get(), self.msgq_id, from_dict(self.config, 'name', str(self.msgq_id))))
-            if self.meta_q is None:
+            if self.meta_q is None or self.meta_stream == "":
                 sys.stderr.write("%s [%d] metadata updates not enabled\n" % (log_ts.get(), self.msgq_id))
             else:
-                sys.stderr.write("%s [%d] metadata stream: %s\n" % (log_ts.get(), self.msgq_id, from_dict(self.config, 'meta_stream_name', "unknown")))
+                sys.stderr.write("%s [%d] metadata stream: %s\n" % (log_ts.get(), self.msgq_id, self.meta_stream))
             
 
         self.load_bl_wl()
@@ -1200,7 +1201,7 @@ class p25_receiver(object):
         d['srcaddr'] = self.talkgroups[self.current_tgid]['srcaddr'] if self.current_tgid is not None else 0
         d['encrypted'] = self.talkgroups[self.current_tgid]['encrypted'] if self.current_tgid is not None else 0
         d['mode'] = None
-        d['stream'] = ""
+        d['stream'] = self.meta_stream
         d['msgqid'] = self.msgq_id
         return json.dumps(d)
 
