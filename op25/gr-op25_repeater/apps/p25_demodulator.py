@@ -266,7 +266,7 @@ class p25_demod_cb(p25_demod_base):
         self.if_rate = if_rate
         self.symbol_rate = symbol_rate
         self.connect_state = None
-        self.aux_fm_connected = False
+        self.aux_fm_connected = 0
         self.nbfm = None
         self.offset = 0
         self.sps = 0.0
@@ -429,17 +429,20 @@ class p25_demod_cb(p25_demod_base):
 
     # assumes lock held or init
     def connect_fm_demod(self):
-        if self.aux_fm_connected or self.connect_state != 'cqpsk':  # only valid for cqpsk demod type
+        if self.connect_state != 'cqpsk':   # only valid for cqpsk demod type
             return
-        self.connect(self.cutoff, self.fm_demod, self.baseband_amp, self.symbol_filter, self.null_sink)
-        self.aux_fm_connected = True
+        if self.aux_fm_connected == 0:
+            self.connect(self.cutoff, self.fm_demod, self.baseband_amp, self.symbol_filter, self.null_sink)
+        self.aux_fm_connected += 1          # increment refcount
 
     # assumes lock held or init
     def disconnect_fm_demod(self):
-        if not self.aux_fm_connected or self.connect_state != 'cqpsk':  # only valid for cqpsk demod type
+        #if not self.aux_fm_connected or self.connect_state != 'cqpsk':  # only valid for cqpsk demod type
+        if self.connect_state != 'cqpsk':  # only valid for cqpsk demod type
             return
-        self.disconnect(self.cutoff, self.fm_demod, self.baseband_amp, self.symbol_filter, self.null_sink)
-        self.aux_fm_connected = False
+        self.aux_fm_connected -= 1          # decrement refcount
+        if self.aux_fm_connected == 0:
+            self.disconnect(self.cutoff, self.fm_demod, self.baseband_amp, self.symbol_filter, self.null_sink)
 
     def disconnect_float(self, sink):
         # assumes lock held or init
