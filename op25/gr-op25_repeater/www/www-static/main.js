@@ -332,8 +332,23 @@ function trunk_update(d) {
     for (var nac in d) {
         if (!is_digit(nac.charAt(0)))
             continue;
-        if (nac != c_nac)
+
+        // If 'system' name is defined, use it to correlate system info with channel currently selected
+        // used by multi_rx.py trunking
+        if (d[nac]['system'] != undefined) {
+            if (d[nac]['system'] != c_system) {
+                continue;
+            }
+            else {
+                c_nac = d['nac'];
+            }
+        }
+        // Otherwise use c_nac which is derived from "current_nac" parameter in 'change_freq' message
+        // used by legacy rx.py trunking
+        else if (nac != c_nac) {
             continue;
+        }
+
         html += "<span class=\"nac\">";
         html += d[nac]['top_line'];
         html += "</span><br>";
