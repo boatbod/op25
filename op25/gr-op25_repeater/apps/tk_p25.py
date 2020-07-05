@@ -368,6 +368,12 @@ class p25_system(object):
         if self.cc_msgq_id == msgq_id:
             self.cc_msgq_id = None
 
+    def has_cc(self, msgq_id):
+        if msgq_id is None or msgq_id != self.cc_msgq_id:
+            return False
+        else:
+            return True
+
     def timeout_cc(self, msgq_id):
         if msgq_id is None or self.cc_msgq_id is None or msgq_id != self.cc_msgq_id:
             return False;
@@ -1192,12 +1198,13 @@ class p25_receiver(object):
             self.expire_talkgroup(reason="clear hold")
 
     def get_status(self):
+        cc_tag = "Control Channel" if self.system.has_cc(self.msgq_id) else None
         d = {}
         d['freq'] = self.tuned_frequency
         d['tdma'] = self.current_slot
         d['tgid'] = self.current_tgid
         d['system'] = self.config['trunking_sysname']
-        d['tag'] = self.talkgroups[self.current_tgid]['tag'] if self.current_tgid is not None else None
+        d['tag'] = self.talkgroups[self.current_tgid]['tag'] if self.current_tgid is not None else cc_tag
         d['srcaddr'] = self.talkgroups[self.current_tgid]['srcaddr'] if self.current_tgid is not None else 0
         d['encrypted'] = self.talkgroups[self.current_tgid]['encrypted'] if self.current_tgid is not None else 0
         d['mode'] = None

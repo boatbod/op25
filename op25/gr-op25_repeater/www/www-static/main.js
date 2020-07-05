@@ -270,9 +270,9 @@ function channel_status() {
     }
 
     html = "";
-    if (current_tgid != null) {
+    if (c_tag != null) {
         html += "<span class=\"value\">" + c_tag + "</span>";
-        if (c_encrypted) {
+        if ((current_tgid != null) && (c_encrypted)) {
             html += "<span class=\"label\">[ENCRYPTED]</span>";
         }
     }
