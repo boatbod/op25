@@ -200,7 +200,7 @@ p25p1_fdma::p25p1_fdma(const op25_audio& udp, int debug, bool do_imbe, bool do_o
 	d_do_msgq(do_msgq),
 	d_msg_queue(queue),
 	output_queue(output_queue),
-	framer(new p25_framer(debug)),
+	framer(new p25_framer(debug, msgq_id)),
         d_do_nocrypt(do_nocrypt),
 	d_do_audio_output(do_audio_output),
         ess_algid(0),

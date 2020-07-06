@@ -33,8 +33,9 @@ static const int max_frame_lengths[16] = {
 };
 
 // constructor
-p25_framer::p25_framer(int debug) :
+p25_framer::p25_framer(int debug, int msgq_id) :
 	d_debug(debug),
+	d_msgq_id(msgq_id),
 	reverse_p(0),
 	nid_syms(0),
 	next_bit(0),
@@ -109,7 +110,7 @@ bool p25_framer::nid_codeword(uint64_t acc) {
 		return true;
 	else
 		if (d_debug >= 10)
-			fprintf(stderr, "p25_framer::nid_codeword: duid/parity check fail: nid=%016lx, ec=%d\n", nid_word, ec);
+			fprintf(stderr, "%s p25_framer::nid_codeword: duid/parity check fail: nid=%016lx, ec=%d\n", logts.get(d_msgq_id), nid_word, ec);
 		return false;
 #endif
 	return true;
@@ -156,16 +157,16 @@ bool p25_framer::rx_sym(uint8_t dibit) {
 	if(check_frame_sync((nid_accum & P25_FRAME_SYNC_MASK) ^ P25_FRAME_SYNC_REV_P, 0, 48)) {
 		nid_syms = 1;
 		reverse_p ^= 0x02;   // auto flip polarity reversal
-		fprintf(stderr, "p25_framer::rx_sym() Reversed FS polarity detected - autocorrecting\n");
+		fprintf(stderr, "%s p25_framer::rx_sym() Reversed FS polarity detected - autocorrecting\n", logts.get(d_msgq_id));
 	}
-	if(check_frame_sync((nid_accum & P25_FRAME_SYNC_MASK) ^ 0x001050551155LL, 0, 48)) {
-		fprintf(stderr, "p25_framer::rx_sym() tuning error -1200\n");
+	if(check_frame_sync((nid_accum & P25_FRAME_SYNC_MASK) ^ P25_FRAME_SYNC_N1200, 0, 48)) {
+		fprintf(stderr, "%s p25_framer::rx_sym() tuning error -1200\n", logts.get(d_msgq_id));
 	}
-	if(check_frame_sync((nid_accum & P25_FRAME_SYNC_MASK) ^ 0xFFEFAFAAEEAALL, 0, 48)) {
-		fprintf(stderr, "p25_framer::rx_sym() tuning error +1200\n");
+	if(check_frame_sync((nid_accum & P25_FRAME_SYNC_MASK) ^ P25_FRAME_SYNC_P1200, 0, 48)) {
+		fprintf(stderr, "%s p25_framer::rx_sym() tuning error +1200\n", logts.get(d_msgq_id));
 	}
-	if(check_frame_sync((nid_accum & P25_FRAME_SYNC_MASK) ^ 0xAA8A0A008800LL, 0, 48)) {
-		fprintf(stderr, "p25_framer::rx_sym() tuning error +/- 2400\n");
+	if(check_frame_sync((nid_accum & P25_FRAME_SYNC_MASK) ^ P25_FRAME_SYNC_X2400, 0, 48)) {
+		fprintf(stderr, "%s p25_framer::rx_sym() tuning error +/- 2400\n", logts.get(d_msgq_id));
 	}
 	if (next_bit > 0) {
 		frame_body[next_bit++] = (dibit >> 1) & 1;

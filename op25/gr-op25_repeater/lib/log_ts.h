@@ -21,6 +21,7 @@
 #ifndef INCLUDED_LOG_TS_H
 #define INCLUDED_LOG_TS_H
 
+#include <time.h>
 #include <sys/time.h>
 
 class log_ts
