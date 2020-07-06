@@ -729,7 +729,7 @@ p25p1_fdma::rx_sym (const uint8_t *syms, int nsyms)
       }
 
       qtimer.reset();
-      gr::message::sptr msg = gr::message::make(get_msg_type(PROTOCOL_P25, M_P25_TIMEOUT), 0, logts.get_ts());
+      gr::message::sptr msg = gr::message::make(get_msg_type(PROTOCOL_P25, M_P25_TIMEOUT), (d_msgq_id << 1), logts.get_ts());
       d_msg_queue->insert_tail(msg);
     }
   }
