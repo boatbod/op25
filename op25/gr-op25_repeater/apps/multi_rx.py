@@ -339,15 +339,17 @@ class channel(object):
                 self.sinks['fft'].set_relative_freq(self.device.frequency - freq)
         if self.verbosity >= 9:
             sys.stderr.write("%s [%d] Tuning to frequency %f\n" % (log_ts.get(), self.msgq_id, (freq/1e6)))
-        self.decoder.sync_reset()
+        self.demod.reset()          # reset gardner-costas tracking loop
+        self.decoder.sync_reset()   # reset frame_assembler
         return True
 
-    def adj_tune(self, adjustment):     # ideally this would all be done at the device level but the demod belongs to the channel object
+    def adj_tune(self, adjustment): # ideally this would all be done at the device level but the demod belongs to the channel object
         self.device.ppm -= get_fractional_ppm(self.device.frequency, adjustment)
         self.device.src.set_freq_corr(int(round(self.device.ppm)))
         self.device.src.set_center_freq(self.device.frequency + self.device.offset)
         self.device.fractional_corr = (int(round(self.device.ppm)) - self.device.ppm) * (self.device.frequency/1e6)
         self.demod.set_relative_frequency(self.device.offset + self.device.frequency + self.device.fractional_corr - self.frequency)
+        self.demod.reset()          # reset gardner-costas tracking loop
 
     def configure_p25_tdma(self, params):
         set_tdma = False

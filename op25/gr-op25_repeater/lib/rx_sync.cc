@@ -424,7 +424,7 @@ void rx_sync::rx_sym(const uint8_t sym)
 		}
 		d_expires = d_symbol_count + MODE_DATA[d_current_type].expiration;
 	}
-	if (d_symbol_count >= d_expires) {
+	if ((d_current_type != RX_TYPE_NONE) && (d_symbol_count >= d_expires)) {
 		if (d_debug >= 10)
 			fprintf(stderr, "%s %s: timeout, symbol %d\n", logts.get(d_msgq_id), MODE_DATA[d_current_type].type, d_symbol_count);
 		sync_timeout(d_current_type);
