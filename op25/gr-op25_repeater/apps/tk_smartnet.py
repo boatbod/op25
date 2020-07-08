@@ -399,14 +399,15 @@ class osw_receiver(object):
         return freq
 
     def enqueue(self, addr, grp, cmd):
+        grp_str = "G" if (grp != 0) else "I"
         if self.is_chan(cmd):
             freq = self.get_freq(cmd)
             if self.debug >= 9:
-                sys.stderr.write("%s [%d] SMARTNET OSW (0x%04x,%s,0x%03x,%f)\n" % (log_ts.get(), self.msgq_id, addr, "true", cmd, freq))
+                sys.stderr.write("%s [%d] SMARTNET OSW (0x%04x,%s,0x%03x,%f)\n" % (log_ts.get(), self.msgq_id, addr, grp_str, cmd, freq))
         else:
             freq = 0.0
             if self.debug >= 9:
-                sys.stderr.write("%s [%d] SMARTNET OSW (0x%04x,%s,0x%03x)\n" % (log_ts.get(), self.msgq_id, addr, "false", cmd))
+                sys.stderr.write("%s [%d] SMARTNET OSW (0x%04x,%s,0x%03x)\n" % (log_ts.get(), self.msgq_id, addr, grp_str, cmd))
         self.osw_q.append((addr, (grp != 0), cmd, self.is_chan(cmd), freq))
 
     def process_osws(self):
