@@ -416,7 +416,7 @@ class osw_receiver(object):
 
         osw2_addr, osw2_grp, osw2_cmd, osw2_ch, osw2_f = self.osw_q.popleft()
 
-        if osw2_cmd == 0x308:
+        if (osw2_cmd == 0x308) or (osw2_cmd == 0x309):
             osw1_addr, osw1_grp, osw1_cmd, osw1_ch, osw1_f = self.osw_q.popleft()
             if osw1_ch and osw1_grp and (osw1_addr != 0) and (osw2_addr != 0):   # Two-OSW analog group voice grant
                 src_rid = osw2_addr
@@ -444,6 +444,11 @@ class osw_receiver(object):
                         self.rx_cc_freq = self.get_freq(osw1_addr & 0x3ff) * 1e6
                         if self.debug >= 11:
                             sys.stderr.write("%s [%d] SMARTNET SYSID (%x) CONTROL CHANNEL (%f)\n" % (log_ts.get(), self.msgq_id, osw2_addr, osw1_f))
+            elif osw1_cmd == 0x310:                                              # Two-OSW Type II affiliation
+                src_rid = osw2_addr
+                dst_tgid = osw1_addr & 0xfff0
+                if self.debug >= 11:
+                    sys.stderr.write("%s [%d] SMARTNET AFFILIATION src(%d), tgid(%d)\n" % (log_ts.get(), self.msgq_id, src_rid, dst_tgid))
             elif osw1_cmd == 0x320:
                 osw0_addr, osw0_grp, osw0_cmd, osw0_ch, osw0_f = self.osw_q.popleft()
                 if osw0_cmd == 0x30b:
