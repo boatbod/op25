@@ -56,24 +56,14 @@ namespace gr{
                 return;
             }
             d_rx_count ++;
-            if (sync_detected) {
-                if (!d_in_sync) {
-                    d_in_sync = true;
-                    d_expires = d_symbol_count + SMARTNET_FRAME_LENGTH;
-                    d_rx_count = SMARTNET_SYNC_LENGTH;
-                }
-                else if (d_rx_count !=  SMARTNET_SYNC_LENGTH) {
-                    if (d_debug >= 11)
-                        fprintf(stderr, "%s resync at count %d for protocol\n", logts.get(d_msgq_id), d_rx_count );
-                    sync_reset();
-                    d_rx_count = SMARTNET_SYNC_LENGTH;
-                }
+            if (sync_detected) { // sync sequence precedes every frame
+                d_in_sync = true;
                 d_expires = d_symbol_count + SMARTNET_FRAME_LENGTH;
+                d_rx_count = SMARTNET_SYNC_LENGTH;
             }
             if (d_symbol_count >= d_expires) {
                 if (d_debug >= 10)
                     fprintf(stderr, "%s SMARTNET timeout, symbol %d\n", logts.get(d_msgq_id), d_symbol_count);
-                sync_timeout();
                 d_in_sync = false;
                 return;
             }

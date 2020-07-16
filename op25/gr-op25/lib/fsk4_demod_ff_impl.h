@@ -41,6 +41,7 @@ namespace gr {
       const float d_symbol_time;
       double fine_frequency_correction;
       double coarse_frequency_correction;
+      bool d_bfsk;
 
       /**
        * Called when we want the input frequency to be adjusted.
@@ -53,7 +54,7 @@ namespace gr {
       bool tracking_loop_mmse(float input, float *output);
 
      public:
-      fsk4_demod_ff_impl(gr::msg_queue::sptr queue, float sample_rate_Hz, float symbol_rate_Hz);
+      fsk4_demod_ff_impl(gr::msg_queue::sptr queue, float sample_rate_Hz, float symbol_rate_Hz, bool bfsk = false);
       ~fsk4_demod_ff_impl();
 
       // Where all the action really happens
