@@ -135,12 +135,22 @@ class p25_demod_base(gr.hier_block2):
                                                            _def_omega_relative_limit)
             levels = [ -2.0, 0.0, 2.0, 4.0 ]
             self.slicer = op25_repeater.fsk4_slicer_fb(levels)
-        elif filter_type == 'fsk':
+        elif filter_type == 'fsk2mm':
             ntaps = 7 * sps
             if ntaps & 1 == 0:
                 ntaps += 1
             coeffs = filter.firdes.root_raised_cosine(1.0, self.if_rate, self.symbol_rate, excess_bw, ntaps)
             self.fsk4_demod = digital.clock_recovery_mm_ff(sps, 0.1, 0.5, 0.05, 0.005)
+            self.baseband_amp = op25_repeater.rmsagc_ff(alpha=0.01, k=1.0)
+            self.symbol_filter = filter.fir_filter_fff(1, coeffs)
+            self.slicer = digital.binary_slicer_fb()
+        elif filter_type == 'fsk2':
+            ntaps = 7 * sps
+            if ntaps & 1 == 0:
+                ntaps += 1
+            coeffs = filter.firdes.root_raised_cosine(1.0, self.if_rate, self.symbol_rate, excess_bw, ntaps)
+            autotuneq = gr.msg_queue(2)
+            self.fsk4_demod = op25.fsk4_demod_ff(autotuneq, self.if_rate, self.symbol_rate, True)
             self.baseband_amp = op25_repeater.rmsagc_ff(alpha=0.01, k=1.0)
             self.symbol_filter = filter.fir_filter_fff(1, coeffs)
             self.slicer = digital.binary_slicer_fb()
@@ -351,7 +361,7 @@ class p25_demod_cb(p25_demod_base):
         self.rescale = blocks.multiply_const_ff( (1 / (pi / 4)) )
 
         # fm demodulator (needed in fsk4 case)
-        if filter_type == 'fsk':
+        if filter_type[:4] == 'fsk2':
             fm_demod_gain = if_rate / (2.0 * pi * 3600)
         else:
             fm_demod_gain = if_rate / (2.0 * pi * _def_symbol_deviation)

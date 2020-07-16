@@ -145,6 +145,7 @@ class rx_ctl(object):
                 self.systems[rx_sysname]['voice'].append(rx_sys)
         else:                            # undefined or mis-configured trunking sysname
             sys.stderr.write("Receiver '%s' configured with unknown trunking_sysname '%s'\n" % (rx_name, rx_sysname))
+            return
 
         self.receivers[msgq_id] = {'msgq_id': msgq_id,
                                    'config' : config,
