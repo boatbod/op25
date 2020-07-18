@@ -8,7 +8,7 @@
             "demod_type": "fsk", 
             "destination": "smartnet", 
             "excess_bw": 0.35, 
-            "filter_type": "fsk", 
+            "filter_type": "fsk2", 
             "if_rate": 18000, 
             "plot": "mixer",
             "symbol_rate": 3600
