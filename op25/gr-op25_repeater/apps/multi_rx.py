@@ -128,10 +128,13 @@ class channel(object):
             self.symbol_rate = config['symbol_rate']
         self.config = config
         if config['demod_type'] == "fsk": # Motorola 3600bps
+            filter_type = from_dict(config, 'filter_type', 'fsk2mm')
+            if filter_type[:4] != 'fsk2':   # has to be 'fsk2' or derivative such as 'fsk2mm'
+                filter_type = 'fsk2mm'
             self.demod = p25_demodulator.p25_demod_cb(
                              input_rate = dev.sample_rate,
                              demod_type = 'fsk4',
-                             filter_type = 'fsk',
+                             filter_type = filter_type,
                              excess_bw = config['excess_bw'],
                              relative_freq = (dev.frequency + dev.offset + dev.fractional_corr) - self.frequency,
                              offset = dev.offset,

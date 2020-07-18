@@ -172,16 +172,16 @@ namespace gr {
   namespace op25 {
 
     fsk4_demod_ff::sptr
-    fsk4_demod_ff::make(gr::msg_queue::sptr queue, float sample_rate_Hz, float symbol_rate_Hz)
+    fsk4_demod_ff::make(gr::msg_queue::sptr queue, float sample_rate_Hz, float symbol_rate_Hz, bool bfsk)
     {
       return gnuradio::get_initial_sptr
-        (new fsk4_demod_ff_impl(queue, sample_rate_Hz, symbol_rate_Hz));
+        (new fsk4_demod_ff_impl(queue, sample_rate_Hz, symbol_rate_Hz, bfsk));
     }
 
     /*
      * The private constructor
      */
-    fsk4_demod_ff_impl::fsk4_demod_ff_impl(gr::msg_queue::sptr queue, float sample_rate_Hz, float symbol_rate_Hz)
+    fsk4_demod_ff_impl::fsk4_demod_ff_impl(gr::msg_queue::sptr queue, float sample_rate_Hz, float symbol_rate_Hz, bool bfsk)
       : gr::block("fsk4_demod_ff",
 		  gr::io_signature::make(1, 1, sizeof(float)),
 		  gr::io_signature::make(1, 1, sizeof(float))),
@@ -191,7 +191,8 @@ namespace gr {
 	d_queue(queue),
 	d_symbol_clock(0.0),
 	d_symbol_spread(2.0), // nominal symbol spread of 2.0 gives outputs at -3, -1, +1, +3
-	d_symbol_time(symbol_rate_Hz / sample_rate_Hz)
+	d_symbol_time(symbol_rate_Hz / sample_rate_Hz),
+	d_bfsk(bfsk)
     {
       fine_frequency_correction = 0.0;
       coarse_frequency_correction = 0.0;
@@ -327,22 +328,35 @@ namespace gr {
 	
 	double symbol_error;
 	const double K_SYMBOL_SPREAD = 0.0100; // tracking loop gain constant
-	if(interp < - d_symbol_spread) {
-	  // symbol is -3: Expected at -1.5 * symbol_spread
-	  symbol_error = interp + (1.5 * d_symbol_spread);
-	  d_symbol_spread -= (symbol_error * 0.5 * K_SYMBOL_SPREAD);
-	} else if(interp < 0.0) {
-	  // symbol is -1: Expected at -0.5 * symbol_spread
-	  symbol_error = interp + (0.5 * d_symbol_spread);
-	  d_symbol_spread -= (symbol_error * K_SYMBOL_SPREAD);
-	} else if(interp < d_symbol_spread) {
-	  // symbol is +1: Expected at +0.5 * symbol_spread
-	  symbol_error = interp - (0.5 * d_symbol_spread);
-	  d_symbol_spread += (symbol_error * K_SYMBOL_SPREAD);
-	} else {
-	  // symbol is +3: Expected at +1.5 * symbol_spread
-	  symbol_error = interp - (1.5 * d_symbol_spread);
-	  d_symbol_spread += (symbol_error * 0.5 * K_SYMBOL_SPREAD);
+
+	if (d_bfsk) { // 2L-FSK
+		if(interp < 0.0) {
+	      // symbol is -1: Expected at -0.5 * symbol_spread
+	      symbol_error = interp + (0.5 * d_symbol_spread);
+	      d_symbol_spread -= (symbol_error * K_SYMBOL_SPREAD);
+	    } else {
+	      // symbol is +1: Expected at +0.5 * symbol_spread
+	      symbol_error = interp - (0.5 * d_symbol_spread);
+	      d_symbol_spread += (symbol_error * K_SYMBOL_SPREAD);
+	    }
+	} else {     // 4L-FSK
+		if(interp < - d_symbol_spread) {
+		  // symbol is -3: Expected at -1.5 * symbol_spread
+		  symbol_error = interp + (1.5 * d_symbol_spread);
+		  d_symbol_spread -= (symbol_error * 0.5 * K_SYMBOL_SPREAD);
+		} else if(interp < 0.0) {
+		  // symbol is -1: Expected at -0.5 * symbol_spread
+		  symbol_error = interp + (0.5 * d_symbol_spread);
+		  d_symbol_spread -= (symbol_error * K_SYMBOL_SPREAD);
+		} else if(interp < d_symbol_spread) {
+		  // symbol is +1: Expected at +0.5 * symbol_spread
+		  symbol_error = interp - (0.5 * d_symbol_spread);
+		  d_symbol_spread += (symbol_error * K_SYMBOL_SPREAD);
+		} else {
+		  // symbol is +3: Expected at +1.5 * symbol_spread
+		  symbol_error = interp - (1.5 * d_symbol_spread);
+		  d_symbol_spread += (symbol_error * 0.5 * K_SYMBOL_SPREAD);
+		}
 	}
 	
 	// symbol clock tracking loop gain
