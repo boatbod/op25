@@ -84,7 +84,7 @@ namespace gr{
                 op25_timer sync_timer;
                 bool d_in_sync;
                 unsigned int d_symbol_count;
-                uint64_t d_sync_reg;
+                uint8_t d_sync_reg;
                 uint8_t d_cbuf[SMARTNET_FRAME_LENGTH * 2];
                 uint8_t d_raw_frame[SMARTNET_PAYLOAD_LENGTH];
                 uint8_t d_ecc_frame[SMARTNET_DATA_LENGTH + SMARTNET_CRC_LENGTH];

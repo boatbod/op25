@@ -44,50 +44,60 @@ namespace gr{
             bool crc_ok;
             bool sync_detected = false;
             d_symbol_count ++;
-            d_sync_reg = (d_sync_reg << 1) | (sym & 1);
-                if (check_frame_sync(SMARTNET_SYNC_MAGIC ^ d_sync_reg, 0, 8)) {
-                    sync_detected = true;
-                }
+            d_sync_reg = ((d_sync_reg << 1) & 0xff ) | (sym & 1);
+            if ((d_sync_reg ^ (uint8_t)SMARTNET_SYNC_MAGIC) == 0) {
+                sync_detected = true;
+            }
             cbuf_insert(sym);
-            if (!d_in_sync && !sync_detected) {
-                if (sync_timer.expired()) {
-                    sync_timeout();
-                }
-                return;
-            }
             d_rx_count ++;
-            if (sync_detected) { // sync sequence precedes every frame
-                d_in_sync = true;
-                d_expires = d_symbol_count + SMARTNET_FRAME_LENGTH;
-                d_rx_count = SMARTNET_SYNC_LENGTH;
-            }
-            if (d_symbol_count >= d_expires) {
-                if (d_debug >= 10)
-                    fprintf(stderr, "%s SMARTNET timeout, symbol %d\n", logts.get(d_msgq_id), d_symbol_count);
+
+            if (sync_timer.expired()) {                                                 // Check for timeout
                 d_in_sync = false;
+                d_rx_count = 0;
+                sync_timeout();
                 return;
             }
-            if (d_rx_count < SMARTNET_FRAME_LENGTH)
+
+            if (sync_detected && !d_in_sync) {                                          // First sync marks starts data collection
+                d_in_sync = true;
+                d_rx_count = 0;
                 return;
+            }
+
+            if (!d_in_sync || (d_in_sync && (d_rx_count < SMARTNET_FRAME_LENGTH))) {    // Collect up to expected data frame length
+                return;                                                                 // any early sync sequence is treated as data
+            }
+            
+            if (!sync_detected) {                                                       // Frame must end with sync for to be valid
+                if (d_debug >= 10) {
+                    fprintf(stderr, "%s SMARTNET sync lost\n", logts.get(d_msgq_id));
+                }
+                d_in_sync = false;
+                d_rx_count = 0;
+                return;
+            }
 
             d_rx_count = 0;
             int start_idx = d_cbuf_idx;
             assert (start_idx >= 0);
-            uint8_t * symbol_ptr = d_cbuf + start_idx + (uint8_t) SMARTNET_SYNC_LENGTH; // frame starts after sync bits
+            uint8_t * symbol_ptr = d_cbuf + start_idx;                                  // Start of data frame in circular buffer
 
             deinterleave(symbol_ptr);
             error_correction();
             crc_ok = crc_check();
-            if (!crc_ok)
+            if (!crc_ok) {                                                              // Discard frames with failed CRC
+                if (d_debug >= 10) {
+                    fprintf(stderr,"%s SMARTNET crc fail\n", logts.get(d_msgq_id));
+                }
                 return;
+            }
 
-            if ((d_msgq_id < 0) && (d_debug >= 10))  // log if no trunking, otherwise trunking can do the logging
+            if ((d_msgq_id < 0) && (d_debug >= 10)) {                                   // Log if no trunking, else trunking can do it
                 fprintf(stderr, "%s SMARTNET OSW received: (%05d,%s,0x%03x)\n", logts.get(d_msgq_id), d_pkt.address, ((d_pkt.group) ? "g" : "i"), d_pkt.command);
+            }
 
-            send_msg((const char*)d_pkt.raw_data);
-
+            send_msg((const char*)d_pkt.raw_data);                                      // Send complete OSW to trunking
             reset_timer();
-
         }
 
         // Incoming frame is 76 bits {1,2,3,4,5,6,7,8,9,10,11,12,...,74,75,76}
