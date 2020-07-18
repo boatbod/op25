@@ -361,7 +361,7 @@ class p25_demod_cb(p25_demod_base):
         self.rescale = blocks.multiply_const_ff( (1 / (pi / 4)) )
 
         # fm demodulator (needed in fsk4 case)
-        if filter_type[:4] == 'fsk2':
+        if filter_type is not None and filter_type[:4] == 'fsk2':
             fm_demod_gain = if_rate / (2.0 * pi * 3600)
         else:
             fm_demod_gain = if_rate / (2.0 * pi * _def_symbol_deviation)
