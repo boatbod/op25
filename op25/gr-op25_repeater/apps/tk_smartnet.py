@@ -25,6 +25,7 @@ import collections
 import ctypes
 import time
 import json
+import struct
 from log_ts import log_ts
 from collections import deque
 from gnuradio import gr
@@ -42,9 +43,6 @@ EXPIRY_TIMER = 0.2       # Number of seconds between checks for tgid expiry
 
 #################
 # Helper functions
-def utf_ascii(ustr):
-    return (ustr.decode("utf-8")).encode("ascii", "ignore")
-
 def get_frequency( f):    # return frequency in Hz
     if str(f).find('.') == -1:    # assume in Hz
         return int(f)
@@ -274,12 +272,12 @@ class osw_receiver(object):
     def read_tags_file(self, tags_file):
         import csv
         try:
-            with open(tags_file, 'rb') as csvfile:
+            with open(tags_file, 'r') as csvfile:
                 sreader = csv.reader(csvfile, delimiter='\t', quotechar='"', quoting=csv.QUOTE_ALL)
                 for row in sreader:
                     try:
                         tgid = int(row[0])
-                        tag = utf_ascii(row[1])
+                        tag = row[1]
                     except (IndexError, ValueError) as ex:
                         continue
                     if len(row) >= 3:
@@ -326,12 +324,8 @@ class osw_receiver(object):
             if self.cc_retries >= CC_TIMEOUT_RETRIES:
                 self.tune_next_cc()
 
-        elif (m_type == 0): # OSW Receieved
-            s = msg.to_string()
-
-            osw_addr = (ord(s[0]) << 8) + ord(s[1])
-            osw_grp  =  ord(s[2])
-            osw_cmd  = (ord(s[3]) << 8) + ord(s[4])
+        elif (m_type == 0): # OSW Received
+            (osw_addr, osw_grp, osw_cmd) = struct.unpack('>HBH', msg.to_string());
             self.enqueue(osw_addr, osw_grp, osw_cmd)
             self.stats['osw_count'] += 1
             self.last_osw = curr_time

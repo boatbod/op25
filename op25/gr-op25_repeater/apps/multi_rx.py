@@ -644,7 +644,7 @@ class rx_block (gr.top_block):
 
     def process_qmsg(self, msg):            # Handle UI requests
         RX_COMMANDS = 'skip lockout hold whitelist reload'
-        s = msg.to_string()
+        s = msg.to_string().decode('utf-8')
         if s == 'quit':
             return True
         elif s == 'update':                 # UI initiated update request
@@ -742,17 +742,6 @@ class du_queue_watcher(threading.Thread):
 
 class rx_main(object):
     def __init__(self):
-        def byteify(input):    # thx so
-            if isinstance(input, dict):
-                return {byteify(key): byteify(value)
-                        for key, value in list(input.items())}
-            elif isinstance(input, list):
-                return [byteify(element) for element in input]
-            elif isinstance(input, str):
-                return input.encode('utf-8')
-            else:
-                return input
-
         self.keep_running = True
 
         # command line argument parsing
@@ -774,7 +763,7 @@ class rx_main(object):
                 parser.print_help()
                 exit(1)
             config = json.loads(open(options.config_file).read())
-        self.tb = rx_block(options.verbosity, config = byteify(config))
+        self.tb = rx_block(options.verbosity, config)
         self.q_watcher = du_queue_watcher(self.tb.ui_out_q, self.process_qmsg)
 
     def process_qmsg(self, msg):
