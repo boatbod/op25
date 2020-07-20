@@ -394,7 +394,8 @@ void rx_sync::rx_sym(const uint8_t sym)
 	d_symbol_count ++;
 	d_sync_reg = (d_sync_reg << 2) | (sym & 3);
 	for (int i = 0; i < KNOWN_MAGICS; i++) {
-		if (check_frame_sync(SYNC_MAGIC[i].magic ^ d_sync_reg, (SYNC_MAGIC[i].type == d_current_type) ? d_threshold : 0, MODE_DATA[SYNC_MAGIC[i].type].sync_len)) {
+		//if (check_frame_sync(SYNC_MAGIC[i].magic ^ d_sync_reg, (SYNC_MAGIC[i].type == d_current_type) ? d_threshold : 0, MODE_DATA[SYNC_MAGIC[i].type].sync_len)) {
+		if (check_frame_sync(SYNC_MAGIC[i].magic ^ d_sync_reg, 0, MODE_DATA[SYNC_MAGIC[i].type].sync_len)) {
 			sync_detected = (enum rx_types) SYNC_MAGIC[i].type;
 			break;
 		}
@@ -415,7 +416,7 @@ void rx_sync::rx_sym(const uint8_t sym)
             sync_established(d_current_type);
 		}
 		if (d_rx_count != MODE_DATA[d_current_type].sync_offset + (MODE_DATA[d_current_type].sync_len >> 1)) {
-			if (d_debug >= 10)
+			//if (d_debug >= 10)
 				fprintf(stderr, "%s resync at count %d for protocol %s (expected count %d)\n", logts.get(d_msgq_id), d_rx_count, MODE_DATA[d_current_type].type, (MODE_DATA[d_current_type].sync_offset + (MODE_DATA[d_current_type].sync_len >> 1)));
 			sync_reset();
 			d_rx_count = MODE_DATA[d_current_type].sync_offset + (MODE_DATA[d_current_type].sync_len >> 1);

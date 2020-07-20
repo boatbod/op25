@@ -664,7 +664,7 @@ p25p1_fdma::rx_sym (const uint8_t *syms, int nsyms)
   	if(framer->rx_sym(syms[i1])) {   // complete frame was detected
 
 		if (framer->nac == 0) {  // discard frame if NAC is invalid
-			return;
+			continue;
 		}
 
 		// extract additional signalling information and voice codewords
