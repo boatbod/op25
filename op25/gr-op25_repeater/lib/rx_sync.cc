@@ -64,6 +64,10 @@ void rx_sync::reset_timer(void) {
 }
 
 void rx_sync::sync_reset(void) {
+	if (d_debug >= 10) {
+		fprintf(stderr, "%s rx_sync::sync_reset:\n", logts.get(d_msgq_id));
+	}
+
 	// Sync counters and registers reset
 	d_symbol_count = 0;
     d_cbuf_idx = 0;
@@ -88,9 +92,6 @@ void rx_sync::sync_reset(void) {
 
 	// Timers reset
 	reset_timer();
-	if (d_debug >= 10) {
-		fprintf(stderr, "%s rx_sync::sync_reset:\n", logts.get(d_msgq_id));
-	}
 }
 
 void rx_sync::set_slot_mask(int mask) {
@@ -224,6 +225,9 @@ rx_sync::~rx_sync()	// destructor
 
 void rx_sync::sync_timeout(rx_types proto)
 {
+	if (d_debug >= 10) {
+		fprintf(stderr, "%s rx_sync::sync_timeout: protocol %s\n", logts.get(d_msgq_id), MODE_DATA[proto].type);
+	}
 	if ((d_msgq_id >= 0) && (!d_msg_queue->full_p())) {
 		std::string m_buf;
 		gr::message::sptr msg;
@@ -239,15 +243,15 @@ void rx_sync::sync_timeout(rx_types proto)
 			d_msg_queue->insert_tail(msg);
 			break;
 		}
-		if (d_debug >= 10) {
-			fprintf(stderr, "%s rx_sync::sync_timeout: protocol %s\n", logts.get(d_msgq_id), MODE_DATA[proto].type);
-		}
     }
 	reset_timer();
 }
 
 void rx_sync::sync_established(rx_types proto)
 {
+	if (d_debug >= 10) {
+		fprintf(stderr, "%s rx_sync::sync_established: protocol %s\n", logts.get(d_msgq_id), MODE_DATA[proto].type);
+	}
 	if ((d_msgq_id >= 0) && (!d_msg_queue->full_p())) {
 		std::string m_buf;
 		gr::message::sptr msg;
@@ -389,14 +393,13 @@ void rx_sync::rx_sym(const uint8_t sym)
 	uint8_t tmpcw[144];
 	bool ysf_fullrate;
 
-        if (d_slot_mask & 0x4) // Setting bit 3 of slot mask disables framing for idle receiver 
-		return;
+    if (d_slot_mask & 0x4) // Setting bit 3 of slot mask disables framing for idle receiver 
+        return;
 
 	d_symbol_count ++;
 	d_sync_reg = (d_sync_reg << 2) | (sym & 3);
 	for (int i = 0; i < KNOWN_MAGICS; i++) {
-		//if (check_frame_sync(SYNC_MAGIC[i].magic ^ d_sync_reg, (SYNC_MAGIC[i].type == d_current_type) ? d_threshold : 0, MODE_DATA[SYNC_MAGIC[i].type].sync_len)) {
-		if (check_frame_sync(SYNC_MAGIC[i].magic ^ d_sync_reg, 0, MODE_DATA[SYNC_MAGIC[i].type].sync_len)) {
+		if (check_frame_sync(SYNC_MAGIC[i].magic ^ d_sync_reg, (SYNC_MAGIC[i].type == d_current_type) ? d_threshold : 0, MODE_DATA[SYNC_MAGIC[i].type].sync_len)) {
 			sync_detected = (enum rx_types) SYNC_MAGIC[i].type;
 			break;
 		}
@@ -418,8 +421,9 @@ void rx_sync::rx_sym(const uint8_t sym)
             sync_established(d_current_type);
 		}
 		if (d_rx_count != MODE_DATA[d_current_type].sync_offset + (MODE_DATA[d_current_type].sync_len >> 1)) {
-			if (d_debug >= 10)
+			if (d_debug >= 10) {
 				fprintf(stderr, "%s resync at count %d for protocol %s (expected count %d)\n", logts.get(d_msgq_id), d_rx_count, MODE_DATA[d_current_type].type, (MODE_DATA[d_current_type].sync_offset + (MODE_DATA[d_current_type].sync_len >> 1)));
+            }
 			sync_reset();
 			d_rx_count = MODE_DATA[d_current_type].sync_offset + (MODE_DATA[d_current_type].sync_len >> 1);
 		} else {
@@ -428,15 +432,15 @@ void rx_sync::rx_sym(const uint8_t sym)
 		d_expires = d_symbol_count + MODE_DATA[d_current_type].expiration;
 	}
 	if ((d_current_type != RX_TYPE_NONE) && (d_symbol_count >= d_expires)) {
-		if (d_debug >= 10)
-			fprintf(stderr, "%s %s: timeout, symbol %d\n", logts.get(d_msgq_id), MODE_DATA[d_current_type].type, d_symbol_count);
-		sync_timeout(d_current_type);
-		d_current_type = RX_TYPE_NONE;
-        d_fragment_len = MODE_DATA[RX_TYPE_NONE].fragment_len;
+		if (d_debug >= 10) {
+			fprintf(stderr, "%s %s: sync expiry, symbol %d\n", logts.get(d_msgq_id), MODE_DATA[d_current_type].type, d_symbol_count);
+        }
+        sync_reset();
 		return;
 	}
 	if (d_rx_count < d_fragment_len)
 		return;
+
 	d_rx_count = 0;
 	int start_idx = d_cbuf_idx + CBUF_SIZE - d_fragment_len;
 	assert (start_idx >= 0);
@@ -453,14 +457,13 @@ void rx_sync::rx_sym(const uint8_t sym)
         if (d_fragment_len == MODE_DATA[d_current_type].fragment_len) {
 		    int frame_len = p25fdma.load_nid(symbol_ptr, MODE_DATA[d_current_type].fragment_len);
             if (frame_len > 0) {
-                d_fragment_len = frame_len;
+                d_fragment_len = frame_len;                             // expected length of remainder of this frame
             } else {
-                d_current_type = RX_TYPE_NONE;
-                d_fragment_len = MODE_DATA[d_current_type].fragment_len;
+                sync_reset();
             }
         } else {
 		    p25fdma.load_body(symbol_ptr, d_fragment_len);
-            d_fragment_len = MODE_DATA[d_current_type].fragment_len;
+            d_fragment_len = MODE_DATA[d_current_type].fragment_len;    // accumulate next NID
         }
 		break;
 	case RX_TYPE_P25P2:
