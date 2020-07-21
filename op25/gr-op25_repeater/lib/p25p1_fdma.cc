@@ -656,83 +656,107 @@ void p25p1_fdma::send_msg(const std::string msg_str, long msg_type)
 	d_msg_queue->insert_tail(msg);
 }
 
+void
+p25p1_fdma::process_frame()
+{
+	// extract additional signalling information and voice codewords
+	switch(framer->duid) {
+		case 0x00:
+			process_HDU(framer->frame_body);
+			break;
+		case 0x03:
+			process_TDU3();
+			break;
+		case 0x05:
+			process_LDU1(framer->frame_body);
+			break;
+		case 0x07:
+			process_TSBK(framer->frame_body, framer->frame_size);
+			break;
+		case 0x0a:
+			process_LDU2(framer->frame_body);
+			break;
+		case 0x0c:
+			process_PDU(framer->frame_body, framer->frame_size);
+			break;
+		case 0x0f:
+			process_TDU15(framer->frame_body);
+			break;
+	}
+
+	if (!d_do_imbe) { // send raw frame to wireshark
+		// pack the bits into bytes, MSB first
+		size_t obuf_ct = 0;
+		uint8_t obuf[P25_VOICE_FRAME_SIZE/2];
+		for (uint32_t i = 0; i < framer->frame_size; i += 8) {
+			uint8_t b = 
+				(framer->frame_body[i+0] << 7) +
+				(framer->frame_body[i+1] << 6) +
+				(framer->frame_body[i+2] << 5) +
+				(framer->frame_body[i+3] << 4) +
+				(framer->frame_body[i+4] << 3) +
+				(framer->frame_body[i+5] << 2) +
+				(framer->frame_body[i+6] << 1) +
+				(framer->frame_body[i+7]     );
+			obuf[obuf_ct++] = b;
+		}
+		op25audio.send_to(obuf, obuf_ct);
+
+		if (d_do_output) {
+			for (size_t j=0; j < obuf_ct; j++) {
+				output_queue.push_back(obuf[j]);
+			}
+		}
+	}
+
+    if (d_do_msgq && !d_msg_queue->full_p()) {
+        // check for timeout
+        if (qtimer.expired()) {
+            if (d_debug >= 10)
+                fprintf(stderr, "%s p25p1_fdma::rx_sym() timeout\n", logts.get(d_msgq_id));
+
+            if (d_do_audio_output) {
+                op25audio.send_audio_flag(op25_audio::DRAIN);
+            }
+
+            qtimer.reset();
+            gr::message::sptr msg = gr::message::make(get_msg_type(PROTOCOL_P25, M_P25_TIMEOUT), (d_msgq_id << 1), logts.get_ts());
+            d_msg_queue->insert_tail(msg);
+        }
+    }
+}
+
+// Construct a frame one symbol at a time (used by rx.py)
 void 
 p25p1_fdma::rx_sym (const uint8_t *syms, int nsyms)
 {
-  struct timeval currtime;
-  for (int i1 = 0; i1 < nsyms; i1++){
-  	if(framer->rx_sym(syms[i1])) {   // complete frame was detected
+    for (int i1 = 0; i1 < nsyms; i1++) {
+        if(framer->rx_sym(syms[i1])) {   // complete frame was detected
+            if (framer->nac == 0) {  // discard frame if NAC is invalid
+                continue;
+            }
 
-		if (framer->nac == 0) {  // discard frame if NAC is invalid
-			continue;
-		}
-
-		// extract additional signalling information and voice codewords
-		switch(framer->duid) {
-			case 0x00:
-				process_HDU(framer->frame_body);
-				break;
-			case 0x03:
-				process_TDU3();
-				break;
-			case 0x05:
-				process_LDU1(framer->frame_body);
-				break;
-			case 0x07:
-				process_TSBK(framer->frame_body, framer->frame_size);
-				break;
-			case 0x0a:
-				process_LDU2(framer->frame_body);
-				break;
-			case 0x0c:
-				process_PDU(framer->frame_body, framer->frame_size);
-				break;
-			case 0x0f:
-				process_TDU15(framer->frame_body);
-				break;
-		}
-
-		if (!d_do_imbe) { // send raw frame to wireshark
-			// pack the bits into bytes, MSB first
-			size_t obuf_ct = 0;
-			uint8_t obuf[P25_VOICE_FRAME_SIZE/2];
-			for (uint32_t i = 0; i < framer->frame_size; i += 8) {
-				uint8_t b = 
-					(framer->frame_body[i+0] << 7) +
-					(framer->frame_body[i+1] << 6) +
-					(framer->frame_body[i+2] << 5) +
-					(framer->frame_body[i+3] << 4) +
-					(framer->frame_body[i+4] << 3) +
-					(framer->frame_body[i+5] << 2) +
-					(framer->frame_body[i+6] << 1) +
-					(framer->frame_body[i+7]     );
-				obuf[obuf_ct++] = b;
-			}
-			op25audio.send_to(obuf, obuf_ct);
-
-			if (d_do_output) {
-				for (size_t j=0; j < obuf_ct; j++) {
-					output_queue.push_back(obuf[j]);
-				}
-			}
-		}
-  	}  // end of complete frame
-  }
-  if (d_do_msgq && !d_msg_queue->full_p()) {
-    // check for timeout
-    if (qtimer.expired()) {
-      if (d_debug >= 10)
-        fprintf(stderr, "%s p25p1_fdma::rx_sym() timeout\n", logts.get(d_msgq_id));
-
-      if (d_do_audio_output) {
-        op25audio.send_audio_flag(op25_audio::DRAIN);
-      }
-
-      qtimer.reset();
-      gr::message::sptr msg = gr::message::make(get_msg_type(PROTOCOL_P25, M_P25_TIMEOUT), (d_msgq_id << 1), logts.get_ts());
-      d_msg_queue->insert_tail(msg);
+            process_frame();
+        }  // end of complete frame
     }
-  }
+}
+
+// Load a frame starting with NID block (used by multi_rx.py)
+uint32_t
+p25p1_fdma::load_nid(const uint8_t *syms, int nsyms)
+{
+    return framer->load_nid(syms, nsyms);
+}
+
+// Load remainder of frame body (used by multi_rx.py)
+bool
+p25p1_fdma::load_body(const uint8_t *syms, int nsyms)
+{
+    bool rc = framer->load_body(syms, nsyms);
+    if (rc) {
+        process_frame();
+    }
+    return rc;
 }
 
   }  // namespace

@@ -73,6 +73,7 @@ void rx_sync::sync_reset(void) {
 	d_sync_reg = 0;
 	d_expires = 0;
 	d_current_type = RX_TYPE_NONE;
+	d_fragment_len = MODE_DATA[d_current_type].fragment_len;
 
 	// Audio reset
 	for (int chan = 0; chan <= 1; chan++) {
@@ -413,10 +414,11 @@ void rx_sync::rx_sym(const uint8_t sym)
 			d_current_type = sync_detected;
 			d_expires = d_symbol_count + MODE_DATA[d_current_type].expiration;
 			d_rx_count = MODE_DATA[d_current_type].sync_offset + (MODE_DATA[d_current_type].sync_len >> 1);
+			d_fragment_len = MODE_DATA[d_current_type].fragment_len;
             sync_established(d_current_type);
 		}
 		if (d_rx_count != MODE_DATA[d_current_type].sync_offset + (MODE_DATA[d_current_type].sync_len >> 1)) {
-			//if (d_debug >= 10)
+			if (d_debug >= 10)
 				fprintf(stderr, "%s resync at count %d for protocol %s (expected count %d)\n", logts.get(d_msgq_id), d_rx_count, MODE_DATA[d_current_type].type, (MODE_DATA[d_current_type].sync_offset + (MODE_DATA[d_current_type].sync_len >> 1)));
 			sync_reset();
 			d_rx_count = MODE_DATA[d_current_type].sync_offset + (MODE_DATA[d_current_type].sync_len >> 1);
@@ -430,24 +432,36 @@ void rx_sync::rx_sym(const uint8_t sym)
 			fprintf(stderr, "%s %s: timeout, symbol %d\n", logts.get(d_msgq_id), MODE_DATA[d_current_type].type, d_symbol_count);
 		sync_timeout(d_current_type);
 		d_current_type = RX_TYPE_NONE;
+        d_fragment_len = MODE_DATA[RX_TYPE_NONE].fragment_len;
 		return;
 	}
-	if (d_rx_count < MODE_DATA[d_current_type].fragment_len)
+	if (d_rx_count < d_fragment_len)
 		return;
 	d_rx_count = 0;
-	int start_idx = d_cbuf_idx + CBUF_SIZE - MODE_DATA[d_current_type].fragment_len;
+	int start_idx = d_cbuf_idx + CBUF_SIZE - d_fragment_len;
 	assert (start_idx >= 0);
 	uint8_t * symbol_ptr = d_cbuf+start_idx;
 	uint8_t * bit_ptr = symbol_ptr;
 	if ((d_current_type == RX_TYPE_DSTAR) || (d_current_type==RX_TYPE_YSF)) {
-		dibits_to_bits(bitbuf, symbol_ptr, MODE_DATA[d_current_type].fragment_len);
+		dibits_to_bits(bitbuf, symbol_ptr, d_fragment_len);
 		bit_ptr = bitbuf;
 	}
 	switch (d_current_type) {
 	case RX_TYPE_NONE:
 		break;
 	case RX_TYPE_P25P1:
-		p25fdma.rx_sym(symbol_ptr, MODE_DATA[d_current_type].fragment_len); // reassemble and process each 36 symbol fragment
+        if (d_fragment_len == MODE_DATA[d_current_type].fragment_len) {
+		    int frame_len = p25fdma.load_nid(symbol_ptr, MODE_DATA[d_current_type].fragment_len);
+            if (frame_len > 0) {
+                d_fragment_len = frame_len;
+            } else {
+                d_current_type = RX_TYPE_NONE;
+                d_fragment_len = MODE_DATA[d_current_type].fragment_len;
+            }
+        } else {
+		    p25fdma.load_body(symbol_ptr, d_fragment_len);
+            d_fragment_len = MODE_DATA[d_current_type].fragment_len;
+        }
 		break;
 	case RX_TYPE_P25P2:
 		p25tdma.handle_packet(symbol_ptr); // passing 180 dibit packets is faster than bit-shuffling via p25tdma::rx_sym()
