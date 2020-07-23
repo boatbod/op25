@@ -875,7 +875,7 @@ class p25_rx_block (gr.top_block):
     def process_qmsg(self, msg):
         # return true = end top block
         RX_COMMANDS = 'skip lockout hold whitelist reload'
-        s = msg.to_string()
+        s = msg.to_string().decode('ascii')
         if s == 'quit': return True
         elif s == 'update':
             self.freq_update()

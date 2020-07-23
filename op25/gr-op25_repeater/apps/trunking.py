@@ -868,7 +868,7 @@ class rx_ctl (object):
         import csv
         hdrmap = []
         configs = {}
-        with open(tsv_filename, 'rb') as csvfile:
+        with open(tsv_filename, 'r') as csvfile:
             sreader = csv.reader(csvfile, delimiter='\t', quotechar='"', quoting=csv.QUOTE_ALL)
             for row in sreader:
                 if row[0].startswith('#'):
@@ -969,7 +969,7 @@ class rx_ctl (object):
                     self.configs[nac][k] = get_int_dict(configs[nac][k])
             if 'tgid_tags_file' in configs[nac]:
                 import csv
-                with open(configs[nac]['tgid_tags_file'], 'rb') as csvfile:
+                with open(configs[nac]['tgid_tags_file'], 'r') as csvfile:
                     sreader = csv.reader(csvfile, delimiter='\t', quotechar='"', quoting=csv.QUOTE_ALL)
                     for row in sreader:
                         try:
