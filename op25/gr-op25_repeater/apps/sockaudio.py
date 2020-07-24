@@ -139,7 +139,7 @@ class alsasound(object):
         self.rate = pcm_rate
         pcm_buf_sz = c_ulong(pcm_buffer_size)
 
-        c_pars = (c_void_p * int(self.libasound.snd_pcm_hw_params_sizeof() / sizeof(c_void_p)))()
+        c_pars = (c_void_p * int(self.libasound.snd_pcm_hw_params_sizeof() // sizeof(c_void_p)))()
         err = self.libasound.snd_pcm_hw_params_any(self.c_pcm, c_pars)
         if err < 0:
             sys.stderr.write("hw_params_any failed: %d\n" % err)
@@ -174,9 +174,9 @@ class alsasound(object):
 
         self.libasound.snd_pcm_hw_params_current(self.c_pcm, c_pars)
         c_bits =  self.libasound.snd_pcm_hw_params_get_sbits(c_pars)
-        self.framesize = self.channels * c_bits/8
+        self.framesize = self.channels * c_bits//8
 
-        c_sw_pars = (c_void_p * int(self.libasound.snd_pcm_sw_params_sizeof() / sizeof(c_void_p)))()
+        c_sw_pars = (c_void_p * int(self.libasound.snd_pcm_sw_params_sizeof() // sizeof(c_void_p)))()
         err = self.libasound.snd_pcm_sw_params_current(self.c_pcm, c_sw_pars)
         if err < 0:
             sys.stderr.write("get_sw_params_current failed: %d\n" % err)
@@ -197,7 +197,7 @@ class alsasound(object):
 
     def write(self, pcm_data):
         datalen = len(pcm_data)
-        n_frames = c_ulong(datalen / self.framesize)
+        n_frames = c_ulong(datalen // self.framesize)
         c_data = c_char_p(pcm_data)
         ret = 0
 
@@ -428,14 +428,14 @@ class socket_audio(object):
             if in_a is not None:
                 len_a = len(in_a[0])
                 if len_a == 2:
-                    flag_a = ord(in_a[0][0]) + (ord(in_a[0][1]) << 8)   # 16 bit little endian
+                    (flag_a,) = struct.unpack('<H', in_a[0])   # 16 bit little endian
                 elif len_a > 0:
                     data_a = in_a[0]
 
             if in_b is not None:
                 len_b = len(in_b[0])
                 if len_b == 2:
-                    flag_b = ord(in_b[0][0]) + (ord(in_b[0][1]) << 8)   # 16 bit little endian
+                    (flag_b,) = struct.unpack('<H', in_b[0])   # 16 bit little endian
                 elif len_b > 0:
                     data_b = in_b[0]
 
@@ -462,29 +462,27 @@ class socket_audio(object):
         return
 
     def scale(self, data):  # crude amplitude scaler (volume) for S16_LE samples
-        scaled_data = ""
-        d_len = len(data) / 2
-        iter_d = iter(data)
-        i = 0;
-        while i < d_len:
-            i += 1
-            pcm_r = struct.unpack('<h', next(iter_d, chr(0)) + next(iter_d, chr(0)))[0]
+        scaled_data = b""
+        i = 0
+        while i+2 <= len(data):
+            pcm_r, = struct.unpack('<h', data[i : i+2])
             pcm_s = min(max((int)(pcm_r * self.audio_gain), -32768), 32767)
             scaled_data += struct.pack('<h', pcm_s)
+            i += 2
         return scaled_data
 
     def interleave(self, data_a, data_b):
-        combi_data = ""
+        combi_data = b""
         d_len = max(len(data_a), len(data_b))
-        iter_a = iter(data_a)
-        iter_b = iter(data_b)
         i = 0
-        while i < d_len:
-            i += 2
-            combi_data += next(iter_a, chr(0))
-            combi_data += next(iter_a, chr(0))
-            combi_data += next(iter_b, chr(0))
-            combi_data += next(iter_b, chr(0))
+        while i+2 <= d_len:
+            j = i+2
+            combi_data += (
+                data_a[i : j] if j <= len(data_a) else b'\0\0'
+            ) + (
+                data_b[i : j] if j <= len(data_b) else b'\0\0'
+            )
+            i = j
         return combi_data
 
     def stop(self):
