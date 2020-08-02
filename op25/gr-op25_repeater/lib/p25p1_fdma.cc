@@ -610,6 +610,7 @@ namespace gr {
         }
 
         void p25p1_fdma::reset_timer() {
+            fprintf(stderr,"%s p25p1_fdma::reset_timer()\n", logts.get(d_msgq_id));
             qtimer.reset();
         }
 
@@ -671,22 +672,6 @@ namespace gr {
                     }
                 }
             }
-
-            if (d_do_msgq && !d_msg_queue->full_p()) {
-                // check for timeout
-                if (qtimer.expired()) {
-                    if (d_debug >= 10)
-                        fprintf(stderr, "%s p25p1_fdma::rx_sym() timeout\n", logts.get(d_msgq_id));
-
-                    if (d_do_audio_output) {
-                        op25audio.send_audio_flag(op25_audio::DRAIN);
-                    }
-
-                    qtimer.reset();
-                    gr::message::sptr msg = gr::message::make(get_msg_type(PROTOCOL_P25, M_P25_TIMEOUT), (d_msgq_id << 1), logts.get_ts());
-                    d_msg_queue->insert_tail(msg);
-                }
-            }
         }
 
         // Construct a frame one symbol at a time (used by rx.py)
@@ -700,6 +685,7 @@ namespace gr {
                     process_frame();
                 }  // end of complete frame
             }
+            check_timeout();
         }
 
         // Load a frame starting with NID block (used by multi_rx.py)
@@ -713,7 +699,27 @@ namespace gr {
             if (rc) {
                 process_frame();
             }
+            check_timeout();
             return rc;
+        }
+
+        // Check for timer expiry
+        void p25p1_fdma::check_timeout() {
+            if (d_do_msgq && !d_msg_queue->full_p()) {
+                // check for timeout
+                if (qtimer.expired()) {
+                    if (d_debug >= 10)
+                        fprintf(stderr, "%s p25p1_fdma::check_timeout: expired\n", logts.get(d_msgq_id));
+
+                    if (d_do_audio_output) {
+                        op25audio.send_audio_flag(op25_audio::DRAIN);
+                    }
+
+                    qtimer.reset();
+                    gr::message::sptr msg = gr::message::make(get_msg_type(PROTOCOL_P25, M_P25_TIMEOUT), (d_msgq_id << 1), logts.get_ts());
+                    d_msg_queue->insert_tail(msg);
+                }
+            }
         }
 
     }  // namespace
