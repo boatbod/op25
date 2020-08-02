@@ -59,6 +59,7 @@ namespace gr {
                 void process_voice(const bit_vector& A);
                 int  process_blocks(const bit_vector& fr, uint32_t& fr_len, block_vector& dbuf);
                 void process_frame();
+                void check_timeout();
                 inline bool encrypted() { return (ess_algid != 0x80); }
                 void send_msg(const std::string msg_str, long msg_type);
 
