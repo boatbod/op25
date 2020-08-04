@@ -166,10 +166,7 @@ class channel(object):
             self.nbfm_mode = 1;
         
         if self.nbfm_mode > 0:
-            nbfm_dev = int(from_dict(config, 'nbfm_deviation', 4000))
-            nbfm_sq_thresh = int(from_dict(config, 'nbfm_squelch_threshold', -60))
-            nbfm_sq_gain = float(from_dict(config, 'nbfm_squelch_gain', 0.0015))
-            self.nbfm = op25_nbfm.op25_nbfm_c(str(config['destination']), verbosity, config['if_rate'], nbfm_dev, nbfm_sq_thresh, nbfm_sq_gain, msgq_id, rx_q)
+            self.nbfm = op25_nbfm.op25_nbfm_c(str(config['destination']), verbosity, config, msgq_id, rx_q)
             if self.demod.connect_nbfm(self.nbfm):
                 if self.nbfm_mode == 2:
                     self.nbfm.control(True)

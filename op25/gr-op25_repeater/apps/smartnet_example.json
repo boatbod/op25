@@ -11,6 +11,7 @@
             "filter_type": "fsk2", 
             "if_rate": 18000, 
             "plot": "mixer",
+            "enable_analog": "off",
             "symbol_rate": 3600
         },
         {
@@ -27,6 +28,8 @@
             "nbfm_deviation": 4000,
             "nbfm_squelch_threshold": -60,
             "nbfm_squelch_gain": 0.0050,
+            "nbfm_raw_output": "",
+            "nbfm_enable_subchannel": false,
             "excess_bw": 0.2, 
             "filter_type": "widepulse", 
             "if_rate": 24000, 

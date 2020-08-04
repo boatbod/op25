@@ -33,15 +33,34 @@ from log_ts import log_ts
 
 _PCM_RATE       = 8000   # PCM is 8kHz S16LE format
 
+def from_dict(d, key, def_val):
+    if key in d and d[key] != "":
+        return d[key]
+    else:
+        return def_val
+
 class op25_nbfm_c(gr.hier_block2):
-    def __init__(self, dest, debug, input_rate, deviation, squelch, gain, msgq_id, msg_q):
+    #def __init__(self, dest, debug, input_rate, deviation, squelch, gain, msgq_id, msg_q):
+    def __init__(self, dest, debug, config, msgq_id, msg_q):
 
         gr.hier_block2.__init__(self, "op25_nbfm_c",
                                 gr.io_signature(1, 1, gr.sizeof_gr_complex), # Input signature
                                 gr.io_signature(0, 0, 0))                    # Output signature
 
         self.debug = debug
+        self.config = config
         self.msgq_id = msgq_id
+
+        sys.stderr.write("%s [%d] Enabling nbfm analog audio\n" % (log_ts.get(), msgq_id))
+
+        # load config
+        input_rate = int(from_dict(config, 'if_rate', 24000))
+        deviation = int(from_dict(config, 'nbfm_deviation', 4000))
+        squelch = int(from_dict(config, 'nbfm_squelch_threshold', -60))
+        gain = float(from_dict(config, 'nbfm_squelch_gain', 0.0015))
+        subchannel_enabled = bool(from_dict(config, 'nbfm_enable_subchannel', False))
+        raw_in = str(from_dict(config, 'nbfm_raw_input', ""))
+        raw_out = str(from_dict(config, 'nbfm_raw_output', ""))
 
         # 'switch' enables the analog decoding to be turned on/off
         self.switch = blocks.copy(gr.sizeof_gr_complex)
@@ -75,8 +94,46 @@ class op25_nbfm_c(gr.hier_block2):
         # analog_udp block converts +/-1.0 float samples to S16LE PCM and sends over UDP 
         self.analog_udp = op25_repeater.analog_udp(dest, debug, msgq_id, msg_q)
 
-        self.connect(self, self.switch, self.squelch, self.fm_demod, self.deemph, self.lp_filter, self.hp_filter, self.analog_udp)
-        sys.stderr.write("%s [%d] Enabling nbfm analog audio\n" % (log_ts.get(), msgq_id))
+        # raw playback
+        if raw_in != "":
+            self.null_sink = blocks.null_sink(gr.sizeof_gr_complex)
+            self.connect(self, self.null_sink)                                  # dispose of regular input
+            self.raw_file = blocks.file_source(gr.sizeof_float, raw_in, False)
+            self.throttle = blocks.throttle(gr.sizeof_float, input_rate)
+            self.throttle.set_max_noutput_items(input_rate/50);
+            self.fm_demod = self.throttle                                       # and replace fm_demod with throttled file source
+            self.connect(self.raw_file, self.throttle)
+            sys.stderr.write("%s [%d] Reading nbfm demod from file: %s\n" % (log_ts.get(), msgq_id, raw_in))
+
+        else:
+            self.connect(self, self.switch, self.squelch, self.fm_demod)
+
+        self.connect(self.fm_demod, self.deemph, self.lp_filter, self.hp_filter, self.analog_udp)
+
+        # raw capture
+        if raw_in == "" and raw_out != "":
+            sys.stderr.write("%s [%d] Saving nbfm demod to file: %s\n" % (log_ts.get(), msgq_id, raw_out))
+            self.raw_sink = blocks.file_sink(gr.sizeof_float, raw_out)
+            self.connect(self.fm_demod, self.raw_sink)
+
+        # subchannel signaling
+        if subchannel_enabled:
+            self.subchannel_decimation = 25
+            self.subchannel_gain = 10
+            self.subchannelfilttaps = filter.firdes.low_pass(self.subchannel_gain, input_rate, 200, 40, filter.firdes.WIN_HANN)
+            self.subchannelfilt = filter.fir_filter_fff(self.subchannel_decimation, self.subchannelfilttaps)
+            self.subchannel_syms_per_sec = 150
+            self.subchannel_samples_per_symbol = (input_rate / self.subchannel_decimation) / self.subchannel_syms_per_sec
+            sys.stderr.write("%s [%d] Subchannel samples per symbol: %f\n" % (log_ts.get(), msgq_id, self.subchannel_samples_per_symbol))
+            self.subchannel_clockrec = digital.clock_recovery_mm_ff(self.subchannel_samples_per_symbol,
+                                                               0.25*0.01*0.01,
+                                                               0.5,
+                                                               0.01,
+                                                               0.3)
+            self.subchannel_slicer = digital.binary_slicer_fb()
+            self.subchannel_correlator = digital.correlate_access_code_bb("01000", 0)
+            self.subchannel_framer = op25_repeater.subchannel_framer(debug, msgq_id, msg_q)
+            self.connect(self.fm_demod, self.subchannelfilt, self.subchannel_clockrec, self.subchannel_slicer, self.subchannel_correlator, self.subchannel_framer)            
 
     def control(self, action):
         self.switch.set_enabled(action)

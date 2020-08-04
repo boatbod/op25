@@ -43,6 +43,7 @@ list(APPEND op25_repeater_sources
     p25_frame_assembler_impl.cc
     frame_assembler_impl.cc
     analog_udp_impl.cc
+    subchannel_framer_impl.cc
     rmsagc_ff_impl.cc
     fsk4_slicer_fb_impl.cc )
 
