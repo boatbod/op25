@@ -76,17 +76,18 @@ namespace gr {
             {
                 const char *in = (const char *) input_items[0];
 
+                //fprintf(stderr, "%s subchannel_framer_impl::general_work: ninput_items=%d\n", logts.get(d_msgq_id), ninput_items[0]);
                 for(int i=0; i < noutput_items; i++) {
                     if(in[i] & 0x02) {
                         //if(noutput_items-i >= 21) {
                         //if(in[i+21] & 0x02) {
                         //out[i] = in[i];
-                        printf("Subchannel frame data: ");
+                        fprintf(stderr, "Subchannel frame data: ");
                         for(int q = 0; q < 42; q++) {
-                            if(in[i+q-5] & 0x01) printf("1");
-                            else printf("0");
+                            if(in[i+q-5] & 0x01) fprintf(stderr,"1");
+                            else fprintf(stderr,"0");
                         }
-                        printf("\n");
+                        fprintf(stderr,"\n");
                         //				}
                         //	else out[i] = in[i] & 0x01;
                         //} else return i; //weren't enough to validate it, so go back for more
