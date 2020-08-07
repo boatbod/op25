@@ -1,4 +1,4 @@
-// Smartnet Decoder (C) Copyright 2020 Graham J. Norbury
+// Type II Subchannel Decoder (C) Copyright 2020 Graham J. Norbury
 // 
 // This file is part of OP25
 // 
@@ -17,8 +17,8 @@
 // Software Foundation, Inc., 51 Franklin Street, Boston, MA
 // 02110-1301, USA.
 
-#ifndef INCLUDED_RX_SMARTNET_H
-#define INCLUDED_RX_SMARTNET_H
+#ifndef INCLUDED_RX_SUBCHANNEL_H
+#define INCLUDED_RX_SUBCHANNEL_H
 
 #include <stdio.h>
 #include <stdint.h>
@@ -41,24 +41,11 @@
 namespace gr{
     namespace op25_repeater{
 
-        static const int SMARTNET_SYNC_LENGTH    =  8;
-        static const int SMARTNET_FRAME_LENGTH   = 84;
-        static const int SMARTNET_PAYLOAD_LENGTH = 76;
-        static const int SMARTNET_DATA_LENGTH    = 27;
-        static const int SMARTNET_CRC_LENGTH     = 10;
-        static const int SMARTNET_ID_XOR         = 0x33C7;
-        static const int SMARTNET_CMD_XOR        = 0x32A;
-        static const int SMARTNET_ID_INV_XOR     = ~SMARTNET_ID_XOR & 0xffff;
-        static const int SMARTNET_CMD_INV_XOR    = ~SMARTNET_CMD_XOR & 0x3ff;
+        static const int SUBCHANNEL_SYNC_LENGTH    =  5;
+        static const int SUBCHANNEL_FRAME_LENGTH   = 28;
+        static const int SUBCHANNEL_PAYLOAD_LENGTH = 23;
 
-        typedef struct {
-            uint16_t address;
-            uint8_t  group;
-            uint16_t command;
-            uint8_t raw_data[6];
-        } osw_pkt;
-
-        class rx_smartnet : public rx_base {
+        class rx_subchannel : public rx_base {
             public:
                 void rx_sym(const uint8_t sym);
                 void sync_reset(void);
@@ -66,15 +53,12 @@ namespace gr{
                 void set_slot_mask(int mask) { };
                 void set_slot_key(int mask) { };
                 void set_xormask(const char* p) { };
-                rx_smartnet(const char * options, int debug, int msgq_id, gr::msg_queue::sptr queue);
-                ~rx_smartnet();
+                rx_subchannel(const char * options, int debug, int msgq_id, gr::msg_queue::sptr queue);
+                ~rx_subchannel();
 
             private:
                 void sync_timeout();
                 void cbuf_insert(const uint8_t c);
-                void deinterleave(const uint8_t* buf);
-                void error_correction();
-                bool crc_check();
                 void send_msg(const char* buf);
 
                 int d_debug;
@@ -85,19 +69,15 @@ namespace gr{
                 bool d_in_sync;
                 unsigned int d_symbol_count;
                 uint8_t d_sync_reg;
-                uint8_t d_cbuf[SMARTNET_FRAME_LENGTH * 2];
-                uint8_t d_raw_frame[SMARTNET_PAYLOAD_LENGTH];
-                uint8_t d_ecc_frame[SMARTNET_DATA_LENGTH + SMARTNET_CRC_LENGTH];
-                osw_pkt d_pkt;
+                uint8_t d_cbuf[SUBCHANNEL_FRAME_LENGTH * 2];
                 unsigned int d_cbuf_idx;
                 int d_rx_count;
                 unsigned int d_expires;
                 int d_shift_reg;
                 std::deque<int16_t> d_output_queue[2];
                 log_ts logts;
-
         };
 
     } // end namespace op25_repeater
 } // end namespace gr
-#endif // INCLUDED_RX_SMARTNET_H
+#endif // INCLUDED_RX_SUBCHANNEL_H

@@ -26,6 +26,7 @@
 #include "frame_assembler_impl.h"
 #include "rx_sync.h"
 #include "rx_smartnet.h"
+#include "rx_subchannel.h"
 
 #include <errno.h>
 #include <stdio.h>
@@ -91,6 +92,8 @@ namespace gr {
         {
             if (strcasecmp(options, "smartnet") == 0)
                 d_sync = new rx_smartnet(options, debug, msgq_id, queue);
+            else if (strcasecmp(options, "subchannel") == 0)
+                d_sync = new rx_subchannel(options, debug, msgq_id, queue);
             else
                 d_sync = new rx_sync(options, debug, msgq_id, queue);
         }

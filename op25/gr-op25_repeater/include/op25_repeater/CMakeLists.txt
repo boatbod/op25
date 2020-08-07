@@ -27,7 +27,6 @@ install(FILES
     p25_frame_assembler.h
     frame_assembler.h
     analog_udp.h
-    subchannel_framer.h
     rmsagc_ff.h
     ambe_encoder_sb.h
     ysf_tx_sb.h

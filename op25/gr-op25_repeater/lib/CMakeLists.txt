@@ -43,7 +43,6 @@ list(APPEND op25_repeater_sources
     p25_frame_assembler_impl.cc
     frame_assembler_impl.cc
     analog_udp_impl.cc
-    subchannel_framer_impl.cc
     rmsagc_ff_impl.cc
     fsk4_slicer_fb_impl.cc )
 
@@ -67,6 +66,7 @@ list(APPEND op25_repeater_sources
     ambe_encoder.cc
     rx_sync.cc
     rx_smartnet.cc
+    rx_subchannel.cc
     hamming.cc
     golay2087.cc
     bptc19696.cc

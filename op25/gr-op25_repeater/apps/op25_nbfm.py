@@ -131,9 +131,9 @@ class op25_nbfm_c(gr.hier_block2):
                                                                0.01,
                                                                0.3)
             self.subchannel_slicer = digital.binary_slicer_fb()
-            self.subchannel_correlator = digital.correlate_access_code_bb("01000", 0)
-            self.subchannel_framer = op25_repeater.subchannel_framer(debug, msgq_id, msg_q)
-            self.connect(self.fm_demod, self.subchannelfilt, self.subchannel_clockrec, self.subchannel_slicer, self.subchannel_correlator, self.subchannel_framer)            
+            #self.subchannel_correlator = digital.correlate_access_code_bb("01000", 0)
+            self.subchannel_framer = op25_repeater.frame_assembler("subchannel", debug, msgq_id, msg_q)
+            self.connect(self.fm_demod, self.subchannelfilt, self.subchannel_clockrec, self.subchannel_slicer, self.subchannel_framer)            
 
     def control(self, action):
         self.switch.set_enabled(action)
