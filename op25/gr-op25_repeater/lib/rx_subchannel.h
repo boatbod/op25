@@ -31,9 +31,6 @@
 #include <gnuradio/msg_queue.h>
 
 #include "bit_utils.h"
-#include "check_frame_sync.h"
-#include "frame_sync_magics.h"
-#include "op25_timer.h"
 #include "log_ts.h"
 
 #include "rx_base.h"
@@ -49,7 +46,7 @@ namespace gr{
             public:
                 void rx_sym(const uint8_t sym);
                 void sync_reset(void);
-                void reset_timer(void);
+                void reset_timer(void) { };
                 void set_slot_mask(int mask) { };
                 void set_slot_key(int mask) { };
                 void set_xormask(const char* p) { };
@@ -57,24 +54,13 @@ namespace gr{
                 ~rx_subchannel();
 
             private:
-                void sync_timeout();
-                void cbuf_insert(const uint8_t c);
-                void send_msg(const char* buf);
+                void send_end_msg();
 
                 int d_debug;
                 int d_msgq_id;
                 gr::msg_queue::sptr d_msg_queue;
 
-                op25_timer sync_timer;
-                bool d_in_sync;
-                unsigned int d_symbol_count;
-                uint8_t d_sync_reg;
-                uint8_t d_cbuf[SUBCHANNEL_FRAME_LENGTH * 2];
-                unsigned int d_cbuf_idx;
-                int d_rx_count;
-                unsigned int d_expires;
-                int d_shift_reg;
-                std::deque<int16_t> d_output_queue[2];
+                uint16_t d_flag_reg;
                 log_ts logts;
         };
 
