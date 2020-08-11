@@ -31,7 +31,8 @@ namespace gr{
             d_flag_reg(0),
             d_msgq_id(msgq_id),
             d_msg_queue(queue) {
-            }
+            fprintf(stderr, "%s rx_subchannel::rx_sym: subchannel monitoring enabled\n", logts.get(d_msgq_id));
+        }
 
         // destructor
         rx_subchannel::~rx_subchannel() {
