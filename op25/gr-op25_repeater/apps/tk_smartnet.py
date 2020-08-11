@@ -535,7 +535,7 @@ class osw_receiver(object):
             if self.debug >= 5:
                 sys.stderr.write('%s [%d] ignorning stale OSW for tgid=%s, time_diff=%f\n' % (log_ts.get(), self.msgq_id, base_tgid, (ts - self.talkgroups[base_tgid]['time'])))
             return
-        self.talkgroups[base_tgid]['time'] = ts
+        self.talkgroups[base_tgid]['time'] = time.time()
         self.talkgroups[base_tgid]['frequency'] = frequency
         self.talkgroups[base_tgid]['status'] = tgid_stat
         if srcaddr >= 0:
