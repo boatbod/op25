@@ -510,7 +510,7 @@ class osw_receiver(object):
             self.voice_frequencies[frequency]['tgid'] = [None]
         self.voice_frequencies[frequency]['tgid'] = base_tgid
         self.voice_frequencies[frequency]['counter'] += 1
-        self.voice_frequencies[frequency]['time'] = ts
+        self.voice_frequencies[frequency]['time'] = time.time()
 
     def update_talkgroups(self, frequency, tgid, srcaddr, mode=-1, ts=time.time()):
         self.update_talkgroup(frequency, tgid, srcaddr, mode, ts)
@@ -531,11 +531,12 @@ class osw_receiver(object):
             self.add_default_tgid(base_tgid)
             if self.debug >= 5:
                 sys.stderr.write('%s [%d] new tgid=%s %s prio %d\n' % (log_ts.get(), self.msgq_id, base_tgid, self.talkgroups[base_tgid]['tag'], self.talkgroups[base_tgid]['prio']))
-        elif ts < self.talkgroups[base_tgid]['time']: # screen out late arriving OSWs where subsequent action has already been taken
+        elif ts < self.talkgroups[base_tgid]['release_time']: # screen out late arriving OSWs where subsequent action has already been taken
             if self.debug >= 5:
-                sys.stderr.write('%s [%d] ignorning stale OSW for tgid=%s, time_diff=%f\n' % (log_ts.get(), self.msgq_id, base_tgid, (ts - self.talkgroups[base_tgid]['time'])))
+                sys.stderr.write('%s [%d] ignorning stale OSW for tgid=%s, time_diff=%f\n' % (log_ts.get(), self.msgq_id, base_tgid, (ts - self.talkgroups[base_tgid]['release_time'])))
             return
         self.talkgroups[base_tgid]['time'] = time.time()
+        self.talkgroups[base_tgid]['release_time'] = 0
         self.talkgroups[base_tgid]['frequency'] = frequency
         self.talkgroups[base_tgid]['status'] = tgid_stat
         if srcaddr >= 0:
@@ -551,6 +552,7 @@ class osw_receiver(object):
             self.talkgroups[tgid]['tag'] = "TGID[" + str(int(tgid)) + "]"
             self.talkgroups[tgid]['srcaddr'] = 0
             self.talkgroups[tgid]['time'] = 0
+            self.talkgroups[tgid]['release_time'] = 0
             self.talkgroups[tgid]['mode'] = -1
             self.talkgroups[tgid]['receiver'] = None
             self.talkgroups[tgid]['status'] = 0
@@ -836,7 +838,7 @@ class voice_receiver(object):
             
         self.talkgroups[self.current_tgid]['receiver'] = None
         self.talkgroups[self.current_tgid]['srcaddr'] = 0
-        self.talkgroups[self.current_tgid]['time'] = expire_time
+        self.talkgroups[self.current_tgid]['release_time'] = expire_time
         if self.debug > 1:
             sys.stderr.write("%s [%d] releasing:  tg(%d), freq(%f), reason(%s)\n" % (log_ts.get(), self.msgq_id, self.current_tgid, (self.tuned_frequency/1e6), reason))
         self.hold_tgid = self.current_tgid
