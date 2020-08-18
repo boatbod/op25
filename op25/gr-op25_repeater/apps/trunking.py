@@ -1006,8 +1006,9 @@ class rx_ctl (object):
     def to_json(self):
         d = {'json_type': 'trunk_update'}
         for nac in list(self.trunked_systems.keys()):
-            d[nac] = json.loads(self.trunked_systems[nac].to_json())
-            d[nac]['top_line'] = 'NAC 0x%x %s' % (nac, d[nac]['top_line']) # prepend NAC which is not known by trunked_systems 
+            if nac is not None:
+                d[nac] = json.loads(self.trunked_systems[nac].to_json())
+                d[nac]['top_line'] = 'NAC 0x%x %s' % (nac, d[nac]['top_line']) # prepend NAC which is not known by trunked_systems 
         d['srcaddr'] = self.current_srcaddr
         d['grpaddr'] = self.current_grpaddr
         d['encrypted'] = self.current_encrypted
