@@ -140,6 +140,7 @@ class trunked_system (object):
         d['frequencies'] = {}
         d['frequency_data'] = {}
         d['last_tsbk'] = self.last_tsbk
+        d['tsbks'] = self.stats['tsbks']
         t = time.time()
         for f in list(self.voice_frequencies.keys()):
             tgs = '%s %s' % (self.voice_frequencies[f]['tgid'][0], self.voice_frequencies[f]['tgid'][1])
