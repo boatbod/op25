@@ -713,6 +713,9 @@ class rx_block (gr.top_block):
             if self.audio_instances[instance] is not None:
                 self.audio_instances[instance].stop()
 
+        if self.terminal is not None:
+            self.terminal.end_terminal()
+
     def stop(self):
         self.kill()
         gr.top_block.stop(self)
