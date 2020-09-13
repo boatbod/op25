@@ -59,6 +59,7 @@
             "args": "rtl=0", 
             "frequency": 460100000, 
             "gains": "lna:39", 
+            "gain_mode": false,
             "name": "device_0", 
             "offset": 0, 
             "ppm": 0.0, 

@@ -83,6 +83,15 @@ class device(object):
             sys.stderr.write('%s\n' % speeds)
         self.src = osmosdr.source(str(config['args']))
 
+        if 'gain_mode' in config:
+            gain_mode = from_dict(config, 'gain_mode', False)
+            if gain_mode:
+                self.src.set_gain_mode(True, 0)
+            else:
+                self.src.set_gain_mode(True, 0)  # UGH! Ugly workaround for gr-osmosdr airspy bug
+                self.src.set_gain_mode(False, 0)
+            sys.stderr.write("gr-osmosdr driver gain_mode: %s\n" % self.src.get_gain_mode())
+
         for tup in config['gains'].split(','):
             name, gain = tup.split(':')
             self.src.set_gain(int(gain), str(name))

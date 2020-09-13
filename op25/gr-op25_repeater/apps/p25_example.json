@@ -60,6 +60,7 @@
             "args": "airspy=0", 
             "frequency": 772525000, 
             "gains": "LNA:15,MIX:15,IF:5", 
+            "gain_mode": false,
             "name": "sdr0", 
             "offset": 0, 
             "ppm": 0.30, 
