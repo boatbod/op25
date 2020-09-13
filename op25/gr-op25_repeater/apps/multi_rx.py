@@ -219,6 +219,7 @@ class channel(object):
     def toggle_eye_plot(self):
         if 'eye' not in self.sinks:
             sink = eye_sink_f(plot_name=("Ch:%s" % self.name), chan=self.msgq_id)
+            sink.set_sps(self.config['if_rate'] / self.symbol_rate)
             self.sinks['eye'] = sink
             self.set_plot_destination('eye')
             self.tb.lock()
