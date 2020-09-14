@@ -417,7 +417,7 @@ int
 mbe_dequantizeAmbeTone(mbe_tone * tone, const int *u)
 {
 	int bitchk1, bitchk2;
-	int AD, ID1, ID2, ID3, ID4;
+	int AD, ID0, ID1, ID2, ID3, ID4;
 	bitchk1 = (u[0] >> 6) & 0x3f;
 	bitchk2 = (u[3] & 0xf);
 
@@ -425,24 +425,36 @@ mbe_dequantizeAmbeTone(mbe_tone * tone, const int *u)
 		return -1; // Not a valid tone frame
 
 	AD = ((u[0] & 0x3f) << 1) + ((u[3] >> 4) & 0x1);
+	ID0 = 0;
 	ID1 = ((u[1] & 0xfff) >> 4);
 	ID2 = ((u[1] & 0xf) << 4) + ((u[2] >> 7) & 0xf);
 	ID3 = ((u[2] & 0x7f) << 1) + ((u[3] >> 13) & 0x1);
 	ID4 = ((u[3] & 0x1fe0) >> 5);
 
-	if ((ID1 == ID2) && (ID1 == ID3) && (ID1 == ID4) &&
-	    (((ID1 >= 5) && (ID1 <= 122)) || ((ID1 >= 128) && (ID1 <= 163)) || (ID1 == 255))) {
-		if (tone->ID == ID1) {
+	// Theorectically ID1-4 should all be the same value.  Make sure at least 3 match
+	if (((ID1 == ID2) && (ID1 == ID3)) || \
+        ((ID1 == ID3) && (ID1 == ID4)) || \
+        ((ID1 == ID2) && (ID1 == ID4))) {
+		ID0 = ID1;
+	} else if ((ID2 == ID3) && (ID2 == ID4)) {
+		ID0 = ID2;
+	} else {
+		return 1; // Mismatched tone ids, treat as Erasure
+	}
+
+	if (((ID0 >= 5) && (ID0 <= 122)) || ((ID0 >= 128) && (ID0 <= 163)) || (ID0 == 255)) {
+		if (tone->ID == ID0) {
 			tone->AD = AD;
 		} else {
 			tone->n = 0;
-			tone->ID = ID1;
+			tone->ID = ID0;
 			tone->AD = AD;
 		}
 		return 0; // valid in-range tone frequency 
 	}
 
-	return -1;
+	// invalid tone, treat as Erasure
+	return 1;
 }
 
 int
