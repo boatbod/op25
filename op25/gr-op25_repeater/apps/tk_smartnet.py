@@ -162,9 +162,10 @@ class rx_ctl(object):
     def process_qmsg(self, msg):
         curr_time = time.time()
         m_rxid = int(msg.arg1()) >> 1
-        if m_rxid in self.receivers and self.receivers[m_rxid]['rx_sys'] is not None:
-            self.receivers[m_rxid]['rx_sys'].process_qmsg(msg, curr_time)        # First dispatch the message to the intended receiver
-            for rx in self.systems[self.receivers[m_rxid]['sysname']]['voice']:  # then have all the voice receivers scan for activity
+        if (m_rxid in self.receivers and 
+            self.receivers[m_rxid]['rx_sys'] is not None and
+            self.receivers[m_rxid]['rx_sys'].process_qmsg(msg, curr_time)):
+            for rx in self.systems[self.receivers[m_rxid]['sysname']]['voice']: # Scan for voice activity if the arriving OSW caused a change
                 rx.scan_for_talkgroups(curr_time)
 
     # ui_command handles all requests from user interface
@@ -313,7 +314,7 @@ class osw_receiver(object):
     def process_qmsg(self, msg, curr_time):
         m_proto = ctypes.c_int16(msg.type() >> 16).value  # upper 16 bits of msg.type() is signed protocol
         if m_proto != 2: # Smartnet m_proto=2
-            return
+            return False
 
         m_type = ctypes.c_int16(msg.type() & 0xffff).value
         m_rxid = int(msg.arg1()) >> 1
@@ -332,12 +333,14 @@ class osw_receiver(object):
             osw_addr = (ord(s[0]) << 8) + ord(s[1])
             osw_grp  =  ord(s[2])
             osw_cmd  = (ord(s[3]) << 8) + ord(s[4])
-            self.enqueue(osw_addr, osw_grp, osw_cmd)
+            self.enqueue(osw_addr, osw_grp, osw_cmd, m_ts)
             self.stats['osw_count'] += 1
-            self.last_osw = curr_time
+            self.last_osw = m_ts
 
-        self.process_osws()
-        self.expire_talkgroups(curr_time)
+        rc = False
+        rc |= self.process_osws()
+        rc |= self.expire_talkgroups(curr_time)
+        return rc
 
     def is_chan(self, cmd): # Is the 'cmd' a valid frequency or an actual command
         bandplan = from_dict(self.config, 'bandplan', "800_reband")
@@ -399,7 +402,7 @@ class osw_receiver(object):
                 freq = bp_base + (bp_spacing * (cmd - bp_offset ))
         return freq
 
-    def enqueue(self, addr, grp, cmd):
+    def enqueue(self, addr, grp, cmd, ts):
         grp_str = "G" if (grp != 0) else "I"
         if self.is_chan(cmd):
             freq = self.get_freq(cmd)
@@ -409,21 +412,21 @@ class osw_receiver(object):
             freq = 0.0
             if self.debug >= 9:
                 sys.stderr.write("%s [%d] SMARTNET OSW (0x%04x,%s,0x%03x)\n" % (log_ts.get(), self.msgq_id, addr, grp_str, cmd))
-        self.osw_q.append((addr, (grp != 0), cmd, self.is_chan(cmd), freq))
+        self.osw_q.append((addr, (grp != 0), cmd, self.is_chan(cmd), freq, ts))
 
     def process_osws(self):
         if len(self.osw_q) < OSW_QUEUE_SIZE:
-            return
+            return False
 
-        osw2_addr, osw2_grp, osw2_cmd, osw2_ch, osw2_f = self.osw_q.popleft()
-
+        rc = False
+        osw2_addr, osw2_grp, osw2_cmd, osw2_ch, osw2_f, osw2_t = self.osw_q.popleft()
         if (osw2_cmd == 0x308) or (osw2_cmd == 0x309):
-            osw1_addr, osw1_grp, osw1_cmd, osw1_ch, osw1_f = self.osw_q.popleft()
+            osw1_addr, osw1_grp, osw1_cmd, osw1_ch, osw1_f, osw1_t = self.osw_q.popleft()
             if osw1_ch and osw1_grp and (osw1_addr != 0) and (osw2_addr != 0):   # Two-OSW analog group voice grant
                 src_rid = osw2_addr
                 dst_tgid = osw1_addr
                 tgt_freq = osw1_f
-                self.update_voice_frequency(tgt_freq, dst_tgid, src_rid, mode=0)
+                rc |= self.update_voice_frequency(tgt_freq, dst_tgid, src_rid, mode=0, ts=osw1_t)
                 if self.debug >= 11:
                     sys.stderr.write("%s [%d] SMARTNET GROUP GRANT src(%d), tgid(%d), freq(%f)\n" % (log_ts.get(), self.msgq_id, src_rid, dst_tgid, tgt_freq))
             elif osw1_ch and not osw1_grp and ((osw1_addr & 0xff00) == 0x1f00):  # SysId + Control Channel Frequency broadcast
@@ -432,14 +435,14 @@ class osw_receiver(object):
                 if self.debug >= 11:
                     sys.stderr.write("%s [%d] SMARTNET SYSID (%x) CONTROL CHANNEL (%f)\n" % (log_ts.get(), self.msgq_id, osw2_addr, osw1_f))
             elif osw1_cmd == 0x30b:
-                osw0_addr, osw0_grp, osw0_cmd, osw0_ch, osw0_f = self.osw_q.popleft()
+                osw0_addr, osw0_grp, osw0_cmd, osw0_ch, osw0_f, osw0_t = self.osw_q.popleft()
                 if osw0_ch and ((osw0_addr & 0xff00) == 0x1F00) and ((osw1_addr & 0xfc00) == 0x2800) and ((osw1_addr & 0x3ff) == osw0_cmd):
                     self.rx_sys_id = osw2_addr
                     self.rx_cc_freq = osw0_f * 1e6
                     if self.debug >= 11:
                         sys.stderr.write("%s [%d] SMARTNET SYSID (%x) CONTROL CHANNEL (%f)\n" % (log_ts.get(), self.msgq_id, osw2_addr, osw1_f))
                 else:
-                    self.osw_q.appendleft((osw0_addr, osw0_grp, osw0_cmd, osw0_ch, osw0_f)) # put back unused OSW0
+                    self.osw_q.appendleft((osw0_addr, osw0_grp, osw0_cmd, osw0_ch, osw0_f, osw0_t)) # put back unused OSW0
                     if ((osw1_addr & 0xfc00) == 0x2800):
                         self.rx_sys_id = osw2_addr
                         self.rx_cc_freq = self.get_freq(osw1_addr & 0x3ff) * 1e6
@@ -451,7 +454,7 @@ class osw_receiver(object):
                 if self.debug >= 11:
                     sys.stderr.write("%s [%d] SMARTNET AFFILIATION src(%d), tgid(%d)\n" % (log_ts.get(), self.msgq_id, src_rid, dst_tgid))
             elif osw1_cmd == 0x320:
-                osw0_addr, osw0_grp, osw0_cmd, osw0_ch, osw0_f = self.osw_q.popleft()
+                osw0_addr, osw0_grp, osw0_cmd, osw0_ch, osw0_f, osw0_t = self.osw_q.popleft()
                 if osw0_cmd == 0x30b:
                     # There is information that can be extracted from these OSWs but it may apply to a neighbor not ourself
                     # proceed with caution!
@@ -464,38 +467,39 @@ class osw_receiver(object):
                         if self.debug >= 11:
                             sys.stderr.write("%s [%d] SMARTNET SYSID (%x) CELLID (%x) BAND (%d) FEATURES (%x) CONTROL CHANNEL (%f)\n" % (log_ts.get(), self.msgq_id, sysid, cellid, band, feat, freq))
                 else:
-                    self.osw_q.appendleft((osw0_addr, osw0_grp, osw0_cmd, osw0_ch, osw0_f)) # put back unused OSW0
+                    self.osw_q.appendleft((osw0_addr, osw0_grp, osw0_cmd, osw0_ch, osw0_f, osw0_t)) # put back unused OSW0
             else: # OSW1 did not match, so put it back in the queue 
-                self.osw_q.appendleft((osw1_addr, osw1_grp, osw1_cmd, osw1_ch, osw1_f))
+                self.osw_q.appendleft((osw1_addr, osw1_grp, osw1_cmd, osw1_ch, osw1_f, osw1_t))
         elif osw2_cmd == 0x321:                                                  # Two-OSW digital group voice grant
-            osw1_addr, osw1_grp, osw1_cmd, osw1_ch, osw1_f = self.osw_q.popleft()
+            osw1_addr, osw1_grp, osw1_cmd, osw1_ch, osw1_f, osw1_t = self.osw_q.popleft()
             if osw1_ch and osw1_grp and (osw1_addr != 0):
                 src_rid = osw2_addr
                 dst_tgid = osw1_addr
                 tgt_freq = osw1_f
-                self.update_voice_frequency(tgt_freq, dst_tgid, src_rid, mode=1)
+                rc |= self.update_voice_frequency(tgt_freq, dst_tgid, src_rid, mode=1, ts=osw1_t)
                 if self.debug >= 11:
                     sys.stderr.write("%s [%d] SMARTNET ASTRO GRANT src(%d), tgid(%d), freq(%f)\n" % (log_ts.get(), self.msgq_id, src_rid, dst_tgid, tgt_freq))
             else: # OSW did not match, so put it back in the queue 
-                self.osw_q.appendleft((osw1_addr, osw1_grp, osw1_cmd, osw1_ch, osw1_f))
+                self.osw_q.appendleft((osw1_addr, osw1_grp, osw1_cmd, osw1_ch, osw1_f, osw1_t))
         elif osw2_ch and osw2_grp:                                               # Single-OSW voice update
             dst_tgid = osw2_addr
             tgt_freq = osw2_f
-            self.update_voice_frequency(tgt_freq, dst_tgid)
+            rc |= self.update_voice_frequency(tgt_freq, dst_tgid, ts=osw2_t)
             if self.debug >= 11:
                 sys.stderr.write("%s [%d] SMARTNET GROUP UPDATE tgid(%d), freq(%f)\n" % (log_ts.get(), self.msgq_id, dst_tgid, tgt_freq))
         elif osw2_ch and not osw2_grp and ((osw2_addr & 0xff00) == 0x1f00):      # Control Channel Frequency broadcast
             self.rx_cc_freq = osw2_f * 1e6
             if self.debug >= 11:
                 sys.stderr.write("%s [%d] SMARTNET CONTROL CHANNEL freq (%f)\n" % (log_ts.get(), self.msgq_id, osw2_f))
+        return rc
 
-    def update_voice_frequency(self, float_freq, tgid=None, srcaddr=-1, mode=-1):
+    def update_voice_frequency(self, float_freq, tgid=None, srcaddr=-1, mode=-1, ts=time.time()):
         if not float_freq:    # e.g., channel identifier not yet known
-            return
+            return False
 
         frequency = int(float_freq * 1e6) # use integer not float as dictionary keys
 
-        self.update_talkgroups(frequency, tgid, srcaddr, mode)
+        rc = self.update_talkgroups(frequency, tgid, srcaddr, mode, ts)
 
         base_tgid = tgid & 0xfff0
         tgid_stat = tgid & 0x000f
@@ -511,16 +515,18 @@ class osw_receiver(object):
         self.voice_frequencies[frequency]['tgid'] = base_tgid
         self.voice_frequencies[frequency]['counter'] += 1
         self.voice_frequencies[frequency]['time'] = time.time()
+        return rc
 
-    def update_talkgroups(self, frequency, tgid, srcaddr, mode=-1):
-        self.update_talkgroup(frequency, tgid, srcaddr, mode)
+    def update_talkgroups(self, frequency, tgid, srcaddr, mode=-1, ts=time.time()):
+        rc = self.update_talkgroup(frequency, tgid, srcaddr, mode, ts)
         #if tgid in self.patches:
         #    for ptgid in self.patches[tgid]['ga']:
-        #        self.update_talkgroup(frequency, ptgid, srcaddr)
+        #        rc |= self.update_talkgroup(frequency, ptgid, srcaddr)
         #        if self.debug >= 5:
         #            sys.stderr.write('%s update_talkgroups: sg(%d) patched tgid(%d)\n' % (log_ts.get(), tgid, ptgid))
+        return rc
 
-    def update_talkgroup(self, frequency, tgid, srcaddr, mode=-1):
+    def update_talkgroup(self, frequency, tgid, srcaddr, mode=-1, ts=time.time()):
         base_tgid = tgid & 0xfff0
         tgid_stat = tgid & 0x000f
 
@@ -531,13 +537,19 @@ class osw_receiver(object):
             self.add_default_tgid(base_tgid)
             if self.debug >= 5:
                 sys.stderr.write('%s [%d] new tgid=%s %s prio %d\n' % (log_ts.get(), self.msgq_id, base_tgid, self.talkgroups[base_tgid]['tag'], self.talkgroups[base_tgid]['prio']))
+        elif ts < self.talkgroups[base_tgid]['release_time']: # screen out late arriving OSWs where subsequent action has already been taken
+            if self.debug >= 5:
+                sys.stderr.write('%s [%d] ignorning stale OSW for tgid=%s, time_diff=%f\n' % (log_ts.get(), self.msgq_id, base_tgid, (ts - self.talkgroups[base_tgid]['release_time'])))
+            return False
         self.talkgroups[base_tgid]['time'] = time.time()
+        self.talkgroups[base_tgid]['release_time'] = 0
         self.talkgroups[base_tgid]['frequency'] = frequency
         self.talkgroups[base_tgid]['status'] = tgid_stat
         if srcaddr >= 0:
             self.talkgroups[base_tgid]['srcaddr'] = srcaddr
         if mode >= 0:
             self.talkgroups[base_tgid]['mode'] = mode
+        return True
 
     def add_default_tgid(self, tgid):
         if tgid not in self.talkgroups:
@@ -547,20 +559,24 @@ class osw_receiver(object):
             self.talkgroups[tgid]['tag'] = "TGID[" + str(int(tgid)) + "]"
             self.talkgroups[tgid]['srcaddr'] = 0
             self.talkgroups[tgid]['time'] = 0
+            self.talkgroups[tgid]['release_time'] = 0
             self.talkgroups[tgid]['mode'] = -1
             self.talkgroups[tgid]['receiver'] = None
             self.talkgroups[tgid]['status'] = 0
 
     def expire_talkgroups(self, curr_time):
         if curr_time < self.last_expiry_check + EXPIRY_TIMER:
-            return
+            return False
 
+        rc = False
         self.last_expiry_check = curr_time
         for tgid in self.talkgroups:
             if (self.talkgroups[tgid]['receiver'] is not None) and (curr_time >= self.talkgroups[tgid]['time'] + TGID_EXPIRY_TIME):
                 if self.debug > 1:
                     sys.stderr.write("%s [%d] expiring tg(%d), freq(%f)\n" % (log_ts.get(), self.msgq_id, tgid, (self.talkgroups[tgid]['frequency']/1e6)))
                 self.talkgroups[tgid]['receiver'].expire_talkgroup(reason="expiry")
+                rc = True
+        return rc
 
     def dump_tgids(self):
         sys.stderr.write("Known tgids: { ")
@@ -663,6 +679,7 @@ class voice_receiver(object):
             self.load_bl_wl()
  
     def process_qmsg(self, msg, curr_time):
+        rc = False
         m_type = ctypes.c_int16(msg.type() & 0xffff).value
         m_rxid = int(msg.arg1()) >> 1
         m_ts = float(msg.arg2())
@@ -679,6 +696,8 @@ class voice_receiver(object):
             pass 
         elif (m_type == 15): # DUID-15 (call termination with channel release)
             self.expire_talkgroup(reason="duid15")
+            rc = True
+        return rc
 
     def add_blacklist(self, tgid, end_time=None):
         if not tgid or (tgid <= 0) or (tgid > 65534):
@@ -824,6 +843,7 @@ class voice_receiver(object):
         self.nbfm_ctrl(self.msgq_id, (self.talkgroups[tgid]['mode'] != 1) )   # enable nbfm unless mode is digital
 
     def expire_talkgroup(self, tgid=None, update_meta = True, reason="unk"):
+        expire_time = time.time()
         self.nbfm_ctrl(self.msgq_id, False)                                   # disable nbfm
         self.slot_set({'tuner': self.msgq_id,'slot': 4})                      # disable p25cai
         if self.current_tgid is None:
@@ -831,10 +851,11 @@ class voice_receiver(object):
             
         self.talkgroups[self.current_tgid]['receiver'] = None
         self.talkgroups[self.current_tgid]['srcaddr'] = 0
+        self.talkgroups[self.current_tgid]['release_time'] = expire_time
         if self.debug > 1:
             sys.stderr.write("%s [%d] releasing:  tg(%d), freq(%f), reason(%s)\n" % (log_ts.get(), self.msgq_id, self.current_tgid, (self.tuned_frequency/1e6), reason))
         self.hold_tgid = self.current_tgid
-        self.hold_until = time.time() + TGID_HOLD_TIME
+        self.hold_until = expire_time + TGID_HOLD_TIME
         self.current_tgid = None
 
         if update_meta:

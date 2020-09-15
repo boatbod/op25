@@ -564,20 +564,28 @@ void p25p2_tdma::handle_voice_frame(const uint8_t dibits[])
 			       	p_cw[0], p_cw[1], p_cw[2], p_cw[3], p_cw[4], p_cw[5], p_cw[6], errs);
 	}
 	rc = mbe_dequantizeAmbeTone(&tone_mp, u);
-	if (rc == 0) {					// Tone Frame
-		tone_frame = true;
-		mbe_err_cnt = 0;
+	if (rc >= 0) {					// Tone Frame
+		if (rc == 0) {                  // Valid Tone
+			tone_frame = true;
+			mbe_err_cnt = 0;
+		} else {                        // Tone Erasure with Frame Repeat
+			if ((++mbe_err_cnt < 4) && tone_frame) {
+				mbe_useLastMbeParms(&cur_mp, &prev_mp);
+				rc = 0;
+			} else {
+				tone_frame = false;     // Mute audio output after 3 successive Frame Repeats
+			}
+        }
 	} else {
 		rc = mbe_dequantizeAmbe2250Parms (&cur_mp, &prev_mp, b);
 		if (rc == 0) {				// Voice Frame
 			tone_frame = false;
 			mbe_err_cnt = 0;
-		} else if (++mbe_err_cnt < 4) {		// Erasure with Frame Repeat per TIA-102.BABA.5.6
-        		if (!tone_frame) 
-				mbe_useLastMbeParms(&cur_mp, &prev_mp);
+		} else if ((++mbe_err_cnt < 4) && !tone_frame) {// Erasure with Frame Repeat per TIA-102.BABA.5.6
+			mbe_useLastMbeParms(&cur_mp, &prev_mp);
 			rc = 0;
 		} else {
-			tone_frame = false;		// Mute audio output after 3 successive Frame Repeats
+			tone_frame = false;         // Mute audio output after 3 successive Frame Repeats
 		}
 	}
 

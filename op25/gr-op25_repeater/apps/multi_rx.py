@@ -83,6 +83,15 @@ class device(object):
             sys.stderr.write('%s\n' % speeds)
         self.src = osmosdr.source(str(config['args']))
 
+        if 'gain_mode' in config:
+            gain_mode = from_dict(config, 'gain_mode', False)
+            if gain_mode:
+                self.src.set_gain_mode(True, 0)
+            else:
+                self.src.set_gain_mode(True, 0)  # UGH! Ugly workaround for gr-osmosdr airspy bug
+                self.src.set_gain_mode(False, 0)
+            sys.stderr.write("gr-osmosdr driver gain_mode: %s\n" % self.src.get_gain_mode())
+
         for tup in config['gains'].split(','):
             name, gain = tup.split(':')
             self.src.set_gain(int(gain), str(name))
@@ -166,10 +175,7 @@ class channel(object):
             self.nbfm_mode = 1;
         
         if self.nbfm_mode > 0:
-            nbfm_dev = int(from_dict(config, 'nbfm_deviation', 4000))
-            nbfm_sq_thresh = int(from_dict(config, 'nbfm_squelch_threshold', -60))
-            nbfm_sq_gain = float(from_dict(config, 'nbfm_squelch_gain', 0.0015))
-            self.nbfm = op25_nbfm.op25_nbfm_c(str(config['destination']), verbosity, config['if_rate'], nbfm_dev, nbfm_sq_thresh, nbfm_sq_gain, msgq_id, rx_q)
+            self.nbfm = op25_nbfm.op25_nbfm_c(str(config['destination']), verbosity, config, msgq_id, rx_q)
             if self.demod.connect_nbfm(self.nbfm):
                 if self.nbfm_mode == 2:
                     self.nbfm.control(True)
@@ -222,6 +228,7 @@ class channel(object):
     def toggle_eye_plot(self):
         if 'eye' not in self.sinks:
             sink = eye_sink_f(plot_name=("Ch:%s" % self.name), chan=self.msgq_id)
+            sink.set_sps(self.config['if_rate'] / self.symbol_rate)
             self.sinks['eye'] = sink
             self.set_plot_destination('eye')
             self.tb.lock()
@@ -715,6 +722,9 @@ class rx_block (gr.top_block):
         for instance in self.audio_instances:
             if self.audio_instances[instance] is not None:
                 self.audio_instances[instance].stop()
+
+        if self.terminal is not None:
+            self.terminal.end_terminal()
 
     def stop(self):
         self.kill()

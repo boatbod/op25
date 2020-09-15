@@ -18,7 +18,7 @@
 // 02110-1301, USA.
 
 #ifndef INCLUDED_RX_SMARTNET_H
-#define INCLUDED_RX_SMARTNET_Ho
+#define INCLUDED_RX_SMARTNET_H
 
 #include <stdio.h>
 #include <stdint.h>

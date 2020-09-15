@@ -172,14 +172,16 @@ class rx_ctl(object):
         m_rxid = int(msg.arg1()) >> 1                       # receiver's msgq_id
         m_ts = float(msg.arg2())                            # receive timestamp from frame_assembler
 
+        updated = 0
         if m_rxid in self.receivers and self.receivers[m_rxid]['rx_rcvr'] is not None:
-            if m_type == 7 or m_type == 12:                                         # send TSBKs and MBTs messages to p25_system object
-                self.systems[self.receivers[m_rxid]['sysname']]['system'].process_qmsg(msg, curr_time)
+            if m_type == 7 or m_type == 12:                                                 # send TSBKs and MBTs messages to p25_system object
+                updated += self.systems[self.receivers[m_rxid]['sysname']]['system'].process_qmsg(msg, curr_time)
             else:
-                self.receivers[m_rxid]['rx_rcvr'].process_qmsg(msg, curr_time)      # send in-call messaging to p25_receiver objects
+                updated += self.receivers[m_rxid]['rx_rcvr'].process_qmsg(msg, curr_time)   # send in-call messaging to p25_receiver objects
 
-            for rx in self.systems[self.receivers[m_rxid]['sysname']]['receivers']: # then have all the voice receivers scan for activity
-                rx.scan_for_talkgroups(curr_time)
+            if updated > 0:
+                for rx in self.systems[self.receivers[m_rxid]['sysname']]['receivers']:     # only have voice receivers scan for activity if something changed
+                    rx.scan_for_talkgroups(curr_time)
 
     # ui_command handles all requests from user interface
     def ui_command(self, cmd, data, msgq_id):
@@ -421,7 +423,7 @@ class p25_system(object):
             opcode = (header >> 16) & 0x3f
             updated += self.decode_mbt(m_rxid, opcode, src, header << 16, mbt_data << 32)
 
-        self.expire_patches()
+        updated += self.expire_patches()
         return updated
 
     def decode_mbt_data(self, m_rxid, opcode, src, header, mbt_data):
@@ -822,12 +824,15 @@ class p25_system(object):
                 sys.stderr.write("%s del_patch: deleting patch sg(%d)\n" % (log_ts.get(), sg))
 
     def expire_patches(self):
+        updated = 0
         time_now = time.time()
         for sg in list(self.patches):
             if time_now > (self.patches[sg]['ts'] + PATCH_EXPIRY_TIME):
+                updated += 1
                 del self.patches[sg]
                 if self.debug >= 5:
                     sys.stderr.write("%s [%s] expired_patches: expiring patch sg(%d)\n" % (log_ts.get(), self.sysname, sg))
+        return updated
 
     def dump_tgids(self):
         sys.stderr.write("Known tgids: { ")
@@ -984,15 +989,17 @@ class p25_receiver(object):
             self.load_bl_wl()
 
     def process_qmsg(self, msg, curr_time):
+        updated = 0
         m_proto = ctypes.c_int16(msg.type() >> 16).value  # upper 16 bits of msg.type() is signed protocol
         if m_proto != 0: # P25 m_proto=0
-            return
+            return updated
 
         m_type = ctypes.c_int16(msg.type() & 0xffff).value
         m_rxid = int(msg.arg1()) >> 1
         m_ts = float(msg.arg2())
 
         if (m_type == -1):  # Channel Timeout
+            updated += 1
             if self.current_tgid is None:
                 if self.debug > 0:
                     sys.stderr.write("%s [%d] control channel timeout\n" % (log_ts.get(), self.msgq_id))
@@ -1003,7 +1010,7 @@ class p25_receiver(object):
                 self.vc_retries += 1
                 if self.vc_retries >= VC_TIMEOUT_RETRIES:
                     self.expire_talkgroup(reason="timeout")
-            return
+            return updated
 
         elif m_type == -3: # P25 call data (srcaddr, grpaddr, encryption)
             if self.debug > 10:
@@ -1014,7 +1021,7 @@ class p25_receiver(object):
             encrypted = from_dict(js, 'encrypted', -1)
 
             if (self.current_tgid is None) or (grpaddr != self.current_tgid): # only consider data for current call
-                return
+                return updated
 
             if srcaddr > 0:
                 self.talkgroups[self.current_tgid]['srcaddr'] = srcaddr
@@ -1023,24 +1030,27 @@ class p25_receiver(object):
 
             if self.crypt_behavior > 1:
                 if self.talkgroups[self.current_tgid]['encrypted'] == 1:
+                    updated += 1
                     if self.debug > 0:
                         sys.stderr.write('%s skipping encrypted tg(%d)\n' % (log_ts.get(), self.current_tgid))
                     self.add_blacklist(self.current_tgid, curr_time + TGID_SKIP_TIME)
 
         elif m_type == -4: # P25 sync established
-            return
+            return updated
 
         elif m_type >= 0: # Channel Signaling (m_type is duid)
             s = msg.to_string()
             nac = (ord(s[0]) << 8) + ord(s[1]) # first two bytes are NAC
             if (nac != 0xffff) and (nac != self.system.get_nac()):
-                return
+                return updated
 
             if   m_type ==  3: # call termination, no release
-                return
+                return updated
             elif m_type == 15: # call termination, with release
+                updated += 1
                 self.expire_talkgroup(reason="duid15")
-                return
+                return updated
+        return updated
 
     def add_blacklist(self, tgid, end_time=None):
         if not tgid or (tgid <= 0) or (tgid > 65534):

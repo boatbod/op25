@@ -53,6 +53,7 @@ static const int16_t M_DMR_SLOT_ESB     =  9;
 // SMARTNET Messages
 static const int16_t M_SMARTNET_TIMEOUT = -1;
 static const int16_t M_SMARTNET_OSW     =  0;
+static const int16_t M_SMARTNET_END_PTT = 15;
 
 inline long get_msg_type(const int16_t proto, const int16_t msg) { return ((uint32_t)proto << 16) | ((uint32_t)msg & 0xffff); }
 
