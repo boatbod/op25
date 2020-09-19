@@ -154,7 +154,9 @@ private:
 	mbe_parms cur_mp[2];
 	mbe_parms prev_mp[2];
 	mbe_parms enh_mp[2];
+	mbe_errs errs_mp[2];
 	mbe_tone tone_mp[2];
+	int mbe_err_cnt[2];
 	software_imbe_decoder d_software_decoder[2];
 	std::deque<int16_t> d_output_queue[2];
 	dmr_cai dmr;

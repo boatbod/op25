@@ -214,8 +214,12 @@ rx_sync::rx_sync(const char * options, int debug, int msgq_id, gr::msg_queue::sp
 
 	mbe_initMbeParms (&cur_mp[0], &prev_mp[0], &enh_mp[0]);
 	mbe_initMbeParms (&cur_mp[1], &prev_mp[1], &enh_mp[1]);
+	mbe_initErrParms (&errs_mp[0]);
+	mbe_initErrParms (&errs_mp[1]);
 	mbe_initToneParms (&tone_mp[0]);
 	mbe_initToneParms (&tone_mp[1]);
+	mbe_err_cnt[0] = 0;
+	mbe_err_cnt[1] = 0;
 	sync_reset();
 }
 
@@ -280,7 +284,7 @@ void rx_sync::codeword(const uint8_t* cw, const enum codeword_types codeword_typ
 	uint8_t tmp_codeword [144];
 	uint32_t E0, ET;
 	uint32_t u[8];
-	size_t errs = 0;
+	size_t errs = 0, rc = 0;
 	bool do_fullrate = false;
 	bool do_silence = false;
 	bool do_tone = false;
@@ -289,13 +293,13 @@ void rx_sync::codeword(const uint8_t* cw, const enum codeword_types codeword_typ
 
 	switch(codeword_type) {
 	case CODEWORD_DMR:
-		errs = interleaver.process_vcw(cw, b, U);
+		errs = interleaver.process_vcw(&errs_mp[slot_id], cw, b, U);
 		interleaver.pack_cw(p_cw, U);
 		if (d_debug >= 9) {
-			fprintf(stderr, "%s AMBE %02x %02x %02x %02x %02x %02x %02x errs %lu\n", logts.get(d_msgq_id),
-			       	p_cw[0], p_cw[1], p_cw[2], p_cw[3], p_cw[4], p_cw[5], p_cw[6], errs);
+			fprintf(stderr, "%s AMBE %02x %02x %02x %02x %02x %02x %02x errs %lu err_rate %f\n", logts.get(d_msgq_id),
+			       	p_cw[0], p_cw[1], p_cw[2], p_cw[3], p_cw[4], p_cw[5], p_cw[6], errs, errs_mp[slot_id].ER);
 		}
-		if (d_slot_key) {
+		if (d_slot_key) { // BP reversal if key is specified
 			uint8_t skipped_bits = p_cw[1] & 0xf0;
 			for (int i = 0; i <= 6; i++)
 				p_cw[i]   ^= (d_slot_key >> ((i + 1) % 2) * 8);
@@ -305,21 +309,50 @@ void rx_sync::codeword(const uint8_t* cw, const enum codeword_types codeword_typ
 			interleaver.pack_cw(p_cw, U);
 
 			if (d_debug >= 9) {
-				fprintf(stderr, "%s ambe %02x %02x %02x %02x %02x %02x %02x errs %lu\n", logts.get(d_msgq_id),
-			       		p_cw[0], p_cw[1], p_cw[2], p_cw[3], p_cw[4], p_cw[5], p_cw[6], errs);
+				fprintf(stderr, "%s ambe^%02x^%02x^%02x^%02x^%02x^%02x^%02x\n", logts.get(d_msgq_id),
+			       		p_cw[0], p_cw[1], p_cw[2], p_cw[3], p_cw[4], p_cw[5], p_cw[6]);
 			}
 		}
 
-		if (mbe_dequantizeAmbeTone(&tone_mp[slot_id], U) == 0) {
-			do_tone = true;
-		} else if (b[0] < 120) { // TODO: handle Erasures/Frame Repeat
-			mbe_dequantizeAmbe2250Parms(&cur_mp[slot_id], &prev_mp[slot_id], b);
+		// handle frame repeats, tones and voice
+		rc = mbe_dequantizeAmbeTone(&tone_mp[slot_id], &errs_mp[slot_id], U);
+		if (rc >= 0) {					// Tone Frame
+			if (rc == 0) {                  // Valid Tone
+				do_tone = true;
+				mbe_err_cnt[slot_id] = 0;
+			} else {                        // Tone Erasure with Frame Repeat
+				if ((++mbe_err_cnt[slot_id] < 4) && do_tone) {
+					mbe_useLastMbeParms(&cur_mp[slot_id], &prev_mp[slot_id]);
+					rc = 0;
+				} else {
+					do_tone = false;        // Mute audio output after 3 successive Frame Repeats
+					do_silence = true;
+				}
+ 			}
+		} else {
+			rc = mbe_dequantizeAmbe2250Parms (&cur_mp[slot_id], &prev_mp[slot_id], &errs_mp[slot_id], b);
+			if (rc == 0) {				// Voice Frame
+				do_tone = false;
+				mbe_err_cnt[slot_id] = 0;
+			} else if ((++mbe_err_cnt[slot_id] < 4) && !do_tone) {// Erasure with Frame Repeat per TIA-102.BABA.5.6
+				mbe_useLastMbeParms(&cur_mp[slot_id], &prev_mp[slot_id]);
+				rc = 0;
+			} else {
+				do_tone = false;            // Mute audio output after 3 successive Frame Repeats
+				do_silence = true;
+			}
+		}
+		if (errs_mp[slot_id].ER > 0.096) { // Mute if error rate exceeds threshold
+			do_tone = false;
+			do_silence = true;
 		}
 		break;
 	case CODEWORD_DSTAR:
 		interleaver.decode_dstar(cw, b, false);
-		if (b[0] < 120)
-			mbe_dequantizeAmbe2400Parms(&cur_mp[slot_id], &prev_mp[slot_id], b);
+		if (b[0] < 120) // TODO: frame repeats and tones
+			mbe_dequantizeAmbe2400Parms(&cur_mp[slot_id], &prev_mp[slot_id], &errs_mp[slot_id], b);
+		else
+			do_silence = true;
 		break;
 	case CODEWORD_YSF_HALFRATE:	// 104 bits
 		for (int i=0; i<x; i++) {
@@ -332,8 +365,10 @@ void rx_sync::codeword(const uint8_t* cw, const enum codeword_types codeword_typ
 
 		memcpy(tmp_codeword+27, buf+81, 22);
 		decode_49bit(b, tmp_codeword);
-		if (b[0] < 120)
-			mbe_dequantizeAmbe2250Parms(&cur_mp[slot_id], &prev_mp[slot_id], b);
+		if (b[0] < 120) // TODO: frame repeats and tones
+			mbe_dequantizeAmbe2250Parms(&cur_mp[slot_id], &prev_mp[slot_id], &errs_mp[slot_id], b);
+		else
+			do_silence = true;
 		break;
 	case CODEWORD_P25P2:
 		break; // Not used; handled by p25p2_tdma
@@ -353,9 +388,7 @@ void rx_sync::codeword(const uint8_t* cw, const enum codeword_types codeword_typ
 		if (do_fullrate) {
 			d_software_decoder[slot_id].decode(fullrate_cw);
 		} else {	/* halfrate */
-			if (b[0] >= 120) {
-				do_silence = true;
-			} else {
+			if (!do_silence) {
 				d_software_decoder[slot_id].decode_tap(cur_mp[slot_id].L, 0, cur_mp[slot_id].w0, &cur_mp[slot_id].Vl[1], &cur_mp[slot_id].Ml[1]);
 			}
 		}

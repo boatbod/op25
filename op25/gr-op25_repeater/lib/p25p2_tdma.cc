@@ -113,6 +113,7 @@ p25p2_tdma::p25p2_tdma(const op25_audio& udp, int slotid, int debug, bool do_msg
 	assert (slotid == 0 || slotid == 1);
 	mbe_initMbeParms (&cur_mp, &prev_mp, &enh_mp);
 	mbe_initToneParms (&tone_mp);
+	mbe_initErrParms (&errs_mp);
 }
 
 bool p25p2_tdma::rx_sym(uint8_t sym)
@@ -556,14 +557,14 @@ void p25p2_tdma::handle_voice_frame(const uint8_t dibits[])
 	int rc = -1;
 
 	// Deinterleave and figure out frame type:
-	errs = vf.process_vcw(dibits, b, u);
+	errs = vf.process_vcw(&errs_mp, dibits, b, u);
 	if (d_debug >= 9) {
 		packed_codeword p_cw;
 		vf.pack_cw(p_cw, u);
-		fprintf(stderr, "%s AMBE %02x %02x %02x %02x %02x %02x %02x errs %lu\n", logts.get(d_msgq_id),
-			       	p_cw[0], p_cw[1], p_cw[2], p_cw[3], p_cw[4], p_cw[5], p_cw[6], errs);
+		fprintf(stderr, "%s AMBE %02x %02x %02x %02x %02x %02x %02x errs %lu err_rate %f\n", logts.get(d_msgq_id),
+			       	p_cw[0], p_cw[1], p_cw[2], p_cw[3], p_cw[4], p_cw[5], p_cw[6], errs, errs_mp.ER);
 	}
-	rc = mbe_dequantizeAmbeTone(&tone_mp, u);
+	rc = mbe_dequantizeAmbeTone(&tone_mp, &errs_mp, u);
 	if (rc >= 0) {					// Tone Frame
 		if (rc == 0) {                  // Valid Tone
 			tone_frame = true;
@@ -577,7 +578,7 @@ void p25p2_tdma::handle_voice_frame(const uint8_t dibits[])
 			}
         }
 	} else {
-		rc = mbe_dequantizeAmbe2250Parms (&cur_mp, &prev_mp, b);
+		rc = mbe_dequantizeAmbe2250Parms (&cur_mp, &prev_mp, &errs_mp, b);
 		if (rc == 0) {				// Voice Frame
 			tone_frame = false;
 			mbe_err_cnt = 0;
@@ -589,8 +590,8 @@ void p25p2_tdma::handle_voice_frame(const uint8_t dibits[])
 		}
 	}
 
-	// Synthesize tones or speech
-	if (rc == 0) {
+	// Synthesize tones or speech as long as dequantization was successful and overall error rate is below threshold
+	if ((rc == 0) && (errs_mp.ER <= 0.096)) {
 		if (tone_frame) {
 			software_decoder.decode_tone(tone_mp.ID, tone_mp.AD, &tone_mp.n);
 			samples = software_decoder.audio();

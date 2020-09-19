@@ -244,9 +244,8 @@ gardner_costas_cc_impl::phase_error_tracking(gr_complex sample)
   d_freq = gr::branchless_clip(d_freq, d_max_freq);
   
 #if VERBOSE_COSTAS
-  fprintf(stderr, "cl: phase_error: %f  phase: %f  freq: %f  sample: %f+j%f  constellation: %f+j%f\n",
-	 phase_error, d_phase, d_freq, sample.real(), sample.imag(), 
-	 d_constellation[d_current_const_point].real(), d_constellation[d_current_const_point].imag());
+  fprintf(stderr, "cl: phase_error: %f  phase: %f  freq: %f  sample: %f+j%f\n",
+	 phase_error, d_phase, d_freq, sample.real(), sample.imag());
 #endif
 }
 

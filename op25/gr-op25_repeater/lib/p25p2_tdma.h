@@ -61,6 +61,7 @@ private:
 	mbe_parms prev_mp;
 	mbe_parms enh_mp;
 	mbe_tone tone_mp;
+	mbe_errs errs_mp;
 	int mbe_err_cnt;
 	bool tone_frame;
 	software_imbe_decoder software_decoder;

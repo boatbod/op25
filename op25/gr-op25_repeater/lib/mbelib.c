@@ -101,6 +101,14 @@ mbe_initToneParms (mbe_tone * tone_mp)
 }
 
 void
+mbe_initErrParms (mbe_errs * errs_mp)
+{
+  errs_mp->E0 = 0;
+  errs_mp->E1 = 0;
+  errs_mp->ER = 0;
+}
+
+void
 mbe_spectralAmpEnhance (mbe_parms * cur_mp)
 {
 
