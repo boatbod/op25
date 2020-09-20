@@ -31,11 +31,13 @@
 #include "op25_timer.h"
 #include "op25_audio.h"
 #include "p25_framer.h"
-#include "p25p1_voice_encode.h"
-#include "p25p1_voice_decode.h"
+#include "software_imbe_decoder.h"
 
 namespace gr {
     namespace op25_repeater {
+
+        static const int SND_FRAME = 160;   // pcm samples per frame
+
         class p25p1_fdma
         {
             private:
@@ -77,7 +79,8 @@ namespace gr {
                 std::deque<int16_t> &output_queue;
                 p25_framer* framer;
                 op25_timer qtimer;
-                p25p1_voice_decode p1voice_decode;
+				software_imbe_decoder software_decoder;
+				int16_t snd[SND_FRAME];
                 const op25_audio& op25audio;
                 log_ts logts;
 

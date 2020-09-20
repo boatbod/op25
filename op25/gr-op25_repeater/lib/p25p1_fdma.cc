@@ -199,8 +199,7 @@ namespace gr {
             d_do_audio_output(do_audio_output),
             ess_algid(0),
             ess_keyid(0),
-            vf_tgid(0),
-            p1voice_decode((debug > 0), udp, output_queue)
+            vf_tgid(0)
         {
         }
 
@@ -592,14 +591,30 @@ namespace gr {
                         if (!d_do_nocrypt || !encrypted()) {
                             std::string encr = "{\"encrypted\" : " + std::to_string(0) + "}";
                             send_msg(encr, -3);
-                            p1voice_decode.rxframe(cw);
+                            software_decoder.decode(cw);
+                            audio_samples *samples = software_decoder.audio();
+                            for (int i=0; i < SND_FRAME; i++) {
+                           	    if (samples->size() > 0) {
+                       		        snd[i] = (int16_t)(samples->front() * 32768.0);
+                                    samples->pop_front();
+                                } else {
+                                    snd[i] = 0;
+                                }
+                            }
+                            if (op25audio.enabled()) {      // decoded audio goes out via UDP (normal code path)
+                                op25audio.send_audio(snd, SND_FRAME * sizeof(int16_t));
+                            } else {                        // decoded audio back to gnuradio (still supported?)
+                                for (int i = 0; i < SND_FRAME; i++) {
+                                    output_queue.push_back(snd[i]);
+                                }
+                            }
                         } else {
                             std::string encr = "{\"encrypted\" : " + std::to_string(1) + "}";
                             send_msg(encr, -3);
                         }
                     }
 
-                    if (d_do_output && !d_do_audio_output) {
+                    if (d_do_output && !d_do_audio_output) { // ugh! - legacy wireshark support
                         sprintf(s, "%03x %03x %03x %03x %03x %03x %03x %03x\n", u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7]);
                         for (size_t j=0; j < strlen(s); j++) {
                             output_queue.push_back(s[j]);
