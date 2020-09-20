@@ -85,14 +85,10 @@ def from_dict(d, key, def_val):
 def meta_update(meta_q, tgid = None, tag = None):
     if meta_q is None:
         return
-
-    if tgid is None:
-        metadata = "[idle]"
-    else:
-        metadata = "[" + str(tgid) + "]"
-    if tag is not None:
-        metadata += " " + tag
-    msg = gr.message().make_from_string(metadata, -2, time.time(), 0)
+    d = {'json_type': 'meta_update'}
+    d['tgid'] = tgid
+    d['tag'] = tag
+    msg = gr.message().make_from_string(json.dumps(d), -2, time.time(), 0)
     meta_q.insert_tail(msg)
 
 #################
@@ -556,7 +552,7 @@ class osw_receiver(object):
             self.talkgroups[tgid] = {'counter':0}
             self.talkgroups[tgid]['tgid'] = tgid
             self.talkgroups[tgid]['prio'] = TGID_DEFAULT_PRIO
-            self.talkgroups[tgid]['tag'] = "TGID[" + str(int(tgid)) + "]"
+            self.talkgroups[tgid]['tag'] = ""
             self.talkgroups[tgid]['srcaddr'] = 0
             self.talkgroups[tgid]['time'] = 0
             self.talkgroups[tgid]['release_time'] = 0

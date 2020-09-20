@@ -87,6 +87,9 @@
         "streams": [
             {
                 "stream_name": "stream_0",
+                "meta_format_idle": "[idle]",
+                "meta_format_tgid": "[%TGID%]",
+                "meta_format_tag":  "[%TGID%] %TAG%",
                 "icecastServerAddress": "192.168.1.24:8000",
                 "icecastMountpoint": "op25_stream_0",
                 "icecastMountExt": ".xspf",
@@ -95,6 +98,9 @@
             },
             {
                 "stream_name": "stream_1",
+                "meta_format_idle": "[idle]",
+                "meta_format_tgid": "[%TGID%]",
+                "meta_format_tag":  "[%TGID%] %TAG%",
                 "icecastServerAddress": "192.168.1.24:8000",
                 "icecastMountpoint": "op25_stream_1",
                 "icecastMountExt": ".xspf",

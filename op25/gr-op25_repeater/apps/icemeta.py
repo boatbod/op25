@@ -30,6 +30,13 @@ import requests
 import json
 from log_ts import log_ts
 
+# Helper function
+def from_dict(d, key, def_val):
+    if key in d and d[key] != "":
+        return d[key]
+    else:
+        return def_val
+
 # OP25 thread to send metadata tags to an Icecast server
 class meta_server(threading.Thread):
     def __init__(self, input_q, metacfg, debug = 0, **kwds):
@@ -51,6 +58,9 @@ class meta_server(threading.Thread):
         self.urlBase = "http://" + self.cfg['icecastServerAddress'] + "/admin/metadata?mount=/" + self.cfg['icecastMountpoint'] + "&mode=updinfo&song="
         self.url = "http://" + self.cfg['icecastServerAddress'] + "/" + self.cfg['icecastMountpoint'] + self.cfg['icecastMountExt']
         self.delay = float(self.cfg['delay'])
+        self.fmt_idle = from_dict(self.cfg, 'meta_format_idle', '[idle]')
+        self.fmt_tgid = from_dict(self.cfg, 'meta_format_tgid', '[%TGID%]')
+        self.fmt_tag = from_dict(self.cfg, 'meta_format_tag', '[%TGID%] %TAG%')
         self.start()
 
     def load_json(self, metacfg):
@@ -64,9 +74,20 @@ class meta_server(threading.Thread):
         while(self.keep_running):
             self.process_q_events()
             if self.msg and (time.time() >= (self.msg.arg1() + self.delay)):
-                self.send_metadata(self.msg.to_string())
+                self.send_metadata(self.format(json.loads(self.msg.to_string())))
                 self.msg = None
             time.sleep(0.1)
+
+    def format(self, meta):
+        if meta['tgid'] is None:
+            metatext = self.fmt_idle
+        elif meta['tgid'] is not None and meta['tag'] is not None and meta['tag'] <> "":
+            metatext = self.fmt_tag
+        else:
+            metatext = self.fmt_tgid
+        metatext = metatext.replace("%TGID%", str(meta['tgid']))
+        metatext = metatext.replace("%TAG%", str(meta['tag']))
+        return metatext
 
     def stop(self):
         self.keep_running = False

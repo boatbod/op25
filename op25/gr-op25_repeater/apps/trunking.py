@@ -202,7 +202,8 @@ class trunked_system (object):
         if not tgid:
             return ""
         if tgid not in self.tgid_map:
-            return "Talkgroup ID %d [0x%x]" % (tgid, tgid)
+            #return "Talkgroup ID %d [0x%x]" % (tgid, tgid)
+            return ""
         return self.tgid_map[tgid][0]
 
     def get_prio(self, tgid):
@@ -790,14 +791,10 @@ class rx_ctl (object):
     def update_meta(self, tgid = None, tag = None):
         if self.meta_q is None:
             return
-
-        if tgid is None:
-            metadata = "[idle]"
-        else:
-            metadata = "[" + str(tgid) + "]"
-        if tag is not None:
-            metadata += " " + tag
-        msg = gr.message().make_from_string(metadata, -2, time.time(), 0)
+        d = {'json_type': 'meta_update'}
+        d['tgid'] = tgid
+        d['tag'] = tag
+        msg = gr.message().make_from_string(json.dumps(d), -2, time.time(), 0)
         self.meta_q.insert_tail(msg)
 
     def post_init(self):

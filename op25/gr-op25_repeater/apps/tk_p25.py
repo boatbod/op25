@@ -84,14 +84,10 @@ def from_dict(d, key, def_val):
 def meta_update(meta_q, tgid = None, tag = None, msgq_id = 0):
     if meta_q is None:
         return
-
-    if tgid is None:
-        metadata = "[idle]"
-    else:
-        metadata = "[" + str(tgid) + "]"
-    if tag is not None:
-        metadata += " " + tag
-    msg = gr.message().make_from_string(metadata, -2, time.time(), 0)
+    d = {'json_type': 'meta_update'}
+    d['tgid'] = tgid
+    d['tag'] = tag
+    msg = gr.message().make_from_string(json.dumps(d), -2, time.time(), 0)
     meta_q.insert_tail(msg)
 
 def add_default_tgid(tgs, tgid):
@@ -101,7 +97,7 @@ def add_default_tgid(tgs, tgid):
         tgs[tgid] = {'counter':0}
         tgs[tgid]['tgid'] = tgid
         tgs[tgid]['prio'] = TGID_DEFAULT_PRIO
-        tgs[tgid]['tag'] = "TGID[" + str(int(tgid)) + "]"
+        tgs[tgid]['tag'] = ""
         tgs[tgid]['srcaddr'] = 0
         tgs[tgid]['time'] = 0
         tgs[tgid]['encrypted'] = 0

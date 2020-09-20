@@ -78,6 +78,9 @@
         "streams": [
             {
                 "stream_name": "stream_0",
+                "meta_format_idle": "[idle]",
+                "meta_format_tgid": "[%TGID%]",
+                "meta_format_tag":  "[%TGID%] %TAG%",
                 "icecastServerAddress": "your_stream_host_and_port",
                 "icecastMountpoint": "your_mountpoint_name",
                 "icecastPass": "your_password",
@@ -86,6 +89,9 @@
             },
             {
                 "stream_name": "stream_1",
+                "meta_format_idle": "[idle]",
+                "meta_format_tgid": "[%TGID%]",
+                "meta_format_tag":  "[%TGID%] %TAG%",
                 "icecastServerAddress": "your_second stream_host_and_port",
                 "icecastMountpoint": "your_second_mountpoint_name",
                 "icecastPass": "your_second_password",
