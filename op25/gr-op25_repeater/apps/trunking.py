@@ -1153,7 +1153,7 @@ class rx_ctl (object):
 
         if nac != self.current_nac:
             if self.debug > 10: # this is occasionally expected if cycling between different tsys
-                sys.stderr.write("%s received NAC %x does not match expected NAC %x\n" % (log_ts.get(), nac, self.current_nac))
+                sys.stderr.write("%s received NAC %x does not match expected NAC %s\n" % (log_ts.get(), nac, self.current_nac))
             return
 
         if self.logfile_workers:
