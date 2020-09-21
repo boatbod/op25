@@ -733,6 +733,7 @@ software_imbe_decoder::software_imbe_decoder()
 {
    int i,j;
 	//initialize
+   ER = 0;
    OldL = 0;
    L = 9;
    Old = 1; New = 0;
@@ -781,24 +782,11 @@ software_imbe_decoder::decode(const voice_codeword& cw)
 	//replace the sync bit(LSB of u7) with the BOT flag
 	u7 = u7 | 0x01; //ECC procedure called above always returns u7 LSB = 0
 
-	O[0] = (((u0 / 16) & 240) + (u1 / 256));
-	O[1] = (((u2 / 16) & 240) + (u3 / 256));
-	O[2] = (((u4 / 8) & 224) + ((u5 / 64) & 28) + (u6 / 512));
-	O[3] = (((u6 / 2) & 128) + u7);
-	O[4] = (u0 & 255);
-	O[5] = (u1 & 255);
-	O[6] = (u2 & 255);
-	O[7] = (u3 & 255);
-	O[8] = (u4 & 255);
-	O[9] = (u5 & 255);
-	O[10] = (u6 & 255);
-	O[11] = E0 + 4 * ET;
-
-	decode_audio(O); // process 88-bit frame
+	decode_fullrate(u0, u1, u2, u3, u4, u5, u6, u7, E0, ET); // process 88-bit frame
 }
 
 void
-software_imbe_decoder::adaptive_smoothing(float SE, float ER, float ET)
+software_imbe_decoder::adaptive_smoothing(float SE, float ET)
 {
    float VM;
    float YM;
@@ -873,20 +861,19 @@ software_imbe_decoder::fft(float REX[], float IMX[])
 }
 
 void
-software_imbe_decoder::decode_audio(uint8_t *A)
+software_imbe_decoder::decode_fullrate(uint32_t u0, uint32_t u1, uint32_t u2, uint32_t u3, uint32_t u4, uint32_t u5, uint32_t u6, uint32_t u7, uint32_t E0, uint32_t ET)
 {
-   uint32_t u0, u1, u2, u3, u4, u5, u6, u7, E0, ET;
    int K;
+   float SE = 0;
    int en, tmp_f;
-   float SE = 0, ER = 0;
 
-   imbe_frame_unpack(A, u0, u1, u2, u3, u4, u5, u6, u7, E0, ET);
-
-   ER = .95 * ER + .000365 * ET;
-   if( ER > .0875) {
-      // Huh?!
+   ER = (0.95 * ER) + (0.000365 * ET);
+   if( ER > 0.0875) {
+      // Frame Muting per TIA-102-BABA-A section 7.8
+      // TODO: actually do the muting 
    } else if(u0 >= 3328 || E0 >= 2 || ET >=(10 + 40 * ER)) {
-      // Whuh?!
+      // Frame Repeat per TIA-102-BABA-A section 7.7
+      // TODO: actually do the frame repeat
    } else {
       K = rearrange(u0, u1, u2, u3, u4, u5, u6, u7); // re-arrange the bits from u to b (ToDo: make 'b' return value ???)
       decode_vuv(K);
@@ -899,7 +886,7 @@ software_imbe_decoder::decode_audio(uint8_t *A)
 
       decode_spectral_amplitudes(Start3, Start8);
       enhance_spectral_amplitudes(SE);
-      adaptive_smoothing(SE, ER, ET);
+      adaptive_smoothing(SE, ET);
 
       // (8000 samp/sec) * (1 sec / 50 compressed voice frames) = 160 samples/frame
 
@@ -932,7 +919,7 @@ software_imbe_decoder::decode_tap(int _L, int _K, float _w0, const int * _v, con
 {
 	int ell;
 	uint32_t ET=0;
-	float SE = 0, ER = 0;
+	float SE = 0;
 	int en, tmp_f;
 
       L = _L;
@@ -943,7 +930,7 @@ software_imbe_decoder::decode_tap(int _L, int _K, float _w0, const int * _v, con
    }
       // decode_spectral_amplitudes(Start3, Start8);
       enhance_spectral_amplitudes(SE);
-      adaptive_smoothing(SE, ER, ET);
+      adaptive_smoothing(SE, ET);
 
       // (8000 samp/sec) * (1 sec / 50 compressed voice frames) = 160 samples/frame
 

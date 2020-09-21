@@ -574,10 +574,7 @@ namespace gr {
                     size_t errs = 0;
                     imbe_deinterleave(A, cw, i);
 
-                    if ((d_do_output && !d_do_audio_output) || (d_debug >= 9)) {
-                        // recover 88-bit IMBE voice code word : only needed for logging or wireshark
-                        errs = imbe_header_decode(cw, u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7], E0, ET);
-                    }
+                    errs = imbe_header_decode(cw, u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7], E0, ET);
 
                     if (d_debug >= 9) {
                         packed_codeword p_cw;
@@ -591,7 +588,7 @@ namespace gr {
                         if (!d_do_nocrypt || !encrypted()) {
                             std::string encr = "{\"encrypted\" : " + std::to_string(0) + "}";
                             send_msg(encr, -3);
-                            software_decoder.decode(cw);
+                            software_decoder.decode_fullrate(u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7], E0, ET);
                             audio_samples *samples = software_decoder.audio();
                             for (int i=0; i < SND_FRAME; i++) {
                            	    if (samples->size() > 0) {
