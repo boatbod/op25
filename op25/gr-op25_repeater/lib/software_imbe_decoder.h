@@ -59,7 +59,9 @@ private:
 	//NOTE: Single-letter variable names are upper case only; Lower
 	//				  case if needed is spelled. e.g. L, ell
 
-	double ER;					// BER Estimate
+	float ER;					// BER Estimate
+	int rpt_ctr;				// Frame repeat counter
+
 	int bee[58];				// Encoded Spectral Amplitudes
 	float M[57][2];				// Enhanced Spectral Amplitudes
 	float Mu[57][2];			// Unenhanced Spectral Amplitudes
@@ -98,6 +100,7 @@ private:
 	void synth_unvoiced();
 	void synth_voiced();
 	void unpack(uint8_t *buf, uint32_t& u0, uint32_t& u1, uint32_t& u2, uint32_t& u3, uint32_t& u4, uint32_t& u5, uint32_t& u6, uint32_t& u7, uint32_t& E0, uint32_t& ET);
+	int repeat_last();
 };
 
 

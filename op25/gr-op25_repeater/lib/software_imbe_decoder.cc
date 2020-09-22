@@ -734,6 +734,7 @@ software_imbe_decoder::software_imbe_decoder()
    int i,j;
 	//initialize
    ER = 0;
+   rpt_ctr = 0;
    OldL = 0;
    L = 9;
    Old = 1; New = 0;
@@ -863,55 +864,65 @@ software_imbe_decoder::fft(float REX[], float IMX[])
 void
 software_imbe_decoder::decode_fullrate(uint32_t u0, uint32_t u1, uint32_t u2, uint32_t u3, uint32_t u4, uint32_t u5, uint32_t u6, uint32_t u7, uint32_t E0, uint32_t ET)
 {
-   int K;
-   float SE = 0;
-   int en, tmp_f;
+	int K;
+	float SE = 0;
+	int en, tmp_f;
+	bool muted = false;
+    int b0 = ((u0 >> 4) & 0xfc) | ((u7 >> 1) & 0x3);
 
-   ER = (0.95 * ER) + (0.000365 * ET);
-   if( ER > 0.0875) {
-      // Frame Muting per TIA-102-BABA-A section 7.8
-      // TODO: actually do the muting 
-   } else if(u0 >= 3328 || E0 >= 2 || ET >=(10 + 40 * ER)) {
-      // Frame Repeat per TIA-102-BABA-A section 7.7
-      // TODO: actually do the frame repeat
-   } else {
-      K = rearrange(u0, u1, u2, u3, u4, u5, u6, u7); // re-arrange the bits from u to b (ToDo: make 'b' return value ???)
-      decode_vuv(K);
+	ER = (0.95 * ER) + (0.000365 * ET);
+	if( ER > 0.0875) {                                           // Frame Muting per TIA-102-BABA-A section 7.8
+		muted = true;
+	} else if(b0 > 207 || E0 >= 2 || ET >=(10 + 40 * ER)) {      // Frame Repeat per TIA-102-BABA-A section 7.7
+		if (repeat_last()) {                                     // mute if repeat not allowed
+			muted = true;
+		}
+	} else {                                                     // Voice Frame decoding
+		rpt_ctr = 0;
+		K = rearrange(u0, u1, u2, u3, u4, u5, u6, u7);           // re-arrange the bits from u to b
+		decode_vuv(K);
 
-      int Len3, Start3, Len8, Start8;
-      Len3 = L - 1;
-      Start3 =((Len3 * (Len3 - 1)) / 2) - 28;
-      Len8 = L - 6;
-      Start8 =((Len8 * (Len8 - 1)) / 2) - 3;
+		int Len3, Start3, Len8, Start8;
+		Len3 = L - 1;
+		Start3 =((Len3 * (Len3 - 1)) / 2) - 28;
+		Len8 = L - 6;
+		Start8 =((Len8 * (Len8 - 1)) / 2) - 3;
 
-      decode_spectral_amplitudes(Start3, Start8);
-      enhance_spectral_amplitudes(SE);
-      adaptive_smoothing(SE, ET);
+		decode_spectral_amplitudes(Start3, Start8);
+		enhance_spectral_amplitudes(SE);
+	}
+	if (!muted) {
+		adaptive_smoothing(SE, ET);
 
-      // (8000 samp/sec) * (1 sec / 50 compressed voice frames) = 160 samples/frame
+		// (8000 samp/sec) * (1 sec / 50 compressed voice frames) = 160 samples/frame
 
-      //synth:
-      synth_unvoiced();// ToDo: make suv return value?
-      synth_voiced(); // ToDo: make sv return value?
+		//synth:
+		synth_unvoiced();// ToDo: make suv return value?
+		synth_voiced(); // ToDo: make sv return value?
 
-      //output:
-      audio_samples *samples = audio();
-      for(en = 0; en <= 159; en++) {
-         // The unvoiced samples are loud and the voiced are low...I don't know why.
-         // Most of the difference is compensated by removing the 146.6433 factor
-         // in the synth_unvoiced procedure.  The final tweak is done by raising the
-         // voiced samples:
-         float sample = suv[en] + sv[en] * 4; //balance v/uv loudness
-//         if(abs((int)sample) > 32767) {
-//            sample = 32767 * (sample < 0) ? -1 : 1; // * sgn(sample)
-//         }
-         sample /= 32768.0;
-         samples->push_back(sample);
-      }
-   }
-   OldL = L;
-   Oldw0 = w0;
-   tmp_f = Old; Old = New; New = tmp_f;
+		//output:
+		audio_samples *samples = audio();
+		for(en = 0; en <= 159; en++) {
+			// The unvoiced samples are loud and the voiced are low...I don't know why.
+			// Most of the difference is compensated by removing the 146.6433 factor
+			// in the synth_unvoiced procedure.  The final tweak is done by raising the
+			// voiced samples:
+			float sample = suv[en] + sv[en] * 4; //balance v/uv loudness
+//			if(abs((int)sample) > 32767) {
+//				sample = 32767 * (sample < 0) ? -1 : 1; // * sgn(sample)
+//			}
+			sample /= 32768.0;
+			samples->push_back(sample);
+		}
+	} else { // muted
+		audio_samples *samples = audio();
+		for(en = 0; en <= 159; en++) {
+			samples->push_back(0);
+		}
+	}
+	OldL = L;
+	Oldw0 = w0;
+	tmp_f = Old; Old = New; New = tmp_f;
 }
 
 void
@@ -922,38 +933,42 @@ software_imbe_decoder::decode_tap(int _L, int _K, float _w0, const int * _v, con
 	float SE = 0;
 	int en, tmp_f;
 
-      L = _L;
-      w0 = _w0;
-   for(ell = 1; ell <= L; ell++) {
-	vee[ell][ New] = _v[ell - 1];
-	Mu[ell][ New] = _mu[ell - 1];
-   }
-      // decode_spectral_amplitudes(Start3, Start8);
-      enhance_spectral_amplitudes(SE);
-      adaptive_smoothing(SE, ET);
+	// TODO: For now half rate frame repeats are handled outside of this code
+	// It would probably be better to move them into here since the mechanism
+	// is largely the same.  Would also need to integrate tone repeats etc.
 
-      // (8000 samp/sec) * (1 sec / 50 compressed voice frames) = 160 samples/frame
+	L = _L;
+	w0 = _w0;
+	for(ell = 1; ell <= L; ell++) {
+		vee[ell][ New] = _v[ell - 1];
+		Mu[ell][ New] = _mu[ell - 1];
+	}
+	// decode_spectral_amplitudes(Start3, Start8);
+	enhance_spectral_amplitudes(SE);
+	adaptive_smoothing(SE, ET);
 
-      //synth:
-      synth_unvoiced();// ToDo: make suv return value?
-      synth_voiced(); // ToDo: make sv return value?
+	// (8000 samp/sec) * (1 sec / 50 compressed voice frames) = 160 samples/frame
 
-      //output:
-      audio_samples *samples = audio();
-      for(en = 0; en <= 159; en++) {
-         // The unvoiced samples are loud and the voiced are low...I don't know why.
-         // Most of the difference is compensated by removing the 146.6433 factor
-         // in the synth_unvoiced procedure.  The final tweak is done by raising the
-         // voiced samples:
-         float sample = suv[en] + sv[en] * 4; //balance v/uv loudness
-         if(abs((int)sample) > 32767) {
-            sample = (sample < 0) ? -32767 : 32767; // * sgn(sample)
-         }
-         samples->push_back(sample);
-      }
-   OldL = L;
-   Oldw0 = w0;
-   tmp_f = Old; Old = New; New = tmp_f;
+	//synth:
+	synth_unvoiced();// ToDo: make suv return value?
+	synth_voiced(); // ToDo: make sv return value?
+
+	//output:
+	audio_samples *samples = audio();
+	for(en = 0; en <= 159; en++) {
+		// The unvoiced samples are loud and the voiced are low...I don't know why.
+		// Most of the difference is compensated by removing the 146.6433 factor
+		// in the synth_unvoiced procedure.  The final tweak is done by raising the
+		// voiced samples:
+		float sample = suv[en] + sv[en] * 4; //balance v/uv loudness
+		if(abs((int)sample) > 32767) {
+			sample = (sample < 0) ? -32767 : 32767; // * sgn(sample)
+		}
+		samples->push_back(sample);
+    }
+	OldL = L;
+	Oldw0 = w0;
+	tmp_f = Old; Old = New; New = tmp_f;
 }
 
 void
@@ -1114,6 +1129,26 @@ software_imbe_decoder::decode_tone(int _ID, int _AD, int * _n)
       samples->push_back(sample);
       (*_n)++;
    }
+}
+
+int
+software_imbe_decoder::repeat_last()
+{
+   // Frame Repeat per TIA-102-BABA-A sections 7.7 & 14.6
+   if (++rpt_ctr >= 4)
+      return 1;
+
+   // Reload parameters from previous frame
+   w0 = Oldw0;
+   L = OldL;
+   for (int i = 0; i < 57; i++) {
+      vee[i][New]    = vee[i][Old]; 
+      Mu[i][New]     = Mu[i][Old];
+      M[i][New]      = M[i][Old];
+      log2Mu[i][New] = log2Mu[i][Old];
+   }
+   log2Mu[57][New] = log2Mu[57][Old]; // log2Mu array is one element longer than all the other parameters!
+   return 0;
 }
 
 void
