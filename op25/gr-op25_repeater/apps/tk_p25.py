@@ -103,6 +103,12 @@ def add_default_tgid(tgs, tgid):
         tgs[tgid]['encrypted'] = 0
         tgs[tgid]['receiver'] = None
 
+def get_slot(slot):
+    if slot is not None:
+        return str(slot)
+    else:
+        return "-"
+
 #################
 # Main trunking class
 class rx_ctl(object):
@@ -784,7 +790,7 @@ class p25_system(object):
         for tgid in self.talkgroups:
             if (self.talkgroups[tgid]['receiver'] is not None) and (curr_time >= self.talkgroups[tgid]['time'] + TGID_EXPIRY_TIME):
                 if self.debug > 1:
-                    sys.stderr.write("%s [%s] expiring tg(%d), freq(%f), slot(%s)\n" % (log_ts.get(), self.sysname, tgid, (self.talkgroups[tgid]['frequency']/1e6), self.talkgroups[tgid]['tdma_slot']))
+                    sys.stderr.write("%s [%s] expiring tg(%d), freq(%f), slot(%s)\n" % (log_ts.get(), self.sysname, tgid, (self.talkgroups[tgid]['frequency']/1e6), get_slot(self.talkgroups[tgid]['tdma_slot'])))
                 self.talkgroups[tgid]['receiver'].expire_talkgroup(reason="expiry")
 
     def add_patch(self, sg, ga1, ga2, ga3):
@@ -1142,11 +1148,11 @@ class p25_receiver(object):
 
         if self.current_tgid is None:
             if self.debug > 0:
-                sys.stderr.write("%s [%d] voice update:  tg(%d), freq(%f), slot(%s), prio(%d)\n" % (log_ts.get(), self.msgq_id, tgid, (freq/1e6), slot, self.talkgroups[tgid]['prio']))
+                sys.stderr.write("%s [%d] voice update:  tg(%d), freq(%f), slot(%s), prio(%d)\n" % (log_ts.get(), self.msgq_id, tgid, (freq/1e6), get_slot(slot), self.talkgroups[tgid]['prio']))
             self.tune_voice(freq, tgid, slot)
         else:
             if self.debug > 0:
-                sys.stderr.write("%s [%d] voice preempt: tg(%d), freq(%f), slot(%s), prio(%d)\n" % (log_ts.get(), self.msgq_id, tgid, (freq/1e6), slot, self.talkgroups[tgid]['prio']))
+                sys.stderr.write("%s [%d] voice preempt: tg(%d), freq(%f), slot(%s), prio(%d)\n" % (log_ts.get(), self.msgq_id, tgid, (freq/1e6), get_slot(slot), self.talkgroups[tgid]['prio']))
             self.expire_talkgroup(update_meta=False, reason="preempt")
             self.tune_voice(freq, tgid, slot)
 
@@ -1160,7 +1166,7 @@ class p25_receiver(object):
         self.talkgroups[self.current_tgid]['tdma_slot'] = None
         self.talkgroups[self.current_tgid]['srcaddr'] = 0
         if self.debug > 1:
-            sys.stderr.write("%s [%d] releasing:  tg(%d), freq(%f), slot(%s), reason(%s)\n" % (log_ts.get(), self.msgq_id, self.current_tgid, (self.tuned_frequency/1e6), self.current_slot, reason))
+            sys.stderr.write("%s [%d] releasing:  tg(%d), freq(%f), slot(%s), reason(%s)\n" % (log_ts.get(), self.msgq_id, self.current_tgid, (self.tuned_frequency/1e6), get_slot(self.current_slot), reason))
         self.hold_tgid = self.current_tgid
         self.hold_until = time.time() + TGID_HOLD_TIME
         self.current_tgid = None
