@@ -384,10 +384,10 @@ function trunk_update(d) {
         for (var freq in d[nac]['frequency_data']) {
             tg1 = d[nac]['frequency_data'][freq]['tgids'][0];
             if (tg1 == null)
-                tg1 = "&nbsp;-";
+                tg1 = "&nbsp;&nbsp;&nbsp;&nbsp;-";
             tg2 = d[nac]['frequency_data'][freq]['tgids'][1];
             if (tg2 == null)
-                tg2 = "&nbsp;-";
+                tg2 = "&nbsp;&nbsp;&nbsp;&nbsp;-";
             var color = "#d0d0d0";
             if ((ct & 1) == 0)
                 color = "#c0c0c0";
