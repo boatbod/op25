@@ -379,9 +379,12 @@ function trunk_update(d) {
         html += "<div class=\"info\"><div class=\"system\">";
         html += "<table border=1 borderwidth=0 cellpadding=0 cellspacing=0 width=100%>"; // was width=350
         html += "<tr><th colspan=99 style=\"align: center\">System Frequencies</th></tr>";
-        html += "<tr><th>Frequency</th><th>Last Seen</th><th colspan=2>Talkgoup ID</th><th>Count</th></tr>";
+        html += "<tr><th>Frequency</th><th>Last Used</th><th colspan=2>Active Talkgoup ID</th><th>Count</th></tr>";
         var ct = 0;
         for (var freq in d[nac]['frequency_data']) {
+            tg1 = d[nac]['frequency_data'][freq]['tgids'][0];
+            if (tg1 == null)
+                tg1 = "&nbsp;-";
             tg2 = d[nac]['frequency_data'][freq]['tgids'][1];
             if (tg2 == null)
                 tg2 = "&nbsp;-";
@@ -389,7 +392,7 @@ function trunk_update(d) {
             if ((ct & 1) == 0)
                 color = "#c0c0c0";
             ct += 1;
-            html += "<tr style=\"background-color: " + color + ";\"><td>" + (parseInt(freq) / 1000000.0).toFixed(6) + "</td><td>" + d[nac]['frequency_data'][freq]['last_activity'] + "</td><td>" + d[nac]['frequency_data'][freq]['tgids'][0] + "</td><td>" + tg2 + "</td><td>" + d[nac]['frequency_data'][freq]['counter'] + "</td></tr>";
+            html += "<tr style=\"background-color: " + color + ";\"><td>" + (parseInt(freq) / 1000000.0).toFixed(6) + "</td><td>" + d[nac]['frequency_data'][freq]['last_activity'] + "</td><td>" + tg1 + "</td><td>" + tg2 + "</td><td>" + d[nac]['frequency_data'][freq]['counter'] + "</td></tr>";
         }
         html += "</table></div>";
 

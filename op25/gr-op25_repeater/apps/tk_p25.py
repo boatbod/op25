@@ -36,7 +36,8 @@ TGID_DEFAULT_PRIO = 3    # Default tgid priority when unassigned
 TGID_HOLD_TIME = 2.0     # Number of seconds to give previously active tgid exclusive channel access
 TGID_SKIP_TIME = 4.0     # Number of seconds to blacklist a previously skipped tgid
 TGID_EXPIRY_TIME = 1.0   # Number of seconds to allow tgid to remain active with no updates received
-EXPIRY_TIMER = 0.2       # Number of seconds between checks for tgid expiry
+FREQ_EXPIRY_TIME = 1.0   # Number of seconds to allow freq to remain active with no updates received
+EXPIRY_TIMER = 0.2       # Number of seconds between checks for tgid/freq expiry
 PATCH_EXPIRY_TIME = 20.0 # Number of seconds until patch expiry
 
 #################
@@ -756,9 +757,20 @@ class p25_system(object):
             tdma_slot = 0
         if 'tgid' not in self.voice_frequencies[frequency]:
             self.voice_frequencies[frequency]['tgid'] = [None, None]
+            self.voice_frequencies[frequency]['ts'] = [0.0, 0.0]
         self.voice_frequencies[frequency]['tgid'][tdma_slot] = tgid
         self.voice_frequencies[frequency]['counter'] += 1
         self.voice_frequencies[frequency]['time'] = time.time()
+        self.voice_frequencies[frequency]['ts'][tdma_slot] = time.time()
+
+    def expire_voice_frequencies(self, curr_time):
+        if curr_time < self.last_expiry_check + EXPIRY_TIMER:
+            return
+        self.last_expiry_check = curr_time
+        for frequency in self.voice_frequencies:
+            for slot in [0, 1]:
+                if self.voice_frequencies[frequency]['tgid'][slot] is not None and curr_time >= self.voice_frequencies[frequency]['ts'][slot] + FREQ_EXPIRY_TIME:
+                    self.voice_frequencies[frequency]['tgid'][slot] = None
 
     def update_talkgroups(self, frequency, tgid, tdma_slot, srcaddr):
         self.update_talkgroup(frequency, tgid, tdma_slot, srcaddr)
@@ -856,6 +868,7 @@ class p25_system(object):
         d['frequency_data'] = {}
         d['last_tsbk'] = self.last_tsbk
         t = time.time()
+        self.expire_voice_frequencies(t)
         for f in list(self.voice_frequencies.keys()):
             d['frequencies'][f] = 'voice frequency %f tgid(s) %5s %5s %4.1fs ago count %d' %  ((f/1e6), self.voice_frequencies[f]['tgid'][0], self.voice_frequencies[f]['tgid'][1], t - self.voice_frequencies[f]['time'], self.voice_frequencies[f]['counter'])
 
