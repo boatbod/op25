@@ -85,6 +85,7 @@ class trunked_system (object):
         self.cc_timeouts = -1
         self.CC_HUNT_TIME = 5.0
         self.PATCH_EXPIRY_TIME = 20.0
+        self.FREQ_EXPIRY_TIME = 1.0
         self.center_frequency = 0
         self.last_tsbk = 0
         self.talkgroups = {}
@@ -141,6 +142,7 @@ class trunked_system (object):
         d['frequency_data'] = {}
         d['last_tsbk'] = self.last_tsbk
         t = time.time()
+        self.expire_voice_frequencies(t)
         for f in list(self.voice_frequencies.keys()):
             tgs = '%s %s' % (self.voice_frequencies[f]['tgid'][0], self.voice_frequencies[f]['tgid'][1])
             d['frequencies'][f] = 'voice frequency %f tgid(s) %s %4.1fs ago count %d' %  (f / 1000000.0, tgs, t - self.voice_frequencies[f]['time'], self.voice_frequencies[f]['counter'])
@@ -248,9 +250,17 @@ class trunked_system (object):
             tdma_slot = 0
         if 'tgid' not in self.voice_frequencies[frequency]:
             self.voice_frequencies[frequency]['tgid'] = [None, None]
+            self.voice_frequencies[frequency]['ts'] = [0.0, 0.0]
         self.voice_frequencies[frequency]['tgid'][tdma_slot] = tgid
         self.voice_frequencies[frequency]['counter'] += 1
         self.voice_frequencies[frequency]['time'] = time.time()
+        self.voice_frequencies[frequency]['ts'][tdma_slot] = time.time()
+
+    def expire_voice_frequencies(self, curr_time):
+        for frequency in self.voice_frequencies:
+            for slot in [0, 1]:
+                if self.voice_frequencies[frequency]['tgid'][slot] is not None and curr_time >= self.voice_frequencies[frequency]['ts'][slot] + self.FREQ_EXPIRY_TIME:
+                    self.voice_frequencies[frequency]['tgid'][slot] = None
 
     def get_updated_talkgroups(self, start_time):
         return [tgid for tgid in self.talkgroups if (
