@@ -110,6 +110,12 @@ def get_slot(slot):
     else:
         return "-"
 
+def get_tgid(tgid):
+    if tgid is not None:
+        return str(tgid)
+    else:
+        return ""
+
 #################
 # Main trunking class
 class rx_ctl(object):
@@ -870,7 +876,7 @@ class p25_system(object):
         t = time.time()
         self.expire_voice_frequencies(t)
         for f in list(self.voice_frequencies.keys()):
-            d['frequencies'][f] = 'voice frequency %f tgid(s) %5s %5s %4.1fs ago count %d' %  ((f/1e6), self.voice_frequencies[f]['tgid'][0], self.voice_frequencies[f]['tgid'][1], t - self.voice_frequencies[f]['time'], self.voice_frequencies[f]['counter'])
+            d['frequencies'][f] = 'voice frequency %f ts0[%5s] ts1[%5s] last active %4.1fs, count %d' %  ((f/1e6), get_tgid(self.voice_frequencies[f]['tgid'][0]), get_tgid(self.voice_frequencies[f]['tgid'][1]), t - self.voice_frequencies[f]['time'], self.voice_frequencies[f]['counter'])
 
             d['frequency_data'][f] = {'tgids': self.voice_frequencies[f]['tgid'], 'last_activity': '%7.1f' % (t - self.voice_frequencies[f]['time']), 'counter': self.voice_frequencies[f]['counter']}
         d['adjacent_data'] = ""
