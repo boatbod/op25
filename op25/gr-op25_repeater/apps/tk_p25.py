@@ -758,16 +758,19 @@ class p25_system(object):
             self.voice_frequencies = sorted_freqs
             if self.debug >= 5:
                 sys.stderr.write('%s [%s] new freq=%f\n' % (log_ts.get(), self.sysname, frequency/1000000.0))
-
-        if tdma_slot is None:
-            tdma_slot = 0
         if 'tgid' not in self.voice_frequencies[frequency]:
             self.voice_frequencies[frequency]['tgid'] = [None, None]
             self.voice_frequencies[frequency]['ts'] = [0.0, 0.0]
-        self.voice_frequencies[frequency]['tgid'][tdma_slot] = tgid
+        curr_time = time.time()
+        self.voice_frequencies[frequency]['time'] = curr_time
         self.voice_frequencies[frequency]['counter'] += 1
-        self.voice_frequencies[frequency]['time'] = time.time()
-        self.voice_frequencies[frequency]['ts'][tdma_slot] = time.time()
+        if tdma_slot is None:   # FDMA mark both slots with same info
+            for slot in [0, 1]:
+                self.voice_frequencies[frequency]['tgid'][slot] = tgid
+                self.voice_frequencies[frequency]['ts'][slot] = curr_time
+        else:                   # TDMA mark just slot in use
+            self.voice_frequencies[frequency]['tgid'][tdma_slot] = tgid
+            self.voice_frequencies[frequency]['ts'][tdma_slot] = curr_time
 
     def expire_voice_frequencies(self, curr_time):
         if curr_time < self.last_expiry_check + EXPIRY_TIMER:
