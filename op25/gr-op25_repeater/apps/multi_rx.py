@@ -525,10 +525,14 @@ class rx_block (gr.top_block):
                 if stream_name in self.meta_streams:
                     sys.stderr.write("Ignoring duplicate metadata stream #%d [%s]\n" % (idx, stream_name))
                     break
-                meta_q = gr.msg_queue(10)
-                meta_s = self.metadata.meta_server(meta_q, stream, debug=self.verbosity)
-                self.meta_streams[stream_name] = (meta_s, meta_q)
-                sys.stderr.write("Configuring metadata stream #%d [%s]: %s\n" % (idx, stream_name, stream['icecastServerAddress'] + "/" + stream['icecastMountpoint']))
+                try:
+                    meta_q = gr.msg_queue(10)
+                    meta_s = self.metadata.meta_server(meta_q, stream, debug=self.verbosity)
+                    self.meta_streams[stream_name] = (meta_s, meta_q)
+                    sys.stderr.write("Configuring metadata stream #%d [%s]: %s\n" % (idx, stream_name, stream['icecastServerAddress'] + "/" + stream['icecastMountpoint']))
+                except:
+                    sys.stderr.write("Error configuring metadata stream #%d; %s\n" % (idx, sys.exc_info()[1]))
+                    sys.exc_clear()
             else:
                 sys.stderr.write("Ignoring unnamed metadata stream #%d\n" % idx)
             idx += 1
