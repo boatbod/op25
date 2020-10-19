@@ -245,6 +245,9 @@ class trunked_system (object):
             self.voice_frequencies = sorted_freqs
             if self.debug >= 5:
                 sys.stderr.write('%s new freq=%f\n' % (log_ts.get(), frequency/1000000.0))
+        if 'tgid' not in self.voice_frequencies[frequency]:
+            self.voice_frequencies[frequency]['tgid'] = [None, None]
+            self.voice_frequencies[frequency]['ts'] = [0.0, 0.0]
         curr_time = time.time()
         self.voice_frequencies[frequency]['time'] = curr_time
         self.voice_frequencies[frequency]['counter'] += 1
