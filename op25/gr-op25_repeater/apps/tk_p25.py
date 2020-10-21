@@ -36,7 +36,7 @@ TGID_DEFAULT_PRIO = 3    # Default tgid priority when unassigned
 TGID_HOLD_TIME = 2.0     # Number of seconds to give previously active tgid exclusive channel access
 TGID_SKIP_TIME = 4.0     # Number of seconds to blacklist a previously skipped tgid
 TGID_EXPIRY_TIME = 1.0   # Number of seconds to allow tgid to remain active with no updates received
-FREQ_EXPIRY_TIME = 1.0   # Number of seconds to allow freq to remain active with no updates received
+FREQ_EXPIRY_TIME = 1.2   # Number of seconds to allow freq to remain active with no updates received
 EXPIRY_TIMER = 0.2       # Number of seconds between checks for tgid/freq expiry
 PATCH_EXPIRY_TIME = 20.0 # Number of seconds until patch expiry
 
@@ -777,6 +777,8 @@ class p25_system(object):
             self.voice_frequencies[frequency]['tgid'] = [None, None]
             self.voice_frequencies[frequency]['ts'] = [0.0, 0.0]
         if prev_freq is not None and not (prev_freq == frequency and prev_slot == tdma_slot):
+            if self.debug >= 5:
+                sys.stderr.write("%s [%s] VF change: tgid: %s, prev_freq: %f, prev_slot: %s, new_freq: %f, new_slot: %s\n" % (log_ts.get(), self.sysname, tgid, prev_freq, prev_slot, frequency, tdma_slot))
             if prev_slot is None:
                 self.voice_frequencies[prev_freq]['tgid'] = [None, None]
             else:
@@ -785,10 +787,14 @@ class p25_system(object):
         self.voice_frequencies[frequency]['time'] = curr_time
         self.voice_frequencies[frequency]['counter'] += 1
         if tdma_slot is None:   # FDMA mark both slots with same info
+            if self.debug >= 10:
+                sys.stderr.write("%s [%s] VF ts ph1: tgid: %s, freq: %f\n" % (log_ts.get(), self.sysname, tgid, frequency))
             for slot in [0, 1]:
                 self.voice_frequencies[frequency]['tgid'][slot] = tgid
                 self.voice_frequencies[frequency]['ts'][slot] = curr_time
         else:                   # TDMA mark just slot in use
+            if self.debug >= 10:
+                sys.stderr.write("%s [%s] VF ts ph2: tgid: %s, freq: %f, slot: %s\n" % (log_ts.get(), self.sysname, tgid, frequency, tdma_slot))
             self.voice_frequencies[frequency]['tgid'][tdma_slot] = tgid
             self.voice_frequencies[frequency]['ts'][tdma_slot] = curr_time
 
@@ -798,7 +804,10 @@ class p25_system(object):
         self.last_expiry_check = curr_time
         for frequency in self.voice_frequencies:
             for slot in [0, 1]:
-                if self.voice_frequencies[frequency]['tgid'][slot] is not None and curr_time >= self.voice_frequencies[frequency]['ts'][slot] + FREQ_EXPIRY_TIME:
+                tgid = self.voice_frequencies[frequency]['tgid'][slot]
+                if tgid is not None and self.talkgroups[tgid]['receiver'] is None and curr_time >= self.voice_frequencies[frequency]['ts'][slot] + FREQ_EXPIRY_TIME:
+                    if self.debug >= 10:
+                        sys.stderr.write("%s [%s] VF expire: tgid: %s, freq: %f, slot: %s, ts: %s\n" % (log_ts.get(), self.sysname, tgid, frequency, slot, log_ts.get(self.voice_frequencies[frequency]['ts'][slot])))
                     self.voice_frequencies[frequency]['tgid'][slot] = None
 
     def update_talkgroups(self, frequency, tgid, tdma_slot, srcaddr):
