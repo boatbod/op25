@@ -51,6 +51,12 @@ def get_frequency(f):    # return frequency in Hz
     else:     # assume in MHz due to '.'
         return int(float(f) * 1000000)
 
+def get_tgid(tgid):
+    if tgid is not None:
+        return str(tgid)
+    else:
+        return ""
+
 class trunked_system (object):
     def __init__(self, debug=0, config=None, wildcard=False):
         self.debug = debug
@@ -144,8 +150,13 @@ class trunked_system (object):
         t = time.time()
         self.expire_voice_frequencies(t)
         for f in list(self.voice_frequencies.keys()):
-            tgs = '%s %s' % (self.voice_frequencies[f]['tgid'][0], self.voice_frequencies[f]['tgid'][1])
-            d['frequencies'][f] = 'voice frequency %f tgid(s) %s %4.1fs ago count %d' %  (f / 1000000.0, tgs, t - self.voice_frequencies[f]['time'], self.voice_frequencies[f]['counter'])
+            vc0 = get_tgid(self.voice_frequencies[f]['tgid'][0])
+            vc1 = get_tgid(self.voice_frequencies[f]['tgid'][1])
+            if vc0 == vc1:  # if vc0 matches vc1 the channel is either idle or in phase 1 mode
+                vc_tgs = "[   %5s   ]" % vc0
+            else:
+                vc_tgs = "[%5s|%5s]" % (vc1, vc0)
+            d['frequencies'][f] = 'voice freq %f, active tgids %s, last seen %4.1fs, count %d' %  (f / 1000000.0, vc_tgs, t - self.voice_frequencies[f]['time'], self.voice_frequencies[f]['counter'])
 
             d['frequency_data'][f] = {'tgids': self.voice_frequencies[f]['tgid'], 'last_activity': '%7.1f' % (t - self.voice_frequencies[f]['time']), 'counter': self.voice_frequencies[f]['counter']}
         d['adjacent_data'] = self.adjacent_data
@@ -160,8 +171,13 @@ class trunked_system (object):
         s.append('')
         t = time.time()
         for f in self.voice_frequencies:
-            tgs = '%s %s' % (self.voice_frequencies[f]['tgid'][0], self.voice_frequencies[f]['tgid'][1])
-            s.append('voice frequency %f tgid(s) %s %4.1fs ago count %d' %  (f / 1000000.0, tgs, t - self.voice_frequencies[f]['time'], self.voice_frequencies[f]['counter']))
+            vc0 = get_tgid(self.voice_frequencies[f]['tgid'][0])
+            vc1 = get_tgid(self.voice_frequencies[f]['tgid'][1])
+            if vc0 == vc1:  # if vc0 matches vc1 the channel is either idle or in phase 1 mode
+                vc_tgs = "[   %5s   ]" % vc0
+            else:
+                vc_tgs = "[%5s|%5s]" % (vc1, vc0)
+            s.append('voice freq %f, active tgids %s, last seen %4.1fs, count %d' %  (f / 1000000.0, vc_tgs, t - self.voice_frequencies[f]['time'], self.voice_frequencies[f]['counter']))
         s.append('')
         for table in self.freq_table:
             a = self.freq_table[table]['frequency'] / 1000000.0
@@ -235,9 +251,22 @@ class trunked_system (object):
         self.talkgroups[tgid]['srcaddr'] = srcaddr
         self.talkgroups[tgid]['prio'] = self.get_prio(tgid)
 
+    def find_voice_freq(self, tgid=None):
+        if tgid is None:
+            return (None, None)
+        for freq in self.voice_frequencies:
+            if self.voice_frequencies[freq]['tgid'][0] == tgid and self.voice_frequencies[freq]['tgid'][1] == tgid:
+                return (freq, None)
+            elif self.voice_frequencies[freq]['tgid'][0] == tgid:
+                return (freq, 0)
+            elif self.voice_frequencies[freq]['tgid'][1] == tgid:
+                return (freq, 1)
+        return (None, None)
+
     def update_voice_frequency(self, frequency, tgid=None, tdma_slot=None, srcaddr=0):
         if not frequency:    # e.g., channel identifier not yet known
             return
+        prev_freq, prev_slot = self.find_voice_freq(tgid)
         self.update_talkgroups(frequency, tgid, tdma_slot, srcaddr)
         if frequency not in self.voice_frequencies:
             self.voice_frequencies[frequency] = {'counter':0}
@@ -248,6 +277,11 @@ class trunked_system (object):
         if 'tgid' not in self.voice_frequencies[frequency]:
             self.voice_frequencies[frequency]['tgid'] = [None, None]
             self.voice_frequencies[frequency]['ts'] = [0.0, 0.0]
+        if prev_freq is not None and not (prev_freq == frequency and prev_slot == tdma_slot):
+            if prev_slot is None:
+                self.voice_frequencies[prev_freq]['tgid'] = [None, None]
+            else:
+                self.voice_frequencies[prev_freq]['tgid'][prev_slot] = None
         curr_time = time.time()
         self.voice_frequencies[frequency]['time'] = curr_time
         self.voice_frequencies[frequency]['counter'] += 1
