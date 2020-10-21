@@ -383,16 +383,22 @@ function trunk_update(d) {
         var ct = 0;
         for (var freq in d[nac]['frequency_data']) {
             tg1 = d[nac]['frequency_data'][freq]['tgids'][0];
+            tg2 = d[nac]['frequency_data'][freq]['tgids'][1];
             if (tg1 == null)
                 tg1 = "&nbsp;&nbsp;&nbsp;&nbsp;-";
-            tg2 = d[nac]['frequency_data'][freq]['tgids'][1];
             if (tg2 == null)
                 tg2 = "&nbsp;&nbsp;&nbsp;&nbsp;-";
+            if (tg1 == tg2) {
+                tg_str = "<td colspan=2>" + tg1 + "</td>";
+            }
+            else {
+                tg_str = "<td>" + tg2 + "</td><td>" + tg1 + "</td>";
+            }
             var color = "#d0d0d0";
             if ((ct & 1) == 0)
                 color = "#c0c0c0";
             ct += 1;
-            html += "<tr style=\"background-color: " + color + ";\"><td>" + (parseInt(freq) / 1000000.0).toFixed(6) + "</td><td>" + d[nac]['frequency_data'][freq]['last_activity'] + "</td><td>" + tg1 + "</td><td>" + tg2 + "</td><td>" + d[nac]['frequency_data'][freq]['counter'] + "</td></tr>";
+            html += "<tr style=\"background-color: " + color + ";\"><td>" + (parseInt(freq) / 1000000.0).toFixed(6) + "</td><td>" + d[nac]['frequency_data'][freq]['last_activity'] + "</td>" + tg_str + "<td>" + d[nac]['frequency_data'][freq]['counter'] + "</td></tr>";
         }
         html += "</table></div>";
 
