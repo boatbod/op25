@@ -129,7 +129,7 @@ class trunked_system (object):
         self.cc_timeouts = 0
         self.talkgroups = {}
 
-    def to_json(self):
+    def to_json(self, curr_tgid):
         d = {}
         d['top_line']  = 'WACN 0x%x' % (self.ns_wacn)
         d['top_line'] += ' SYSID 0x%x' % (self.ns_syid)
@@ -148,7 +148,7 @@ class trunked_system (object):
         d['frequency_data'] = {}
         d['last_tsbk'] = self.last_tsbk
         t = time.time()
-        self.expire_voice_frequencies(t)
+        self.expire_voice_frequencies(t, curr_tgid)
         for f in list(self.voice_frequencies.keys()):
             vc0 = get_tgid(self.voice_frequencies[f]['tgid'][0])
             vc1 = get_tgid(self.voice_frequencies[f]['tgid'][1])
@@ -293,10 +293,11 @@ class trunked_system (object):
             self.voice_frequencies[frequency]['tgid'][tdma_slot] = tgid
             self.voice_frequencies[frequency]['ts'][tdma_slot] = curr_time
 
-    def expire_voice_frequencies(self, curr_time):
+    def expire_voice_frequencies(self, curr_time, curr_tgid):
         for frequency in self.voice_frequencies:
             for slot in [0, 1]:
-                if self.voice_frequencies[frequency]['tgid'][slot] is not None and curr_time >= self.voice_frequencies[frequency]['ts'][slot] + self.FREQ_EXPIRY_TIME:
+                tgid = self.voice_frequencies[frequency]['tgid'][slot]
+                if tgid is not None and tgid != curr_tgid and curr_time >= self.voice_frequencies[frequency]['ts'][slot] + self.FREQ_EXPIRY_TIME:
                     self.voice_frequencies[frequency]['tgid'][slot] = None
 
     def get_updated_talkgroups(self, start_time):
@@ -1051,7 +1052,11 @@ class rx_ctl (object):
         d = {'json_type': 'trunk_update'}
         for nac in list(self.trunked_systems.keys()):
             if nac is not None:
-                d[nac] = json.loads(self.trunked_systems[nac].to_json())
+                if nac == self.current_nac:
+                    curr_tgid = self.current_tgid
+                else:
+                    curr_tgid = None
+                d[nac] = json.loads(self.trunked_systems[nac].to_json(curr_tgid))
                 d[nac]['top_line'] = 'NAC 0x%x %s' % (nac, d[nac]['top_line']) # prepend NAC which is not known by trunked_systems 
         d['srcaddr'] = self.current_srcaddr
         d['grpaddr'] = self.current_grpaddr
