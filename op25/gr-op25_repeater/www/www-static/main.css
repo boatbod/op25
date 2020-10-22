@@ -137,7 +137,7 @@ div.system {
 	position: absolute;
 	top: 10px;
 	left: 0;
-	width: 48%;
+	width: 54%;
 	height: auto;
 	border: 0px solid #d00
 }
@@ -148,7 +148,7 @@ div.adjacent {
 
 	position: relative;
 	top: 10px;
-	width: 48%;
+	width: 42%;
 	float: right;
 	height: auto;
 	border: 0px solid #00f;

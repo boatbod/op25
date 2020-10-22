@@ -392,9 +392,9 @@ function trunk_update(d) {
             tg1 = d[nac]['frequency_data'][freq]['tgids'][0];
             tg2 = d[nac]['frequency_data'][freq]['tgids'][1];
             if (tg1 == null)
-                tg1 = "-";
+                tg1 = "&nbsp&nbsp-&nbsp&nbsp";
             if (tg2 == null)
-                tg2 = "-";
+                tg2 = "&nbsp&nbsp-&nbsp&nbsp";
             if (tg1 == tg2) {
                 tg_str = "<td style=\"text-align:center;\" colspan=2>" + tg1 + "</td>";
             }
