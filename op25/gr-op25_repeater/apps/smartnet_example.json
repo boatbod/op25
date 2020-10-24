@@ -69,7 +69,16 @@
                 "tgid_hold_time": 2.0,
                 "blacklist": "",
                 "whitelist": "",
-                "bandplan": "800_reband"
+                "bandplan_comment": "Set bandplan to one of '400' '800' '800_reband' '900'",
+                "bandplan": "800_reband",
+                "bp_comment": "The bp_ parameters are only used by the 400 bandplan",
+                "bp_spacing": 0.015,
+                "bp_base": 141.015,
+                "bp_base_offset": 380,
+                "bp_mid": 151.730,
+                "bp_mid_offset": 579,
+                "bp_high": 154.320,
+                "bp_high_offset": 632
             }
         ]
     },

@@ -351,8 +351,8 @@ class osw_receiver(object):
             if cmd >= 0 and cmd <= 0x1DE:
                 return True
         elif band == "400":
-            bp_offset = int(from_dict(self.config, 'bp_offset', "0"))
-            if (cmd >= bp_offset) and cmd <= (bp_offset + 380):
+            bp_base_offset = int(from_dict(self.config, 'bp_base_offset', 380))
+            if (cmd >= bp_base_offset) and cmd <= (bp_base_offset + 380):
                 return True
             else:
                 return False
@@ -388,14 +388,23 @@ class osw_receiver(object):
             freq = 935.0125 + (0.0125 * cmd)
 
         elif band == "400":
-            bp_offset = int(from_dict(self.config, 'bp_offset', "0"))
-            bp_high = float(from_dict(self.config, 'bp_high', "0.0"))
-            bp_base = float(from_dict(self.config, 'bp_base', "0.0"))
-            bp_spacing = float(from_dict(self.config, 'bp_spacing', "0.025"))
-            high_cmd = bp_offset + bp_high - bp_base / bp_spacing
+            bp_spacing     = float(from_dict(self.config, 'bp_spacing',     "0.025"))
+            bp_base_offset = int(from_dict(self.config,   'bp_base_offset', 380))
+            bp_mid_offset  = int(from_dict(self.config,   'bp_mid_offset',  760))
+            bp_high_offset = int(from_dict(self.config,   'bp_high_offset', 760))
+            bp_base        = float(from_dict(self.config, 'bp_base',        "0.0"))
+            bp_mid         = float(from_dict(self.config, 'bp_mid',         "0.0"))
+            bp_high        = float(from_dict(self.config, 'bp_high',        "0.0"))
 
-            if (cmd >= bp_offset) and (cmd < high_cmd):
-                freq = bp_base + (bp_spacing * (cmd - bp_offset ))
+            if (cmd >= bp_base_offset) and (cmd < bp_mid_offset):
+                freq = bp_base + (bp_spacing * (cmd - bp_base_offset ))
+            elif (cmd >= bp_mid_offset) and (cmd < bp_high_offset):
+                freq = bp_mid + (bp_spacing * (cmd - bp_mid_offset))
+            elif (cmd >= bp_high_offset) and (cmd < 760):
+                freq = bp_high + (bp_spacing * (cmd - bp_high_offset))
+            else:
+                if self.debug >= 5:
+                    sys.stderr.write("%s [%d] SMARTNET OSW freq cmd: %d out of range\n" % (log_ts.get(), self.msgq_id, cmd))
         return freq
 
     def enqueue(self, addr, grp, cmd, ts):
