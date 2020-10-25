@@ -14,6 +14,27 @@ Control over which tgids are candidates for monitoring is via the 'blacklist' an
 
 multi_rx.py has support for enabling a built-in audio player. See the "audio" section of the smartnet-example.json for configuration parameter syntax.  Note that the "instance_name" must be specified for the player to be enabled.  Leaving this parameter absent or blank will cause the player to be disabled.  Consistent configuration of the "udp_port" parameter is required between the audio player and the channel destinations.  Default port is 23456.
 
+Bandplan
+--------
+Motorola Smartnet/Smartzone systems send a channel identifier command in their group voice grant messaging to identify the actual voice frequency being used.  Translation of this numeric id to an actual frequency depends on the setting of the "bandplan" trunking parameter in conjunction wit the seven associated parameters "bp_spacing", "bp_base", "bp_base_offset", "bp_mid", "bp_mid_offset", "bp_high", "bp_high_offset".  In the USA, most legacy 800Mhz systems should be configured with bandplan set to '800_reband' with no further information necessary, whereas and VHF/UHF systems need to be set to "400" along with the frequency and offset data found under "Custom Frequency Tables" in the Radio Reference Database.
+
+Example 1:
+Anne Arundel County (https://www.radioreference.com/apps/db/?sid=187)
+    "control_channel_list": "854.4125",
+    "bandplan": "800_reband",
+
+Example 2:
+Bell Fleetnet Ontario (https://www.radioreference.com/apps/db/?sid=2560)
+    "control_channel_list": "142.500",
+    "bandplan": "400",
+    "bp_spacing": 0.015,
+    "bp_base": 141.015,
+    "bp_base_offset": 380,
+    "bp_mid": 151.730,
+    "bp_mid_offset": 579,
+    "bp_high": 154.320,
+    "bp_high_offset": 632
+
 Startup
 -------
 Much like op25's rx.py, multi_rx.py is best started using a shell script.
