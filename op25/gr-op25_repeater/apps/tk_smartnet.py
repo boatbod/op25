@@ -405,7 +405,7 @@ class osw_receiver(object):
             else:
                 if self.debug >= 5:
                     sys.stderr.write("%s [%d] SMARTNET OSW freq cmd: %d out of range\n" % (log_ts.get(), self.msgq_id, cmd))
-        return freq
+        return round(freq, 5)   # round to 5 decimal places to eliminate accumulated floating point errors
 
     def enqueue(self, addr, grp, cmd, ts):
         grp_str = "G" if (grp != 0) else "I"
