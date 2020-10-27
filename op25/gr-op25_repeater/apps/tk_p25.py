@@ -917,7 +917,7 @@ class p25_system(object):
             d['frequencies'][f] = 'voice freq %f, active tgids %s, last seen %4.1fs, count %d' %  ((f/1e6), vc_tgs, t - self.voice_frequencies[f]['time'], self.voice_frequencies[f]['counter'])
 
             d['frequency_data'][f] = {'tgids': self.voice_frequencies[f]['tgid'], 'last_activity': '%7.1f' % (t - self.voice_frequencies[f]['time']), 'counter': self.voice_frequencies[f]['counter']}
-        d['adjacent_data'] = ""
+        d['adjacent_data'] = self.adjacent_data
         return json.dumps(d)
 
 #################
