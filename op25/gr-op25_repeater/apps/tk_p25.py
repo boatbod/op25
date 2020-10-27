@@ -901,7 +901,14 @@ class p25_system(object):
         d['top_line']      += ' %f' % ((self.rfss_chan if self.rfss_chan is not None else self.cc_list[self.cc_index]) / 1e6)
         d['top_line']      += '/%f' % ((self.rfss_txchan if self.rfss_txchan is not None else 0) / 1e6)
         d['top_line']      += ' tsbks %d' % (self.stats['tsbk_count'])
-        d['secondary']      = ""
+        d['syid'] = self.rfss_syid
+        d['rfid'] = self.rfss_rfid
+        d['stid'] = self.rfss_stid
+        d['sysid'] = self.ns_syid
+        d['rxchan'] = self.rfss_chan
+        d['txchan'] = self.rfss_txchan
+        d['wacn'] = self.ns_wacn
+        d['secondary'] = list(self.secondary.keys())
         d['frequencies']    = {}
         d['frequency_data'] = {}
         d['last_tsbk'] = self.last_tsbk
