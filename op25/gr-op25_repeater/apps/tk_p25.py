@@ -430,7 +430,7 @@ class p25_system(object):
             sap = (header >> 64) & 0x3f
             src = (header >> 32) & 0xffffff
             if fmt != 0x17: # only Extended Format MBT presently supported
-                return
+                return updated
             opcode = (header >> 16) & 0x3f
             updated += self.decode_mbt(m_rxid, opcode, src, header << 16, mbt_data << 32)
 
