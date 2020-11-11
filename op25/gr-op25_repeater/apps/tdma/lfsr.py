@@ -24,11 +24,11 @@ from bit_utils import *
 
 class p25p2_lfsr(object):
     def __init__(self,nac,sysid,wacn):
-        xorbits = self.mk_xor_bits(nac,sysid,wacn)
-        #self.xorsyms = np.zeros(len(xorbits)/2)
-        self.xorsyms = [0] * (len(xorbits)/2)
+        self.xorbits = self.mk_xor_bits(nac,sysid,wacn)
+        #self.xorsyms = np.zeros(len(self.xorbits)/2)
+        self.xorsyms = [0] * (len(self.xorbits)/2)
         for i in range(len(self.xorsyms)):
-            self.xorsyms[i] = (xorbits[i*2] << 1) + xorbits[i*2+1]
+            self.xorsyms[i] = (self.xorbits[i*2] << 1) + self.xorbits[i*2+1]
         self.xor_chars = ''.join([chr(c) for c in self.xorsyms])
 
     def asm_reg(self,s1,s2,s3,s4,s5,s6):
