@@ -370,6 +370,8 @@ class channel(object):
             return
         self.tdma_state = set_tdma
         if set_tdma:
+            if self.verbosity >= 10:
+                sys.stderr.write("%s [%d] configure_p25_tdma: pre xor_cache: %s\n" % (log_ts.get(), self.msgq_id, self.xor_cache))
             hash = '%x%x%x' % (params['nac'], params['sysid'], params['wacn'])
             if hash not in self.xor_cache:
                 self.xor_cache[hash] = lfsr.p25p2_lfsr(params['nac'], params['sysid'], params['wacn']).xor_chars
@@ -384,6 +386,7 @@ class channel(object):
                         fmt_str += ("%02x" % byte)
                         byte = 0
                 sys.stderr.write("%s [%d] configure_p25_tdma: NAC: %x, SYSID: %x, WACN: %x, HASH: %s, MASK: %s\n" % (log_ts.get(), self.msgq_id, params['nac'], params['sysid'], params['wacn'], hash, fmt_str))
+                sys.stderr.write("%s [%d] configure_p25_tdma: post xor_cache: %s\n" % (log_ts.get(), self.msgq_id, self.xor_cache))
             self.decoder.set_xormask(self.xor_cache[hash])
             rate = 6000
         else:

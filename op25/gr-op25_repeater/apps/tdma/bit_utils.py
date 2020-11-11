@@ -18,6 +18,7 @@
 # Software Foundation, Inc., 51 Franklin Street, Boston, MA
 # 02110-1301, USA.
 
+import sys # GJN remove this
 import numpy as np
 
 def rev_int(n,l):
@@ -46,6 +47,7 @@ def mk_array(n, l):
     for i in range(0,l):
         a.insert(0, n & 1)
         n = n >> 1
+    sys.stderr.write("mk_array: n: %x, l: %x, a: %s\n" % (n, l, a)) # GJN remove this!
     return np.array(a)
 
 def mk_int(a):
