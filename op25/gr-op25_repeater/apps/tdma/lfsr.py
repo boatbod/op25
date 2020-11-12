@@ -39,7 +39,7 @@ class p25p2_lfsr(object):
         s5 = s5 & 0x3fff
         s6 = s6 & 0x3ff
         #return (s1<<40)+(s2<<35)+(s3<<29)+(s4<<24)+(s5<<10)+s6
-        _reg = (s1<<40)+(s2<<35)+(s3<<29)+(s4<<24)+(s5<<10)+s6
+        _reg = (s1<<40)|(s2<<35)|(s3<<29)|(s4<<24)|(s5<<10)|s6
         sys.stderr.write("asm_reg: %x,%x,%x,%x,%x,%x reg: %x\n" % (s1, s2, s3, s4, s5, s6, _reg))
         return _reg
 
