@@ -39,16 +39,14 @@ class p25p2_lfsr(object):
         s5 = s5 & 0x3fff
         s6 = s6 & 0x3ff
         #return (s1<<40)+(s2<<35)+(s3<<29)+(s4<<24)+(s5<<10)+s6
-        s1a = s1<<40
-        s2a = s2<<35
-        s3a = s3<<29
-        s4a = s4<<24
-        s5a = s5<<10
+        s1a = s1 * pow(2,40)
+        s2a = s2 * pow(2,35)
+        s3a = s3 * pow(2,29)
+        s4a = s4 * pow(2,24)
+        s5a = s5 * pow(2,10)
         s6a = s6
-        _reg  = (s1<<40)|(s2<<35)|(s3<<29)|(s4<<24)|(s5<<10)|s6
-        _rega = (s1a)|(s2a)|(s3a)|(s4a)|(s5a)|s6a
-        sys.stderr.write("asm_reg1: %x,%x,%x,%x,%x,%x reg: %x\n" % (s1, s2, s3, s4, s5, s6, _reg))
-        sys.stderr.write("asm_reg2: %x,%x,%x,%x,%x,%x reg: %x\n" % (s1a, s2a, s3a, s4a, s5a, s6a, _rega))
+        _reg = s1a + s2a + s3a + s4a + s5a + s6a
+        sys.stderr.write("asm_reg: %x,%x,%x,%x,%x,%x reg: %x\n" % (s1a, s2a, s3a, s4a, s5a, s6a, _reg))
         return _reg
 
     def disasm_reg(self,r):
