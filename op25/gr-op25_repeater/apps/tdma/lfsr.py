@@ -23,11 +23,11 @@ from bit_utils import *
 
 class p25p2_lfsr(object):
     def __init__(self,nac,sysid,wacn):
-        xorbits = self.mk_xor_bits(nac,sysid,wacn)
-        #self.xorsyms = np.zeros(len(xorbits)/2)
-        self.xorsyms = [0] * (len(xorbits)/2)
+        self.xorbits = self.mk_xor_bits(nac,sysid,wacn)
+        #self.xorsyms = np.zeros(len(self.xorbits)/2)
+        self.xorsyms = [0] * (len(self.xorbits)/2)
         for i in range(len(self.xorsyms)):
-            self.xorsyms[i] = (xorbits[i*2] << 1) + xorbits[i*2+1]
+            self.xorsyms[i] = (self.xorbits[i*2] << 1) + self.xorbits[i*2+1]
         self.xor_chars = ''.join([chr(c) for c in self.xorsyms])
 
     def asm_reg(self,s1,s2,s3,s4,s5,s6):
@@ -37,7 +37,9 @@ class p25p2_lfsr(object):
         s4 = s4 & 0x1f
         s5 = s5 & 0x3fff
         s6 = s6 & 0x3ff
-        return (s1<<40)+(s2<<35)+(s3<<29)+(s4<<24)+(s5<<10)+s6
+        #return (s1<<40)+(s2<<35)+(s3<<29)+(s4<<24)+(s5<<10)+s6
+        # Note: don't use bit shifting because it causes overflow problems on 32 bit machines such as RPi
+        return (s1 * pow(2, 40)) + (s2 * pow(2, 35)) + (s3 * pow(2, 29)) + (s4 * pow(2,24)) + (s5 * pow(2, 10)) + s6
 
     def disasm_reg(self,r):
         s1 = (r>>40) & 0xf

@@ -373,6 +373,8 @@ class channel(object):
             hash = '%x%x%x' % (params['nac'], params['sysid'], params['wacn'])
             if hash not in self.xor_cache:
                 self.xor_cache[hash] = lfsr.p25p2_lfsr(params['nac'], params['sysid'], params['wacn']).xor_chars
+                if self.verbosity >= 5:
+                    sys.stderr.write("%s [%d] Caching TDMA xor mask for NAC: 0x%x, SYSID: 0x%x, WACN: 0x%x\n" % (log_ts.get(), self.msgq_id, params['nac'], params['sysid'], params['wacn'])) 
             self.decoder.set_xormask(self.xor_cache[hash])
             rate = 6000
         else:
