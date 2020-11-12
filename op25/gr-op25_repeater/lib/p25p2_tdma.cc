@@ -137,24 +137,6 @@ void
 p25p2_tdma::set_xormask(const char*p) {
 	for (int i=0; i<SUPERFRAME_SIZE; i++)
 		tdma_xormask[i] = p[i] & 3;
-// GJN : start of ugly temporary code for troubleshooting
-	if (d_debug >= 10) {
-        int j = 0;
-		int xor_sz = SUPERFRAME_SIZE / 4;
-		uint8_t xor_buf[xor_sz];
-        char byte_str[3];
-		std::string xor_str;
-		for (int i = 0; i < xor_sz; i++) {
-			xor_buf[i] = (xor_buf[i] << 2) | (tdma_xormask[j++] & 3);
-			xor_buf[i] = (xor_buf[i] << 2) | (tdma_xormask[j++] & 3);
-			xor_buf[i] = (xor_buf[i] << 2) | (tdma_xormask[j++] & 3);
-			xor_buf[i] = (xor_buf[i] << 2) | (tdma_xormask[j++] & 3);
-			sprintf(byte_str,"%02x", xor_buf[i]);
-			xor_str += byte_str;
-		}
-		fprintf(stderr, "%s p25p2_tdma::set_xormask: %s\n", logts.get(d_msgq_id), xor_str.c_str());
-	}
-// GJN : end
 }
 
 int p25p2_tdma::process_mac_pdu(const uint8_t byte_buf[], const unsigned int len, const int rs_errs) 
@@ -676,36 +658,6 @@ int p25p2_tdma::handle_packet(const uint8_t dibits[])
 	for (int i=0; i<BURST_SIZE - 10; i++) {
 		xored_burst[i] = burstp[i] ^ tdma_xormask[sync.tdma_slotid() * BURST_SIZE + i];
 	}
-
-// GJN : start of ugly temporary code for troubleshooting
-	if (d_debug >= 10) {
-		int b_sz = (BURST_SIZE - 10) / 4;
-		int j = 0;
-		uint8_t rb[b_sz], xb[b_sz];
-		char byte_str[3];
-		std::string rb_str, xb_str;
-		for (int i = 0; i<b_sz; i++) {
-			rb[i] = (rb[i] << 2) | (burstp[j++] & 3);
-			rb[i] = (rb[i] << 2) | (burstp[j++] & 3);
-			rb[i] = (rb[i] << 2) | (burstp[j++] & 3);
-			rb[i] = (rb[i] << 2) | (burstp[j++] & 3);
-			sprintf(byte_str,"%02x", rb[i]);
-			rb_str += byte_str;
-		}
-		for (int i = 0; i<b_sz; i++) {
-			xb[i] = (xb[i] << 2) | (xored_burst[j++] & 3);
-			xb[i] = (xb[i] << 2) | (xored_burst[j++] & 3);
-			xb[i] = (xb[i] << 2) | (xored_burst[j++] & 3);
-			xb[i] = (xb[i] << 2) | (xored_burst[j++] & 3);
-			sprintf(byte_str,"%02x", xb[i]);
-			xb_str += byte_str;
-		}
-  	  fprintf(stderr, "%s BURST TYPE: %d, SLOT: %d\n", logts.get(d_msgq_id), burst_type, sync.tdma_slotid());
-  	  fprintf(stderr, "%s BURST RAW: %s\n", logts.get(d_msgq_id), rb_str.c_str());
-  	  fprintf(stderr, "%s BURST XOR: %s\n", logts.get(d_msgq_id), xb_str.c_str());
-    }
-// GJN : end
-
 	if (burst_type == 0 || burst_type == 6)	{       // 4V or 2V burst
                 track_vb(burst_type);
                 handle_4V2V_ess(&xored_burst[84]);
