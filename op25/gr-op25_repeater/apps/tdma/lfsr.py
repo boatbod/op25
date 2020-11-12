@@ -24,8 +24,7 @@ from bit_utils import *
 class p25p2_lfsr(object):
     def __init__(self,nac,sysid,wacn):
         self.xorbits = self.mk_xor_bits(nac,sysid,wacn)
-        #self.xorsyms = np.zeros(len(self.xorbits)/2)
-        self.xorsyms = [0] * (len(self.xorbits)/2)
+        self.xorsyms = [0] * (len(self.xorbits)//2)
         for i in range(len(self.xorsyms)):
             self.xorsyms[i] = (self.xorbits[i*2] << 1) + self.xorbits[i*2+1]
         self.xor_chars = ''.join([chr(c) for c in self.xorsyms])
