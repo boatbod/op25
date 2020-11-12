@@ -43,11 +43,12 @@ def dibits_to_bits(dibits):
     return b
 
 def mk_array(n, l):
+    orig_n = n
     a = []
     for i in range(0,l):
         a.insert(0, n & 1)
         n = n >> 1
-    sys.stderr.write("mk_array: n: %x, l: %x, a: %s\n" % (n, l, a)) # GJN remove this!
+    sys.stderr.write("mk_array: n: %x, l: %x, a: %s\n" % (orig_n, l, a)) # GJN remove this!
     return np.array(a)
 
 def mk_int(a):

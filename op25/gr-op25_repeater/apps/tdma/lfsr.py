@@ -38,7 +38,10 @@ class p25p2_lfsr(object):
         s4 = s4 & 0x1f
         s5 = s5 & 0x3fff
         s6 = s6 & 0x3ff
-        return (s1<<40)+(s2<<35)+(s3<<29)+(s4<<24)+(s5<<10)+s6
+        #return (s1<<40)+(s2<<35)+(s3<<29)+(s4<<24)+(s5<<10)+s6
+        _reg = (s1<<40)+(s2<<35)+(s3<<29)+(s4<<24)+(s5<<10)+s6
+        sys.stderr.write("asm_reg: %x,%x,%x,%x,%x,%x reg: %x\n" % (s1, s2, s3, s4, s5, s6, _reg))
+        return _reg
 
     def disasm_reg(self,r):
         s1 = (r>>40) & 0xf
@@ -51,6 +54,7 @@ class p25p2_lfsr(object):
 
     def cyc_reg(self, reg):
         s1,s2,s3,s4,s5,s6 = self.disasm_reg(reg)
+        sys.stderr.write("cyc_reg %x,%x,%x,%x,%x,%x\n" % (s1, s2, s3, s4, s5, s6))  # GJN remove this
         cy1 = (s1 >> 3) & 1
         cy2 = (s2 >> 4) & 1
         cy3 = (s3 >> 5) & 1
