@@ -254,6 +254,7 @@ class p25_system(object):
         self.ns_syid = 0
         self.ns_wacn = 0
         self.ns_chan = 0
+        self.ns_valid = False
         self.rx_cc_freq = None
         self.rx_sys_id = None
         self.sysname = config['sysname']
@@ -303,7 +304,7 @@ class p25_system(object):
         return self.crypt_behavior
     
     def get_tdma_params(self):
-        return self.nac, self.ns_wacn, self.ns_syid
+        return self.nac, self.ns_wacn, self.ns_syid, self.ns_valid
 
     def get_tdma_slot(self, id):
         table = (id >> 12) & 0xf
@@ -490,6 +491,7 @@ class p25_system(object):
                 self.ns_syid = syid
                 self.ns_wacn = wacn
                 self.ns_chan = f1
+                self.ns_valid = True
             if self.debug > 10:
                 sys.stderr.write('%s [%d] mbt3b net stat sys %x wacn %x ch1 %s ch2 %s\n' %(log_ts.get(), m_rxid, syid, wacn, self.channel_id_to_string(ch1), self.channel_id_to_string(ch2)))
         elif opcode == 0x3a:  # rfss status
@@ -733,6 +735,7 @@ class p25_system(object):
                 self.ns_syid = syid
                 self.ns_wacn = wacn
                 self.ns_chan = f1
+                self.ns_valid = True
             if self.debug > 10:
                 sys.stderr.write('%s [%d] tsbk3b net stat: wacn %x syid %x ch1 %x(%s)\n' %(log_ts.get(), m_rxid, wacn, syid, ch1, self.channel_id_to_string(ch1)))
         elif opcode == 0x3c:   # adjacent status
@@ -1017,7 +1020,11 @@ class p25_receiver(object):
             self.system.release_cc(self.msgq_id)                 # release control channel responsibility
 
         if (freq != self.tuned_frequency) or (slot != self.current_slot):
-            nac, wacn, sysid = self.system.get_tdma_params()
+            nac, wacn, sysid, valid = self.system.get_tdma_params()
+            if slot is not None and not valid:                   # Can only tune tdma voice channel if nac/wacn/sysid are known
+                sys.stderr.write("%s [%d] tune_voice skipped, wacn/sysid not known\n" % (log_ts.get(), self.msgq_id))
+                return
+
             tune_params = {'tuner':   self.msgq_id,
                            'sigtype': "P25",
                            'freq':    get_frequency(freq),
