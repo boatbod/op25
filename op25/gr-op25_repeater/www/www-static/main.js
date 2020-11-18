@@ -144,6 +144,62 @@ function is_digit(s) {
         return false;
 }
 
+function term_config(d) {
+    var lg_step = 1200;
+    var sm_step = 100;
+    var updated = 0;
+
+    if ((d["tuning_step_large"] != undefined) && (d["tuning_step_large"] != lg_step)) {
+        lg_step = d["tuning_step_large"];
+        updated++;
+    }
+    if ((d["tuning_step_small"] != undefined) && (d["tuning_step_small"] != sm_step)) {
+        sm_step = d["tuning_step_small"];
+        updated++;
+    }
+    if (updated) {
+        set_tuning_step_sizes(lg_step, sm_step);
+    }
+}
+
+function set_tuning_step_sizes(lg_step=1200, sm_step=100) {
+    var title_str = "Adjust tune ";
+
+    var bn_t1_U = document.getElementById("t1_U");
+    var bn_t2_U = document.getElementById("t2_U");
+    var bn_t1_D = document.getElementById("t1_D");
+    var bn_t2_D = document.getElementById("t2_D");
+    var bn_t1_u = document.getElementById("t1_u");
+    var bn_t2_u = document.getElementById("t2_u");
+    var bn_t1_d = document.getElementById("t1_d");
+    var bn_t2_d = document.getElementById("t2_d");
+
+    if ((bn_t1_U != null) && (bn_t2_U != null)) {
+        bn_t1_U.setAttribute("title", title_str + "+" + lg_step);
+        bn_t2_U.setAttribute("title", title_str + "+" + lg_step);
+        bn_t1_U.setAttribute("onclick", "javascript:f_tune_button(" + lg_step + ");");
+        bn_t2_U.setAttribute("onclick", "javascript:f_tune_button(" + lg_step + ");");
+    }
+    if ((bn_t1_D != null) && (bn_t2_D != null)) {
+        bn_t1_D.setAttribute("title", title_str + "-" + lg_step);
+        bn_t2_D.setAttribute("title", title_str + "-" + lg_step);
+        bn_t1_D.setAttribute("onclick", "javascript:f_tune_button(-" + lg_step + ");");
+        bn_t2_D.setAttribute("onclick", "javascript:f_tune_button(-" + lg_step + ");");
+    }
+    if ((bn_t1_u != null) && (bn_t2_u != null)) {
+        bn_t1_u.setAttribute("title", title_str + "+" + sm_step);
+        bn_t2_u.setAttribute("title", title_str + "+" + sm_step);
+        bn_t1_u.setAttribute("onclick", "javascript:f_tune_button(" + sm_step + ");");
+        bn_t2_u.setAttribute("onclick", "javascript:f_tune_button(" + sm_step + ");");
+    }
+    if ((bn_t1_d != null) && (bn_t2_d != null)) {
+        bn_t1_d.setAttribute("title", title_str + "-" + sm_step);
+        bn_t2_d.setAttribute("title", title_str + "-" + sm_step);
+        bn_t1_d.setAttribute("onclick", "javascript:f_tune_button(-" + sm_step + ");");
+        bn_t2_d.setAttribute("onclick", "javascript:f_tune_button(-" + sm_step + ");");
+    }
+}
+
 function rx_update(d) {
     plotfiles = [];
     if ((d["files"] != undefined) && (d["files"].length > 0)) {
@@ -440,7 +496,7 @@ function http_req_cb() {
     }
     r200_count += 1;
     var dl = JSON.parse(http_req.responseText);
-    var dispatch = {'trunk_update': trunk_update, 'change_freq': change_freq, 'channel_update': channel_update, 'rx_update': rx_update}
+    var dispatch = {'trunk_update': trunk_update, 'change_freq': change_freq, 'channel_update': channel_update, 'rx_update': rx_update, 'terminal_config': term_config}
     for (var i=0; i<dl.length; i++) {
         var d = dl[i];
         if (!("json_type" in d))
@@ -454,6 +510,8 @@ function http_req_cb() {
 function do_onload() {
     var ele = document.getElementById("div_status");
     ele.style["display"] = "";
+    set_tuning_step_sizes();
+    send_command("get_config", 0, 0);
     setInterval(do_update, 1000);
     b = document.getElementById("b1");
     b.className = "nav-button-active";

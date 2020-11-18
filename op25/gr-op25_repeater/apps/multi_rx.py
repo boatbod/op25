@@ -403,6 +403,7 @@ class rx_block (gr.top_block):
         self.verbosity = verbosity
         self.terminal = None
         self.terminal_type = None
+        self.terminal_config = None
         self.interactive = True
         self.audio = None
         self.audio_instances = {}
@@ -487,6 +488,7 @@ class rx_block (gr.top_block):
         term_type = str(from_dict(config,'terminal_type', "curses"))
         self.terminal = terminal.op25_terminal(self.ui_in_q, self.ui_out_q, term_type)
         self.terminal_type = self.terminal.get_terminal_type()
+        self.terminal_config = config
         self.curses_plot_interval = float(from_dict(config, 'curses_plot_interval', 0.0))
         self.http_plot_interval = float(from_dict(config, 'http_plot_interval', 1.0))
         self.http_plot_directory = str(from_dict(config, 'http_plot_directory', "../www/images"))
@@ -686,6 +688,15 @@ class rx_block (gr.top_block):
         #elif s == 'add_default_config':
         #    nac = msg.arg1()
         #    self.trunk_rx.add_default_config(int(nac))
+        elif s == 'get_config':
+            if self.terminal is not None and self.terminal_config is not None:
+                self.terminal_config['json_type'] = "terminal_config"
+                js = json.dumps(self.terminal_config)
+                msg = gr.message().make_from_string(js, -4, 0, 0)
+                self.ui_in_q.insert_tail(msg)   # send configuration back to UI
+                pass
+            else:
+                return False
         elif s == 'dump_tgids':
             self.trunk_rx.dump_tgids()
         elif s in RX_COMMANDS:
