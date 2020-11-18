@@ -81,6 +81,7 @@ class device(object):
             sys.stderr.write('WARNING: requested sample rate %d for device %s may not\n' % (config['rate'], config['name']))
             sys.stderr.write("be optimal.  You may want to use one of the following rates\n")
             sys.stderr.write('%s\n' % speeds)
+        sys.stderr.write('Device name: "%s", osmosdr args: "%s"\n' % (self.name, str(config['args'])))
         self.src = osmosdr.source(str(config['args']))
 
         if 'gain_mode' in config:
