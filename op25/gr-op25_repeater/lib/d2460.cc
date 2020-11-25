@@ -40,6 +40,7 @@ static p25p2_vf interleaver;
 static mbe_parms cur_mp;
 static mbe_parms prev_mp;
 static mbe_parms enh_mp;
+static mbe_errs errs_mp;
 
 static const Uns DV3K_START_BYTE = 0x61;
 enum
@@ -144,6 +145,7 @@ static void vocoder_setup(void) {
 	encoder.set_gain_adjust(GAIN_ADJUST);
 	encoder.set_alt_dstar_interleave(true);
 	mbe_initMbeParms (&cur_mp, &prev_mp, &enh_mp);
+	mbe_initErrParms (&errs_mp);
 }
 
 static void dump(unsigned char *p, ssize_t n)
@@ -254,7 +256,7 @@ static Uns pkt_process(Uns*pkt, Uns cnt)
             memset(6+(char*)pkt, 0, 320);   // silence
             // FIXME: add handling for tone case (b0=126)
         } else {
-            rc = mbe_dequantizeAmbe2400Parms(&cur_mp, &prev_mp, b);
+            rc = mbe_dequantizeAmbe2400Parms(&cur_mp, &prev_mp, &errs_mp, b);
             printf("B\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\n", b[0], b[1], b[2], b[3], b[4], b[5], b[6], b[7], b[8]);
             K = 12;
             if (cur_mp.L <= 36)

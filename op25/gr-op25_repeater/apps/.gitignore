@@ -1,5 +1,6 @@
 # Untracked files
-stderr.2
+stderr*
+*.2
 *.blist
 *.wlist
 *.json
@@ -7,9 +8,12 @@ stderr.2
 *.sh
 *.txt
 *.liq
+*.bin
 
 # Tracked files that would otherwise be excluded
 !op25.sh
+!op25.liq
+!example_liquidsoap.liq
 !trunk.tsv
 !cfg.json
 !meta.json

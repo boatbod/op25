@@ -37,17 +37,6 @@
 namespace gr {
   namespace op25_repeater {
 
-    void p25_frame_assembler_impl::p25p2_queue_msg(int duid)
-    {
-	static const unsigned char wbuf[2] = {0xff, 0xff}; // dummy NAC
-	if (!d_do_msgq)
-		return;
-	if (d_msg_queue->full_p())
-		return;
-	gr::message::sptr msg = gr::message::make_from_string(std::string((const char *)wbuf, 2), duid, 0, 0);
-	d_msg_queue->insert_tail(msg);
-    }
-
     void p25_frame_assembler_impl::set_xormask(const char*p) {
 	p2tdma.set_xormask(p);
     }
@@ -57,6 +46,10 @@ namespace gr {
     }
 
     void p25_frame_assembler_impl::set_slotkey(int key) {
+    }
+
+    void p25_frame_assembler_impl::reset_timer() {
+	p1fdma.reset_timer();
     }
 
     p25_frame_assembler::sptr
@@ -136,7 +129,6 @@ p25_frame_assembler_impl::general_work (int noutput_items,
 		if(p2tdma.rx_sym(in[i])) {
 			int rc = p2tdma.handle_frame();
 			if (rc > -1) {
-				p25p2_queue_msg(rc);
 				p1fdma.reset_timer(); // prevent P1 timeouts due to long TDMA transmissions
 			}
 		}

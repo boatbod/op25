@@ -49,8 +49,8 @@ hr {
 	text-decoration: none;
 	margin: 4px 2px;
 	cursor: pointer;
-	/*width: 100px;*/
-	width: 85px;
+	width: 69px;
+	/* width: 77px;*/
 	font-size: 14px;
 	font-weight: bold;
 	box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2), 0 3px 10px 0 rgba(0,0,0,0.19);
@@ -68,6 +68,22 @@ hr {
 	cursor: pointer;
 	width: 57px;
 	font-size: 14px;
+	font-weight: bold;
+	box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2), 0 3px 10px 0 rgba(0,0,0,0.19);
+	background: #669999; /* For browsers that do not support gradients */
+	background: linear-gradient(#669999, #82B0B0);
+}
+
+.chan-button {
+	/* background-color: #669999; */
+	border-color: black;
+	color: white;
+	padding: 0px 10px;
+	text-decoration: none;
+	margin: 0px 0px;
+	cursor: pointer;
+	width: 30px;
+	font-size: 9px;
 	font-weight: bold;
 	box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2), 0 3px 10px 0 rgba(0,0,0,0.19);
 	background: #669999; /* For browsers that do not support gradients */
@@ -121,7 +137,7 @@ div.system {
 	position: absolute;
 	top: 10px;
 	left: 0;
-	width: 48%;
+	width: 54%;
 	height: auto;
 	border: 0px solid #d00
 }
@@ -132,7 +148,7 @@ div.adjacent {
 
 	position: relative;
 	top: 10px;
-	width: 48%;
+	width: 42%;
 	float: right;
 	height: auto;
 	border: 0px solid #00f;
@@ -177,7 +193,7 @@ div.adjacent {
 	font-family: Arial, Helvetica, sans-serif;
 	color: #000060;
 	font-weight: bold;
-	font-size: 20px;
+	font-size: 18px;
 
 }
 
@@ -214,6 +230,36 @@ div.adjacent {
 	display: table-column;
 	float: left;
 	width: 85%
+}
+
+.s2_cell_b1 {
+	display: table-column;
+	float: left;
+	width: 23%
+}
+
+.s2_cell_c {
+	display: table-column;
+	float: left;
+	width: 10%
+}
+
+.s2_cell_d {
+	display: table-column;
+	float: left;
+	width: 43%
+}
+
+.s2_cell_e {
+	display: table-column;
+	float: left;
+	width: 4%
+}
+
+.s2_cell_f {
+	display: table-column;
+	float: left;
+	width: 4%
 }
 
 .s3 {

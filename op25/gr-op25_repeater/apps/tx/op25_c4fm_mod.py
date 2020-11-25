@@ -49,14 +49,15 @@ _def_span = 13  #desired number of impulse response coeffs, in units of symbols
 _def_gmsk_span = 4
 _def_bt = 0.25
 
-def transfer_function_rx():
+def transfer_function_rx(symbol_rate=_def_symbol_rate, rate_multiplier=1.0):
 	# p25 c4fm de-emphasis filter
 	# Specs undefined above 2,880 Hz.  It would be nice to have a sharper
 	# rolloff, but this filter is cheap enough....
 	xfer = []	# frequency domain transfer function
-	for f in xrange(0,4800):
+	rate = symbol_rate * rate_multiplier
+	for f in range(0,int(rate)):
 		# D(f)
-		t = pi * f / 4800
+		t = pi * f / rate
 		if t < 1e-6:
 			df = 1.0
 		else:
@@ -64,9 +65,9 @@ def transfer_function_rx():
 		xfer.append(df)
 	return xfer
 
-def transfer_function_tx():
+def transfer_function_tx(symbol_rate=_def_symbol_rate):
 	xfer = []	# frequency domain transfer function
-	for f in xrange(0, 2881):	# specs cover 0 - 2,880 Hz
+	for f in range(0, 2881):	# specs cover 0 - 2,880 Hz
 		# H(f)
 		if f < 1920:
 			hf = 1.0
@@ -82,9 +83,9 @@ def transfer_function_tx():
 		xfer.append(pf * hf)
 	return xfer
 
-def transfer_function_dmr():
+def transfer_function_dmr(symbol_rate=_def_symbol_rate):
 	xfer = []	# frequency domain transfer function
-	for f in xrange(0, 2881):	# specs cover 0 - 2,880 Hz
+	for f in range(0, 2881):	# specs cover 0 - 2,880 Hz
 		if f < 1920:
 			hf = 1.0
 		else:
@@ -93,6 +94,43 @@ def transfer_function_dmr():
 	xfer = np.array(xfer, dtype=np.float64)
 	xfer = np.sqrt(xfer)	# root cosine
 	return xfer
+
+def _transfer_function_nxdn(symbol_rate, modulator=False):
+	assert symbol_rate == 2400 or symbol_rate == 4800
+	T = 1.0 / symbol_rate
+	a = 0.2		# rolloff
+	fl = int(0.5+(1-a)/(2*T))
+	fh = int(0.5+(1+a)/(2*T))
+
+	xfer = []
+	for f in range(0, symbol_rate):
+		if f < fl:
+			hf = 1.0
+		elif f >= fl and f <= fh:
+			hf = cos((T/(4*a)) * (2*pi*f - pi*(1-a)/T))
+		else:
+			hf = 0.0
+		x = pi * f * T
+		if f <= fh:
+			if x == 0 or sin(x) == 0:
+				df = 1.0
+			else:
+				if modulator:
+					df = sin(x) / x
+				else:		# rx mode: demodulator
+					df = x / sin(x)
+		else:
+				df = 0.0
+		xfer.append(hf * df)
+	return xfer
+
+# rx / demod case
+def transfer_function_nxdn(symbol_rate=_def_symbol_rate):
+	return _transfer_function_nxdn(symbol_rate)
+
+# tx / modulator case
+def transfer_function_nxdn_tx(symbol_rate=_def_symbol_rate):
+	return _transfer_function_nxdn(symbol_rate, modulator=True)
 
 class c4fm_taps(object):
 	"""Generate filter coefficients as per P25 C4FM spec"""
@@ -104,9 +142,9 @@ class c4fm_taps(object):
 		self.ntaps = (self.sps * span) | 1
 		self.generator = generator
 
-	def generate(self):
-		impulse_response = np.fft.fftshift(np.fft.irfft(self.generator(), self.sample_rate))
-		start = np.argmax(impulse_response) - (self.ntaps-1) / 2
+	def generate(self, rate_multiplier = 1.0):
+		impulse_response = np.fft.fftshift(np.fft.irfft(self.generator(symbol_rate=self.symbol_rate, rate_multiplier=rate_multiplier), self.sample_rate))
+		start = np.argmax(impulse_response) - (self.ntaps-1) // 2
 		coeffs = impulse_response[start: start+self.ntaps]
 		gain = self.filter_gain / sum(coeffs)
 		return coeffs * gain
@@ -123,7 +161,7 @@ class gmsk_taps(object):
 		self.bt = bt
 
 		self.samples_per_symbol = self.sample_rate / self.symbol_rate
-	        self.ntaps = self.span * self.samples_per_symbol
+		self.ntaps = self.span * self.samples_per_symbol
 
 	def generate(self):
 		# from gnuradio gr-digital/python/digital/gmsk.py
@@ -175,7 +213,7 @@ class p25_mod_bf(gr.hier_block2):
         @type debug: bool
 	"""
 
-	gr.hier_block2.__init__(self, "p25_c4fm_mod_bf",
+        gr.hier_block2.__init__(self, "p25_c4fm_mod_bf",
 				gr.io_signature(1, 1, gr.sizeof_char),       # Input signature
 				gr.io_signature(1, 1, gr.sizeof_float)) # Output signature
 
@@ -223,11 +261,11 @@ class p25_mod_bf(gr.hier_block2):
             self.connect(self.filter, self)
 
     def _print_verbage(self):
-        print "\nModulator:"
-        print "interpolation: %d decimation: %d" %(self._interp_factor, self._decimation)
+        print ("\nModulator:")
+        print ("interpolation: %d decimation: %d" %(self._interp_factor, self._decimation))
 
     def _setup_logging(self):
-        print "Modulation logging turned on."
+        print ("Modulation logging turned on.")
         self.connect(self.C2S,
                      gr.file_sink(gr.sizeof_float, "tx_chunks2symbols.dat"))
         self.connect(self.polarity,

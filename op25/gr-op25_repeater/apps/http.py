@@ -41,7 +41,7 @@ TODO: make less fake
 """
 
 def static_file(environ, start_response):
-    content_types = { 'png': 'image/png', 'jpeg': 'image/jpeg', 'jpg': 'image/jpeg', 'gif': 'image/gif', 'css': 'text/css', 'js': 'application/javascript', 'html': 'text/html'}
+    content_types = { 'png': 'image/png', 'jpeg': 'image/jpeg', 'jpg': 'image/jpeg', 'gif': 'image/gif', 'css': 'text/css', 'js': 'application/javascript', 'html': 'text/html', 'ico' : 'image/x-icon'}
     img_types = 'png jpg jpeg gif'.split()
     if environ['PATH_INFO'] == '/':
         filename = 'index.html'
@@ -52,7 +52,7 @@ def static_file(environ, start_response):
     if suf in img_types:
         pathname = '../www/images'
     pathname = '%s/%s' % (pathname, filename)
-    if suf not in content_types.keys() or '..' in filename or not os.access(pathname, os.R_OK):
+    if suf not in list(content_types.keys()) or '..' in filename or not os.access(pathname, os.R_OK):
         sys.stderr.write('404 %s\n' % pathname)
         status = '404 NOT FOUND'
         content_type = 'text/plain'
@@ -69,7 +69,7 @@ def post_req(environ, start_response, postdata):
     try:
         data = json.loads(postdata)
         for d in data:
-            msg = gr.message().make_from_string(str(d['command']), -2, d['data'], 0)
+            msg = gr.message().make_from_string(str(d['command']), -2, d['arg1'], d['arg2'])
             my_output_q.insert_tail(msg)
         valid_req = True
         time.sleep(0.2)

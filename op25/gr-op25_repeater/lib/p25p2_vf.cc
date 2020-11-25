@@ -565,13 +565,14 @@ static const uint32_t pr_n[4096] = {	\
 	11353390, 16168627, 16360768, 2121433, 6508214, 5936487, 1156824, 737033
 };
 
-	size_t p25p2_vf::process_vcw(const uint8_t vf[], int* b, int* U) {
+	size_t p25p2_vf::process_vcw(mbe_errs* errs_mp, const uint8_t vf[], int* b, int* U) {
 		size_t errs, err_cnt = 0;
 		int c0,c1,c2,c3;
 		int u[4];
 		extract_vcw(vf, c0, c1, c2, c3 );
 
 		u[0] = gly24128Dec(c0, &errs);
+		errs_mp->E0 = errs;
 		err_cnt += errs;
 		// TODO: use pr_n[] to lookup m1
 		int pr[24];
@@ -587,6 +588,7 @@ static const uint32_t pr_n[4096] = {	\
 			m1 = (m1 << 1) + _m1[i];
 	
 		u[1] = gly23127Dec(c1 ^ m1, &errs);
+		errs_mp->E1 = errs;
 		err_cnt += errs;
 		u[2] = c2;
 		u[3] = c3;
@@ -599,6 +601,9 @@ static const uint32_t pr_n[4096] = {	\
 			U[2] = u[2];
 			U[3] = u[3];
 		}
+
+		// Update running error rate estimate
+		errs_mp->ER = (0.95 * errs_mp->ER) + (0.001064 * (double)err_cnt);
 
 		return err_cnt;
 	}

@@ -21,6 +21,7 @@
 #
 
 import sys
+import ctypes
 import time
 import json
 
@@ -42,7 +43,7 @@ class dmr_chan:
         self.slot.append(_grant_info)
 
 class dmr_receiver:
-    def __init__(self, msgq_id, frequency_set=None, slot_set=None, chans={}, debug=0):
+    def __init__(self, msgq_id, frequency_set=None, slot_set=None, nbfm_ctrl=None, chans={}, debug=0):
         class _states(object):
             IDLE = 0
             CC   = 1
@@ -58,7 +59,7 @@ class dmr_receiver:
         self.debug = debug
         self.cc_timeouts = 0
         self.chans = chans
-        self.chan_list = self.chans.keys()
+        self.chan_list = list(self.chans.keys())
         self.current_chan = 0
         self.rest_lcn = 0
         self.active_tgids = {}
@@ -100,7 +101,7 @@ class dmr_receiver:
                 sys.stderr.write("%f [%d] CONNECT PLUS CHANNEL GRANT: srcAddr(%06x), grpAddr(%06x), unknown lcn(%d), slot(%d)\n" % (time.time(), self.msgq_id, src_addr, grp_addr, lcn, slot))
 
     def find_freq(self, lcn):
-        if self.chans.has_key(lcn):
+        if lcn in self.chans:
             return (self.chan_list.index(lcn), self.chans[lcn].frequency)
         else:
             return (None, None)
@@ -131,16 +132,16 @@ class dmr_receiver:
         if (self.msgq_id == 0) and (self.debug >= 1):
             sys.stderr.write("%f [%d] Searching for control channel: lcn(%d), freq(%f)\n" % (time.time(), self.msgq_id, self.chan_list[self.current_chan], (self.chans[self.chan_list[self.current_chan]].frequency/1e6)))
 
+    def ui_command(self, msg):
+        pass          # TODO: handle these requests
+
     def process_qmsg(self, msg):
-        if msg.arg2() != 1: # discard anything not DMR
-            return
+        m_type = ctypes.c_int16(msg.type() & 0xffff).value  # lower 16 bits of msg.type() is signed message type
+        m_slot = int(msg.arg1()) & 0x1                      # message slot id
+        m_ts   = float(msg.arg2())                          # message sender timestamp
+        m_buf = msg.to_string()                             # message data
 
-        m_type = int(msg.type())
-        m_slot = int(msg.arg1()) & 0x1
-        m_proto = int(msg.arg2())
-        m_buf = msg.to_string()
-
-        if m_type == -1:  # Sync Timeout
+        if m_type == -1:    # Sync Timeout
             if self.debug >= 9:
                 sys.stderr.write("%f [%d] Timeout waiting for sync sequence\n" % (time.time(), self.msgq_id))
 
@@ -154,7 +155,7 @@ class dmr_receiver:
             else:                 # secondary/voice channel
                 pass
 
-        elif m_type >= 0: # Receiving a PDU means sync must be present
+        elif m_type >= 0:   # Receiving a PDU means sync must be present
             if self.msgq_id == 0:
                 self.cc_timeouts = 0
 
@@ -169,7 +170,7 @@ class dmr_receiver:
                 d_buf += format(ord(byte),"02x")
             sys.stderr.write("%f [%d] DMR PDU: lcn(%d), state(%d), type(%d), slot(%d), data(%s)\n" % (time.time(), self.msgq_id, self.chan_list[self.current_chan], self.current_state, m_type, m_slot, d_buf))
 
-	if m_type == 0:   # CACH SLC
+        if m_type == 0:   # CACH SLC
             self.rx_CACH_SLC(m_buf)
         elif m_type == 1: # CACH CSBK
             pass
@@ -349,17 +350,18 @@ class rx_ctl(object):
         for rx_id in self.receivers:
             self.receivers[rx_id].post_init()
 
-    def add_receiver(self, msgq_id):
+    def add_receiver(self, msgq_id, config, meta_q = None):
         self.receivers[msgq_id] = dmr_receiver(msgq_id, self.frequency_set, self.slot_set, self.chans, self.debug)
 
     def process_qmsg(self, msg):
-        if msg.arg2() != 1: # discard anything not DMR
+        m_proto = ctypes.c_int16(msg.type() >> 16).value  # upper 16 bits of msg.type() is signed protocol
+        if m_proto != 1: # DMR m_proto=1
             return
 
         self.check_expired_grants()
 
         m_rxid = int(msg.arg1()) >> 1
-        if self.receivers.has_key(m_rxid):
+        if m_rxid in self.receivers:
             self.receivers[m_rxid].process_qmsg(msg)
 
     def check_expired_grants(self):

@@ -1,0 +1,131 @@
+{
+    "channels": [
+        {
+            "name": "Voice_ch1", 
+            "device": "sdr0",
+            "trunking_sysname": "FiRST Talbot",
+            "meta_stream_name": "stream_0",
+            "demod_type": "cqpsk", 
+            "destination": "udp://127.0.0.1:23466", 
+            "excess_bw": 0.2, 
+            "filter_type": "rc", 
+            "frequency": 773843750, 
+            "if_rate": 24000, 
+            "plot": "",
+            "symbol_rate": 4800,
+            "enable_analog": "off",
+            "blacklist": "",
+            "whitelist": "first-dorc.wlist"
+        },
+        {
+            "name": "Voice_ch2", 
+            "device": "sdr0",
+            "trunking_sysname": "FiRST Talbot",
+            "meta_stream_name": "stream_1",
+            "demod_type": "cqpsk", 
+            "destination": "udp://127.0.0.1:23466", 
+            "excess_bw": 0.2, 
+            "filter_type": "rc", 
+            "frequency": 773843750, 
+            "if_rate": 24000, 
+            "plot": "",
+            "symbol_rate": 4800,
+            "enable_analog": "off",
+            "blacklist": "",
+            "whitelist": "talbot-fire.wlist"
+        },
+        {
+            "name": "Voice_ch3", 
+            "device": "sdr0",
+            "trunking_sysname": "FiRST Talbot",
+            "meta_stream_name": "",
+            "demod_type": "cqpsk", 
+            "destination": "udp://127.0.0.1:23466", 
+            "excess_bw": 0.2, 
+            "filter_type": "rc", 
+            "frequency": 773843750, 
+            "if_rate": 24000, 
+            "plot": "",
+            "symbol_rate": 4800,
+            "enable_analog": "off",
+            "blacklist": "",
+            "whitelist": "qa.wlist"
+        }
+    ], 
+    "devices": [
+        {
+            "args": "airspy=0", 
+            "frequency": 772525000, 
+            "gains": "LNA:15,MIX:15,IF:5", 
+            "gain_mode": false,
+            "name": "sdr0", 
+            "offset": 0, 
+            "ppm": 0.30, 
+            "rate": 6000000, 
+            "tunable": false
+        }
+    ],
+    "trunking": {
+        "module": "tk_p25.py",
+        "chans": [
+            {
+                "nac": "0x0",
+                "sysname": "FiRST Talbot",
+                "control_channel_list": "773.84375",
+                "whitelist": "",
+                "blacklist": "",
+                "tgid_tags_file": "first.tsv",
+                "crypt_behavior": 1
+            }
+        ]
+    },
+    "metadata": {
+        "module": "icemeta.py",
+        "streams": [
+            {
+                "stream_name": "stream_0",
+                "meta_format_idle": "[idle]",
+                "meta_format_tgid": "[%TGID%]",
+                "meta_format_tag":  "[%TGID%] %TAG%",
+                "icecastServerAddress": "192.168.1.24:8000",
+                "icecastMountpoint": "op25_stream_0",
+                "icecastMountExt": ".xspf",
+                "icecastPass": "hackme1",
+                "delay": 0.0
+            },
+            {
+                "stream_name": "stream_1",
+                "meta_format_idle": "[idle]",
+                "meta_format_tgid": "[%TGID%]",
+                "meta_format_tag":  "[%TGID%] %TAG%",
+                "icecastServerAddress": "192.168.1.24:8000",
+                "icecastMountpoint": "op25_stream_1",
+                "icecastMountExt": ".xspf",
+                "icecastPass": "hackme2",
+                "delay": 0.0
+            }
+        ]
+    },
+    "audio": {
+        "module": "sockaudio.py",
+        "instances": [
+            {
+                "instance_name": "audio0",
+                "device_name": "default",
+                "udp_port": 23466,
+                "audio_gain": 1.0,
+                "number_channels": 1
+            }
+        ]
+    },
+    "terminal": {
+        "module": "terminal.py",
+        "terminal_type": "curses",
+        "#terminal_type": "http:127.0.0.1:8080",
+        "curses_plot_interval": 0.1,
+        "http_plot_interval": 1.0,
+        "http_plot_directory": "../www/images",
+        "tuning_step_large": 1200,
+        "tuning_step_small": 100
+    }
+}

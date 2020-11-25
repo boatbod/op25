@@ -118,7 +118,7 @@ endfunction(GR_UNIQUE_TARGET)
 ########################################################################
 # Install python sources (also builds and installs byte-compiled python)
 ########################################################################
-function(GR_PYTHON_INSTALL)
+function(GR_PYTHON_INSTALL name)
     include(CMakeParseArgumentsCopy)
     CMAKE_PARSE_ARGUMENTS(GR_PYTHON_INSTALL "" "DESTINATION;COMPONENT" "FILES;PROGRAMS" ${ARGN})
 
@@ -155,6 +155,15 @@ function(GR_PYTHON_INSTALL)
             file(MAKE_DIRECTORY ${pygen_path})
 
         endforeach(pyfile)
+
+        # XXX(cmake): This can be relaxed once CMake Issue #20067 is fixed.
+        # https://gitlab.kitware.com/cmake/cmake/issues/20067
+        if (CMAKE_VERSION VERSION_LESS "3.11" OR
+            NOT CMAKE_GENERATOR MATCHES "Makefiles")
+            set(depends_files ${pysrcfiles})
+        else ()
+            set(depends_files ${name}_swig_compilation)
+        endif ()
 
         #the command to generate the pyc files
         add_custom_command(

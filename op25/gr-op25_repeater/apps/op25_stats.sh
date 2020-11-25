@@ -14,23 +14,23 @@ echo ""
 # list of frequencies used
 echo "Generating list of frequencies used: op25-freqs-used.txt"
 echo "# Frequencies Used" > op25-freqs-used.txt
-grep 'new freq:' $1 | cut -d" " -f4 | sort -n >> op25-freqs-used.txt
+grep 'new freq=' $1 | cut -d"=" -f2 | sort -n >> op25-freqs-used.txt
 
 # control channels used, and time of switch
 echo "Generating list of control channels used: op25-cc-used.txt"
 echo "# Control Channels Used" > op25-cc-used.txt
-grep 'set control channel:' $1 | cut -d" " -f1,5 >> op25-cc-used.txt
+grep 'set control channel=' $1 | cut -d"=" -f2 >> op25-cc-used.txt
 
 # list of new talkgroups seen
 echo "Generating list of new talkgroups seen: op25-new-tgids.txt"
 echo "# Newly Seen Talkgroups" > op25-new-tgids.txt
-grep 'new tgid:' $1 | cut -d" " -f4- | sort -n >> op25-new-tgids.txt
+grep 'new tgid=' $1 | cut -d"=" -f2- | sort -n >> op25-new-tgids.txt
 
 # histogram of talkgroups
 echo "Munging log and tag files..."
 temp1=$(mktemp)
 temp2=$(mktemp)
-#grep 'set tgid:' $1 | cut -d" " -f4- | sort -k 1b,1 | uniq -c \
+#grep 'set tgid=' $1 | cut -d"=" -f4- | sort -k 1b,1 | uniq -c \
 grep 'set tgid=' $1 | sed s/^.*tgid=// | sed s/,.*$// | sort -k 1b,1 | uniq -c \
     | sed -r 's/^ +([0-9]+) /\1\t/' > $temp1
 
@@ -72,7 +72,7 @@ awk '{FS=OFS="\t"} NR>2 {print $3,$1,$2}' op25-tagless-frequency.txt \
 
 # show activity (number of commands) per five minute interval
 echo "Generating activity histogram: op25-activity.txt"
-start=`grep 'set tgid:' $1 | head -n1 | cut -d" " -f1 | cut -c1-10`
+start=`grep 'set tgid=' $1 | head -n1 | cut -d"=" -f1 | cut -c1-10`
 echo "# Commands sent in prior 5 minutes (300 seconds)" > op25-activity.txt
 echo "# Starting time (Unix epoch): $start" >> op25-activity.txt
 echo "" >> op25-activity.txt

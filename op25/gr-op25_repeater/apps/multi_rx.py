@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 # Copyright 2011, 2012, 2013, 2014, 2015, 2016, 2017 Max H. Parke KA1RBI
+# Copyright 2020 Graham J. Norbury - gnorbury@bondcar.com
 # 
 # This file is part of OP25
 # 
@@ -37,16 +38,33 @@ import op25
 import op25_repeater
 import p25_demodulator
 import p25_decoder
+import op25_nbfm
+from log_ts import log_ts
 
 from gr_gnuplot import constellation_sink_c
 from gr_gnuplot import fft_sink_c
 from gr_gnuplot import symbol_sink_f
 from gr_gnuplot import eye_sink_f
 from gr_gnuplot import mixer_sink_c
+from gr_gnuplot import tuner_sink_f
+
+sys.path.append('tdma')
+import lfsr
 
 os.environ['IMBE'] = 'soft'
 
 _def_symbol_rate = 4800
+
+# Helper functions
+#
+def from_dict(d, key, def_val):
+    if key in d and d[key] != "":
+        return d[key]
+    else:
+        return def_val
+
+def get_fractional_ppm(tuned_freq, adj_val):
+    return (adj_val * 1e6 / tuned_freq)
 
 # The P25 receiver
 #
@@ -63,118 +81,310 @@ class device(object):
             sys.stderr.write('WARNING: requested sample rate %d for device %s may not\n' % (config['rate'], config['name']))
             sys.stderr.write("be optimal.  You may want to use one of the following rates\n")
             sys.stderr.write('%s\n' % speeds)
-        self.src = osmosdr.source(config['args'])
+        sys.stderr.write('Device name: "%s", osmosdr args: "%s"\n' % (self.name, str(config['args'])))
+        self.src = osmosdr.source(str(config['args']))
+
+        if 'gain_mode' in config:
+            gain_mode = from_dict(config, 'gain_mode', False)
+            if gain_mode:
+                self.src.set_gain_mode(True, 0)
+            else:
+                self.src.set_gain_mode(True, 0)  # UGH! Ugly workaround for gr-osmosdr airspy bug
+                self.src.set_gain_mode(False, 0)
+            sys.stderr.write("gr-osmosdr driver gain_mode: %s\n" % self.src.get_gain_mode())
 
         for tup in config['gains'].split(','):
             name, gain = tup.split(':')
-            self.src.set_gain(int(gain), name)
+            self.src.set_gain(int(gain), str(name))
 
-        self.src.set_freq_corr(config['ppm'])
-        self.ppm = config['ppm']
+        self.ppm = float(from_dict(config, 'ppm', "0.0"))
+        self.src.set_freq_corr(int(round(self.ppm)))
 
         self.src.set_sample_rate(config['rate'])
         self.sample_rate = config['rate']
 
-        self.src.set_center_freq(config['frequency'])
-        self.frequency = config['frequency']
+        self.offset = int(from_dict(config, 'offset', 0))
 
-        self.offset = config['offset']
+        self.frequency = int(from_dict(config, 'frequency', 800000000))
+        self.fractional_corr = (int(round(self.ppm)) - self.ppm) * (self.frequency/1e6)
+        self.src.set_center_freq(self.frequency + self.offset)
+
+    def get_ppm(self):
+        return self.ppm
 
 class channel(object):
-    def __init__(self, config, dev, verbosity, msgq_id, rx_q):
+    def __init__(self, config, dev, verbosity, msgq_id, rx_q, tb):
         sys.stderr.write('channel (dev %s): %s\n' % (dev.name, config))
         self.verbosity = verbosity
-        self.name = config['name']
+        ch_name = str(from_dict(config, 'name', ""))
+        self.name = ("[%d] %s" % (msgq_id, ch_name)) if ch_name != "" else ("[%d]" % msgq_id) 
         self.device = dev
-        if config.has_key('frequency') and (config['frequency'] != ""):
+        if 'frequency' in config and (config['frequency'] != ""):
             self.frequency = config['frequency']
         else:
             self.frequency = self.device.frequency
         self.msgq_id = msgq_id
+        self.tb = tb
         self.raw_sink = None
         self.raw_file = None
         self.throttle = None
-        self.sinks = []
-        self.kill_sink = []
+        self.nbfm = None
+        self.nbfm_mode = 0
+        self.sinks = {}
+        self.tdma_state = False
+        self.xor_cache = {}
         self.symbol_rate = _def_symbol_rate
-        if 'symbol_rate' in config.keys():
+        if 'symbol_rate' in list(config.keys()):
             self.symbol_rate = config['symbol_rate']
         self.config = config
-        self.demod = p25_demodulator.p25_demod_cb(
-                         input_rate = dev.sample_rate,
-                         demod_type = config['demod_type'],
-                         filter_type = config['filter_type'],
-                         excess_bw = config['excess_bw'],
-                         relative_freq = dev.frequency + dev.offset - self.frequency,
-                         offset = dev.offset,
-                         if_rate = config['if_rate'],
-                         symbol_rate = self.symbol_rate)
-        self.decoder = op25_repeater.frame_assembler(config['destination'], verbosity, msgq_id, rx_q)
+        if config['demod_type'] == "fsk": # Motorola 3600bps
+            filter_type = from_dict(config, 'filter_type', 'fsk2mm')
+            if filter_type[:4] != 'fsk2':   # has to be 'fsk2' or derivative such as 'fsk2mm'
+                filter_type = 'fsk2mm'
+            self.demod = p25_demodulator.p25_demod_cb(
+                             input_rate = dev.sample_rate,
+                             demod_type = 'fsk4',
+                             filter_type = filter_type,
+                             excess_bw = config['excess_bw'],
+                             relative_freq = (dev.frequency + dev.offset + dev.fractional_corr) - self.frequency,
+                             offset = dev.offset,
+                             if_rate = config['if_rate'],
+                             symbol_rate = self.symbol_rate)
+            self.decoder = op25_repeater.frame_assembler(str(config['destination']), verbosity, msgq_id, rx_q)
 
-        if config.has_key('key') and (config['key'] != ""):
+        else:                             # P25, DMR, NXDN and everything else
+            self.demod = p25_demodulator.p25_demod_cb(
+                             input_rate = dev.sample_rate,
+                             demod_type = config['demod_type'],
+                             filter_type = config['filter_type'],
+                             excess_bw = config['excess_bw'],
+                             relative_freq = (dev.frequency + dev.offset + dev.fractional_corr) - self.frequency,
+                             offset = dev.offset,
+                             if_rate = config['if_rate'],
+                             symbol_rate = self.symbol_rate)
+            self.decoder = op25_repeater.frame_assembler(str(config['destination']), verbosity, msgq_id, rx_q)
+
+        if 'key' in config and (config['key'] != ""):
             self.set_key(int(config['key'], 0))
 
-        if ('plot' not in config.keys()) or (config['plot'] == ""):
+        enable_analog = str(from_dict(config, 'enable_analog', "auto")).lower()
+        if enable_analog == "off":
+            self.nbfm_mode = 0;
+        elif enable_analog == "on":
+            self.nbfm_mode = 2;
+        else:
+            self.nbfm_mode = 1;
+        
+        if self.nbfm_mode > 0:
+            self.nbfm = op25_nbfm.op25_nbfm_c(str(config['destination']), verbosity, config, msgq_id, rx_q)
+            if self.demod.connect_nbfm(self.nbfm):
+                if self.nbfm_mode == 2:
+                    self.nbfm.control(True)
+            else:
+                self.nbfm = None
+
+        if ('plot' not in list(config.keys())) or (config['plot'] == ""):
             return
 
         for plot in config['plot'].split(','):
-            # fixme: allow multiple complex consumers (fft and constellation currently mutually exclusive)
             if plot == 'datascope':
-                assert config['demod_type'] == 'fsk4'   ## datascope plot requires fsk4 demod type
-                sink = eye_sink_f(plot_name=self.name, sps=config['if_rate'] / self.symbol_rate)
-                self.demod.connect_bb('symbol_filter', sink)
-                self.kill_sink.append(sink)
+                self.toggle_eye_plot()
             elif plot == 'symbol':
-                sink = symbol_sink_f(plot_name=self.name)
-                self.demod.connect_float(sink)
-                self.kill_sink.append(sink)
+                self.toggle_symbol_plot()
             elif plot == 'fft':
-                i = len(self.sinks)
-                self.sinks.append(fft_sink_c(plot_name=self.name))
-                self.demod.connect_complex('src', self.sinks[i])
-                self.kill_sink.append(self.sinks[i])
-                self.sinks[i].set_offset(self.device.offset)
-                self.sinks[i].set_center_freq(self.device.frequency)
-                self.sinks[i].set_relative_freq(self.device.frequency + self.device.offset - self.frequency)
-                self.sinks[i].set_width(self.device.sample_rate)
+                self.toggle_fft_plot()
             elif plot == 'constellation':
-                i = len(self.sinks)
-                assert config['demod_type'] == 'cqpsk'   ## constellation plot requires cqpsk demod type
-                self.sinks.append(constellation_sink_c(plot_name=self.name))
-                self.demod.connect_complex('diffdec', self.sinks[i])
-                self.kill_sink.append(self.sinks[i])
+                self.toggle_constellation_plot()
             elif plot == 'mixer':
-                i = len(self.sinks)
-                self.sinks.append(mixer_sink_c(plot_name=self.name))
-                self.demod.connect_complex('mixer', self.sinks[i])
-                self.kill_sink.append(self.sinks[i])
+                self.toggle_mixer_plot()
+            elif plot == 'tuner':
+                self.toggle_tuner_plot()
             else:
                 sys.stderr.write('unrecognized plot type %s\n' % plot)
                 return
+
+    def set_plot_destination(self, plot): # only required for http terminal
+        if plot is None or plot not in self.sinks or self.tb.terminal_type is None:
+            return
+        if self.tb.terminal_type == "http":
+            self.sinks[plot].gnuplot.set_interval(self.tb.http_plot_interval)
+            self.sinks[plot].gnuplot.set_output_dir(self.tb.http_plot_directory)
+        else:
+            self.sinks[plot].gnuplot.set_interval(self.tb.curses_plot_interval)
+
+    def toggle_plot(self, plot_type):
+        if plot_type == 1:
+            self.toggle_fft_plot()
+        elif plot_type == 2:
+            self.toggle_constellation_plot()
+        elif plot_type == 3:
+            self.toggle_symbol_plot()
+        elif plot_type == 4:
+            self.toggle_eye_plot()
+        elif plot_type == 5:
+            self.toggle_mixer_plot()
+        elif plot_type == 6:
+            self.toggle_tuner_plot()
+
+    def toggle_eye_plot(self):
+        if 'eye' not in self.sinks:
+            sink = eye_sink_f(plot_name=("Ch:%s" % self.name), chan=self.msgq_id)
+            sink.set_sps(self.config['if_rate'] / self.symbol_rate)
+            self.sinks['eye'] = sink
+            self.set_plot_destination('eye')
+            self.tb.lock()
+            self.demod.connect_fm_demod()                   # add fm demod to flowgraph if not already present
+            self.demod.connect_bb('symbol_filter', sink)
+            self.tb.unlock()
+        else:
+            sink = self.sinks.pop('eye')
+            self.tb.lock()
+            self.demod.disconnect_bb(sink)
+            self.demod.disconnect_fm_demod()                # remove fm demod from flowgraph if no longer needed
+            self.tb.unlock()
+            sink.kill()
+
+    def toggle_tuner_plot(self):
+        if 'tuner' not in self.sinks:
+            sink = tuner_sink_f(plot_name=("Ch:%s" % self.name), chan=self.msgq_id)
+            self.sinks['tuner'] = sink
+            self.set_plot_destination('tuner')
+            self.tb.lock()
+            self.demod.connect_fm_demod()                   # add fm demod to flowgraph if not already present
+            self.demod.connect_bb_tuner('symbol_filter', sink)
+            self.tb.unlock()
+        else:
+            sink = self.sinks.pop('tuner')
+            self.tb.lock()
+            self.demod.disconnect_bb_tuner(sink)
+            self.demod.disconnect_fm_demod()                # remove fm demod from flowgraph if no longer needed
+            self.tb.unlock()
+            sink.kill()
+
+    def toggle_symbol_plot(self):
+        if 'symbol' not in self.sinks:
+            sink = symbol_sink_f(plot_name=("Ch:%s" % self.name), chan=self.msgq_id)
+            self.sinks['symbol'] = sink
+            self.set_plot_destination('symbol')
+            self.tb.lock()
+            self.demod.connect_float(sink)
+            self.tb.unlock()
+        else:
+            sink = self.sinks.pop('symbol')
+            self.tb.lock()
+            self.demod.disconnect_float(sink)
+            self.tb.unlock()
+            sink.kill()
+
+    def toggle_fft_plot(self):
+        if 'fft' not in self.sinks:
+            sink = fft_sink_c(plot_name=("Ch:%s" % self.name), chan=self.msgq_id)
+            self.sinks['fft'] = sink
+            self.set_plot_destination('fft')
+            sink.set_offset(self.device.offset)
+            sink.set_center_freq(self.device.frequency)
+            sink.set_relative_freq(self.device.frequency - self.frequency)
+            sink.set_width(self.device.sample_rate)
+            self.tb.lock()
+            self.demod.connect_complex('src', sink)
+            self.tb.unlock()
+        else:
+            sink = self.sinks.pop('fft')
+            self.tb.lock()
+            self.demod.disconnect_complex(sink)
+            self.tb.unlock()
+            sink.kill()
+
+    def toggle_mixer_plot(self):
+        if 'mixer' not in self.sinks:
+            sink = mixer_sink_c(plot_name=("Ch:%s" % self.name), chan=self.msgq_id)
+            self.sinks['mixer'] = sink
+            self.set_plot_destination('mixer')
+            sink.set_width(self.config['if_rate'])
+            self.tb.lock()
+            self.demod.connect_complex('cutoff', sink)
+            self.tb.unlock()
+        else:
+            sink = self.sinks.pop('mixer')
+            self.tb.lock()
+            self.demod.disconnect_complex(sink)
+            self.tb.unlock()
+            sink.kill()
+
+    def toggle_constellation_plot(self):
+        if str(self.config['demod_type']).lower() != "cqpsk":
+            return
+        if 'constellation' not in self.sinks:
+            sink = constellation_sink_c(plot_name=("Ch:%s" % self.name), chan=self.msgq_id)
+            self.sinks['constellation'] = sink
+            self.set_plot_destination('constellation')
+            self.tb.lock()
+            self.demod.connect_complex('diffdec', sink)
+            self.tb.unlock()
+        else:
+            sink = self.sinks.pop('constellation')
+            self.tb.lock()
+            self.demod.disconnect_complex(sink)
+            self.tb.unlock()
+            sink.kill()
 
     def set_freq(self, freq):
         if self.frequency == freq:
             return True
         old_freq = self.frequency
         self.frequency = freq
-        if not self.demod.set_relative_frequency(self.device.frequency + self.device.offset - freq): # First attempt relative tune
+        if not self.demod.set_relative_frequency(self.device.offset + self.device.frequency + self.device.fractional_corr - freq): # First attempt relative tune
             if self.device.tunable:                                                                  # then hard tune if allowed
-                self.device.src.set_center_freq(self.frequency)
                 self.device.frequency = self.frequency
-                self.demod.set_relative_frequency(self.device.frequency + self.device.offset - freq)
+                self.device.src.set_center_freq(self.frequency + self.device.offset)
+                self.device.fractional_corr = (int(round(self.device.ppm)) - self.device.ppm) * (self.device.frequency/1e6)        # Calc frac ppm using new freq
+                self.demod.set_relative_frequency(self.device.offset + self.device.frequency + self.device.fractional_corr - freq)
             else:                                                                                    # otherwise fail and reset to prev freq
-                self.demod.set_relative_frequency(self.device.frequency + self.device.offset - old_freq)
+                self.demod.set_relative_frequency(self.device.offset + self.device.frequency + self.device.fractional_corr - old_freq)
                 self.frequency = old_freq
                 if self.verbosity:
-                    sys.stderr.write("%f [%d] Unable to tune %s to frequency %f\n" % (time.time(), self.msgq_id, self.name, (freq/1e6)))
+                    sys.stderr.write("%s [%d] Unable to tune %s to frequency %f\n" % (log_ts.get(), self.msgq_id, self.name, (freq/1e6)))
                 return False
-        for sink in self.sinks:
-            if sink.name() == "fft_sink_c":
-                sink.set_center_freq(self.device.frequency)
-                sink.set_relative_freq(self.device.frequency + self.device.offset - freq)
+        if 'fft' in self.sinks:
+                self.sinks['fft'].set_center_freq(self.device.frequency)
+                self.sinks['fft'].set_relative_freq(self.device.frequency - freq)
         if self.verbosity >= 9:
-            sys.stderr.write("%f [%d] Tuning to frequency %f\n" % (time.time(), self.msgq_id, (freq/1e6)))
+            sys.stderr.write("%s [%d] Tuning to frequency %f\n" % (log_ts.get(), self.msgq_id, (freq/1e6)))
+        self.demod.reset()          # reset gardner-costas tracking loop
+        self.decoder.sync_reset()   # reset frame_assembler
         return True
+
+    def adj_tune(self, adjustment): # ideally this would all be done at the device level but the demod belongs to the channel object
+        self.device.ppm -= get_fractional_ppm(self.device.frequency, adjustment)
+        self.device.src.set_freq_corr(int(round(self.device.ppm)))
+        self.device.src.set_center_freq(self.device.frequency + self.device.offset)
+        self.device.fractional_corr = (int(round(self.device.ppm)) - self.device.ppm) * (self.device.frequency/1e6)
+        self.demod.set_relative_frequency(self.device.offset + self.device.frequency + self.device.fractional_corr - self.frequency)
+        self.demod.reset()          # reset gardner-costas tracking loop
+
+    def configure_p25_tdma(self, params):
+        set_tdma = False
+        if 'tdma' in params and params['tdma'] is not None:
+            set_tdma = True
+            self.decoder.set_slotid(params['tdma'])
+        if set_tdma == self.tdma_state:
+            return
+        self.tdma_state = set_tdma
+        if set_tdma:
+            hash = '%x%x%x' % (params['nac'], params['sysid'], params['wacn'])
+            if hash not in self.xor_cache:
+                self.xor_cache[hash] = lfsr.p25p2_lfsr(params['nac'], params['sysid'], params['wacn']).xor_chars
+                if self.verbosity >= 5:
+                    sys.stderr.write("%s [%d] Caching TDMA xor mask for NAC: 0x%x, SYSID: 0x%x, WACN: 0x%x\n" % (log_ts.get(), self.msgq_id, params['nac'], params['sysid'], params['wacn'])) 
+            self.decoder.set_xormask(self.xor_cache[hash])
+            rate = 6000
+        else:
+            rate = self.config['symbol_rate']
+
+        self.symbol_rate = rate
+        self.demod.set_omega(rate)
+        if 'eye' in self.sinks:
+            self.sinks['eye'].set_sps(self.config['if_rate'] / rate)
 
     def set_slot(self, slot):
         self.decoder.set_slotid(slot)
@@ -183,8 +393,8 @@ class channel(object):
         self.decoder.set_slotkey(key)
 
     def kill(self):
-        for sink in self.kill_sink:
-            sink.kill()
+        for sink in self.sinks:
+            self.sinks[sink].kill()
 
 class rx_block (gr.top_block):
 
@@ -192,13 +402,30 @@ class rx_block (gr.top_block):
     #
     def __init__(self, verbosity, config):
         self.verbosity = verbosity
-        gr.top_block.__init__(self)
-        self.device_id_by_name = {}
-
+        self.terminal = None
+        self.terminal_type = None
+        self.terminal_config = None
+        self.interactive = True
+        self.audio = None
+        self.audio_instances = {}
+        self.metadata = None
+        self.meta_streams = {}
         self.trunking = None
         self.du_watcher = None
         self.rx_q = gr.msg_queue(100)
-        if config.has_key("trunking"):
+        self.ui_in_q = gr.msg_queue(10)
+        self.ui_out_q = gr.msg_queue(10)
+
+        gr.top_block.__init__(self)
+        self.device_id_by_name = {}
+
+        if "audio" in config:
+            self.configure_audio(config['audio'])
+
+        if "metadata" in config:
+            self.configure_metadata(config['metadata'])
+
+        if "trunking" in config:
             self.configure_trunking(config['trunking'])
 
         self.configure_devices(config['devices'])
@@ -207,9 +434,69 @@ class rx_block (gr.top_block):
         if self.trunking is not None: # post-initialization after channels and devices created
             self.trunk_rx.post_init()
 
+        if "terminal" in config:
+            self.configure_terminal(config['terminal'])
+
+    def set_interactive(self, session_type):
+        self.interactive = session_type
+
+    def get_interactive(self):
+        return self.interactive
+
+    def configure_audio(self, config):
+        audio_mod = config['module']
+        if audio_mod.endswith('.py'):
+            audio_mod = audio_mod[:-3]
+        try:
+            self.audio = importlib.import_module(audio_mod)
+        except:
+            self.audio = None
+            sys.stderr.write("Error: unable to import audio module: %s\n%s\n" % (config['module'], sys.exc_info()[1]))
+
+        idx = 0
+        for instance in config['instances']:
+            if 'instance_name' in instance and instance['instance_name'] != "":
+                instance_name = instance['instance_name']
+                if instance_name in self.audio_instances:
+                    sys.stderr.write("Ignoring duplicate audio instance #%d [%s]\n" % (idx, instance_name))
+                    break
+                audio_port = int(from_dict(instance,'udp_port', 23456))
+                audio_device = str(from_dict(instance,'device_name', "default"))
+                audio_gain = float(from_dict(instance,'audio_gain', "0.0"))
+                audio_2chan = True if int(from_dict(instance,'number_channels', 1)) == 2 else False
+                sys.stderr.write("Configuring audio instance #%d [%s]\n" % (idx, instance_name))
+                try:
+                    audio_s = self.audio.audio_thread("127.0.0.1", audio_port, audio_device, audio_2chan, audio_gain)
+                    self.audio_instances[instance_name] = audio_s
+                except:
+                    sys.stderr.write("Error configuring audio instance #%d; %s\n" % (idx, sys.exc_info()[1]))
+                    sys.exc_clear()
+                    self.audio_instances[instance_name] = None
+            else:
+                sys.stderr.write("Ignoring unnamed audio instance #%d\n" % idx)
+            idx += 1
+
+    def configure_terminal(self, config):
+        term_mod = config['module']
+        if term_mod.endswith('.py'):
+            term_mod = term_mod[:-3]
+        try:
+            terminal = importlib.import_module(term_mod)
+        except:
+            terminal = None
+            sys.stderr.write("Error: unable to import terminal module: %s\n%s\n" % (config['module'], sys.exc_info()[1]))
+            return
+        term_type = str(from_dict(config,'terminal_type', "curses"))
+        self.terminal = terminal.op25_terminal(self.ui_in_q, self.ui_out_q, term_type)
+        self.terminal_type = self.terminal.get_terminal_type()
+        self.terminal_config = config
+        self.curses_plot_interval = float(from_dict(config, 'curses_plot_interval', 0.0))
+        self.http_plot_interval = float(from_dict(config, 'http_plot_interval', 1.0))
+        self.http_plot_directory = str(from_dict(config, 'http_plot_directory', "../www/images"))
+
     def configure_trunking(self, config):
-        if ((config.has_key("module") and (config['module'] == "")) or 
-            (config.has_key("chans") and (config['chans'] == ""))):
+        if (("module" in config and (config['module'] == "")) or 
+            ("chans" in config and (config['chans'] == ""))):
             return
 
         tk_mod = config['module']
@@ -222,9 +509,38 @@ class rx_block (gr.top_block):
             self.trunking = None
 
         if self.trunking is not None:
-            self.trunk_rx = self.trunking.rx_ctl(frequency_set = self.change_freq, slot_set = self.set_slot, debug = self.verbosity, chans = config['chans'])
+            self.trunk_rx = self.trunking.rx_ctl(frequency_set = self.change_freq, slot_set = self.set_slot, nbfm_ctrl = self.nbfm_control, debug = self.verbosity, chans = config['chans'])
             self.du_watcher = du_queue_watcher(self.rx_q, self.trunk_rx.process_qmsg)
             sys.stderr.write("Enabled trunking module: %s\n" % config['module'])
+
+    def configure_metadata(self, config):
+        meta_mod = config['module']
+        if meta_mod.endswith('.py'):
+            meta_mod = meta_mod[:-3]
+        try:
+            self.metadata = importlib.import_module(meta_mod)
+        except:
+            self.metadata = None
+            sys.stderr.write("Error: unable to import metadata module: %s\n%s\n" % (config['module'], sys.exc_info()[1]))
+
+        idx = 0
+        for stream in config['streams']:
+            if 'stream_name' in stream and stream['stream_name'] != "":
+                stream_name = stream['stream_name']
+                if stream_name in self.meta_streams:
+                    sys.stderr.write("Ignoring duplicate metadata stream #%d [%s]\n" % (idx, stream_name))
+                    break
+                try:
+                    meta_q = gr.msg_queue(10)
+                    meta_s = self.metadata.meta_server(meta_q, stream, debug=self.verbosity)
+                    self.meta_streams[stream_name] = (meta_s, meta_q)
+                    sys.stderr.write("Configuring metadata stream #%d [%s]: %s\n" % (idx, stream_name, stream['icecastServerAddress'] + "/" + stream['icecastMountpoint']))
+                except:
+                    sys.stderr.write("Error configuring metadata stream #%d; %s\n" % (idx, sys.exc_info()[1]))
+                    sys.exc_clear()
+            else:
+                sys.stderr.write("Ignoring unnamed metadata stream #%d\n" % idx)
+            idx += 1
 
     def configure_devices(self, config):
         self.devices = []
@@ -233,13 +549,12 @@ class rx_block (gr.top_block):
             self.devices.append(device(cfg))
 
     def find_device(self, chan):
-        if chan.has_key('device') and (chan['device'] != "") and (self.device_id_by_name.has_key(chan['device'])):
+        if 'device' in chan and (chan['device'] != "") and (chan['device'] in self.device_id_by_name):
             dev_id = self.device_id_by_name[chan['device']]
-            sys.stderr.write("DEVICE ID=%d\n" % dev_id)
             if dev_id < len(self.devices):
                 return self.devices[dev_id]
             
-        if chan.has_key('frequency') and (chan['frequency'] != ""):
+        if 'frequency' in chan and (chan['frequency'] != ""):
             for dev in self.devices:
                 d = abs(chan['frequency'] - dev.frequency)
                 nf = dev.sample_rate / 2
@@ -247,11 +562,14 @@ class rx_block (gr.top_block):
                     return dev
         return None
 
+    def find_channel(self, msgq_id):
+        return self.channels[msgq_id]
+
     def configure_channels(self, config):
         self.channels = []
         for cfg in config:
             dev = self.find_device(cfg)
-            if (dev is None) and cfg.has_key('frequency'):
+            if (dev is None) and 'frequency' in cfg:
                 sys.stderr.write("* * * Frequency %d not within spectrum band of any device - ignoring!\n" % cfg['frequency'])
                 continue
             elif dev is None:
@@ -265,27 +583,33 @@ class rx_block (gr.top_block):
                         break
                 if dev == None:
                     continue    
+            meta_s, meta_q = None, None
+            if self.metadata is not None and 'meta_stream_name' in cfg and cfg['meta_stream_name'] != "" and cfg['meta_stream_name'] in self.meta_streams:
+                meta_s, meta_q = self.meta_streams[cfg['meta_stream_name']]
             if self.trunking is not None:
                 msgq_id = len(self.channels)
-                self.trunk_rx.add_receiver(msgq_id)
+                chan = channel(cfg, dev, self.verbosity, msgq_id, self.rx_q, self)
+                self.channels.append(chan)
+                self.trunk_rx.add_receiver(msgq_id, config=cfg, meta_q=meta_q, freq=chan.frequency)
             else:
-                msgq_id = -1
-            chan = channel(cfg, dev, self.verbosity, msgq_id, self.rx_q)
-            self.channels.append(chan)
-            if (cfg.has_key("raw_input")) and (cfg['raw_input'] != ""):
-                sys.stderr.write("Reading raw symbols from file: %s\n" % cfg['raw_input'])
-                chan.raw_file = blocks.file_source(gr.sizeof_char, cfg['raw_input'], False)
-                if (cfg.has_key("raw_seek")) and (cfg['raw_seek'] != 0):
+                msgq_id = -1 - len(self.channels)
+                chan = channel(cfg, dev, self.verbosity, msgq_id, self.rx_q, self)
+                self.channels.append(chan)
+            if ("raw_input" in cfg) and (cfg['raw_input'] != ""):
+                sys.stderr.write("%s Reading raw symbols from file: %s\n" % (log_ts.get(), cfg['raw_input']))
+                chan.raw_file = blocks.file_source(gr.sizeof_char, str(cfg['raw_input']), False)
+                if ("raw_seek" in cfg) and (cfg['raw_seek'] != 0):
                     chan.raw_file.seek(int(cfg['raw_seek']) * 4800, 0)
                 chan.throttle = blocks.throttle(gr.sizeof_char, chan.symbol_rate)
                 chan.throttle.set_max_noutput_items(chan.symbol_rate/50);
                 self.connect(chan.raw_file, chan.throttle)
                 self.connect(chan.throttle, chan.decoder)
+                self.set_interactive(False) # this is non-interactive 'replay' session 
             else:
                 self.connect(dev.src, chan.demod, chan.decoder)
-                if (cfg.has_key("raw_output")) and (cfg['raw_output'] != ""):
-                    sys.stderr.write("Saving raw symbols to file: %s\n" % cfg['raw_output'])
-                    chan.raw_sink = blocks.file_sink(gr.sizeof_char, cfg['raw_output'])
+                if ("raw_output" in cfg) and (cfg['raw_output'] != ""):
+                    sys.stderr.write("%s Saving raw symbols to file: %s\n" % (log_ts.get(), cfg['raw_output']))
+                    chan.raw_sink = blocks.file_sink(gr.sizeof_char, str(cfg['raw_output']))
                     self.connect(chan.demod, chan.raw_sink)
 
     def scan_channels(self):
@@ -296,27 +620,30 @@ class rx_block (gr.top_block):
         tuner = params['tuner']
         if (tuner < 0) or (tuner > len(self.channels)):
             if self.verbosity:
-                sys.stderr.write("%f No %s channel available for tuning\n" % (time.time(), params['tuner']))
+                sys.stderr.write("%s No %s channel available for tuning\n" % (log_ts.get(), params['tuner']))
             return False
 
         chan = self.channels[tuner]
+        if 'sigtype' in params and params['sigtype'] == "P25": # P25 specific TDMA config
+            chan.configure_p25_tdma(params)
+
         if not chan.set_freq(params['freq']):
             chan.set_slot(0)
             return False
-        
-        if params.has_key('slot'):
+
+        if 'slot' in params:
             chan.set_slot(params['slot'])
 
-        if params.has_key('chan'):
+        if 'chan' in params:
             self.trunk_rx.receivers[tuner].current_chan = params['chan']
 
-        if params.has_key('state'):
+        if 'state' in params:
             self.trunk_rx.receivers[tuner].current_state = params['state']
 
-        if params.has_key('type'):
+        if 'type' in params:
             self.trunk_rx.receivers[tuner].current_type = params['type']
 
-        if params.has_key('time'):
+        if 'time' in params:
             self.trunk_rx.receivers[tuner].tune_time = params['time']
 
         return True
@@ -324,12 +651,102 @@ class rx_block (gr.top_block):
     def set_slot(self, params):
         tuner = params['tuner']
         chan = self.channels[tuner]
-        if params.has_key('slot'):
+        if 'slot' in params:
             chan.set_slot(params['slot'])
+
+    def nbfm_control(self, msgq_id, action):
+        if (msgq_id >= 0 and msgq_id < len(self.channels)) and self.channels[msgq_id].nbfm is not None:
+            self.channels[msgq_id].nbfm.control(action)
+
+    def process_qmsg(self, msg):            # Handle UI requests
+        RX_COMMANDS = 'skip lockout hold whitelist reload'
+        s = msg.to_string()
+        if s == 'quit':
+            return True
+        elif s == 'update':                 # UI initiated update request
+            self.ui_freq_update()
+            if self.trunking is None or self.trunk_rx is None:
+                return False
+            js = self.trunk_rx.to_json()    # extract data from trunking module
+            msg = gr.message().make_from_string(js, -4, 0, 0)
+            self.ui_in_q.insert_tail(msg)   # send info back to UI
+            self.ui_plot_update()
+        elif s == 'toggle_plot':
+            if not self.get_interactive():
+                sys.stderr.write("%s Cannot start plots for non-realtime (replay) sessions\n" % log_ts.get())
+                return
+            plot_type = int(msg.arg1())
+            msgq_id = int(msg.arg2())
+            self.find_channel(msgq_id).toggle_plot(plot_type)
+        elif s == 'adj_tune':
+            freq = msg.arg1()
+            msgq_id = int(msg.arg2())
+            self.find_channel(msgq_id).adj_tune(freq)
+        #elif s == 'set_freq':
+        #    freq = msg.arg1()
+        #    self.last_freq_params['freq'] = freq
+        #    self.set_freq(freq)
+        #elif s == 'add_default_config':
+        #    nac = msg.arg1()
+        #    self.trunk_rx.add_default_config(int(nac))
+        elif s == 'get_config':
+            if self.terminal is not None and self.terminal_config is not None:
+                self.terminal_config['json_type'] = "terminal_config"
+                js = json.dumps(self.terminal_config)
+                msg = gr.message().make_from_string(js, -4, 0, 0)
+                self.ui_in_q.insert_tail(msg)   # send configuration back to UI
+                pass
+            else:
+                return False
+        elif s == 'dump_tgids':
+            self.trunk_rx.dump_tgids()
+        elif s in RX_COMMANDS:
+            if self.trunking is not None and self.trunk_rx is not None:
+                self.trunk_rx.ui_command(msg.to_string(), msg.arg1(), msg.arg2())
+        return False
+
+    def ui_freq_update(self):
+        if self.trunking is None or self.trunk_rx is None:
+            return False
+        params = json.loads(self.trunk_rx.get_chan_status())   # extract data from all channels
+        for rx_id in params['channels']:                       # iterate and convert stream name to url
+            params[rx_id]['ppm'] = self.find_channel(int(rx_id)).device.get_ppm()
+            s_name = params[rx_id]['stream']
+            if s_name not in self.meta_streams:
+                continue
+            meta_s, meta_q = self.meta_streams[s_name]
+            params[rx_id]['stream_url'] = meta_s.get_url()
+        js = json.dumps(params)
+        msg = gr.message().make_from_string(js, -4, 0, 0)
+        self.ui_in_q.insert_tail(msg)
+
+    def ui_plot_update(self):
+        if self.terminal_type is None or self.terminal_type != "http":
+            return
+
+        filenames = []
+        for chan in self.channels:
+            for sink in chan.sinks:
+                if chan.sinks[sink].gnuplot.filename is not None:
+                    filenames.append(chan.sinks[sink].gnuplot.filename)
+        d = {'json_type': 'rx_update', 'files': filenames}
+        msg = gr.message().make_from_string(json.dumps(d), -4, 0, 0)
+        self.ui_in_q.insert_tail(msg)
 
     def kill(self):
         for chan in self.channels:
             chan.kill()
+
+        for instance in self.audio_instances:
+            if self.audio_instances[instance] is not None:
+                self.audio_instances[instance].stop()
+
+        if self.terminal is not None:
+            self.terminal.end_terminal()
+
+    def stop(self):
+        self.kill()
+        gr.top_block.stop(self)
 
 # data unit receive queue
 #
@@ -353,13 +770,13 @@ class du_queue_watcher(threading.Thread):
 
 class rx_main(object):
     def __init__(self):
-        def byteify(input):	# thx so
+        def byteify(input):    # thx so
             if isinstance(input, dict):
                 return {byteify(key): byteify(value)
-                        for key, value in input.iteritems()}
+                        for key, value in list(input.items())}
             elif isinstance(input, list):
                 return [byteify(element) for element in input]
-            elif isinstance(input, unicode):
+            elif isinstance(input, str):
                 return input.encode('utf-8')
             else:
                 return input
@@ -375,26 +792,42 @@ class rx_main(object):
 
         # wait for gdb
         if options.pause:
-            print 'Ready for GDB to attach (pid = %d)' % (os.getpid(),)
-            raw_input("Press 'Enter' to continue...")
+            sys.stdout.write("Ready for GDB to attach (pid = %d)\n" % (os.getpid(),))
+            input("Press 'Enter' to continue...")
 
         if options.config_file == '-':
             config = json.loads(sys.stdin.read())
         else:
+            if options.config_file is None:
+                parser.print_help()
+                exit(1)
             config = json.loads(open(options.config_file).read())
         self.tb = rx_block(options.verbosity, config = byteify(config))
+        self.q_watcher = du_queue_watcher(self.tb.ui_out_q, self.process_qmsg)
+
+    def process_qmsg(self, msg):
+        if self.tb.process_qmsg(msg):
+            self.tb.stop()
+            self.keep_running = False
 
     def run(self):
         try:
             self.tb.start()
-            self.tb.wait()
+            if self.tb.get_interactive():
+                while self.keep_running:
+                    time.sleep(1)
+            else:
+                self.tb.wait() # curiously wait() matures when a flowgraph gets locked
             sys.stderr.write('Flowgraph complete. Exiting\n')
         except (KeyboardInterrupt):
             self.tb.stop()
             self.tb.kill()
+            self.keep_running = False
+            sys.stderr.write("Ctrl-C detected\n")
         except:
             self.tb.stop()
             self.tb.kill()
+            self.keep_running = False
             sys.stderr.write('main: exception occurred\n')
             sys.stderr.write('main: exception:\n%s\n' % traceback.format_exc())
 

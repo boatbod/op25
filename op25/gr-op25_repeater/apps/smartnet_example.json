@@ -1,0 +1,134 @@
+{
+    "channels": [
+        {
+            "name": "control channel", 
+            "trunking_sysname": "Example",
+            "device": "rtl0",
+            "raw_output": "",
+            "demod_type": "fsk", 
+            "destination": "smartnet", 
+            "excess_bw": 0.35, 
+            "filter_type": "fsk2", 
+            "if_rate": 18000, 
+            "plot": "mixer",
+            "enable_analog": "off",
+            "symbol_rate": 3600
+        },
+        {
+            "name": "voice channel", 
+            "trunking_sysname": "Example",
+            "meta_stream_name": "stream_0",
+            "device": "rtl1",
+            "blacklist": "",
+            "whitelist": "",
+            "raw_output": "",
+            "demod_type": "fsk4", 
+            "destination": "udp://127.0.0.1:23456", 
+            "enable_analog": "auto",
+            "nbfm_deviation": 4000,
+            "nbfm_squelch_threshold": -60,
+            "nbfm_squelch_gain": 0.0050,
+            "nbfm_raw_output": "",
+            "nbfm_enable_subchannel": false,
+            "excess_bw": 0.2, 
+            "filter_type": "widepulse", 
+            "if_rate": 24000, 
+            "plot": "",
+            "symbol_rate": 4800
+        }
+    ], 
+    "devices": [
+        {
+            "args": "rtl=0", 
+            "frequency": 854000000, 
+            "gains": "LNA:39", 
+            "name": "rtl0", 
+            "offset": 0, 
+            "ppm": 0.0, 
+            "rate": 1000000, 
+            "tunable": true
+        },
+        {
+            "args": "rtl=1", 
+            "frequency": 854000000, 
+            "gains": "LNA:39", 
+            "name": "rtl1", 
+            "offset": 0, 
+            "ppm": 0.0, 
+            "rate": 1000000, 
+            "tunable": true
+        }
+    ],
+    "trunking": {
+        "module": "tk_smartnet.py",
+        "chans": [
+            {
+                "sysname": "Example",
+                "control_channel_list": "854.4125",
+                "tgid_tags_file": "",
+                "tgid_hold_time": 2.0,
+                "blacklist": "",
+                "whitelist": "",
+                "bandplan_comment": "Set bandplan to one of '400' '800' '800_reband' '900'",
+                "bandplan": "800_reband",
+                "bp_comment": "The bp_ parameters are only used by the 400 bandplan",
+                "bp_spacing": 0.015,
+                "bp_base": 141.015,
+                "bp_base_offset": 380,
+                "bp_mid": 151.730,
+                "bp_mid_offset": 579,
+                "bp_high": 154.320,
+                "bp_high_offset": 632
+            }
+        ]
+    },
+    "metadata": {
+        "module": "icemeta.py",
+        "streams": [
+            {
+                "stream_name": "stream_0",
+                "meta_format_idle": "[idle]",
+                "meta_format_tgid": "[%TGID%]",
+                "meta_format_tag":  "[%TGID%] %TAG%",
+                "icecastServerAddress": "your_stream_host_and_port",
+                "icecastMountpoint": "your_mountpoint_name",
+                "icecastPass": "your_password",
+                "icecastMountExt": ".xspf",
+                "delay": 0.0
+            },
+            {
+                "stream_name": "stream_1",
+                "meta_format_idle": "[idle]",
+                "meta_format_tgid": "[%TGID%]",
+                "meta_format_tag":  "[%TGID%] %TAG%",
+                "icecastServerAddress": "your_second stream_host_and_port",
+                "icecastMountpoint": "your_second_mountpoint_name",
+                "icecastPass": "your_second_password",
+                "icecastMountExt": ".xspf",
+                "delay": 0.0
+            }
+        ]
+    },
+    "audio": {
+        "module": "sockaudio.py",
+        "instances": [
+            {
+                "instance_name": "audio0",
+                "device_name": "default",
+                "udp_port": 23456,
+                "audio_gain": 1.0,
+                "number_channels": 1
+            }
+        ]
+    },
+    "terminal": {
+        "module": "terminal.py",
+        "terminal_type": "curses",
+        "#terminal_type": "http:127.0.0.1:8080",
+        "curses_plot_interval": 0.2,
+        "http_plot_interval": 1.0,
+        "http_plot_directory": "../www/images",
+        "tuning_step_large": 1200,
+        "tuning_step_small": 100
+    }
+}

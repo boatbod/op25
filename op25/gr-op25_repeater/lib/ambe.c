@@ -21,7 +21,7 @@
 #include "ambe3600x2400_const.h"
 
 static int
-mbe_dequantizeAmbeParms (mbe_parms * cur_mp, mbe_parms * prev_mp, const int *b, int dstar)
+mbe_dequantizeAmbeParms (mbe_parms* cur_mp, mbe_parms* prev_mp, mbe_errs* errs, const int *b, int dstar)
 {
 
   int ji, i, j, k, l, L, L9, m, am, ak;
@@ -54,12 +54,14 @@ mbe_dequantizeAmbeParms (mbe_parms * cur_mp, mbe_parms * prev_mp, const int *b, 
   // copy repeat from prev_mp
   cur_mp->repeat = prev_mp->repeat;
 
-  if ((b0 >= 120) && (b0 <= 123))
+  if (((b0 >= 120) && (b0 <= 123)) || \
+       (errs->E0 >= 4) || \
+      ((errs->E0 >= 2) && ((errs->E0 + errs->E1) >= 6)))
     {
 #ifdef AMBE_DEBUG
       fprintf (stderr, "AMBE Erasure Frame\n");
 #endif
-      return (2);
+      return 1;
     }
   else if ((b0 == 124) || (b0 == 125))
     {
@@ -79,9 +81,10 @@ mbe_dequantizeAmbeParms (mbe_parms * cur_mp, mbe_parms * prev_mp, const int *b, 
   else if ((b0 == 126) || (b0 == 127))
     {
 #ifdef AMBE_DEBUG
+      // should never get here because tones need to be identified before voice
       fprintf (stderr, "AMBE Tone Frame\n");
 #endif
-      return (3);
+      return 3;
     }
 
   if (silence == 0)
@@ -414,45 +417,63 @@ mbe_dequantizeAmbeParms (mbe_parms * cur_mp, mbe_parms * prev_mp, const int *b, 
 }
 
 int
-mbe_dequantizeAmbeTone(mbe_tone * tone, const int *u)
+mbe_dequantizeAmbeTone(mbe_tone* tone, mbe_errs* errs, const int *u)
 {
 	int bitchk1, bitchk2;
-	int AD, ID1, ID2, ID3, ID4;
+	int AD, ID0, ID1, ID2, ID3, ID4;
 	bitchk1 = (u[0] >> 6) & 0x3f;
 	bitchk2 = (u[3] & 0xf);
 
+	// Check if tone frame
 	if ((bitchk1 != 63) || (bitchk2 != 0))
-		return -1; // Not a valid tone frame
+		return -1; // Not a tone
 
 	AD = ((u[0] & 0x3f) << 1) + ((u[3] >> 4) & 0x1);
+	ID0 = 0;
 	ID1 = ((u[1] & 0xfff) >> 4);
 	ID2 = ((u[1] & 0xf) << 4) + ((u[2] >> 7) & 0xf);
 	ID3 = ((u[2] & 0x7f) << 1) + ((u[3] >> 13) & 0x1);
 	ID4 = ((u[3] & 0x1fe0) >> 5);
 
-	if ((ID1 == ID2) && (ID1 == ID3) && (ID1 == ID4) &&
-	    (((ID1 >= 5) && (ID1 <= 122)) || ((ID1 >= 128) && (ID1 <= 163)) || (ID1 == 255))) {
-		if (tone->ID == ID1) {
+	// Check error thresholds
+	if ((errs->E0 >= 4) || ((errs->E0 >= 2) && ((errs->E0 + errs->E1) >= 6))) {
+		return 1; // Uncorrectable error threshold, treat as Erasure
+	}
+
+	// Theorectically ID1-4 should all be the same value.  Make sure at least 3 match
+	if (((ID1 == ID2) && (ID1 == ID3)) || \
+        ((ID1 == ID3) && (ID1 == ID4)) || \
+        ((ID1 == ID2) && (ID1 == ID4))) {
+		ID0 = ID1;
+	} else if ((ID2 == ID3) && (ID2 == ID4)) {
+		ID0 = ID2;
+	} else {
+		return 1; // Mismatched tone ids, treat as Erasure
+	}
+
+	if (((ID0 >= 5) && (ID0 <= 122)) || ((ID0 >= 128) && (ID0 <= 163)) || (ID0 == 255)) {
+		if (tone->ID == ID0) {
 			tone->AD = AD;
 		} else {
 			tone->n = 0;
-			tone->ID = ID1;
+			tone->ID = ID0;
 			tone->AD = AD;
 		}
 		return 0; // valid in-range tone frequency 
 	}
 
-	return -1;
+	// invalid tone, treat as Erasure
+	return 1;
 }
 
 int
-mbe_dequantizeAmbe2400Parms (mbe_parms * cur_mp, mbe_parms * prev_mp, const int *b){
+mbe_dequantizeAmbe2400Parms (mbe_parms* cur_mp, mbe_parms* prev_mp, mbe_errs* errs, const int *b){
 	int dstar = 1;
-	return (mbe_dequantizeAmbeParms (cur_mp, prev_mp, b, dstar));
+	return (mbe_dequantizeAmbeParms (cur_mp, prev_mp, errs, b, dstar));
 }
 
 int
-mbe_dequantizeAmbe2250Parms (mbe_parms * cur_mp, mbe_parms * prev_mp, const int *b){
+mbe_dequantizeAmbe2250Parms (mbe_parms* cur_mp, mbe_parms* prev_mp, mbe_errs* errs, const int *b){
 	int dstar = 0;
-	return (mbe_dequantizeAmbeParms (cur_mp, prev_mp, b, dstar));
+	return (mbe_dequantizeAmbeParms (cur_mp, prev_mp, errs, b, dstar));
 }

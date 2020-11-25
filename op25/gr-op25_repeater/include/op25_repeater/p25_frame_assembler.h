@@ -51,6 +51,7 @@ namespace gr {
       virtual void set_xormask(const char*p) {}
       virtual void set_slotid(int slotid) {}
       virtual void set_slotkey(int key) {}
+      virtual void reset_timer() {}
     };
 
   } // namespace op25_repeater

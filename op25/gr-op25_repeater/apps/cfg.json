@@ -13,7 +13,11 @@
             "symbol_rate": 4800,
             "raw_output": "",
             "raw_input": "",
-            "raw_seek": 0
+            "raw_seek": 0,
+            "enable_analog": "off",
+            "nbfm_deviation": 4000,
+            "nbfm_squelch": -60
+
         }, 
         {
             "device": "device_0",
@@ -27,7 +31,10 @@
             "plot": "datascope", 
             "symbol_rate": 4800,
             "raw_output": "",
-            "raw_input": ""
+            "raw_input": "",
+            "enable_analog": "off",
+            "nbfm_deviation": 4000,
+            "nbfm_squelch": -60
         }, 
         {
             "device": "device_1",
@@ -41,7 +48,10 @@
             "plot": "symbol", 
             "symbol_rate": 4800,
             "raw_output": "",
-            "raw_input": ""
+            "raw_input": "",
+            "enable_analog": "off",
+            "nbfm_deviation": 4000,
+            "nbfm_squelch": -60
         }
     ], 
     "devices": [
@@ -49,9 +59,10 @@
             "args": "rtl=0", 
             "frequency": 460100000, 
             "gains": "lna:39", 
+            "gain_mode": false,
             "name": "device_0", 
             "offset": 0, 
-            "ppm": 0, 
+            "ppm": 0.0, 
             "rate": 1000000, 
             "tunable": false
         },
@@ -61,7 +72,7 @@
             "gains": "lna:39", 
             "name": "device_1", 
             "offset": 0, 
-            "ppm": 0, 
+            "ppm": 0.0, 
             "rate": 1000000, 
             "tunable": true
         }
@@ -80,5 +91,48 @@
                 "cc": 0
             }
         ]
+    },
+    "metadata": {
+        "module": "icemeta.py",
+        "streams": [
+            {
+                "stream_name": "stream_0",
+                "icecastServerAddress": "your_stream_host_and_port",
+                "icecastMountpoint": "your_mountpoint_name",
+                "icecastPass": "your_password",
+                "icecastMountExt": ".xspf",
+                "delay": 0.0
+            },
+            {
+                "stream_name": "stream_1",
+                "icecastServerAddress": "your_second stream_host_and_port",
+                "icecastMountpoint": "your_second_mountpoint_name",
+                "icecastPass": "your_second_password",
+                "icecastMountExt": ".xspf",
+                "delay": 0.0
+            }
+        ]
+    },
+    "audio": {
+        "module": "sockaudio.py",
+        "instances": [
+            {
+                "instance_name": "audio0",
+                "device_name": "default",
+                "udp_port": 23456,
+                "audio_gain": 1.0,
+                "number_channels": 1
+            }
+        ]
+    },
+    "terminal": {
+        "module": "terminal.py",
+        "terminal_type": "curses",
+        "#terminal_type": "http:127.0.0.1:8080",
+        "curses_plot_interval": 0.2,
+        "http_plot_interval": 1.0,
+        "http_plot_directory": "../www/images",
+        "tuning_step_large": 1200,
+        "tuning_step_small": 100
     }
 }

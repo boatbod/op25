@@ -93,10 +93,8 @@ find_package(CppUnit)
 #
 # set(GR_REQUIRED_COMPONENTS RUNTIME BLOCKS FILTER ...)
 # find_package(Gnuradio "version")
-if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-    set(GR_REQUIRED_COMPONENTS RUNTIME BLOCKS FILTER PMT)
-    find_package(Gnuradio)
-endif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+set(GR_REQUIRED_COMPONENTS RUNTIME BLOCKS FILTER PMT)
+find_package(Gnuradio)
 
 if(NOT GNURADIO_RUNTIME_FOUND)
     message(FATAL_ERROR "GnuRadio Runtime required to compile op25_repeater")

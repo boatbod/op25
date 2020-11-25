@@ -27,6 +27,7 @@
 #include <errno.h>
 #include <sys/time.h>
 
+#include "op25_msg_types.h"
 #include "p25p2_duid.h"
 #include "p25p2_sync.h"
 #include "p25p2_tdma.h"
@@ -86,7 +87,7 @@ static const uint8_t mac_msg_len[256] = {
 	 0,  0,  0,  0,  0,  0,  0,  0,  0,  8, 11,  0,  0,  0,  0,  0, 
 	 0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 11, 13, 11,  0,  0,  0 };
 
-p25p2_tdma::p25p2_tdma(const op25_audio& udp, int slotid, int debug, bool do_msgq, gr::msg_queue::sptr queue, std::deque<int16_t> &qptr, bool do_audio_output, bool do_nocrypt) :	// constructor
+p25p2_tdma::p25p2_tdma(const op25_audio& udp, int slotid, int debug, bool do_msgq, gr::msg_queue::sptr queue, std::deque<int16_t> &qptr, bool do_audio_output, bool do_nocrypt, int msgq_id) :	// constructor
         op25audio(udp),
 	write_bufp(0),
 	tdma_xormask(new uint8_t[SUPERFRAME_SIZE]),
@@ -95,6 +96,7 @@ p25p2_tdma::p25p2_tdma(const op25_audio& udp, int slotid, int debug, bool do_msg
 	d_slotid(slotid),
 	d_do_msgq(do_msgq),
 	d_msg_queue(queue),
+	d_msgq_id(msgq_id),
 	output_queue_decode(qptr),
 	d_debug(debug),
 	d_do_audio_output(do_audio_output),
@@ -111,6 +113,7 @@ p25p2_tdma::p25p2_tdma(const op25_audio& udp, int slotid, int debug, bool do_msg
 	assert (slotid == 0 || slotid == 1);
 	mbe_initMbeParms (&cur_mp, &prev_mp, &enh_mp);
 	mbe_initToneParms (&tone_mp);
+	mbe_initErrParms (&errs_mp);
 }
 
 bool p25p2_tdma::rx_sym(uint8_t sym)
@@ -173,11 +176,9 @@ void p25p2_tdma::handle_mac_ptt(const uint8_t byte_buf[], const unsigned int len
 {
         uint32_t srcaddr = (byte_buf[13] << 16) + (byte_buf[14] << 8) + byte_buf[15];
         uint16_t grpaddr = (byte_buf[16] << 8) + byte_buf[17];
-        std::string s = "{\"srcaddr\" : " + std::to_string(srcaddr) + ", \"grpaddr\": " + std::to_string(grpaddr) + "}";
-        send_msg(s, -3);
 
         if (d_debug >= 10) {
-                fprintf(stderr, "%s MAC_PTT: srcaddr=%u, grpaddr=%u", logts.get(), srcaddr, grpaddr);
+                fprintf(stderr, "%s MAC_PTT: srcaddr=%u, grpaddr=%u", logts.get(d_msgq_id), srcaddr, grpaddr);
         }
 
         for (int i = 0; i < 9; i++) {
@@ -192,6 +193,11 @@ void p25p2_tdma::handle_mac_ptt(const uint8_t byte_buf[], const unsigned int len
 			rs_errs);
         }
 
+        std::string s = "{\"srcaddr\" : "   + std::to_string(srcaddr) + \
+                        ", \"grpaddr\": "   + std::to_string(grpaddr) + \
+                        ", \"encrypted\": " + std::to_string(encrypted() ? 1 : 0 ) + "}";
+        send_msg(s, -3);
+
         reset_vb();
 }
 
@@ -202,7 +208,7 @@ void p25p2_tdma::handle_mac_end_ptt(const uint8_t byte_buf[], const unsigned int
         uint16_t grpaddr = (byte_buf[16] << 8) + byte_buf[17];
 
         if (d_debug >= 10)
-                fprintf(stderr, "%s MAC_END_PTT: colorcd=0x%03x, srcaddr=%u, grpaddr=%u, rs_errs=%d\n", logts.get(), colorcd, srcaddr, grpaddr, rs_errs);
+                fprintf(stderr, "%s MAC_END_PTT: colorcd=0x%03x, srcaddr=%u, grpaddr=%u, rs_errs=%d\n", logts.get(d_msgq_id), colorcd, srcaddr, grpaddr, rs_errs);
 
         //std::string s = "{\"srcaddr\" : " + std::to_string(srcaddr) + ", \"grpaddr\": " + std::to_string(grpaddr) + "}";
         //send_msg(s, -3);	// can cause data display issues if this message is processed after the DUID15
@@ -212,7 +218,7 @@ void p25p2_tdma::handle_mac_end_ptt(const uint8_t byte_buf[], const unsigned int
 void p25p2_tdma::handle_mac_idle(const uint8_t byte_buf[], const unsigned int len, const int rs_errs) 
 {
         if (d_debug >= 10)
-                fprintf(stderr, "%s MAC_IDLE: ", logts.get());
+                fprintf(stderr, "%s MAC_IDLE: ", logts.get(d_msgq_id));
 
         decode_mac_msg(byte_buf, len);
         op25audio.send_audio_flag(op25_audio::DRAIN);
@@ -224,7 +230,7 @@ void p25p2_tdma::handle_mac_idle(const uint8_t byte_buf[], const unsigned int le
 void p25p2_tdma::handle_mac_active(const uint8_t byte_buf[], const unsigned int len, const int rs_errs) 
 {
         if (d_debug >= 10)
-                fprintf(stderr, "%s MAC_ACTIVE: ", logts.get());
+                fprintf(stderr, "%s MAC_ACTIVE: ", logts.get(d_msgq_id));
 
         decode_mac_msg(byte_buf, len);
 
@@ -235,7 +241,7 @@ void p25p2_tdma::handle_mac_active(const uint8_t byte_buf[], const unsigned int 
 void p25p2_tdma::handle_mac_hangtime(const uint8_t byte_buf[], const unsigned int len, const int rs_errs) 
 {
         if (d_debug >= 10)
-                fprintf(stderr, "%s MAC_HANGTIME: ", logts.get());
+                fprintf(stderr, "%s MAC_HANGTIME: ", logts.get(d_msgq_id));
 
         decode_mac_msg(byte_buf, len);
         op25audio.send_audio_flag(op25_audio::DRAIN);
@@ -551,33 +557,41 @@ void p25p2_tdma::handle_voice_frame(const uint8_t dibits[])
 	int rc = -1;
 
 	// Deinterleave and figure out frame type:
-	errs = vf.process_vcw(dibits, b, u);
+	errs = vf.process_vcw(&errs_mp, dibits, b, u);
 	if (d_debug >= 9) {
 		packed_codeword p_cw;
 		vf.pack_cw(p_cw, u);
-		fprintf(stderr, "%s AMBE %02x %02x %02x %02x %02x %02x %02x errs %lu\n", logts.get(),
-			       	p_cw[0], p_cw[1], p_cw[2], p_cw[3], p_cw[4], p_cw[5], p_cw[6], errs);
+		fprintf(stderr, "%s AMBE %02x %02x %02x %02x %02x %02x %02x errs %lu err_rate %f\n", logts.get(d_msgq_id),
+			       	p_cw[0], p_cw[1], p_cw[2], p_cw[3], p_cw[4], p_cw[5], p_cw[6], errs, errs_mp.ER);
 	}
-	rc = mbe_dequantizeAmbeTone(&tone_mp, u);
-	if (rc == 0) {					// Tone Frame
-		tone_frame = true;
-		mbe_err_cnt = 0;
+	rc = mbe_dequantizeAmbeTone(&tone_mp, &errs_mp, u);
+	if (rc >= 0) {					// Tone Frame
+		if (rc == 0) {                  // Valid Tone
+			tone_frame = true;
+			mbe_err_cnt = 0;
+		} else {                        // Tone Erasure with Frame Repeat
+			if ((++mbe_err_cnt < 4) && tone_frame) {
+				mbe_useLastMbeParms(&cur_mp, &prev_mp);
+				rc = 0;
+			} else {
+				tone_frame = false;     // Mute audio output after 3 successive Frame Repeats
+			}
+        }
 	} else {
-		rc = mbe_dequantizeAmbe2250Parms (&cur_mp, &prev_mp, b);
+		rc = mbe_dequantizeAmbe2250Parms (&cur_mp, &prev_mp, &errs_mp, b);
 		if (rc == 0) {				// Voice Frame
 			tone_frame = false;
 			mbe_err_cnt = 0;
-		} else if (++mbe_err_cnt < 4) {		// Erasure with Frame Repeat per TIA-102.BABA.5.6
-        		if (!tone_frame) 
-				mbe_useLastMbeParms(&cur_mp, &prev_mp);
+		} else if ((++mbe_err_cnt < 4) && !tone_frame) {// Erasure with Frame Repeat per TIA-102.BABA.5.6
+			mbe_useLastMbeParms(&cur_mp, &prev_mp);
 			rc = 0;
 		} else {
-			tone_frame = false;		// Mute audio output after 3 successive Frame Repeats
+			tone_frame = false;         // Mute audio output after 3 successive Frame Repeats
 		}
 	}
 
-	// Synthesize tones or speech
-	if (rc == 0) {
+	// Synthesize tones or speech as long as dequantization was successful and overall error rate is below threshold
+	if ((rc == 0) && (errs_mp.ER <= 0.096)) {
 		if (tone_frame) {
 			software_decoder.decode_tone(tone_mp.ID, tone_mp.AD, &tone_mp.n);
 			samples = software_decoder.audio();
@@ -609,7 +623,7 @@ void p25p2_tdma::handle_voice_frame(const uint8_t dibits[])
 
 	// This should never happen; audio samples should never be left in buffer
 	if (software_decoder.audio()->size() != 0) {
-		fprintf(stderr, "%s p25p2_tdma::handle_voice_frame(): residual audio sample buffer non-zero (len=%lu)\n", logts.get(), software_decoder.audio()->size());
+		fprintf(stderr, "%s p25p2_tdma::handle_voice_frame(): residual audio sample buffer non-zero (len=%lu)\n", logts.get(d_msgq_id), software_decoder.audio()->size());
 		software_decoder.audio()->clear();
 	}
 
@@ -673,6 +687,9 @@ int p25p2_tdma::handle_packet(const uint8_t dibits[])
 		// unsupported type duid
 		return -1;
 	}
+
+	if (rc > -1)
+		send_msg(std::string(2, 0xff), rc);
 	return rc;
 }
 
@@ -681,7 +698,7 @@ void p25p2_tdma::handle_4V2V_ess(const uint8_t dibits[])
 	int ec = 0;
 
         if (d_debug >= 10) {
-		fprintf(stderr, "%s %s_BURST ", logts.get(), (burst_id < 4) ? "4V" : "2V");
+		fprintf(stderr, "%s %s_BURST ", logts.get(d_msgq_id), (burst_id < 4) ? "4V" : "2V");
 	}
 
         if (burst_id < 4) {
@@ -727,6 +744,6 @@ void p25p2_tdma::send_msg(const std::string msg_str, long msg_type)
 	if (!d_do_msgq || d_msg_queue->full_p())
 		return;
 
-	gr::message::sptr msg = gr::message::make_from_string(msg_str, msg_type, 0, 0);
+	gr::message::sptr msg = gr::message::make_from_string(msg_str, get_msg_type(PROTOCOL_P25, msg_type), (d_msgq_id << 1), logts.get_ts());
 	d_msg_queue->insert_tail(msg);
 }

@@ -21,21 +21,33 @@
 #ifndef INCLUDED_LOG_TS_H
 #define INCLUDED_LOG_TS_H
 
+#include <time.h>
 #include <sys/time.h>
 
 class log_ts
 {
 private:
 	struct timeval curr_time;
-	char log_ts[30];
+	struct tm curr_loc_time;
+	double tstamp;
+	char log_ts[40];
 
 public:
 	inline const char* get()
 	{
 		if (gettimeofday(&curr_time, 0) == 0)
-		    sprintf(log_ts, "%010lu.%06lu", curr_time.tv_sec, curr_time.tv_usec);
+		{
+			localtime_r(&curr_time.tv_sec, &curr_loc_time);
+			size_t i = strftime(log_ts, sizeof(log_ts), "%m/%d/%y %H:%M:%S", &curr_loc_time);
+			if (i > 0)
+				sprintf((log_ts + i), ".%06lu", curr_time.tv_usec);
+			else
+				sprintf(log_ts, "%010lu.%06lu", curr_time.tv_sec, curr_time.tv_usec);
+		}
 		else
-		    log_ts[0] = 0;
+		{
+			log_ts[0] = 0;
+		}
 
 		return log_ts;
 	}	
@@ -43,11 +55,30 @@ public:
 	inline const char* get(const int id)
 	{
 		if (gettimeofday(&curr_time, 0) == 0)
-		    sprintf(log_ts, "%010lu.%06lu [%d]", curr_time.tv_sec, curr_time.tv_usec, id);
+		{
+			localtime_r(&curr_time.tv_sec, &curr_loc_time);
+			size_t i = strftime(log_ts, sizeof(log_ts), "%m/%d/%y %H:%M:%S", &curr_loc_time);
+			if (i > 0)
+				sprintf((log_ts + i), ".%06lu [%d]", curr_time.tv_usec, id);
+			else
+				sprintf(log_ts, "%010lu.%06lu [%d]", curr_time.tv_sec, curr_time.tv_usec, id);
+		}
 		else
-		    sprintf(log_ts, "[%d]", id);
+		{
+			sprintf(log_ts, "[%d]", id);
+		}
 
 		return log_ts;
+	}
+
+	inline double get_ts()
+	{
+		if (gettimeofday(&curr_time, 0) == 0)
+			tstamp = curr_time.tv_sec + (curr_time.tv_usec / 1e6);
+		else
+			tstamp = 0;
+
+		return tstamp;
 	}
 };
 

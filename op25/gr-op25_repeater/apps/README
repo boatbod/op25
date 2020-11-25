@@ -2,7 +2,7 @@
 April, 2017
 ===========
 
-This file contains notes on the new version OP25 receiver (rx.py) which 
+This file contains notes on the current OP25 P25 receiver (rx.py) which 
 replaces the prior version scope.py.  The primary differences are:
  * The dependency on WX is completely removed.  By default OP25 runs in
    a console window in text-only mode.
@@ -50,6 +50,7 @@ terminal window there are several keyboard commands:
  3 - toggle symbol plot
  4 - toggle datascope plot
  5 - toggle mixer plot
+ 6 - toggle tuner plot
 There are also two experimental commands (should not be used in -T mode)
  f - manually change frequencies
  t - if currently tuned to a CC, autostart scanning talkgroups
@@ -149,7 +150,7 @@ Options:
   -D DEMOD_TYPE, --demod-type=DEMOD_TYPE
                         cqpsk | fsk4
   -P PLOT_MODE, --plot-mode=PLOT_MODE
-                        constellation | fft | symbol | datascope | mixer
+                        constellation | fft | symbol | datascope | mixer | tuner
   -f Hz, --frequency=Hz
                         USRP center frequency
   -F IFILE, --ifile=IFILE
@@ -232,19 +233,21 @@ Configuration is achieved via a json file (see cfg.json for an example).
 In this version, channels are automatically assigned to the first device
 found whose frequency span includes the selected frequency.
 
-As of this writing (winter, 2017), neither trunking nor P25 P2/TDMA are
-supported in multi_rx.py.  The rx.py app should be used for P25 trunking,
-for either P1/FDMA or P2/TDMA.
+As of this writing (summer 2020), P25 Trunking and Motorola Smartnet/Smartzone
+are now supported by multi_rx.py.  The rx.py app can still be used for P25 trunking.
 
-Below is a summary of the major config file keys:
-demod_type:     'cqpsk' for qpsk p25 only; 'fsk4' for ysf/dstar/dmr/fsk4 p25
+Below is a summary of the major config file keys used under the channel section:
+demod_type:     'cqpsk' for qpsk p25 only
+                'fsk4' for ysf/dstar/dmr/fsk4 p25
+                'fsk' for Smartnet/Smartzone control channel
 filter_type:    'rc' for p25; 'rrc' for dmr and ysf; 'gmsk' for d-star
-plot:           'fft', 'constellation', 'datascope', 'symbol', 'mixer'
+                'fsk' for Smartnet/Smartzone control channel
+                'widepulse' for Smartnet/Smartzone P25CAI voice
+plot:           'fft', 'constellation', 'datascope', 'symbol', 'mixer', 'tuner'
                 [if more than one plot desired, provide a comma-separated list]
 destination:    'udp://host:port' or 'file://<filename>'
 name:           arbitrary string used to identify channels and devices
 
-bug: 'fft' and 'constellation' currently mutually exclusive
 bug: 'gmsk' needs work
 
 Note: DMR audio for the second time slot is sent on the specified port number

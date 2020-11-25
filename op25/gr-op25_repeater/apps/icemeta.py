@@ -28,6 +28,14 @@ import time
 import threading
 import requests
 import json
+from log_ts import log_ts
+
+# Helper function
+def from_dict(d, key, def_val):
+    if key in d and d[key] != "":
+        return d[key]
+    else:
+        return def_val
 
 # OP25 thread to send metadata tags to an Icecast server
 class meta_server(threading.Thread):
@@ -38,29 +46,48 @@ class meta_server(threading.Thread):
         self.logging = debug
         self.keep_running = True
         self.last_metadata = ""
-        self.cfg = {}
         self.delay = 0
         self.msg = None
         self.urlBase = ""
-        self.load_json(metacfg)
+        self.url = ""
+        if isinstance(metacfg,dict):
+            self.cfg = metacfg
+        else:
+            self.cfg = {}
+            self.load_json(metacfg)
+        self.urlBase = "http://" + self.cfg['icecastServerAddress'] + "/admin/metadata?mount=/" + self.cfg['icecastMountpoint'] + "&mode=updinfo&song="
+        self.url = "http://" + self.cfg['icecastServerAddress'] + "/" + self.cfg['icecastMountpoint'] + self.cfg['icecastMountExt']
+        self.delay = float(self.cfg['delay'])
+        self.fmt_idle = from_dict(self.cfg, 'meta_format_idle', '[idle]')
+        self.fmt_tgid = from_dict(self.cfg, 'meta_format_tgid', '[%TGID%]')
+        self.fmt_tag = from_dict(self.cfg, 'meta_format_tag', '[%TGID%] %TAG%')
         self.start()
 
     def load_json(self, metacfg):
         try:
             with open(metacfg) as json_file:
                 self.cfg = json.load(json_file)
-            self.urlBase = "http://" + self.cfg['icecastServerAddress'] + "/admin/metadata?mount=/" + self.cfg['icecastMountpoint'] + "&mode=updinfo&song="
-            self.delay = float(self.cfg['delay'])
         except (ValueError, KeyError):
-            sys.stderr.write("%f meta_server::load_json(): Error reading metadata config file: %s\n" % (time.time(), metacfg))
+            sys.stderr.write("%s meta_server::load_json(): Error reading metadata config file: %s\n" % (log_ts.get(), metacfg))
 
     def run(self):
         while(self.keep_running):
             self.process_q_events()
             if self.msg and (time.time() >= (self.msg.arg1() + self.delay)):
-                self.send_metadata(self.msg.to_string())
+                self.send_metadata(self.format(json.loads(self.msg.to_string())))
                 self.msg = None
             time.sleep(0.1)
+
+    def format(self, meta):
+        if meta['tgid'] is None:
+            metatext = self.fmt_idle
+        elif meta['tgid'] is not None and meta['tag'] is not None and meta['tag'] <> "":
+            metatext = self.fmt_tag
+        else:
+            metatext = self.fmt_tgid
+        metatext = metatext.replace("%TGID%", str(meta['tgid']))
+        metatext = metatext.replace("%TAG%", str(meta['tag']))
+        return metatext
 
     def stop(self):
         self.keep_running = False
@@ -76,18 +103,21 @@ class meta_server(threading.Thread):
             metadataFormatted = metadata.replace(" ","+") # add "+" instead of " " for icecast2
             requestToSend = (self.urlBase) +(metadataFormatted)
             if self.logging >= 11:
-                sys.stderr.write("%f metadata update: \"%s\"\n" % (time.time(), requestToSend))
+                sys.stderr.write("%s metadata update: \"%s\"\n" % (log_ts.get(), requestToSend))
             try:
                 r = requests.get((requestToSend), auth=("source",self.cfg['icecastPass']), timeout=1.0)
                 status = r.status_code
                 if self.logging >= 11:
-                    sys.stderr.write("%f metadata result: \"%s\"\n" % (time.time(), status))
+                    sys.stderr.write("%s metadata result: \"%s\"\n" % (log_ts.get(), status))
                 if status != 200:
                     if self.logging >= 1:
-                        sys.stderr.write("%f meta_server::send_metadata(): metadata update error: %s\n" % (time.time(), status))
+                        sys.stderr.write("%s meta_server::send_metadata(): metadata update error: %s\n" % (log_ts.get(), status))
                 else:
                     self.last_metadata = metadata
             except (requests.ConnectionError, requests.Timeout):
                 if self.logging >= 1:
-                    sys.stderr.write("%f meta_server::send_metadata(): exception %s\n" % (time.time(), sys.exc_value))
+                    sys.stderr.write("%s meta_server::send_metadata(): exception %s\n" % (log_ts.get(), sys.exc_info()[1]))
+
+    def get_url(self):
+        return self.url
 
