@@ -104,8 +104,8 @@ def add_default_tgid(tgs, tgid):
         tgs[tgid]['frequency'] = None
         tgs[tgid]['tdma_slot'] = None
         tgs[tgid]['encrypted'] = 0
-        tgs[tgid]['algid'] = 0x80
-        tgs[tgid]['keyid'] = 0
+        tgs[tgid]['algid'] = -1
+        tgs[tgid]['keyid'] = -1
         tgs[tgid]['receiver'] = None
 
 def get_slot(slot):
@@ -1099,22 +1099,20 @@ class p25_receiver(object):
             if (self.current_tgid is None) or (grpaddr != self.current_tgid): # only consider data for current call
                 return updated
 
-            if self.debug > 0 and encrypted == 1 and keyid != self.talkgroups[self.current_tgid]['keyid']:
-                sys.stderr.write('%s [%d] encrypt info:  tg(%d), algid(0x%x), keyid(0x%x)\n' % (log_ts.get(), self.msgq_id, self.current_tgid, algid, keyid))
+            if encrypted >= 0 and algid >= 0 and keyid >= 0: # log and save encryption information
+                if self.debug > 0 and (algid != self.talkgroups[self.current_tgid]['algid'] or keyid != self.talkgroups[self.current_tgid]['keyid']):
+                    sys.stderr.write('%s [%d] encrypt info:  tg(%d), algid(0x%x), keyid(0x%x)\n' % (log_ts.get(), self.msgq_id, self.current_tgid, algid, keyid))
+                self.talkgroups[self.current_tgid]['encrypted'] = encrypted
+                self.talkgroups[self.current_tgid]['algid'] = algid
+                self.talkgroups[self.current_tgid]['keyid'] = keyid
 
             if srcaddr > 0:
                 self.talkgroups[self.current_tgid]['srcaddr'] = srcaddr
-            if encrypted >= 0:
-                self.talkgroups[self.current_tgid]['encrypted'] = encrypted
-            if algid >= 0:
-                self.talkgroups[self.current_tgid]['algid'] = algid
-            if keyid >= 0:
-                self.talkgroups[self.current_tgid]['keyid'] = keyid
 
             if self.crypt_behavior > 1:
                 if self.talkgroups[self.current_tgid]['encrypted'] == 1:
                     updated += 1
-                    if self.debug > 0:
+                    if self.debug > 1:
                         sys.stderr.write('%s [%d] skipping encrypted tg(%d)\n' % (log_ts.get(), self.msgq_id, self.current_tgid))
                     self.add_blacklist(self.current_tgid, curr_time + TGID_SKIP_TIME)
 
