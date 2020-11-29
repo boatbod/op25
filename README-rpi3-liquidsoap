@@ -27,7 +27,7 @@ cd op25
 ---------------------
 sudo apt-get install liquidsoap liquidsoap-plugin-all
 
-3. Install PulseAudio (optional, but preferred over alsa for local audio)
+3. Install PulseAudio (optional, but preferred over alsa for local audio, selected with "-O pulse")
 ---------------------
 sudo apt-get install pulseaudio pulseaudio-utils
 
