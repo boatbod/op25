@@ -197,7 +197,7 @@ namespace gr {
             framer(new p25_framer(debug, msgq_id)),
             d_do_nocrypt(do_nocrypt),
             d_do_audio_output(do_audio_output),
-            ess_algid(0),
+            ess_algid(0x80),
             ess_keyid(0),
             vf_tgid(0)
         {
