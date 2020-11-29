@@ -1096,7 +1096,8 @@ class p25_receiver(object):
             encrypted = from_dict(js, 'encrypted', -1)
             algid = from_dict(js, 'algid', -1)
             keyid = from_dict(js, 'keyid', -1)
-            if (self.current_tgid is None) or (grpaddr != self.current_tgid): # only consider data for current call
+
+            if (self.current_tgid is None) or (grpaddr != 0 and grpaddr != self.current_tgid): # only consider data for current call
                 return updated
 
             if encrypted >= 0 and algid >= 0 and keyid >= 0: # log and save encryption information
