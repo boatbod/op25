@@ -104,6 +104,8 @@ def add_default_tgid(tgs, tgid):
         tgs[tgid]['frequency'] = None
         tgs[tgid]['tdma_slot'] = None
         tgs[tgid]['encrypted'] = 0
+        tgs[tgid]['algid'] = 0x80
+        tgs[tgid]['keyid'] = 0
         tgs[tgid]['receiver'] = None
 
 def get_slot(slot):
@@ -1022,7 +1024,7 @@ class p25_receiver(object):
         if (freq != self.tuned_frequency) or (slot != self.current_slot):
             nac, wacn, sysid, valid = self.system.get_tdma_params()
             if slot is not None and not valid:                   # Can only tune tdma voice channel if nac/wacn/sysid are known
-                sys.stderr.write("%s [%d] tune_voice skipped, wacn/sysid not known\n" % (log_ts.get(), self.msgq_id))
+                sys.stderr.write("%s [%d] cannot tune voice channel; wacn/sysid not yet known\n" % (log_ts.get(), self.msgq_id))
                 return
 
             tune_params = {'tuner':   self.msgq_id,
@@ -1092,20 +1094,28 @@ class p25_receiver(object):
             grpaddr = from_dict(js, 'grpaddr', 0)
             srcaddr = from_dict(js, 'srcaddr', 0)
             encrypted = from_dict(js, 'encrypted', -1)
-
+            algid = from_dict(js, 'algid', -1)
+            keyid = from_dict(js, 'keyid', -1)
             if (self.current_tgid is None) or (grpaddr != self.current_tgid): # only consider data for current call
                 return updated
+
+            if self.debug > 0 and encrypted == 1 and keyid != self.talkgroups[self.current_tgid]['keyid']:
+                sys.stderr.write('%s [%d] encrypt info:  tg(%d), algid(0x%x), keyid(0x%x)\n' % (log_ts.get(), self.msgq_id, self.current_tgid, algid, keyid))
 
             if srcaddr > 0:
                 self.talkgroups[self.current_tgid]['srcaddr'] = srcaddr
             if encrypted >= 0:
                 self.talkgroups[self.current_tgid]['encrypted'] = encrypted
+            if algid >= 0:
+                self.talkgroups[self.current_tgid]['algid'] = algid
+            if keyid >= 0:
+                self.talkgroups[self.current_tgid]['keyid'] = keyid
 
             if self.crypt_behavior > 1:
                 if self.talkgroups[self.current_tgid]['encrypted'] == 1:
                     updated += 1
                     if self.debug > 0:
-                        sys.stderr.write('%s skipping encrypted tg(%d)\n' % (log_ts.get(), self.current_tgid))
+                        sys.stderr.write('%s [%d] skipping encrypted tg(%d)\n' % (log_ts.get(), self.msgq_id, self.current_tgid))
                     self.add_blacklist(self.current_tgid, curr_time + TGID_SKIP_TIME)
 
         elif m_type == -4: # P25 sync established

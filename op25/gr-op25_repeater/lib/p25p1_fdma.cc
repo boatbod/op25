@@ -586,7 +586,7 @@ namespace gr {
                     }
                     if (d_do_audio_output) {
                         if (!d_do_nocrypt || !encrypted()) {
-                            std::string encr = "{\"encrypted\" : " + std::to_string(0) + "}";
+                            std::string encr = "{\"encrypted\": " + std::to_string(0) + ", \"algid\": " + std::to_string(ess_algid) + ", \"keyid\": " + std::to_string(ess_keyid) + "}";
                             send_msg(encr, -3);
                             software_decoder.decode_fullrate(u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7], E0, ET);
                             audio_samples *samples = software_decoder.audio();
@@ -606,7 +606,7 @@ namespace gr {
                                 }
                             }
                         } else {
-                            std::string encr = "{\"encrypted\" : " + std::to_string(1) + "}";
+                            std::string encr = "{\"encrypted\": " + std::to_string(1) + ", \"algid\": " + std::to_string(ess_algid) + ", \"keyid\": " + std::to_string(ess_keyid) + "}";
                             send_msg(encr, -3);
                         }
                     }

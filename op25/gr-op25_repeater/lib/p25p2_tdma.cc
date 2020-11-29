@@ -193,9 +193,11 @@ void p25p2_tdma::handle_mac_ptt(const uint8_t byte_buf[], const unsigned int len
 			rs_errs);
         }
 
-        std::string s = "{\"srcaddr\" : "   + std::to_string(srcaddr) + \
+        std::string s = "{\"srcaddr\": "    + std::to_string(srcaddr) + \
                         ", \"grpaddr\": "   + std::to_string(grpaddr) + \
-                        ", \"encrypted\": " + std::to_string(encrypted() ? 1 : 0 ) + "}";
+                        ", \"encrypted\": " + std::to_string(encrypted() ? 1 : 0 ) + \
+                        ", \"algid\": "     + std::to_string(ess_algid) + \
+                        ", \"keyid\": "     + std::to_string(ess_keyid) + "}";
         send_msg(s, -3);
 
         reset_vb();
@@ -662,7 +664,7 @@ int p25p2_tdma::handle_packet(const uint8_t dibits[])
                 track_vb(burst_type);
                 handle_4V2V_ess(&xored_burst[84]);
                 if ( !d_do_nocrypt || !encrypted() ) {
-                        std::string s = "{\"encrypted\" : " + std::to_string(0) + "}";
+                        std::string s = "{\"encrypted\": " + std::to_string(0) + ", \"algid\": " + std::to_string(ess_algid) + ", \"keyid\": " + std::to_string(ess_keyid) + "}";
                         send_msg(s, -3);
                         handle_voice_frame(&xored_burst[11]);
                         handle_voice_frame(&xored_burst[48]);
@@ -671,7 +673,7 @@ int p25p2_tdma::handle_packet(const uint8_t dibits[])
                                 handle_voice_frame(&xored_burst[133]);
                         }
                 } else {
-                        std::string s = "{\"encrypted\" : " + std::to_string(1) + "}";
+                        std::string s = "{\"encrypted\": " + std::to_string(1) + ", \"algid\": " + std::to_string(ess_algid) + ", \"keyid\": " + std::to_string(ess_keyid) + "}";
                         send_msg(s, -3);
                 }
 		return -1;
