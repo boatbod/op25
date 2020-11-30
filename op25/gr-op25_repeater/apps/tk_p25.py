@@ -1000,7 +1000,7 @@ class p25_receiver(object):
             self.slot_set({'tuner': self.msgq_id,'slot': 0})     # enable receiver
             self.tuner_idle = False
         if self.debug >= 5:
-            sys.stderr.write("%s [%d] tuning to control channel\n" % (log_ts.get(), self.msgq_id))
+            sys.stderr.write("%s [%d] set control channel=%f\n" % (log_ts.get(), self.msgq_id, freq/1e6))
         tune_params = {'tuner':   self.msgq_id,
                        'sigtype': "P25",
                        'freq':    freq,
