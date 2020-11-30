@@ -26,6 +26,11 @@ echo "Generating list of new talkgroups seen: op25-new-tgids.txt"
 echo "# Newly Seen Talkgroups" > op25-new-tgids.txt
 grep 'new tgid=' $1 | cut -d"=" -f2- | sort -n >> op25-new-tgids.txt
 
+# list of encryption seen
+echo "Generating list of encryption in use: op25-enc-used.txt"
+echo "# Encryption algids and keyids" > op25-enc-used.txt
+grep 'encrypt info tg=' $1 | cut -d"=" -f2,3,4- | sort -n -u | sed s/^/tg=/g | sed s/,//g >> op25-enc-used.txt
+
 # histogram of talkgroups
 echo "Munging log and tag files..."
 temp1=$(mktemp)
@@ -70,15 +75,16 @@ echo "# TGID  PCT     Count" >> op25-tagless-numeric.txt
 awk '{FS=OFS="\t"} NR>2 {print $3,$1,$2}' op25-tagless-frequency.txt \
     | sort -n >> op25-tagless-numeric.txt
 
+# GJN: the following doesn't work due to the move away from logging in epoch time
 # show activity (number of commands) per five minute interval
-echo "Generating activity histogram: op25-activity.txt"
-start=`grep 'set tgid=' $1 | head -n1 | cut -d"=" -f1 | cut -c1-10`
-echo "# Commands sent in prior 5 minutes (300 seconds)" > op25-activity.txt
-echo "# Starting time (Unix epoch): $start" >> op25-activity.txt
-echo "" >> op25-activity.txt
-cut -c1-10 $1 | awk '{print int($1/300)}' | sort -n | uniq -c \
-    | cut -d" " -f4- | sort -k2 -n \
-    | awk '{if ($2 > 0) print $2*300,$1}' >> op25-activity.txt
+#echo "Generating activity histogram: op25-activity.txt"
+#start=`grep 'set tgid=' $1 | head -n1 | cut -d"=" -f1 | cut -c1-10`
+#echo "# Commands sent in prior 5 minutes (300 seconds)" > op25-activity.txt
+#echo "# Starting time (Unix epoch): $start" >> op25-activity.txt
+#echo "" >> op25-activity.txt
+#cut -c1-10 $1 | awk '{print int($1/300)}' | sort -n | uniq -c \
+#    | cut -d" " -f4- | sort -k2 -n \
+#    | awk '{if ($2 > 0) print $2*300,$1}' >> op25-activity.txt
 
 # clean up
 echo "Cleaning up..."

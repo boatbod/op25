@@ -1101,8 +1101,8 @@ class p25_receiver(object):
                 return updated
 
             if encrypted >= 0 and algid >= 0 and keyid >= 0: # log and save encryption information
-                if self.debug > 0 and (algid != self.talkgroups[self.current_tgid]['algid'] or keyid != self.talkgroups[self.current_tgid]['keyid']):
-                    sys.stderr.write('%s [%d] encrypt info:  tg(%d), algid(0x%x), keyid(0x%x)\n' % (log_ts.get(), self.msgq_id, self.current_tgid, algid, keyid))
+                if self.debug >= 5 and (algid != self.talkgroups[self.current_tgid]['algid'] or keyid != self.talkgroups[self.current_tgid]['keyid']):
+                    sys.stderr.write('%s [%d] encrypt info tg=%d, algid=0x%x, keyid=0x%x\n' % (log_ts.get(), self.msgq_id, self.current_tgid, algid, keyid))
                 self.talkgroups[self.current_tgid]['encrypted'] = encrypted
                 self.talkgroups[self.current_tgid]['algid'] = algid
                 self.talkgroups[self.current_tgid]['keyid'] = keyid
