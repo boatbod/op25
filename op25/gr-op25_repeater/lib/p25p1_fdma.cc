@@ -377,7 +377,7 @@ namespace gr {
 
         void p25p1_fdma::process_LCW(std::vector<uint8_t>& HB) {
             int ec = rs12.decode(HB); // Reed Solomon (24,12,13) error correction
-            if (ec < 0)
+            if ((ec < 0) || (ec > 6)) // upper limit of 6 corrections
                 return; // failed CRC
 
             int i, j;
