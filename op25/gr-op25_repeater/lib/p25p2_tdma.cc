@@ -512,7 +512,7 @@ int p25p2_tdma::handle_acch_frame(const uint8_t dibits[], bool fast)
 		j++;
 	}
 	rs_errs = rs28.decode(HB, Erasures);
-	if (rs_errs < 0)
+	if (rs_errs < 0) // Don't need upper limit on corrections because pdu is crc12 checked before subsequent processing
 		return -1;
 
 	// Adjust FEC error counter to eliminate erasures
@@ -719,7 +719,7 @@ void p25p2_tdma::handle_4V2V_ess(const uint8_t dibits[])
 
                 ec = rs28.decode(ESS_B, ESS_A);
 
-                if (ec >= 0) { // save info if good decode
+                if ((ec >= 0) && (ec <= 14)) { // upper limit 14 corrections
                         ess_algid = (ESS_B[0] << 2) + (ESS_B[1] >> 4);
                         ess_keyid = ((ESS_B[1] & 15) << 12) + (ESS_B[2] << 6) + ESS_B[3]; 
 

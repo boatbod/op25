@@ -241,7 +241,7 @@ namespace gr {
             }
             ec = rs16.decode(HB); // Reed Solomon (36,20,17) error correction
 
-            if (ec >= 0) {
+            if ((ec >= 0) && (ec <= 8)) { // upper limit of 8 corrections
                 j = 27;												// 72 bit MI
                 for (i = 0; i < 9;) {
                     ess_mi[i++] = (uint8_t)  (HB[j  ]         << 2) + (HB[j+1] >> 4);
@@ -306,7 +306,7 @@ namespace gr {
 
             int i, j, ec;
             ec = rs8.decode(HB); // Reed Solomon (24,16,9) error correction
-            if (ec >= 0) {	// save info if good decode
+            if ((ec >= 0) && (ec <= 4)) {	// upper limit of 4 corrections
                 j = 39;												// 72 bit MI
                 for (i = 0; i < 9;) {
                     ess_mi[i++] = (uint8_t)  (HB[j  ]         << 2) + (HB[j+1] >> 4);
