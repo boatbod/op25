@@ -51,6 +51,7 @@ namespace gr {
                 log_ts logts;
 
                 // internal functions
+                void set_debug(int debug);
 
             public:
                 analog_udp_impl(const char* options, int debug, int msgq_id, gr::msg_queue::sptr queue);

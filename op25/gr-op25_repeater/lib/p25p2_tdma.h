@@ -48,6 +48,7 @@ public:
 	uint32_t packets;
 	~p25p2_tdma();	// destructor
 	void set_xormask(const char*p);
+	void set_debug(int debug);
 	bool rx_sym(uint8_t sym);
 	int handle_frame(void) ;
 private:
@@ -70,22 +71,22 @@ private:
 	bool d_do_msgq;
 	int d_msgq_id;
 	bool d_do_audio_output;
-        bool d_do_nocrypt;
-        const op25_audio& op25audio;
+	bool d_do_nocrypt;
+	const op25_audio& op25audio;
 	log_ts logts;
 
 	int d_debug;
 
-        int burst_id;
-        inline int track_vb(int burst_type) { return burst_id = (burst_type == 0) ? (++burst_id % 5) : 4; }
-        inline void reset_vb(void) { burst_id = -1; }
+	int burst_id;
+	inline int track_vb(int burst_type) { return burst_id = (burst_type == 0) ? (++burst_id % 5) : 4; }
+	inline void reset_vb(void) { burst_id = -1; }
 
-        ezpwd::RS<63,35> rs28;      // Reed-Solomon decoder object
-        std::vector<uint8_t> ESS_A; // ESS_A and ESS_B are hexbits vectors
-        std::vector<uint8_t> ESS_B;
+	ezpwd::RS<63,35> rs28;      // Reed-Solomon decoder object
+	std::vector<uint8_t> ESS_A; // ESS_A and ESS_B are hexbits vectors
+	std::vector<uint8_t> ESS_B;
 
-        uint16_t ess_keyid;
-        uint8_t ess_algid;
+	uint16_t ess_keyid;
+	uint8_t ess_algid;
 	uint8_t ess_mi[9] = {0};
 
 	p25p2_framer p2framer;
@@ -93,14 +94,14 @@ private:
 	int handle_acch_frame(const uint8_t dibits[], bool fast) ;
 	void handle_voice_frame(const uint8_t dibits[]) ;
 	int process_mac_pdu(const uint8_t byte_buf[], const unsigned int len, const int rs_errs) ;
-        void handle_mac_ptt(const uint8_t byte_buf[], const unsigned int len, const int rs_errs) ;
-        void handle_mac_end_ptt(const uint8_t byte_buf[], const unsigned int len, const int rs_errs) ;
-        void handle_mac_idle(const uint8_t byte_buf[], const unsigned int len, const int rs_errs) ;
-        void handle_mac_active(const uint8_t byte_buf[], const unsigned int len, const int rs_errs) ;
-        void handle_mac_hangtime(const uint8_t byte_buf[], const unsigned int len, const int rs_errs) ;
-        void decode_mac_msg(const uint8_t byte_buf[], const unsigned int len) ;
-        void handle_4V2V_ess(const uint8_t dibits[]);
-        inline bool encrypted() { return (ess_algid != 0x80); }
+	void handle_mac_ptt(const uint8_t byte_buf[], const unsigned int len, const int rs_errs) ;
+	void handle_mac_end_ptt(const uint8_t byte_buf[], const unsigned int len, const int rs_errs) ;
+	void handle_mac_idle(const uint8_t byte_buf[], const unsigned int len, const int rs_errs) ;
+	void handle_mac_active(const uint8_t byte_buf[], const unsigned int len, const int rs_errs) ;
+	void handle_mac_hangtime(const uint8_t byte_buf[], const unsigned int len, const int rs_errs) ;
+	void decode_mac_msg(const uint8_t byte_buf[], const unsigned int len) ;
+	void handle_4V2V_ess(const uint8_t dibits[]);
+	inline bool encrypted() { return (ess_algid != 0x80); }
 
 	void send_msg(const std::string msg_str, long msg_type);
 };

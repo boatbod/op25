@@ -121,6 +121,14 @@ void rx_sync::set_slot_key(int mask) {
 	d_slot_key = mask;
 }
 
+void rx_sync::set_debug(int debug) {
+    d_debug = debug;
+	d_audio.set_debug(debug);
+	p25fdma.set_debug(debug);
+	p25tdma.set_debug(debug);
+	//dmr.set_debug(debug); //TODO: add set_debug() method to dmr handler
+}
+
 static int ysf_decode_fich(const uint8_t src[100], uint8_t dest[32]) {   // input is 100 dibits, result is 32 bits
 // return -1 on decode error, else 0
 	static const int pc[] = {0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1};

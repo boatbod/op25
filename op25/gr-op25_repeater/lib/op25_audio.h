@@ -56,6 +56,7 @@ public:
     ~op25_audio();
 
     inline bool enabled() const { return d_udp_enabled; }
+    inline void set_debug(int debug) { d_debug = debug; }
 
     ssize_t send_to(const void *buf, size_t len) const;
 

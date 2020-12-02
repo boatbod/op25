@@ -208,6 +208,10 @@ namespace gr{
             sync_timer.reset();
         }
 
+        void rx_smartnet::set_debug(int debug) {
+            d_debug = debug;
+        }
+
         void rx_smartnet::sync_timeout()
         {
             if ((d_msgq_id >= 0) && (!d_msg_queue->full_p())) {

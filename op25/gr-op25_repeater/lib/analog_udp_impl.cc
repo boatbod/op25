@@ -91,5 +91,12 @@ namespace gr {
                 return 0;
             }
 
+        void
+        analog_udp_impl::set_debug(int debug)
+        {
+            d_debug = debug;
+            d_audio.set_debug(debug);
+        }
+
     } /* namespace op25_repeater */
 } /* namespace gr */

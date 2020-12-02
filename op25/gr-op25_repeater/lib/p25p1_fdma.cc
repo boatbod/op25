@@ -183,6 +183,12 @@ namespace gr {
             return 0;
         }
 
+        void p25p1_fdma::set_debug(int debug)
+        {
+            d_debug = debug;
+            framer->set_debug(debug);
+        }
+
         p25p1_fdma::p25p1_fdma(const op25_audio& udp, int debug, bool do_imbe, bool do_output, bool do_msgq, gr::msg_queue::sptr queue, std::deque<int16_t> &output_queue, bool do_audio_output, bool do_nocrypt, int msgq_id) :
             qtimer(op25_timer(TIMEOUT_THRESHOLD)),
             op25audio(udp),

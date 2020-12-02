@@ -60,6 +60,13 @@ dmr_cai::set_slot_mask(int mask) {
 }
 
 void
+dmr_cai::set_debug(int debug) {
+    d_debug = debug;
+    d_slot[0].set_debug(debug);
+    d_slot[1].set_debug(debug);
+}
+
+void
 dmr_cai::send_msg(const std::string& m_buf, const int m_type) {
 	if ((d_msgq_id < 0) || (d_msg_queue->full_p()))
 		return;

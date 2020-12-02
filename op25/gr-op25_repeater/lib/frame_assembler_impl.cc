@@ -60,6 +60,11 @@ namespace gr {
                 d_sync->sync_reset();
         }
 
+        void frame_assembler_impl::set_debug(int debug) {
+            if (d_sync)
+                d_sync->set_debug(debug);
+        }
+
         frame_assembler::sptr
             frame_assembler::make(const char* options, int debug, int msgq_id, gr::msg_queue::sptr queue)
             {

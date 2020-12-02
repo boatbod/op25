@@ -121,6 +121,7 @@ public:
 	void set_slot_mask(int mask);
 	void set_slot_key(int mask);
 	void set_xormask(const char* p);
+	void set_debug(int debug);
 	rx_sync(const char * options, int debug, int msgq_id, gr::msg_queue::sptr queue);
 	~rx_sync();
 

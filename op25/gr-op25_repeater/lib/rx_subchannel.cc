@@ -55,6 +55,10 @@ namespace gr{
             d_flag_reg = 0;
         }
 
+        void rx_subchannel::set_debug(int debug) {
+            d_debug = debug;
+        }
+
         void rx_subchannel::send_end_msg() {
             std::string msg_str = "";
             if ((d_msgq_id >= 0) && (!d_msg_queue->full_p())) {

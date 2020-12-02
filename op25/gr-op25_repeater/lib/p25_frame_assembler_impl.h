@@ -57,6 +57,7 @@ namespace gr {
     void set_xormask(const char*p) ;
     void set_slotid(int slotid) ;
     void set_slotkey(int key) ;
+    void set_debug(int debug) ;
     void reset_timer() ;
 	typedef std::vector<bool> bit_vector;
 	std::deque<int16_t> output_queue;

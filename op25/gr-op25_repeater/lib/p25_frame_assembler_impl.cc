@@ -38,18 +38,24 @@ namespace gr {
   namespace op25_repeater {
 
     void p25_frame_assembler_impl::set_xormask(const char*p) {
-	p2tdma.set_xormask(p);
+		p2tdma.set_xormask(p);
     }
 
     void p25_frame_assembler_impl::set_slotid(int slotid) {
-	p2tdma.set_slotid(slotid);
+		p2tdma.set_slotid(slotid);
     }
 
     void p25_frame_assembler_impl::set_slotkey(int key) {
     }
 
     void p25_frame_assembler_impl::reset_timer() {
-	p1fdma.reset_timer();
+		p1fdma.reset_timer();
+    }
+
+    void p25_frame_assembler_impl::set_debug(int debug) {
+		op25audio.set_debug(debug);
+		p1fdma.set_debug(debug);
+		p2tdma.set_debug(debug);
     }
 
     p25_frame_assembler::sptr
@@ -83,7 +89,7 @@ static const int MAX_IN = 1;	// maximum number of input streams
 	d_do_imbe(do_imbe),
 	d_do_output(do_output),
 	output_queue(),
-        op25audio(udp_host, port, debug),
+	op25audio(udp_host, port, debug),
 	p1fdma(op25audio, debug, do_imbe, do_output, do_msgq, queue, output_queue, do_audio_output, do_nocrypt),
 	d_do_audio_output(do_audio_output),
 	d_do_phase2_tdma(do_phase2_tdma),

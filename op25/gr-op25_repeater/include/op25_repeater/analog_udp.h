@@ -48,6 +48,7 @@ namespace gr {
                  * creating new instances.
                  */
                 static sptr make(const char* options, int debug, int msgq_id, gr::msg_queue::sptr queue);
+                virtual void set_debug(int debug) {}
         };
 
     } // namespace op25_repeater

@@ -88,7 +88,7 @@ static const uint8_t mac_msg_len[256] = {
 	 0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 11, 13, 11,  0,  0,  0 };
 
 p25p2_tdma::p25p2_tdma(const op25_audio& udp, int slotid, int debug, bool do_msgq, gr::msg_queue::sptr queue, std::deque<int16_t> &qptr, bool do_audio_output, bool do_nocrypt, int msgq_id) :	// constructor
-        op25audio(udp),
+	op25audio(udp),
 	write_bufp(0),
 	tdma_xormask(new uint8_t[SUPERFRAME_SIZE]),
 	symbols_received(0),
@@ -100,14 +100,14 @@ p25p2_tdma::p25p2_tdma(const op25_audio& udp, int slotid, int debug, bool do_msg
 	output_queue_decode(qptr),
 	d_debug(debug),
 	d_do_audio_output(do_audio_output),
-        d_do_nocrypt(do_nocrypt),
-        burst_id(-1),
-        ESS_A(28,0),
-        ESS_B(16,0),
-        ess_algid(0x80),
-        ess_keyid(0),
-        mbe_err_cnt(0),
-        tone_frame(false),
+	d_do_nocrypt(do_nocrypt),
+	burst_id(-1),
+	ESS_A(28,0),
+	ESS_B(16,0),
+	ess_algid(0x80),
+	ess_keyid(0),
+	mbe_err_cnt(0),
+	tone_frame(false),
 	p2framer()
 {
 	assert (slotid == 0 || slotid == 1);
@@ -126,6 +126,11 @@ void p25p2_tdma::set_slotid(int slotid)
 {
 	assert (slotid == 0 || slotid == 1);
 	d_slotid = slotid;
+}
+
+void p25p2_tdma::set_debug(int debug)
+{
+	d_debug = debug;
 }
 
 p25p2_tdma::~p25p2_tdma()	// destructor
