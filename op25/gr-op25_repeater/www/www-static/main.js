@@ -600,6 +600,11 @@ function f_scan_button(command) {
         if (isNaN(_tgid) || (_tgid <= 0) || (_tgid > 65534))
             return;
     }
+    else if (command == "set_debug") {
+        _tgid = parseInt(prompt("Enter logging level", _tgid));
+        if (isNaN(_tgid) || (_tgid < 0) )
+            return;
+    }
 
     if (channel_list.length == 0) {
         send_command(command, _tgid);
