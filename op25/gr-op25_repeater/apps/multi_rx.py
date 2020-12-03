@@ -112,6 +112,9 @@ class device(object):
     def get_ppm(self):
         return self.ppm
 
+    def set_debug(self, dbglvl):
+        pass
+
 class channel(object):
     def __init__(self, config, dev, verbosity, msgq_id, rx_q, tb):
         sys.stderr.write('channel (dev %s): %s\n' % (dev.name, config))
@@ -202,6 +205,13 @@ class channel(object):
             else:
                 sys.stderr.write('unrecognized plot type %s\n' % plot)
                 return
+
+    def set_debug(self, dbglvl):
+        self.verbosity = dbglvl
+        if self.decoder is not None:
+            self.decoder.set_debug(dbglvl)
+        if self.nbfm is not None:
+            self.nbfm.set_debug(dbglvl)
 
     def set_plot_destination(self, plot): # only required for http terminal
         if plot is None or plot not in self.sinks or self.tb.terminal_type is None:
@@ -402,6 +412,8 @@ class rx_block (gr.top_block):
     #
     def __init__(self, verbosity, config):
         self.verbosity = verbosity
+        self.devices = []
+        self.channels = []
         self.terminal = None
         self.terminal_type = None
         self.terminal_config = None
@@ -436,6 +448,15 @@ class rx_block (gr.top_block):
 
         if "terminal" in config:
             self.configure_terminal(config['terminal'])
+
+    def set_debug(self, dbglvl):
+        self.verbosity = dbglvl
+        for ch in self.channels:
+            ch.set_debug(dbglvl)
+        for dev in self.devices:
+            dev.set_debug(dbglvl)
+        if self.trunking is not None and self.trunk_rx is not None:
+            self.trunk_rx.set_debug(dbglvl)
 
     def set_interactive(self, session_type):
         self.interactive = session_type
@@ -682,10 +703,9 @@ class rx_block (gr.top_block):
             freq = msg.arg1()
             msgq_id = int(msg.arg2())
             self.find_channel(msgq_id).adj_tune(freq)
-        #elif s == 'set_freq':
-        #    freq = msg.arg1()
-        #    self.last_freq_params['freq'] = freq
-        #    self.set_freq(freq)
+        elif s == 'set_debug':
+            dbglvl = int(msg.arg1())
+            self.set_debug(dbglvl)
         #elif s == 'add_default_config':
         #    nac = msg.arg1()
         #    self.trunk_rx.add_default_config(int(nac))

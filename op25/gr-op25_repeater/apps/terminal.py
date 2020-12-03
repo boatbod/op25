@@ -192,6 +192,24 @@ class curses_terminal(threading.Thread):
                 freq = None
             if freq:
                 self.send_command('set_freq', freq, int(self.current_msgqid))
+        elif c == ord('v'):
+            self.prompt.addstr(0, 0, 'Log Level')
+            self.prompt.refresh()
+            self.text_win.erase()
+            response = self.textpad.edit()
+            self.prompt.erase()
+            self.prompt.refresh()
+            self.text_win.erase()
+            self.text_win.refresh()
+            self.title_help()
+            try:
+                dbglvl = int(response)
+                if dbglvl < 0:
+                    dbglvl = 0
+            except:
+                dbglvl = None
+            if dbglvl >= 0:
+                self.send_command('set_debug', dbglvl, int(self.current_msgqid))
         elif c == ord('H'):
             self.prompt.addstr(0, 0, 'Hold tgid')
             self.prompt.refresh()

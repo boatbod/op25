@@ -227,6 +227,13 @@ class rx_ctl(object):
         d['channels'] = rcvr_ids
         return json.dumps(d)
 
+    def set_debug(self, dbglvl):
+        self.debug = dbglvl
+        for rx_sys in self.systems:
+            self.systems[rx_sys]['system'].set_debug(dbglvl)
+        for rcvr in self.receivers:
+            self.receivers[rcvr]['rx_rcvr'].set_debug(dbglvl)
+
 #################
 # P25 system class
 class p25_system(object):
@@ -289,6 +296,9 @@ class p25_system(object):
         for f in cc_list.split(','):
             self.cc_list.append(get_frequency(f))
         self.next_cc()
+
+    def set_debug(self, dbglvl):
+        self.debug = dbglvl
 
     def get_frequencies(self):
         return self.voice_frequencies
@@ -958,6 +968,9 @@ class p25_receiver(object):
         self.hold_mode = False
         self.tgid_hold_time = TGID_HOLD_TIME
         self.vc_retries = 0
+
+    def set_debug(self, dbglvl):
+        self.debug = dbglvl
 
     def post_init(self):
         if self.debug >= 1:

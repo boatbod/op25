@@ -575,6 +575,12 @@ class p25_rx_block (gr.top_block):
         self.set_freq(self.target_freq)
         return True
 
+    def set_debug(self, dbglvl):
+        self.options.verbosity = dbglvl
+        self.decoder.set_debug(dbglvl)
+        if self.trunk_rx is not None:
+            self.trunk_rx.set_debug(dbglvl)
+
     def toggle_plot(self, plot_type):
         if self.options.symbols:
             return              # plots not supported when replacing symbol
@@ -880,6 +886,8 @@ class p25_rx_block (gr.top_block):
             msg = gr.message().make_from_string(js, -4, 0, 0)
             self.input_q.insert_tail(msg)
             self.process_ajax()
+        elif s == 'set_debug':
+            self.set_debug(int(msg.arg1()))
         elif s == 'set_freq':
             freq = msg.arg1()
             self.last_freq_params['freq'] = freq

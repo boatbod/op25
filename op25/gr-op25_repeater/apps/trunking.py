@@ -107,6 +107,9 @@ class trunked_system (object):
             self.modulation = config['modulation']
             self.hunt_cc(time.time())
 
+    def set_debug(self, dbglvl):
+        self.debug = dbglvl
+
     def reset(self):
         self.freq_table = {}
         self.stats = {}
@@ -826,6 +829,11 @@ class rx_ctl (object):
             else:
                 self.build_config(conf_file)
                 self.post_init()
+
+    def set_debug(self, dbglvl):
+        self.debug = dbglvl
+        for tsys in self.trunked_systems:
+            self.trunked_systems[tsys].set_debug(dbglvl)
 
     def add_receiver(self, msgq_id, config, meta_q = None, freq = 0):
         self.config = config

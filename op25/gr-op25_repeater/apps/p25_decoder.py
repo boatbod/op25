@@ -147,3 +147,8 @@ class p25_decoder_sink_b(gr.hier_block2):
 
     def reset_timer(self, index=0):
         self.p25_decoders[index].reset_timer()
+
+    def set_debug(self, dbglvl):
+        self.debug = dbglvl
+        for decoder in self.p25_decoders:
+            decoder.set_debug(dbglvl)

@@ -140,3 +140,7 @@ class op25_nbfm_c(gr.hier_block2):
         if self.debug >= 5:
             sys.stderr.write("%s [%d] op25_nbfm::control: analog audio %s\n" % (log_ts.get(), self.msgq_id, ('enabled' if action else 'disabled')))
 
+    def set_debug(self, dbglvl):
+        self.debug = dbglvl
+        self.subchannel_framer.set_debug(dbglvl)
+

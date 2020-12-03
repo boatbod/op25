@@ -42,6 +42,9 @@ class dmr_chan:
         self.slot.append(_grant_info)
         self.slot.append(_grant_info)
 
+    def set_debug(self, dbglvl):
+        self.debug = dbglvl
+
 class dmr_receiver:
     def __init__(self, msgq_id, frequency_set=None, slot_set=None, nbfm_ctrl=None, chans={}, debug=0):
         class _states(object):
@@ -64,6 +67,9 @@ class dmr_receiver:
         self.rest_lcn = 0
         self.active_tgids = {}
         self.tune_time = 0
+
+    def set_debug(self, dbglvl):
+        self.debug = dbglvl
 
     def post_init(self):
         if self.debug >= 1:
@@ -345,6 +351,13 @@ class rx_ctl(object):
         for _chan in chans:
             self.chans[_chan['lcn']] = dmr_chan(debug, _chan['lcn'], _chan['frequency'])
             sys.stderr.write("%f Configuring channel lcn(%d), freq(%f), cc(%d)\n" % (time.time(), _chan['lcn'], (_chan['frequency']/1e6), _chan['cc']))
+
+    def set_debug(self, dbglvl):
+        self.debug = dbglvl
+        for chan in self.chans:
+            self.chans[chan].set_debug(dbglvl)
+        for rcvr in self.receivers:
+            self.receivers[rcvr].set_debug(dbglvl)
 
     def post_init(self):
         for rx_id in self.receivers:

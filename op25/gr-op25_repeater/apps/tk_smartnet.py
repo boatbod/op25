@@ -111,6 +111,13 @@ class rx_ctl(object):
                                                                 frequency_set = self.frequency_set,
                                                                 config        = chan)
 
+    def set_debug(self, dbglvl):
+        self.debug = dbglvl
+        for sysname in self.systems:
+            self.systems[sysname]['control'].set_debug(dbglvl)
+        for rcvr in self.receivers:
+            self.receivers[rcvr]['rx_sys'].set_debug(dbglvl)
+
     # add_receiver is called once per radio channel defined in cfg.json
     def add_receiver(self, msgq_id, config, meta_q = None, freq = 0):
         if msgq_id in self.receivers: # should be impossible
@@ -219,6 +226,9 @@ class osw_receiver(object):
         self.stats = {}
         self.stats['osw_count'] = 0
         self.sysname = config['sysname']
+
+    def set_debug(self, dbglvl):
+        self.debug = dbglvl
 
     def get_frequencies(self):
         return self.voice_frequencies
@@ -641,6 +651,9 @@ class voice_receiver(object):
         self.blacklist = {}
         self.whitelist = None
         self.vc_retries = 0
+
+    def set_debug(self, dbglvl):
+        self.debug = dbglvl
 
     def post_init(self):
         if self.debug >= 1:
