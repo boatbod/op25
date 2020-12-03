@@ -66,6 +66,9 @@ class curses_terminal(threading.Thread):
         self.maxx = 0
         self.maxy = 0
         self.sock = sock
+        self.sm_step = 100
+        self.lg_step = 1200
+        self.send_command('get_config', 0, 0)
         self.start()
 
     def get_terminal_type(self):
@@ -244,13 +247,13 @@ class curses_terminal(threading.Thread):
             if tgid:
                 self.send_command('lockout', tgid, int(self.current_msgqid))
         elif c == ord(','):
-            self.send_command('adj_tune', -100, int(self.current_msgqid))
+            self.send_command('adj_tune', -self.sm_step, int(self.current_msgqid))
         elif c == ord('.'):
-            self.send_command('adj_tune', 100, int(self.current_msgqid))
+            self.send_command('adj_tune', self.sm_step, int(self.current_msgqid))
         elif c == ord('<'):
-            self.send_command('adj_tune', -1200, int(self.current_msgqid))
+            self.send_command('adj_tune', -self.lg_step, int(self.current_msgqid))
         elif c == ord('>'):
-            self.send_command('adj_tune', 1200, int(self.current_msgqid))
+            self.send_command('adj_tune', self.lg_step, int(self.current_msgqid))
         elif (c >= ord('1') ) and (c <= ord('6')):
             self.send_command('toggle_plot', (c - ord('0')), int(self.current_msgqid))
         elif c == ord('d'):
@@ -408,6 +411,11 @@ class curses_terminal(threading.Thread):
                         self.status2.addstr(0, (14-len(s)), s, curses.A_REVERSE)
                     self.status2.refresh()
                     self.current_encrypted = encrypted
+        elif msg['json_type'] == 'terminal_config': # from multi_rx.py
+            if 'tuning_step_small' in msg and int(msg['tuning_step_small']) > 0:
+                self.sm_step = int(msg['tuning_step_small'])
+            if 'tuning_step_large' in msg and int(msg['tuning_step_large']) > 0:
+                self.lg_step = int(msg['tuning_step_large'])
  
         return False
 

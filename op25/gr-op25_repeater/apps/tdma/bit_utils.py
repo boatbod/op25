@@ -42,6 +42,7 @@ def dibits_to_bits(dibits):
     return b
 
 def mk_array(n, l):
+    orig_n = n
     a = []
     for i in range(0,l):
         a.insert(0, n & 1)

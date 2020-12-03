@@ -81,6 +81,7 @@ class device(object):
             sys.stderr.write('WARNING: requested sample rate %d for device %s may not\n' % (config['rate'], config['name']))
             sys.stderr.write("be optimal.  You may want to use one of the following rates\n")
             sys.stderr.write('%s\n' % speeds)
+        sys.stderr.write('Device name: "%s", osmosdr args: "%s"\n' % (self.name, str(config['args'])))
         self.src = osmosdr.source(str(config['args']))
 
         if 'gain_mode' in config:
@@ -373,6 +374,8 @@ class channel(object):
             hash = '%x%x%x' % (params['nac'], params['sysid'], params['wacn'])
             if hash not in self.xor_cache:
                 self.xor_cache[hash] = lfsr.p25p2_lfsr(params['nac'], params['sysid'], params['wacn']).xor_chars
+                if self.verbosity >= 5:
+                    sys.stderr.write("%s [%d] Caching TDMA xor mask for NAC: 0x%x, SYSID: 0x%x, WACN: 0x%x\n" % (log_ts.get(), self.msgq_id, params['nac'], params['sysid'], params['wacn'])) 
             self.decoder.set_xormask(self.xor_cache[hash])
             rate = 6000
         else:
@@ -401,6 +404,7 @@ class rx_block (gr.top_block):
         self.verbosity = verbosity
         self.terminal = None
         self.terminal_type = None
+        self.terminal_config = None
         self.interactive = True
         self.audio = None
         self.audio_instances = {}
@@ -485,6 +489,7 @@ class rx_block (gr.top_block):
         term_type = str(from_dict(config,'terminal_type', "curses"))
         self.terminal = terminal.op25_terminal(self.ui_in_q, self.ui_out_q, term_type)
         self.terminal_type = self.terminal.get_terminal_type()
+        self.terminal_config = config
         self.curses_plot_interval = float(from_dict(config, 'curses_plot_interval', 0.0))
         self.http_plot_interval = float(from_dict(config, 'http_plot_interval', 1.0))
         self.http_plot_directory = str(from_dict(config, 'http_plot_directory', "../www/images"))
@@ -684,6 +689,15 @@ class rx_block (gr.top_block):
         #elif s == 'add_default_config':
         #    nac = msg.arg1()
         #    self.trunk_rx.add_default_config(int(nac))
+        elif s == 'get_config':
+            if self.terminal is not None and self.terminal_config is not None:
+                self.terminal_config['json_type'] = "terminal_config"
+                js = json.dumps(self.terminal_config)
+                msg = gr.message().make_from_string(js, -4, 0, 0)
+                self.ui_in_q.insert_tail(msg)   # send configuration back to UI
+                pass
+            else:
+                return False
         elif s == 'dump_tgids':
             self.trunk_rx.dump_tgids()
         elif s in RX_COMMANDS:
