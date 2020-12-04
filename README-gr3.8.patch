@@ -1,0 +1,22 @@
+
+Feb. 2020
+
+By default, OP25 builds for python2 and gnuradio3.7.
+
+Rather than branching the repo source tree and until such time as 
+gnuradio3.8 should become standard, it was decided to distribute 
+the necessary mods to build OP25 for gnuradio3.8 / python3 in
+the form of a patch (in file gr3.8.patch).
+
+To apply 
+# first, if necessary "sudo make uninstall" from your build dir
+#       (if op25 already installed)
+# then, cd to the top level op25 directory
+cat gr3.8.patch | patch -p1
+# finally, run "install.sh" as usual
+
+NOTE: This patch only affects the cmake (build) process; the 
+python apps (.py files) have been rewritten to be compatible with
+either version (2 or 3) of python.  It's possible there may be
+leftover bugs from that process  - please report if so.
+

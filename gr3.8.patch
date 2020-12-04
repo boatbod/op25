@@ -1,0 +1,359 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 56f95f4..c43483a 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -4,6 +4,24 @@ project(gr-op25 CXX C)
+ set(CMAKE_BUILD_TYPE Debug)
+ set(CMAKE_CXX_FLAGS "-std=c++11")
+ 
++execute_process(COMMAND python3 -c "
++import os
++import sys
++from distutils import sysconfig
++pfx = '/usr/local'
++m1 = os.path.join('lib', 'python' + sys.version[:3], 'dist-packages')
++m2 = sysconfig.get_python_lib(plat_specific=True, prefix='')
++f1 = os.path.join(pfx, m1)
++f2 = os.path.join(pfx, m2)
++ok2 = f2 in sys.path
++if ok2:
++	print(m2)
++else:
++	print(m1)
++" OUTPUT_VARIABLE OP25_PYTHON_DIR OUTPUT_STRIP_TRAILING_WHITESPACE
++)
++MESSAGE(STATUS "OP25_PYTHON_DIR has been set to \"${OP25_PYTHON_DIR}\".")
++
+ add_subdirectory(op25/gr-op25)
+ add_subdirectory(op25/gr-op25_repeater)
+ 
+diff --git a/cmake/Modules/GrSwig.cmake b/cmake/Modules/GrSwig.cmake
+index 569667b..f175cc5 100644
+--- a/cmake/Modules/GrSwig.cmake
++++ b/cmake/Modules/GrSwig.cmake
+@@ -114,7 +114,7 @@ macro(GR_SWIG_MAKE name)
+     endif()
+ 
+     #append additional include directories
+-    find_package(PythonLibs 2)
++    find_package(PythonLibs 3)
+     list(APPEND GR_SWIG_INCLUDE_DIRS ${PYTHON_INCLUDE_PATH}) #deprecated name (now dirs)
+     list(APPEND GR_SWIG_INCLUDE_DIRS ${PYTHON_INCLUDE_DIRS})
+     list(APPEND GR_SWIG_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR})
+diff --git a/install.sh b/install.sh
+index 10fbeb5..d04038f 100755
+--- a/install.sh
++++ b/install.sh
+@@ -10,9 +10,11 @@ if [ ! -d op25/gr-op25 ]; then
+ 	exit
+ fi
+ 
++sudo sed -i -- 's/^# *deb-src/deb-src/' /etc/apt/sources.list
++
+ sudo apt-get update
+ sudo apt-get build-dep gnuradio
+-sudo apt-get install gnuradio gnuradio-dev gr-osmosdr librtlsdr-dev libuhd-dev  libhackrf-dev libitpp-dev libpcap-dev cmake git swig build-essential pkg-config doxygen python-numpy python-waitress python-requests
++sudo apt-get install gnuradio gnuradio-dev gr-osmosdr librtlsdr-dev libuhd-dev  libhackrf-dev libitpp-dev libpcap-dev cmake git swig build-essential pkg-config doxygen python3-numpy python3-waitress python3-requests
+ 
+ mkdir build
+ cd build
+diff --git a/op25/gr-op25/CMakeLists.txt b/op25/gr-op25/CMakeLists.txt
+index 938bd67..110b99c 100644
+--- a/op25/gr-op25/CMakeLists.txt
++++ b/op25/gr-op25/CMakeLists.txt
+@@ -93,11 +93,12 @@ find_package(CppUnit)
+ # set(GR_REQUIRED_COMPONENTS RUNTIME BLOCKS FILTER ...)
+ # find_package(Gnuradio "version")
+ set(GR_REQUIRED_COMPONENTS RUNTIME BLOCKS FILTER PMT)
+-find_package(Gnuradio)
+-
+-if(NOT GNURADIO_RUNTIME_FOUND)
+-    message(FATAL_ERROR "GnuRadio Runtime required to compile op25")
++SET(MIN_GR_VERSION "3.8.0")
++find_package(Gnuradio REQUIRED)
++if("${Gnuradio_VERSION}" VERSION_LESS MIN_GR_VERSION)
++    MESSAGE(FATAL_ERROR "GnuRadio version required: >=\"" ${MIN_GR_VERSION} "\" found: \"" ${Gnuradio_VERSION} "\"")
+ endif()
++
+ if(NOT CPPUNIT_FOUND)
+     message(FATAL_ERROR "CppUnit required to compile op25")
+ endif()
+diff --git a/op25/gr-op25/lib/CMakeLists.txt b/op25/gr-op25/lib/CMakeLists.txt
+index 1befdd9..609fa84 100644
+--- a/op25/gr-op25/lib/CMakeLists.txt
++++ b/op25/gr-op25/lib/CMakeLists.txt
+@@ -63,7 +63,7 @@ list(APPEND op25_sources
+ )
+ 
+ add_library(gnuradio-op25 SHARED ${op25_sources})
+-target_link_libraries(gnuradio-op25 ${Boost_LIBRARIES} ${GNURADIO_RUNTIME_LIBRARIES} itpp pcap)
++target_link_libraries(gnuradio-op25 ${Boost_LIBRARIES} gnuradio::gnuradio-runtime itpp pcap)
+ set_target_properties(gnuradio-op25 PROPERTIES DEFINE_SYMBOL "gnuradio_op25_EXPORTS")
+ 
+ ########################################################################
+diff --git a/op25/gr-op25/python/CMakeLists.txt b/op25/gr-op25/python/CMakeLists.txt
+index 03361a2..e497faa 100644
+--- a/op25/gr-op25/python/CMakeLists.txt
++++ b/op25/gr-op25/python/CMakeLists.txt
+@@ -31,7 +31,7 @@ endif()
+ GR_PYTHON_INSTALL(
+     FILES
+     __init__.py
+-    DESTINATION ${GR_PYTHON_DIR}/op25
++    DESTINATION ${OP25_PYTHON_DIR}/op25
+ )
+ 
+ ########################################################################
+diff --git a/op25/gr-op25/swig/CMakeLists.txt b/op25/gr-op25/swig/CMakeLists.txt
+index e99226f..fd7bd85 100644
+--- a/op25/gr-op25/swig/CMakeLists.txt
++++ b/op25/gr-op25/swig/CMakeLists.txt
+@@ -21,7 +21,7 @@
+ # Include swig generation macros
+ ########################################################################
+ find_package(SWIG)
+-find_package(PythonLibs 2)
++find_package(PythonLibs 3)
+ if(NOT SWIG_FOUND OR NOT PYTHONLIBS_FOUND)
+     return()
+ endif()
+@@ -31,9 +31,7 @@ include(GrPython)
+ ########################################################################
+ # Setup swig generation
+ ########################################################################
+-foreach(incdir ${GNURADIO_RUNTIME_INCLUDE_DIRS})
+-    list(APPEND GR_SWIG_INCLUDE_DIRS ${incdir}/gnuradio/swig)
+-endforeach(incdir)
++set(GR_SWIG_INCLUDE_DIRS $<TARGET_PROPERTY:gnuradio::runtime_swig,INTERFACE_INCLUDE_DIRECTORIES>)
+ 
+ set(GR_SWIG_LIBRARIES gnuradio-op25)
+ set(GR_SWIG_DOC_FILE ${CMAKE_CURRENT_BINARY_DIR}/op25_swig_doc.i)
+@@ -44,7 +42,7 @@ GR_SWIG_MAKE(op25_swig op25_swig.i)
+ ########################################################################
+ # Install the build swig module
+ ########################################################################
+-GR_SWIG_INSTALL(TARGETS op25_swig DESTINATION ${GR_PYTHON_DIR}/op25)
++GR_SWIG_INSTALL(TARGETS op25_swig DESTINATION ${OP25_PYTHON_DIR}/op25)
+ 
+ ########################################################################
+ # Install swig .i files for development
+diff --git a/op25/gr-op25_repeater/CMakeLists.txt b/op25/gr-op25_repeater/CMakeLists.txt
+index 9962ba3..317c8c3 100644
+--- a/op25/gr-op25_repeater/CMakeLists.txt
++++ b/op25/gr-op25_repeater/CMakeLists.txt
+@@ -92,11 +92,12 @@ find_package(CppUnit)
+ #
+ set(GR_REQUIRED_COMPONENTS RUNTIME BLOCKS FILTER PMT)
+ # find_package(Gnuradio "version")
+-find_package(Gnuradio)
+-
+-if(NOT GNURADIO_RUNTIME_FOUND)
+-    message(FATAL_ERROR "GnuRadio Runtime required to compile op25_repeater")
++set(MIN_GR_VERSION "3.8.0")
++find_package(Gnuradio REQUIRED)
++if("${Gnuradio_VERSION}" VERSION_LESS MIN_GR_VERSION)
++    MESSAGE(FATAL_ERROR "GnuRadio version required: >=\"" ${MIN_GR_VERSION} "\" found: \"" ${Gnuradio_VERSION} "\"")
+ endif()
++
+ if(NOT CPPUNIT_FOUND)
+     message(FATAL_ERROR "CppUnit required to compile op25_repeater")
+ endif()
+diff --git a/op25/gr-op25_repeater/apps/audio.py b/op25/gr-op25_repeater/apps/audio.py
+index d5ec354..e68ce33 100755
+--- a/op25/gr-op25_repeater/apps/audio.py
++++ b/op25/gr-op25_repeater/apps/audio.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python
++#!/usr/bin/env python3
+ 
+ # Copyright 2017, 2018 Graham Norbury
+ # 
+diff --git a/op25/gr-op25_repeater/apps/http_server.py b/op25/gr-op25_repeater/apps/http_server.py
+index cf838df..484dc30 100755
+--- a/op25/gr-op25_repeater/apps/http_server.py
++++ b/op25/gr-op25_repeater/apps/http_server.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python
++#!/usr/bin/env python3
+ 
+ # Copyright 2017, 2018, 2019, 2020 Max H. Parke KA1RBI
+ # 
+diff --git a/op25/gr-op25_repeater/apps/multi_rx.py b/op25/gr-op25_repeater/apps/multi_rx.py
+index 308afc6..27f5eac 100755
+--- a/op25/gr-op25_repeater/apps/multi_rx.py
++++ b/op25/gr-op25_repeater/apps/multi_rx.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python
++#!/usr/bin/env python3
+ 
+ # Copyright 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020 Max H. Parke KA1RBI
+ # 
+diff --git a/op25/gr-op25_repeater/apps/rx.py b/op25/gr-op25_repeater/apps/rx.py
+index e13eb4d..b594315 100755
+--- a/op25/gr-op25_repeater/apps/rx.py
++++ b/op25/gr-op25_repeater/apps/rx.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python
++#!/usr/bin/env python3
+ 
+ # Copyright 2008-2011 Steve Glass
+ # 
+diff --git a/op25/gr-op25_repeater/apps/sockaudio.py b/op25/gr-op25_repeater/apps/sockaudio.py
+index c5d4144..0c00413 100755
+--- a/op25/gr-op25_repeater/apps/sockaudio.py
++++ b/op25/gr-op25_repeater/apps/sockaudio.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python
++#!/usr/bin/env python3
+ 
+ # Copyright 2017, 2018 Graham Norbury
+ # 
+diff --git a/op25/gr-op25_repeater/apps/terminal.py b/op25/gr-op25_repeater/apps/terminal.py
+index 47572a3..fd03e1f 100755
+--- a/op25/gr-op25_repeater/apps/terminal.py
++++ b/op25/gr-op25_repeater/apps/terminal.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python
++#!/usr/bin/env python3
+ 
+ # Copyright 2008-2011 Steve Glass
+ # 
+diff --git a/op25/gr-op25_repeater/apps/tx/dv_tx.py b/op25/gr-op25_repeater/apps/tx/dv_tx.py
+index 342ba3f..fba399f 100755
+--- a/op25/gr-op25_repeater/apps/tx/dv_tx.py
++++ b/op25/gr-op25_repeater/apps/tx/dv_tx.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python
++#!/usr/bin/env python3
+ 
+ #################################################################################
+ # 
+diff --git a/op25/gr-op25_repeater/apps/tx/generate-tsbks.py b/op25/gr-op25_repeater/apps/tx/generate-tsbks.py
+index f4b06d9..de3eb28 100755
+--- a/op25/gr-op25_repeater/apps/tx/generate-tsbks.py
++++ b/op25/gr-op25_repeater/apps/tx/generate-tsbks.py
+@@ -1,4 +1,4 @@
+-#! /usr/bin/python
++#! /usr/bin/python3
+ 
+ from p25craft import make_fakecc_tsdu
+ 
+diff --git a/op25/gr-op25_repeater/apps/tx/multi_tx.py b/op25/gr-op25_repeater/apps/tx/multi_tx.py
+index 0789db8..f61c382 100755
+--- a/op25/gr-op25_repeater/apps/tx/multi_tx.py
++++ b/op25/gr-op25_repeater/apps/tx/multi_tx.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python
++#!/usr/bin/env python3
+ 
+ #################################################################################
+ # 
+diff --git a/op25/gr-op25_repeater/apps/tx/op25_tx.py b/op25/gr-op25_repeater/apps/tx/op25_tx.py
+index 3e7afe4..7baa6ae 100755
+--- a/op25/gr-op25_repeater/apps/tx/op25_tx.py
++++ b/op25/gr-op25_repeater/apps/tx/op25_tx.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python
++#!/usr/bin/env python3
+ #
+ # Copyright 2005,2006,2007 Free Software Foundation, Inc.
+ # 
+diff --git a/op25/gr-op25_repeater/apps/tx/p25craft.py b/op25/gr-op25_repeater/apps/tx/p25craft.py
+index 7fae739..b6e3999 100755
+--- a/op25/gr-op25_repeater/apps/tx/p25craft.py
++++ b/op25/gr-op25_repeater/apps/tx/p25craft.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/python
++#!/usr/bin/python3
+ #
+ # p25craft.py - utility for crafting APCO P25 packets
+ #
+diff --git a/op25/gr-op25_repeater/apps/tx/unpack.py b/op25/gr-op25_repeater/apps/tx/unpack.py
+index 7cbf05b..73a861a 100755
+--- a/op25/gr-op25_repeater/apps/tx/unpack.py
++++ b/op25/gr-op25_repeater/apps/tx/unpack.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python
++#!/usr/bin/env python3
+ from gnuradio import gr, gru, audio, eng_notation, blocks
+ from gnuradio.eng_option import eng_option
+ from optparse import OptionParser
+diff --git a/op25/gr-op25_repeater/apps/util/arb-resample.py b/op25/gr-op25_repeater/apps/util/arb-resample.py
+index 56a762f..2bf75af 100755
+--- a/op25/gr-op25_repeater/apps/util/arb-resample.py
++++ b/op25/gr-op25_repeater/apps/util/arb-resample.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python
++#!/usr/bin/env python3
+ 
+ import sys
+ import math
+diff --git a/op25/gr-op25_repeater/apps/util/cqpsk-demod-file.py b/op25/gr-op25_repeater/apps/util/cqpsk-demod-file.py
+index 051ddf0..171878d 100755
+--- a/op25/gr-op25_repeater/apps/util/cqpsk-demod-file.py
++++ b/op25/gr-op25_repeater/apps/util/cqpsk-demod-file.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python
++#!/usr/bin/env python3
+ 
+ #
+ # (C) Copyright 2010, 2014 Max H. Parke, KA1RBI
+diff --git a/op25/gr-op25_repeater/lib/CMakeLists.txt b/op25/gr-op25_repeater/lib/CMakeLists.txt
+index da84e14..1464230 100644
+--- a/op25/gr-op25_repeater/lib/CMakeLists.txt
++++ b/op25/gr-op25_repeater/lib/CMakeLists.txt
+@@ -68,7 +68,7 @@ else(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+     find_library(GR_FILTER_LIBRARY libgnuradio-filter.so )
+ endif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+ set(GR_FILTER_LIBRARIES ${GR_FILTER_LIBRARY})
+-target_link_libraries(gnuradio-op25_repeater ${Boost_LIBRARIES} ${GNURADIO_RUNTIME_LIBRARIES} ${GR_FILTER_LIBRARIES} imbe_vocoder)
++target_link_libraries(gnuradio-op25_repeater ${Boost_LIBRARIES} gnuradio::gnuradio-runtime ${GR_FILTER_LIBRARIES} imbe_vocoder)
+ set_target_properties(gnuradio-op25_repeater PROPERTIES DEFINE_SYMBOL "gnuradio_op25_repeater_EXPORTS")
+ 
+ ########################################################################
+diff --git a/op25/gr-op25_repeater/python/CMakeLists.txt b/op25/gr-op25_repeater/python/CMakeLists.txt
+index 9958577..bb117a0 100644
+--- a/op25/gr-op25_repeater/python/CMakeLists.txt
++++ b/op25/gr-op25_repeater/python/CMakeLists.txt
+@@ -31,7 +31,7 @@ endif()
+ GR_PYTHON_INSTALL(
+     FILES
+     __init__.py
+-    DESTINATION ${GR_PYTHON_DIR}/op25_repeater
++    DESTINATION ${OP25_PYTHON_DIR}/op25_repeater
+ )
+ 
+ ########################################################################
+diff --git a/op25/gr-op25_repeater/swig/CMakeLists.txt b/op25/gr-op25_repeater/swig/CMakeLists.txt
+index 1d88bbd..50819d7 100644
+--- a/op25/gr-op25_repeater/swig/CMakeLists.txt
++++ b/op25/gr-op25_repeater/swig/CMakeLists.txt
+@@ -21,7 +21,7 @@
+ # Include swig generation macros
+ ########################################################################
+ find_package(SWIG)
+-find_package(PythonLibs 2)
++find_package(PythonLibs 3)
+ if(NOT SWIG_FOUND OR NOT PYTHONLIBS_FOUND)
+     return()
+ endif()
+@@ -31,9 +31,7 @@ include(GrPython)
+ ########################################################################
+ # Setup swig generation
+ ########################################################################
+-foreach(incdir ${GNURADIO_RUNTIME_INCLUDE_DIRS})
+-    list(APPEND GR_SWIG_INCLUDE_DIRS ${incdir}/gnuradio/swig)
+-endforeach(incdir)
++set(GR_SWIG_INCLUDE_DIRS $<TARGET_PROPERTY:gnuradio::runtime_swig,INTERFACE_INCLUDE_DIRECTORIES>)
+ 
+ set(GR_SWIG_LIBRARIES gnuradio-op25_repeater)
+ set(GR_SWIG_DOC_FILE ${CMAKE_CURRENT_BINARY_DIR}/op25_repeater_swig_doc.i)
+@@ -44,7 +42,7 @@ GR_SWIG_MAKE(op25_repeater_swig op25_repeater_swig.i)
+ ########################################################################
+ # Install the build swig module
+ ########################################################################
+-GR_SWIG_INSTALL(TARGETS op25_repeater_swig DESTINATION ${GR_PYTHON_DIR}/op25_repeater)
++GR_SWIG_INSTALL(TARGETS op25_repeater_swig DESTINATION ${OP25_PYTHON_DIR}/op25_repeater)
+ 
+ ########################################################################
+ # Install swig .i files for development
