@@ -150,6 +150,7 @@ class trunked_system (object):
         d['frequencies'] = {}
         d['frequency_data'] = {}
         d['last_tsbk'] = self.last_tsbk
+        d['tsbks'] = self.stats['tsbks']
         t = time.time()
         self.expire_voice_frequencies(t, curr_tgid)
         for f in list(self.voice_frequencies.keys()):
