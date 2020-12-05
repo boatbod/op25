@@ -3,7 +3,7 @@ How to Install OP25 and LiquidSoap on a Raspberry Pi3 Raspbian Stretch
 These high level instructions will lead you through installing op25 and liquidsoap
 on any Debian based Linux system.  It is geared towards the Raspberry Pi3B which is
 inexpensive but yet just powerful enough to receive, decode and stream P25 trunked
-radio system utilizing either Phase 1 or Phase 2 audio codecs.
+radio system utilizing either Phase 1 or Phase 2 audio codecs. (Pi Zero is not powerfull enough)
 
 It is possible to configure and use op25 with other streaming software (such as Darkice)
 but this setup has the advantage of completely avoiding use of the ALSA sound subsystem
