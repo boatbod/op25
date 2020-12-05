@@ -170,7 +170,7 @@ Options:
   -N GAINS, --gains=GAINS
                         gain settings
   -O AUDIO_OUTPUT, --audio-output=AUDIO_OUTPUT
-                        audio output device name
+                        audio output device name e.g. plughw:1
   -U, --udp-player      enable built-in udp audio player
   -q FREQ_CORR, --freq-corr=FREQ_CORR
                         frequency correction
