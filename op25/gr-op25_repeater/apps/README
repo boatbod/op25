@@ -1,23 +1,9 @@
 
-April, 2017
-===========
+December 2020
+=============
 
-This file contains notes on the current OP25 P25 receiver (rx.py) which 
-replaces the prior version scope.py.  The primary differences are:
- * The dependency on WX is completely removed.  By default OP25 runs in
-   a console window in text-only mode.
- * An optional real-time plot can be selected when launching rx.py:
-   contellation, datascope (eye pattern), or symbol trace.
- * cqpsk versus fsk4 mode is now selected as a command line parameter.
- * most rx.py command-line parameters are compatible with scope.py.
- * reduced CPU consumption, as the frame assembler block now runs as a
-   sink-only GR block.
- * dependency on 14.04 is completely removed.  Should now run in later
-   ubuntu and fedora versions with only minor changes (not yet tested).
-
-ADDITIONAL REQUIRED PACKAGES
-============================
-sudo apt-get install gnuplot-x11
+This file contains notes on the current OP25 P25 receiver (rx.py) and
+multi receiver (multi_rx.py):
 
 EXAMPLE COMMAND LINE
 ====================
@@ -36,11 +22,15 @@ After starting rx.py if plotting is in use a separate gnuplot window
 should open.  You must click on the terminal window to restore it to
 focus, otherwise all keystrokes are consumed by gnuplot.  Once in the
 terminal window there are several keyboard commands:
+ B - dynamically add tgid to blacklist
+ d - dump list of known tgids to log
  h - hold
  H - hold/goto the specified tgid
  l - lockout
- s - skip
  q - quit program
+ s - skip
+ v - dynamically change log level
+ W - dynamically add tgid to Whitelist
  , - decrease fine tune by 100Hz
  . - increase fine tune by 100Hz
  < - decrease fine tune by 1200Hz
@@ -51,18 +41,7 @@ terminal window there are several keyboard commands:
  4 - toggle datascope plot
  5 - toggle mixer plot
  6 - toggle tuner plot
-There are also two experimental commands (should not be used in -T mode)
- f - manually change frequencies
- t - if currently tuned to a CC, autostart scanning talkgroups
-
-The "t" command allows trunk tracking without setting up a trunking TSV
-file.  However running with the -T <filename> command line option is
-preferred as that allows use of white/black lists and talkgroup tags files.
-
-If the terminal window freezes there may have been a crash.  Press Ctrl-Z
-to suspend the program and examine stderr.2 for error messages.  If there
-is a traceback please report the full traceback (and the command line) to
-the mail list.
+ <cursor left> / <cursor right> - cycle through avaiable receivers (multi_rx only)
 
 REMOTE TERMINAL
 ===============
@@ -85,7 +64,7 @@ received and played back with either of the following methods:
 1. Execute ./audio.sh on a remote machine equipped with python2.7,
    libasound.so.2 and the sockaudio.py file. 
 -or-
-2. Execute the command:
+2. Execute the command: 
    nc -kluvw 1 127.0.0.1 23456 | aplay -c1 -f S16_LE -r 8000
 -or-
 3. Execute the command:
@@ -103,16 +82,18 @@ audio server which will play received audio through the default ALSA
 device.  Optionally you may specify which ALSA device to use by setting
 the "-O audio_out" option along with "-U".
 
-As of this writing (Aug 2017) it is still necessary to specify the "-w"
-(wireshark) option if using either the internal or external audio server.
+It is still necessary to specify the "-w" (wireshark) option if using
+either the internal or external audio server.
 
 PLOT MODES
 ==========
-Four types of plotting are currently implemented, via the -P parameter:
+Six types of plotting are currently implemented, via the -P parameter:
  * fft
  * constellation
- * datascope
  * symbol
+ * datascope
+ * mixer
+ * tuner
 The symbol and datascope mode is allowed both in fsk4 and cqpsk modes.
 The constellation mode only works when the cqpsk demod mode is selected
 (or defaulted).
@@ -201,8 +182,8 @@ Options:
 
 HTTP CONSOLE
 ============
-New as of Jan. 2018, the OP25 dashboard is accessible to any Web browser over
-HTTP.  Include the option "-l http:<host>:<port>" when starting the rx.py app,
+The OP25 dashboard can be made accessible to any web browser over HTTP by 
+include the option "-l http:<host>:<port>" when starting the rx.py app,
 where <host> is either "127.0.0.1" to limit access from only this host, or
 "0.0.0.0" if HTTP access from anywhere is to be allowed*.  After rx.py has
 started it begins listening on the specified port for incoming connections.
@@ -220,10 +201,6 @@ every five seconds.  Click "STATUS" to return to the main status page.
 *WARNING*: there is no security or encryption.  Be careful when using "0.0.0.0"
 as the listening address since anyone with access to the network can connect.
 
-NOTE: the python-pyramid package is required when using this option.   It can
-be installed by running
-     sudo apt-get install python-pyramid
-
 MULTI-RECEIVER
 ==============
 The multi_rx.py app allows an arbitrary number of SDR devices and channels
@@ -234,7 +211,8 @@ In this version, channels are automatically assigned to the first device
 found whose frequency span includes the selected frequency.
 
 As of this writing (summer 2020), P25 Trunking and Motorola Smartnet/Smartzone
-are now supported by multi_rx.py.  The rx.py app can still be used for P25 trunking.
+are fully supported by multi_rx.py.  The rx.py app can still be used for single
+receiver P25 trunking.
 
 Below is a summary of the major config file keys used under the channel section:
 demod_type:     'cqpsk' for qpsk p25 only
@@ -247,8 +225,6 @@ plot:           'fft', 'constellation', 'datascope', 'symbol', 'mixer', 'tuner'
                 [if more than one plot desired, provide a comma-separated list]
 destination:    'udp://host:port' or 'file://<filename>'
 name:           arbitrary string used to identify channels and devices
-
-bug: 'gmsk' needs work
 
 Note: DMR audio for the second time slot is sent on the specified port number
 plus two.  In the example 'udp://127.0.0.1:56122', audio for the first slot
