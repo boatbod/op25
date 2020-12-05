@@ -6,11 +6,11 @@ All instructions below assume you are in the 'apps' directory.
 	cd ~/op25/op25/gr-op25_repeater/apps
 
 1. Set up the control channel frequencies in trunk.tsv
-	./setTrunkFreq 773.84375
+	./setTrunkFreq.sh 773.84375
 
    If you need multiple frequencies because your control channel moves around,
    place them in a comma separated list as follows (with no whitespace)
-	./setTrunkFreq 773.84375,774.19375
+	./setTrunkFreq.sh 773.84375,774.19375
 
 2. Use the startup script op25.sh to run the application (rx.py). This can be
    customized, but the defaults should be appropriate for most stand-alone
