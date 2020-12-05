@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 # Copyright 2020 Graham Norbury
 # 
 # This file is part of OP25

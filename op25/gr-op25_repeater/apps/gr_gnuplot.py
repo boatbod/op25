@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 # Copyright 2011, 2012, 2013, 2014, 2015 Max H. Parke KA1RBI
 # 
 # This file is part of OP25

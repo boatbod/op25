@@ -1,4 +1,3 @@
-
 # Copyright 2017, 2018 Max H. Parke KA1RBI
 # 
 # This file is part of OP25
