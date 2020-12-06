@@ -315,6 +315,8 @@ class trunked_system (object):
                             if self.blacklist[tg] is not None
                             and self.blacklist[tg] < start_time]
         for tg in expired_tgs:
+            if self.debug > 1:
+                sys.stderr.write("%s removing expired blacklist: tg(%d)\n" % (log_ts.get(), tg))
             self.blacklist.pop(tg)
 
     def add_patch(self, sg, ga1, ga2, ga3):
