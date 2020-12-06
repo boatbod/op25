@@ -48,6 +48,16 @@ def utf_ascii(ustr):
     else:
         return ustr
 
+def get_ordinals(s):
+        t = 0
+        if type(s) is not str and isinstance(s, bytes):
+                for c in s:
+                        t = (t << 8) + c
+        else:
+                for c in s:
+                        t = (t << 8) + ord(c)
+        return t
+
 def get_frequency( f):    # return frequency in Hz
     if str(f).find('.') == -1:    # assume in Hz
         return int(f)
@@ -424,24 +434,20 @@ class p25_system(object):
         s = msg.to_string()
         m_rxid = int(msg.arg1()) >> 1                       # receiver's msgq_id
         m_type = ctypes.c_int16(msg.type() & 0xffff).value  # lower 16 bits is p25 duid
-        nac = (ord(s[0]) << 8) + ord(s[1])                  # first two bytes are NAC
+        nac = get_ordinals(s[:2])                           # first two bytes are NAC
         self.set_nac(nac)
 
         updated = 0
         if m_type == 7: # TSBK
-            t = 0
-            for c in s:
-                t = (t << 8) + ord(c)
+            t = get_ordinals(s)
             updated += self.decode_tsbk(m_rxid, t)
 
         elif m_type == 12: # MBT
             s1 = s[:10]     # header without crc
             s2 = s[12:]
-            header = mbt_data = 0
-            for c in s1:
-                header = (header << 8) + ord(c)
-            for c in s2:
-                mbt_data = (mbt_data << 8) + ord(c)
+            header = get_ordinals(s1)
+            mbt_data = get_ordinals(s2)
+
             fmt = (header >> 72) & 0x1f
             sap = (header >> 64) & 0x3f
             src = (header >> 32) & 0xffffff
