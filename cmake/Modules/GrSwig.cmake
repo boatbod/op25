@@ -155,11 +155,7 @@ macro(GR_SWIG_MAKE name)
 
     #setup the actual swig library target to be built
     include(UseSWIG)
-    if (${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION} VERSION_GREATER 3.8)
-        SWIG_ADD_LIBRARY(${name} LANGUAGE python SOURCES ${ifiles})
-    else () 
-        SWIG_ADD_MODULE(${name} python ${ifiles})
-    endif ()
+    SWIG_ADD_MODULE(${name} python ${ifiles})
     SWIG_LINK_LIBRARIES(${name} ${PYTHON_LIBRARIES} ${GR_SWIG_LIBRARIES})
 
 endmacro(GR_SWIG_MAKE)
@@ -184,8 +180,7 @@ macro(GR_SWIG_INSTALL)
         )
 
         include(GrPython)
-        GR_PYTHON_INSTALL(${name}
-            FILES ${CMAKE_CURRENT_BINARY_DIR}/${name}.py
+        GR_PYTHON_INSTALL(FILES ${CMAKE_CURRENT_BINARY_DIR}/${name}.py
             DESTINATION ${GR_SWIG_INSTALL_DESTINATION}
             COMPONENT ${GR_SWIG_INSTALL_COMPONENT}
         )
