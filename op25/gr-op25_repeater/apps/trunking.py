@@ -30,7 +30,10 @@ from log_ts import log_ts
 from gnuradio import gr
 
 def utf_ascii(ustr):
-    return (ustr.decode("utf-8")).encode("ascii", "ignore")
+    if sys.version[0] == '2':
+        return (ustr.decode("utf-8")).encode("ascii", "ignore")
+    else:
+        return ustr
 
 def crc16(dat,len):    # slow version
     poly = (1<<12) + (1<<5) + (1<<0)
@@ -44,6 +47,16 @@ def crc16(dat,len):    # slow version
                 crc = (crc & 0xffff) ^ poly
     crc = crc ^ 0xffff
     return crc
+
+def get_ordinals(s):
+        t = 0
+        if type(s) is not str and isinstance(s, bytes):
+                for c in s:
+                        t = (t << 8) + c
+        else:
+                for c in s:
+                        t = (t << 8) + ord(c)
+        return t
 
 def get_frequency(f):    # return frequency in Hz
     if f.find('.') == -1:    # assume in Hz
@@ -924,7 +937,7 @@ class rx_ctl (object):
         import csv
         hdrmap = []
         configs = {}
-        with open(tsv_filename, 'rb') as csvfile:
+        with open(tsv_filename, 'r') as csvfile:
             sreader = csv.reader(csvfile, delimiter='\t', quotechar='"', quoting=csv.QUOTE_ALL)
             for row in sreader:
                 if row[0].startswith('#'):
@@ -1025,7 +1038,7 @@ class rx_ctl (object):
                     self.configs[nac][k] = get_int_dict(configs[nac][k])
             if 'tgid_tags_file' in configs[nac]:
                 import csv
-                with open(configs[nac]['tgid_tags_file'], 'rb') as csvfile:
+                with open(configs[nac]['tgid_tags_file'], 'r') as csvfile:
                     sreader = csv.reader(csvfile, delimiter='\t', quotechar='"', quoting=csv.QUOTE_ALL)
                     for row in sreader:
                         try:
@@ -1164,7 +1177,7 @@ class rx_ctl (object):
             return
         s = msg.to_string()
         # nac is always 1st two bytes
-        nac = (ord(s[0]) << 8) + ord(s[1])
+        nac = get_ordinals(s[:2])
         if nac == 0xffff:
             if (m_type != 7) and (m_type != 12): # TDMA duid (end of call etc)
                 self.update_state('tdma_duid%d' % m_type, curr_time)
@@ -1190,18 +1203,13 @@ class rx_ctl (object):
                     sys.stderr.write("%s NAC %x not configured\n" % (log_ts.get(), nac))
                 return
         if m_type == 7:     # trunk: TSBK
-            t = 0
-            for c in s:
-                t = (t << 8) + ord(c)
+            t = get_ordinals(s)
             updated += self.trunked_systems[nac].decode_tsbk(t)
         elif m_type == 12:  # trunk: MBT
             s1 = s[:10]     # header without crc
             s2 = s[12:]
-            header = mbt_data = 0
-            for c in s1:
-                header = (header << 8) + ord(c)
-            for c in s2:
-                mbt_data = (mbt_data << 8) + ord(c)
+            header = get_ordinals(s1)
+            mbt_data = get_ordinals(s2)
 
             fmt = (header >> 72) & 0x1f
             sap = (header >> 64) & 0x3f

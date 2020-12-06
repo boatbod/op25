@@ -398,7 +398,7 @@ class p25_rx_block (gr.top_block):
             self.demod.set_omega(rate)
 
     def set_sps(self, rate):
-        self.sps = self.basic_rate / rate
+        self.sps = self.basic_rate // rate
         if (self.eye_sink is not None):
             self.eye_sink.set_sps(self.sps)
 
