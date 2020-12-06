@@ -1159,10 +1159,10 @@ class p25_receiver(object):
             if len(self.whitelist) == 0:
                 self.whitelist = None
             if self.debug > 1:
-                sys.stderr.write("%s [%d] de-whitelisting tgid(%d)\n" % (log_ts.get(), self.msgq_id, tgid))
+                sys.stderr.write("%s [%d] de-whitelisting: tgid(%d)\n" % (log_ts.get(), self.msgq_id, tgid))
         self.blacklist[tgid] = end_time
         if self.debug > 1:
-            sys.stderr.write("%s [%d] blacklisting tgid(%d)\n" % (log_ts.get(), self.msgq_id, tgid))
+            sys.stderr.write("%s [%d] blacklisting: tgid(%d)\n" % (log_ts.get(), self.msgq_id, tgid))
         if self.current_tgid and self.current_tgid in self.blacklist:
             self.expire_talkgroup(reason = "blacklisted")
             self.hold_mode = False
@@ -1177,14 +1177,14 @@ class p25_receiver(object):
         if self.blacklist and tgid in self.blacklist:
             self.blacklist.pop(tgid)
             if self.debug > 1:
-                sys.stderr.write("%s [%d] de-blacklisting tgid(%d)\n" % (log_ts.get(), self.msgq_id, tgid))
+                sys.stderr.write("%s [%d] de-blacklisting: tgid(%d)\n" % (log_ts.get(), self.msgq_id, tgid))
         if self.whitelist is None:
             self.whitelist = {}
         if tgid in self.whitelist:
             return
         self.whitelist[tgid] = None
         if self.debug > 1:
-            sys.stderr.write("%s [%d] whitelisting tgid(%d)\n" % (log_ts.get(), self.msgq_id, tgid))
+            sys.stderr.write("%s [%d] whitelisting: tgid(%d)\n" % (log_ts.get(), self.msgq_id, tgid))
         if self.current_tgid and self.current_tgid not in self.whitelist:
             self.expire_talkgroup(reason = "not whitelisted")
             self.hold_mode = False
@@ -1197,6 +1197,8 @@ class p25_receiver(object):
                             and self.blacklist[tg] < start_time]
         for tg in expired_tgs:
             self.blacklist.pop(tg)
+            if self.debug > 1:
+                sys.stderr.write("%s [%d] removing expired blacklist: tg(%d)\n" % (log_ts.get(), self.msgq_id, tg));
 
     def find_talkgroup(self, start_time, tgid=None, hold=False):
         tgt_tgid = None
