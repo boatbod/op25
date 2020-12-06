@@ -680,7 +680,7 @@ class rx_block (gr.top_block):
             self.channels[msgq_id].nbfm.control(action)
 
     def process_qmsg(self, msg):            # Handle UI requests
-        RX_COMMANDS = 'skip lockout hold whitelist reload'
+        RX_COMMANDS = 'skip lockout hold whitelist reload'.split()
         s = msg.to_string()
         if s == 'quit':
             return True

@@ -43,7 +43,10 @@ PATCH_EXPIRY_TIME = 20.0 # Number of seconds until patch expiry
 #################
 # Helper functions
 def utf_ascii(ustr):
-    return (ustr.decode("utf-8")).encode("ascii", "ignore")
+    if sys.version[0] == '2':
+        return (ustr.decode("utf-8")).encode("ascii", "ignore")
+    else:
+        return ustr
 
 def get_frequency( f):    # return frequency in Hz
     if str(f).find('.') == -1:    # assume in Hz
@@ -346,7 +349,7 @@ class p25_system(object):
 
     def read_tags_file(self, tags_file):
         import csv
-        with open(tags_file, 'rb') as csvfile:
+        with open(tags_file, 'r') as csvfile:
             sreader = csv.reader(csvfile, delimiter='\t', quotechar='"', quoting=csv.QUOTE_ALL)
             for row in sreader:
                 try:
