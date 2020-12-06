@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # Copyright 2011, 2012, 2013, 2014, 2015, 2016, 2017 Max H. Parke KA1RBI
 # Copyright 2020 Graham J. Norbury - gnorbury@bondcar.com
@@ -791,6 +791,8 @@ class du_queue_watcher(threading.Thread):
 class rx_main(object):
     def __init__(self):
         def byteify(input):    # thx so
+            if sys.version[0] != '2':
+                return input
             if isinstance(input, dict):
                 return {byteify(key): byteify(value)
                         for key, value in list(input.items())}
