@@ -1144,7 +1144,7 @@ class p25_receiver(object):
 
         elif m_type >= 0: # Channel Signaling (m_type is duid)
             s = msg.to_string()
-            nac = (ord(s[0]) << 8) + ord(s[1]) # first two bytes are NAC
+            nac = get_ordinals(s[:2])   # first two bytes are NAC
             if (nac != 0xffff) and (nac != self.system.get_nac()):
                 return updated
 

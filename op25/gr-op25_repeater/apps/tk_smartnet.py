@@ -43,7 +43,20 @@ EXPIRY_TIMER = 0.2       # Number of seconds between checks for tgid expiry
 #################
 # Helper functions
 def utf_ascii(ustr):
-    return (ustr.decode("utf-8")).encode("ascii", "ignore")
+    if sys.version[0] == '2':
+        return (ustr.decode("utf-8")).encode("ascii", "ignore")
+    else:
+        return ustr
+
+def get_ordinals(s):
+        t = 0
+        if type(s) is not str and isinstance(s, bytes):
+                for c in s:
+                        t = (t << 8) + c
+        else:
+                for c in s:
+                        t = (t << 8) + ord(c)
+        return t
 
 def get_frequency( f):    # return frequency in Hz
     if str(f).find('.') == -1:    # assume in Hz
@@ -281,7 +294,7 @@ class osw_receiver(object):
     def read_tags_file(self, tags_file):
         import csv
         try:
-            with open(tags_file, 'rb') as csvfile:
+            with open(tags_file, 'r') as csvfile:
                 sreader = csv.reader(csvfile, delimiter='\t', quotechar='"', quoting=csv.QUOTE_ALL)
                 for row in sreader:
                     try:
@@ -335,10 +348,9 @@ class osw_receiver(object):
 
         elif (m_type == 0): # OSW Receieved
             s = msg.to_string()
-
-            osw_addr = (ord(s[0]) << 8) + ord(s[1])
-            osw_grp  =  ord(s[2])
-            osw_cmd  = (ord(s[3]) << 8) + ord(s[4])
+            osw_addr = get_ordinals(s[:2])
+            osw_grp  = get_ordinals(s[2])
+            osw_cmd  = get_ordinals(s[3:5])
             self.enqueue(osw_addr, osw_grp, osw_cmd, m_ts)
             self.stats['osw_count'] += 1
             self.last_osw = m_ts
