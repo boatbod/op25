@@ -829,6 +829,7 @@ class rx_main(object):
             config = json.loads(open(options.config_file).read())
         self.tb = rx_block(options.verbosity, config = byteify(config))
         self.q_watcher = du_queue_watcher(self.tb.ui_out_q, self.process_qmsg)
+        sys.stderr.write('python version detected: %s\n' % sys.version)
 
     def process_qmsg(self, msg):
         if self.tb.process_qmsg(msg):

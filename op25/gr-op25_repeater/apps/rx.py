@@ -935,6 +935,7 @@ class rx_main(object):
         self.cli_options()
         self.tb = p25_rx_block(self.options)
         self.q_watcher = du_queue_watcher(self.tb.output_q, self.process_qmsg)
+        sys.stderr.write('python version detected: %s\n' % sys.version)
 
     def process_qmsg(self, msg):
         if self.tb.process_qmsg(msg):
