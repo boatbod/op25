@@ -75,7 +75,7 @@ class wrap_gp(object):
         self.gp = subprocess.Popen(args, executable=exe, stdin=subprocess.PIPE)
 
     def set_sps(self, sps):
-        self.sps = sps
+        self.sps = int(sps)
 
     def kill(self):
         try:
@@ -102,12 +102,13 @@ class wrap_gp(object):
         BUFSZ = bufsz
         consumed = min(len(buf), BUFSZ-len(self.buf))
         if len(self.buf) < BUFSZ:
-            self.buf.extend(buf[:consumed])
+            self.buf = np.concatenate((self.buf, buf[:int(consumed)]))
+        if len(self.buf) < BUFSZ:
             return consumed
 
         self.plot_count += 1
         if mode == 'eye' and self.plot_count % 20 != 0:
-            self.buf = []
+            self.buf = np.array([])
             return consumed
 
         plots = []
@@ -230,6 +231,8 @@ class wrap_gp(object):
                     h+= 'set arrow from %f, graph 0 to %f, graph 1 nohead\n' % (arrow_pos, arrow_pos)
                     h+= 'set title "%sSpectrum: tuned to %f Mhz"\n' % (self.plot_name, arrow_pos)
         dat = '%splot %s\n%s' % (h, ','.join(plots), s)
+        if sys.version[0] != '2':
+            dat = bytes(dat, 'utf8')
         self.gp.poll()
         if self.gp.returncode is None:  # make sure gnuplot is still running 
             try:

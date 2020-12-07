@@ -682,6 +682,9 @@ class rx_block (gr.top_block):
     def process_qmsg(self, msg):            # Handle UI requests
         RX_COMMANDS = 'skip lockout hold whitelist reload'.split()
         s = msg.to_string()
+        if type(s) is not str and isinstance(s, bytes):
+            # should only get here if python3
+            s = s.decode()
         if s == 'quit':
             return True
         elif s == 'update':                 # UI initiated update request
