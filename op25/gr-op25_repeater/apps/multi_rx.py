@@ -20,6 +20,7 @@
 # Software Foundation, Inc., 51 Franklin Street, Boston, MA
 # 02110-1301, USA.
 
+import io
 import os
 import sys
 import threading
@@ -858,5 +859,7 @@ class rx_main(object):
             sys.stderr.write('main: exception:\n%s\n' % traceback.format_exc())
 
 if __name__ == "__main__":
+    if sys.version[0] > '2':
+        sys.stderr = io.TextIOWrapper(sys.stderr.detach().detach(), write_through=True) # disable stderr buffering
     rx = rx_main()
     rx.run()

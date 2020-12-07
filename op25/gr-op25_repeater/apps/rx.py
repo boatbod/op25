@@ -1022,5 +1022,7 @@ class rx_main(object):
 #
 
 if __name__ == "__main__":
+    if sys.version[0] > '2':
+        sys.stderr = io.TextIOWrapper(sys.stderr.detach().detach(), write_through=True) # disable stderr buffering
     rx = rx_main()
     rx.run()
