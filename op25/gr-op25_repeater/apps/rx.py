@@ -26,6 +26,7 @@
 # Software Foundation, Inc., 51 Franklin Street, Boston, MA
 # 02110-1301, USA.
 
+import io
 import os
 import pickle
 import sys
