@@ -42,7 +42,7 @@ if _RTLD_GLOBAL != 0:
 
 
 # import swig generated symbols into the op25 namespace
-from op25_swig import *
+from .op25_swig import *
 
 # import any pure python here
 #

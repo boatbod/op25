@@ -1,10 +1,10 @@
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index 56f95f4..c43483a 100644
+index aa013a3..23d273d 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
-@@ -4,6 +4,24 @@ project(gr-op25 CXX C)
- set(CMAKE_BUILD_TYPE Debug)
- set(CMAKE_CXX_FLAGS "-std=c++11")
+@@ -3,6 +3,24 @@ project(gr-op25 CXX C)
+ 
+ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
  
 +execute_process(COMMAND python3 -c "
 +import os
@@ -41,7 +41,7 @@ index 569667b..f175cc5 100644
      list(APPEND GR_SWIG_INCLUDE_DIRS ${PYTHON_INCLUDE_DIRS})
      list(APPEND GR_SWIG_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR})
 diff --git a/install.sh b/install.sh
-index 10fbeb5..d04038f 100755
+index cf50de5..a2d8366 100755
 --- a/install.sh
 +++ b/install.sh
 @@ -10,9 +10,11 @@ if [ ! -d op25/gr-op25 ]; then
@@ -52,16 +52,16 @@ index 10fbeb5..d04038f 100755
 +
  sudo apt-get update
  sudo apt-get build-dep gnuradio
--sudo apt-get install gnuradio gnuradio-dev gr-osmosdr librtlsdr-dev libuhd-dev  libhackrf-dev libitpp-dev libpcap-dev cmake git swig build-essential pkg-config doxygen python-numpy python-waitress python-requests
-+sudo apt-get install gnuradio gnuradio-dev gr-osmosdr librtlsdr-dev libuhd-dev  libhackrf-dev libitpp-dev libpcap-dev cmake git swig build-essential pkg-config doxygen python3-numpy python3-waitress python3-requests
+-sudo apt-get install gnuradio gnuradio-dev gr-osmosdr librtlsdr-dev libuhd-dev  libhackrf-dev libitpp-dev libpcap-dev cmake git swig build-essential pkg-config doxygen python-numpy python-waitress python-requests gnuplot-x11
++sudo apt-get install gnuradio gnuradio-dev gr-osmosdr librtlsdr-dev libuhd-dev  libhackrf-dev libitpp-dev libpcap-dev cmake git swig build-essential pkg-config doxygen python3-numpy python3-waitress python3-requests gnuplot-x11
  
- mkdir build
- cd build
+ if [ ! -f /etc/modprobe.d/blacklist-rtl.conf ]; then
+ 	echo ====== installing blacklist-rtl.conf
 diff --git a/op25/gr-op25/CMakeLists.txt b/op25/gr-op25/CMakeLists.txt
-index 938bd67..110b99c 100644
+index 3ab2a79..3c79adf 100644
 --- a/op25/gr-op25/CMakeLists.txt
 +++ b/op25/gr-op25/CMakeLists.txt
-@@ -93,11 +93,12 @@ find_package(CppUnit)
+@@ -94,11 +94,12 @@ find_package(CppUnit)
  # set(GR_REQUIRED_COMPONENTS RUNTIME BLOCKS FILTER ...)
  # find_package(Gnuradio "version")
  set(GR_REQUIRED_COMPONENTS RUNTIME BLOCKS FILTER PMT)
@@ -79,10 +79,10 @@ index 938bd67..110b99c 100644
      message(FATAL_ERROR "CppUnit required to compile op25")
  endif()
 diff --git a/op25/gr-op25/lib/CMakeLists.txt b/op25/gr-op25/lib/CMakeLists.txt
-index 1befdd9..609fa84 100644
+index 255ef93..51b4154 100644
 --- a/op25/gr-op25/lib/CMakeLists.txt
 +++ b/op25/gr-op25/lib/CMakeLists.txt
-@@ -63,7 +63,7 @@ list(APPEND op25_sources
+@@ -56,7 +56,7 @@ list(APPEND op25_sources
  )
  
  add_library(gnuradio-op25 SHARED ${op25_sources})
@@ -138,13 +138,13 @@ index e99226f..fd7bd85 100644
  ########################################################################
  # Install swig .i files for development
 diff --git a/op25/gr-op25_repeater/CMakeLists.txt b/op25/gr-op25_repeater/CMakeLists.txt
-index 9962ba3..317c8c3 100644
+index 68d51e8..4aa697f 100644
 --- a/op25/gr-op25_repeater/CMakeLists.txt
 +++ b/op25/gr-op25_repeater/CMakeLists.txt
-@@ -92,11 +92,12 @@ find_package(CppUnit)
- #
- set(GR_REQUIRED_COMPONENTS RUNTIME BLOCKS FILTER PMT)
+@@ -94,11 +94,12 @@ find_package(CppUnit)
+ # set(GR_REQUIRED_COMPONENTS RUNTIME BLOCKS FILTER ...)
  # find_package(Gnuradio "version")
+ set(GR_REQUIRED_COMPONENTS RUNTIME BLOCKS FILTER PMT)
 -find_package(Gnuradio)
 -
 -if(NOT GNURADIO_RUNTIME_FOUND)
@@ -159,7 +159,7 @@ index 9962ba3..317c8c3 100644
      message(FATAL_ERROR "CppUnit required to compile op25_repeater")
  endif()
 diff --git a/op25/gr-op25_repeater/apps/audio.py b/op25/gr-op25_repeater/apps/audio.py
-index d5ec354..e68ce33 100755
+index af5fe9a..934dcc9 100755
 --- a/op25/gr-op25_repeater/apps/audio.py
 +++ b/op25/gr-op25_repeater/apps/audio.py
 @@ -1,4 +1,4 @@
@@ -168,28 +168,18 @@ index d5ec354..e68ce33 100755
  
  # Copyright 2017, 2018 Graham Norbury
  # 
-diff --git a/op25/gr-op25_repeater/apps/http_server.py b/op25/gr-op25_repeater/apps/http_server.py
-index cf838df..484dc30 100755
---- a/op25/gr-op25_repeater/apps/http_server.py
-+++ b/op25/gr-op25_repeater/apps/http_server.py
-@@ -1,4 +1,4 @@
--#!/usr/bin/env python
-+#!/usr/bin/env python3
- 
- # Copyright 2017, 2018, 2019, 2020 Max H. Parke KA1RBI
- # 
 diff --git a/op25/gr-op25_repeater/apps/multi_rx.py b/op25/gr-op25_repeater/apps/multi_rx.py
-index 308afc6..27f5eac 100755
+index 2fc76b1..83e30e7 100755
 --- a/op25/gr-op25_repeater/apps/multi_rx.py
 +++ b/op25/gr-op25_repeater/apps/multi_rx.py
 @@ -1,4 +1,4 @@
 -#!/usr/bin/env python
 +#!/usr/bin/env python3
  
- # Copyright 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020 Max H. Parke KA1RBI
- # 
+ # Copyright 2011, 2012, 2013, 2014, 2015, 2016, 2017 Max H. Parke KA1RBI
+ # Copyright 2020 Graham J. Norbury - gnorbury@bondcar.com
 diff --git a/op25/gr-op25_repeater/apps/rx.py b/op25/gr-op25_repeater/apps/rx.py
-index e13eb4d..b594315 100755
+index 3ef534c..35b42dd 100755
 --- a/op25/gr-op25_repeater/apps/rx.py
 +++ b/op25/gr-op25_repeater/apps/rx.py
 @@ -1,4 +1,4 @@
@@ -198,18 +188,8 @@ index e13eb4d..b594315 100755
  
  # Copyright 2008-2011 Steve Glass
  # 
-diff --git a/op25/gr-op25_repeater/apps/sockaudio.py b/op25/gr-op25_repeater/apps/sockaudio.py
-index c5d4144..0c00413 100755
---- a/op25/gr-op25_repeater/apps/sockaudio.py
-+++ b/op25/gr-op25_repeater/apps/sockaudio.py
-@@ -1,4 +1,4 @@
--#!/usr/bin/env python
-+#!/usr/bin/env python3
- 
- # Copyright 2017, 2018 Graham Norbury
- # 
 diff --git a/op25/gr-op25_repeater/apps/terminal.py b/op25/gr-op25_repeater/apps/terminal.py
-index 47572a3..fd03e1f 100755
+index 6d0e055..6a6f6c7 100755
 --- a/op25/gr-op25_repeater/apps/terminal.py
 +++ b/op25/gr-op25_repeater/apps/terminal.py
 @@ -1,4 +1,4 @@
@@ -219,7 +199,7 @@ index 47572a3..fd03e1f 100755
  # Copyright 2008-2011 Steve Glass
  # 
 diff --git a/op25/gr-op25_repeater/apps/tx/dv_tx.py b/op25/gr-op25_repeater/apps/tx/dv_tx.py
-index 342ba3f..fba399f 100755
+index 80690cf..ad5932b 100755
 --- a/op25/gr-op25_repeater/apps/tx/dv_tx.py
 +++ b/op25/gr-op25_repeater/apps/tx/dv_tx.py
 @@ -1,4 +1,4 @@
@@ -229,7 +209,7 @@ index 342ba3f..fba399f 100755
  #################################################################################
  # 
 diff --git a/op25/gr-op25_repeater/apps/tx/generate-tsbks.py b/op25/gr-op25_repeater/apps/tx/generate-tsbks.py
-index f4b06d9..de3eb28 100755
+index deabd4a..57ddf09 100755
 --- a/op25/gr-op25_repeater/apps/tx/generate-tsbks.py
 +++ b/op25/gr-op25_repeater/apps/tx/generate-tsbks.py
 @@ -1,4 +1,4 @@
@@ -239,7 +219,7 @@ index f4b06d9..de3eb28 100755
  from p25craft import make_fakecc_tsdu
  
 diff --git a/op25/gr-op25_repeater/apps/tx/multi_tx.py b/op25/gr-op25_repeater/apps/tx/multi_tx.py
-index 0789db8..f61c382 100755
+index 9ea3d86..56af87a 100755
 --- a/op25/gr-op25_repeater/apps/tx/multi_tx.py
 +++ b/op25/gr-op25_repeater/apps/tx/multi_tx.py
 @@ -1,4 +1,4 @@
@@ -249,7 +229,7 @@ index 0789db8..f61c382 100755
  #################################################################################
  # 
 diff --git a/op25/gr-op25_repeater/apps/tx/op25_tx.py b/op25/gr-op25_repeater/apps/tx/op25_tx.py
-index 3e7afe4..7baa6ae 100755
+index b95ce2c..58df7a0 100755
 --- a/op25/gr-op25_repeater/apps/tx/op25_tx.py
 +++ b/op25/gr-op25_repeater/apps/tx/op25_tx.py
 @@ -1,4 +1,4 @@
@@ -259,7 +239,7 @@ index 3e7afe4..7baa6ae 100755
  # Copyright 2005,2006,2007 Free Software Foundation, Inc.
  # 
 diff --git a/op25/gr-op25_repeater/apps/tx/p25craft.py b/op25/gr-op25_repeater/apps/tx/p25craft.py
-index 7fae739..b6e3999 100755
+index 5de2b36..b88257a 100755
 --- a/op25/gr-op25_repeater/apps/tx/p25craft.py
 +++ b/op25/gr-op25_repeater/apps/tx/p25craft.py
 @@ -1,4 +1,4 @@
@@ -289,7 +269,7 @@ index 56a762f..2bf75af 100755
  import sys
  import math
 diff --git a/op25/gr-op25_repeater/apps/util/cqpsk-demod-file.py b/op25/gr-op25_repeater/apps/util/cqpsk-demod-file.py
-index 051ddf0..171878d 100755
+index 0e553c7..56d3c3b 100755
 --- a/op25/gr-op25_repeater/apps/util/cqpsk-demod-file.py
 +++ b/op25/gr-op25_repeater/apps/util/cqpsk-demod-file.py
 @@ -1,4 +1,4 @@
@@ -299,10 +279,10 @@ index 051ddf0..171878d 100755
  #
  # (C) Copyright 2010, 2014 Max H. Parke, KA1RBI
 diff --git a/op25/gr-op25_repeater/lib/CMakeLists.txt b/op25/gr-op25_repeater/lib/CMakeLists.txt
-index da84e14..1464230 100644
+index 8d3ae9e..6b0003d 100755
 --- a/op25/gr-op25_repeater/lib/CMakeLists.txt
 +++ b/op25/gr-op25_repeater/lib/CMakeLists.txt
-@@ -68,7 +68,7 @@ else(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+@@ -85,7 +85,7 @@ else(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
      find_library(GR_FILTER_LIBRARY libgnuradio-filter.so )
  endif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
  set(GR_FILTER_LIBRARIES ${GR_FILTER_LIBRARY})

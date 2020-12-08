@@ -1,5 +1,7 @@
 /* -*- c++ -*- */
 
+%include "pycontainer.swg"
+
 #define OP25_API
 
 %include "gnuradio.i"			// the common stuff
@@ -14,6 +16,11 @@
 #include "op25/decoder_bf.h"
 #include "op25/pcap_source_b.h"
 %}
+
+%template(key_type) std::vector<unsigned char>;
+// This causes SWIG to segfault
+//%template(key_map_type) std::map<uint16_t,key_type >;
+%template(key_map_type) std::map<uint16_t,std::vector<unsigned char> >;
 
 %include "op25/fsk4_demod_ff.h"
 GR_SWIG_BLOCK_MAGIC2(op25, fsk4_demod_ff);

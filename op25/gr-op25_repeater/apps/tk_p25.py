@@ -25,6 +25,7 @@ import collections
 import ctypes
 import time
 import json
+from helper_funcs import *
 from log_ts import log_ts
 from gnuradio import gr
 
@@ -42,45 +43,6 @@ PATCH_EXPIRY_TIME = 20.0 # Number of seconds until patch expiry
 
 #################
 # Helper functions
-def utf_ascii(ustr):
-    return (ustr.decode("utf-8")).encode("ascii", "ignore")
-
-def get_frequency( f):    # return frequency in Hz
-    if str(f).find('.') == -1:    # assume in Hz
-        return int(f)
-    else:     # assume in MHz due to '.'
-        return int(float(f) * 1000000)
-
-def get_int_dict(s, _id = 0):      # used to read blacklist/whitelist files
-    d = {}
-    try:
-        with open(s,"r") as f:
-            for v in f:
-                v = v.split("\t",1)                        # split on tab
-                try:
-                    v0 = int(v[0])                         # first parameter is tgid or start of tgid range
-                    v1 = v0
-                    if (len(v) > 1) and (int(v[1]) > v0):  # second parameter if present is end of tgid range
-                        v1 = int(v[1])
-
-                    for tg in range(v0, (v1 + 1)):
-                            if tg not in d:      # is this a new tg?
-                                    d[tg] = []   # if so, add to dict (key only, value null)
-                                    sys.stderr.write('%s [%s] added talkgroup %d from %s\n' % (log_ts.get(), _id, tg,s))
-
-                except (IndexError, ValueError) as ex:
-                    continue
-        f.close()
-    except (IOError) as ex:
-        sys.stderr.write("%s: %s\n" % (ex.strerror, s))
-
-    return dict.fromkeys(d)
-
-def from_dict(d, key, def_val):
-    if key in d and d[key] != "":
-        return d[key]
-    else:
-        return def_val
 
 def meta_update(meta_q, tgid = None, tag = None, msgq_id = 0):
     if meta_q is None:
@@ -346,7 +308,7 @@ class p25_system(object):
 
     def read_tags_file(self, tags_file):
         import csv
-        with open(tags_file, 'rb') as csvfile:
+        with open(tags_file, 'r') as csvfile:
             sreader = csv.reader(csvfile, delimiter='\t', quotechar='"', quoting=csv.QUOTE_ALL)
             for row in sreader:
                 try:
@@ -421,24 +383,20 @@ class p25_system(object):
         s = msg.to_string()
         m_rxid = int(msg.arg1()) >> 1                       # receiver's msgq_id
         m_type = ctypes.c_int16(msg.type() & 0xffff).value  # lower 16 bits is p25 duid
-        nac = (ord(s[0]) << 8) + ord(s[1])                  # first two bytes are NAC
+        nac = get_ordinals(s[:2])                           # first two bytes are NAC
         self.set_nac(nac)
 
         updated = 0
         if m_type == 7: # TSBK
-            t = 0
-            for c in s:
-                t = (t << 8) + ord(c)
+            t = get_ordinals(s)
             updated += self.decode_tsbk(m_rxid, t)
 
         elif m_type == 12: # MBT
             s1 = s[:10]     # header without crc
             s2 = s[12:]
-            header = mbt_data = 0
-            for c in s1:
-                header = (header << 8) + ord(c)
-            for c in s2:
-                mbt_data = (mbt_data << 8) + ord(c)
+            header = get_ordinals(s1)
+            mbt_data = get_ordinals(s2)
+
             fmt = (header >> 72) & 0x1f
             sap = (header >> 64) & 0x3f
             src = (header >> 32) & 0xffffff
@@ -1135,7 +1093,7 @@ class p25_receiver(object):
 
         elif m_type >= 0: # Channel Signaling (m_type is duid)
             s = msg.to_string()
-            nac = (ord(s[0]) << 8) + ord(s[1]) # first two bytes are NAC
+            nac = get_ordinals(s[:2])   # first two bytes are NAC
             if (nac != 0xffff) and (nac != self.system.get_nac()):
                 return updated
 

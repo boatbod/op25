@@ -20,6 +20,7 @@
 # Software Foundation, Inc., 51 Franklin Street, Boston, MA
 # 02110-1301, USA.
 
+import io
 import os
 import sys
 import threading
@@ -680,8 +681,11 @@ class rx_block (gr.top_block):
             self.channels[msgq_id].nbfm.control(action)
 
     def process_qmsg(self, msg):            # Handle UI requests
-        RX_COMMANDS = 'skip lockout hold whitelist reload'
+        RX_COMMANDS = 'skip lockout hold whitelist reload'.split()
         s = msg.to_string()
+        if type(s) is not str and isinstance(s, bytes):
+            # should only get here if python3
+            s = s.decode()
         if s == 'quit':
             return True
         elif s == 'update':                 # UI initiated update request
@@ -791,6 +795,8 @@ class du_queue_watcher(threading.Thread):
 class rx_main(object):
     def __init__(self):
         def byteify(input):    # thx so
+            if sys.version[0] != '2':
+                return input
             if isinstance(input, dict):
                 return {byteify(key): byteify(value)
                         for key, value in list(input.items())}
@@ -824,6 +830,7 @@ class rx_main(object):
             config = json.loads(open(options.config_file).read())
         self.tb = rx_block(options.verbosity, config = byteify(config))
         self.q_watcher = du_queue_watcher(self.tb.ui_out_q, self.process_qmsg)
+        sys.stderr.write('python version detected: %s\n' % sys.version)
 
     def process_qmsg(self, msg):
         if self.tb.process_qmsg(msg):
@@ -852,5 +859,7 @@ class rx_main(object):
             sys.stderr.write('main: exception:\n%s\n' % traceback.format_exc())
 
 if __name__ == "__main__":
+    if sys.version[0] > '2':
+        sys.stderr = io.TextIOWrapper(sys.stderr.detach().detach(), write_through=True) # disable stderr buffering
     rx = rx_main()
     rx.run()

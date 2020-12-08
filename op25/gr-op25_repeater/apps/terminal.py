@@ -475,7 +475,7 @@ class curses_terminal(threading.Thread):
 
 class http_terminal(threading.Thread):
     def __init__(self, input_q,  output_q, endpoint, **kwds):
-        from http import http_server
+        from http_server import http_server
 
         threading.Thread.__init__ (self, **kwds)
         self.setDaemon(1)

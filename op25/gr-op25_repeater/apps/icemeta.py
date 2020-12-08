@@ -79,7 +79,7 @@ class meta_server(threading.Thread):
     def format(self, meta):
         if meta['tgid'] is None:
             metatext = self.fmt_idle
-        elif meta['tgid'] is not None and meta['tag'] is not None and meta['tag'] <> "":
+        elif meta['tgid'] is not None and meta['tag'] is not None and meta['tag'] != "":
             metatext = self.fmt_tag
         else:
             metatext = self.fmt_tgid

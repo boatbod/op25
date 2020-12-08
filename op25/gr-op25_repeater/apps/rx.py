@@ -26,6 +26,7 @@
 # Software Foundation, Inc., 51 Franklin Street, Boston, MA
 # 02110-1301, USA.
 
+import io
 import os
 import pickle
 import sys
@@ -398,7 +399,7 @@ class p25_rx_block (gr.top_block):
             self.demod.set_omega(rate)
 
     def set_sps(self, rate):
-        self.sps = self.basic_rate / rate
+        self.sps = self.basic_rate // rate
         if (self.eye_sink is not None):
             self.eye_sink.set_sps(self.sps)
 
@@ -875,8 +876,11 @@ class p25_rx_block (gr.top_block):
 
     def process_qmsg(self, msg):
         # return true = end top block
-        RX_COMMANDS = 'skip lockout hold whitelist reload'
+        RX_COMMANDS = 'skip lockout hold whitelist reload'.split()
         s = msg.to_string()
+        if type(s) is not str and isinstance(s, bytes):
+            # should only get here if python3
+            s = s.decode()
         if s == 'quit': return True
         elif s == 'update':
             self.freq_update()
@@ -932,6 +936,7 @@ class rx_main(object):
         self.cli_options()
         self.tb = p25_rx_block(self.options)
         self.q_watcher = du_queue_watcher(self.tb.output_q, self.process_qmsg)
+        sys.stderr.write('python version detected: %s\n' % sys.version)
 
     def process_qmsg(self, msg):
         if self.tb.process_qmsg(msg):
@@ -1018,5 +1023,7 @@ class rx_main(object):
 #
 
 if __name__ == "__main__":
+    if sys.version[0] > '2':
+        sys.stderr = io.TextIOWrapper(sys.stderr.detach().detach(), write_through=True) # disable stderr buffering
     rx = rx_main()
     rx.run()
