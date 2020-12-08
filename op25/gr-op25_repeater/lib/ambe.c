@@ -139,7 +139,7 @@ mbe_dequantizeAmbeParms (mbe_parms* cur_mp, mbe_parms* prev_mp, mbe_errs* errs, 
 #endif
     }
 #ifdef AMBE_DEBUG
-  fprintf (atderr, "\nb0:%i w0:%f L:%i b1:%i\n", b0, cur_mp->w0, L, b1);
+  fprintf (stderr, "\nb0:%i w0:%f L:%i b1:%i\n", b0, cur_mp->w0, L, b1);
 #endif
   if (dstar) {
     deltaGamma = AmbePlusDg[b2];
