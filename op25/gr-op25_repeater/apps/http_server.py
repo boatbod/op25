@@ -57,7 +57,7 @@ def static_file(environ, start_response):
         content_type = 'text/plain'
         output = status
     else:
-        output = open(pathname).read()
+        output = open(pathname, 'rb').read()
         content_type = content_types[suf]
         status = '200 OK'
     return status, content_type, output
@@ -102,6 +102,10 @@ def http_request(environ, start_response):
     response_headers = [('Content-type', content_type),
                         ('Content-Length', str(len(output)))]
     start_response(status, response_headers)
+
+    if sys.version[0] > '2':
+        if type(output) is str:
+            output = output.encode()
 
     return [output]
 
