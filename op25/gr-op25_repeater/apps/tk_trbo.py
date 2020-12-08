@@ -24,6 +24,7 @@ import sys
 import ctypes
 import time
 import json
+from helper_funcs import *
 
 CC_HUNT_TIMEOUTS = 3   # number of sync timeouts to wait until control channel hunt
 VC_SRCH_TIME     = 3.0 # seconds to wait from VC tuning until hunt
@@ -46,7 +47,7 @@ class dmr_chan:
         self.debug = dbglvl
 
 class dmr_receiver:
-    def __init__(self, msgq_id, frequency_set=None, slot_set=None, nbfm_ctrl=None, chans={}, debug=0):
+    def __init__(self, msgq_id, frequency_set=None, slot_set=None, chans={}, debug=0):
         class _states(object):
             IDLE = 0
             CC   = 1
@@ -80,10 +81,10 @@ class dmr_receiver:
             self.tune_next_chan(msgq_id=1, chan=0, slot=4)
 
     def process_grant(self, m_buf):
-            src_addr = (ord(m_buf[2]) << 16) + (ord(m_buf[3]) << 8) + ord(m_buf[4])
-            grp_addr = (ord(m_buf[5]) << 16) + (ord(m_buf[6]) << 8) + ord(m_buf[7])
-            lcn      = (ord(m_buf[8]) >> 4)
-            slot     = (ord(m_buf[8]) >> 3) & 0x1 
+            src_addr = get_ordinals(m_buf[2:5])
+            grp_appr = get_ordinals(m_buf[5:8])
+            lcn      = get_ordinals(m_buf[8]) >> 4
+            slot     = (get_ordinals(m_buf[8]) >> 3) & 0x1
             chan, freq = self.find_freq(lcn)
             if freq is not None:
                 lcn_sl = (lcn << 1) + slot
@@ -173,7 +174,7 @@ class dmr_receiver:
         if self.debug >= 10:
             d_buf = "0x"
             for byte in m_buf:
-                d_buf += format(ord(byte),"02x")
+                d_buf += format(get_ordinals(byte),"02x")
             sys.stderr.write("%f [%d] DMR PDU: lcn(%d), state(%d), type(%d), slot(%d), data(%s)\n" % (time.time(), self.msgq_id, self.chan_list[self.current_chan], self.current_state, m_type, m_slot, d_buf))
 
         if m_type == 0:   # CACH SLC
@@ -208,10 +209,10 @@ class dmr_receiver:
             self.tune_next_chan()
 
     def rx_CACH_SLC(self, m_buf):
-        slco = ord(m_buf[0])
-        d0 = ord(m_buf[1])
-        d1 = ord(m_buf[2])
-        d2 = ord(m_buf[3])
+        slco = get_ordinals(m_buf[0])
+        d0   = get_ordinals(m_buf[1])
+        d1   = get_ordinals(m_buf[2])
+        d2   = get_ordinals(m_buf[3])
 
         if slco == 0:    # Null Msg (Idle Channel)
             if self.debug >= 9:
@@ -267,15 +268,15 @@ class dmr_receiver:
             return
 
     def rx_SLOT_CSBK(self, m_slot, m_buf):
-        op  = ord(m_buf[0]) & 0x3f
-        fid = ord(m_buf[1])
+        op  = get_ordinals(m_buf[0]) & 0x3f
+        fid = get_ordinals(m_buf[1])
 
         if (op == 1) and (fid == 6) and (self.msgq_id == 0):   # ConnectPlus Neighbors (control channel only)
-            nb1 = ord(m_buf[2]) & 0x3f
-            nb2 = ord(m_buf[3]) & 0x3f
-            nb3 = ord(m_buf[4]) & 0x3f
-            nb4 = ord(m_buf[5]) & 0x3f
-            nb5 = ord(m_buf[6]) & 0x3f
+            nb1 = get_ordinals(m_buf[2]) & 0x3f
+            nb2 = get_ordinals(m_buf[3]) & 0x3f
+            nb3 = get_ordinals(m_buf[4]) & 0x3f
+            nb4 = get_ordinals(m_buf[5]) & 0x3f
+            nb5 = get_ordinals(m_buf[6]) & 0x3f
             if self.debug >= 10:
                 sys.stderr.write("%f [%d] CONNECT PLUS NEIGHBOR SITES: %d, %d, %d, %d, %d\n" % (time.time(), self.msgq_id, nb1, nb2, nb3, nb4, nb5))
 
@@ -283,12 +284,12 @@ class dmr_receiver:
             self.process_grant(m_buf)
 
         elif (op == 59) and (fid == 16): # CapacityPlus Sys/Sites/TS
-            fl   =  (ord(m_buf[2]) >> 6)
-            ts   = ((ord(m_buf[2]) >> 5) & 0x1)
-            rest =  (ord(m_buf[2]) & 0x1f)
-            bcn  = ((ord(m_buf[3]) >> 7) & 0x1)
-            site = ((ord(m_buf[3]) >> 3) & 0xf)
-            nn   =  (ord(m_buf[3]) & 0x7)
+            fl   =  (get_ordinals(m_buf[2]) >> 6)
+            ts   = ((get_ordinals(m_buf[2]) >> 5) & 0x1)
+            rest =  (get_ordinals(m_buf[2]) & 0x1f)
+            bcn  = ((get_ordinals(m_buf[3]) >> 7) & 0x1)
+            site = ((get_ordinals(m_buf[3]) >> 3) & 0xf)
+            nn   =  (get_ordinals(m_buf[3]) & 0x7)
             if nn > 6:
                 nn = 6
             if self.debug >= 9:
@@ -298,33 +299,33 @@ class dmr_receiver:
             pass
 
     def rx_SLOT_VLC(self, m_slot, m_buf):
-        flco    = ord(m_buf[0]) & 0x3f
-        fid     = ord(m_buf[1])
-        svcopt  = ord(m_buf[2])
-        dstaddr = (ord(m_buf[3]) << 16) + (ord(m_buf[4]) << 8) + ord(m_buf[5])
-        srcaddr = (ord(m_buf[6]) << 16) + (ord(m_buf[7]) << 8) + ord(m_buf[8])
+        flco    = get_ordinals(m_buf[0]) & 0x3f
+        fid     = get_ordinals(m_buf[1])
+        svcopt  = get_ordinals(m_buf[2])
+        dstaddr = get_ordinals(m_buf[3:6])
+        srcaddr = get_ordinals(m_buf[6:9])
         if self.debug >= 9:
             sys.stderr.write("%f [%d] VOICE HDR LC: slot(%d), flco(%02x), fid(%02x), svcopt(%02x), srcAddr(%06x), grpAddr(%06x)\n" % (time.time(), self.msgq_id, m_slot, flco, fid, svcopt, srcaddr, dstaddr))
 
         # TODO: handle flco
 
     def rx_SLOT_TLC(self, m_slot, m_buf):
-        flco    = ord(m_buf[0]) & 0x3f
-        fid     = ord(m_buf[1])
-        svcopt  = ord(m_buf[2])
-        dstaddr = (ord(m_buf[3]) << 16) + (ord(m_buf[4]) << 8) + ord(m_buf[5])
-        srcaddr = (ord(m_buf[6]) << 16) + (ord(m_buf[7]) << 8) + ord(m_buf[8])
+        flco    = get_ordinals(m_buf[0]) & 0x3f
+        fid     = get_ordinals(m_buf[1])
+        svcopt  = get_ordinals(m_buf[2])
+        dstaddr = get_ordinals(m_buf[3:6])
+        srcaddr = get_ordinals(m_buf[6:9])
         if self.debug >= 9:
             sys.stderr.write("%f [%d] VOICE TERM LC: slot(%d), flco(%02x), fid(%02x), svcopt(%02x), srcAddr(%06x), grpAddr(%06x)\n" % (time.time(), self.msgq_id, m_slot, flco, fid, svcopt, srcaddr, dstaddr))
 
         # TODO: handle flco
 
     def rx_SLOT_ELC(self, m_slot, m_buf):
-        flco    = ord(m_buf[0]) & 0x3f
-        fid     = ord(m_buf[1])
-        svcopt  = ord(m_buf[2])
-        dstaddr = (ord(m_buf[3]) << 16) + (ord(m_buf[4]) << 8) + ord(m_buf[5])
-        srcaddr = (ord(m_buf[6]) << 16) + (ord(m_buf[7]) << 8) + ord(m_buf[8])
+        flco    = get_ordinals(m_buf[0]) & 0x3f
+        fid     = get_ordinals(m_buf[1])
+        svcopt  = get_ordinals(m_buf[2])
+        dstaddr = get_ordinals(m_buf[3:6])
+        srcaddr = get_ordinals(m_buf[6:9])
         if self.debug >= 9:
             sys.stderr.write("%f [%d] VOICE EMB LC: slot(%d), flco(%02x), fid(%02x), svcopt(%02x), srcAddr(%06x), grpAddr(%06x)\n" % (time.time(), self.msgq_id, m_slot, flco, fid, svcopt, srcaddr, dstaddr))
 
@@ -332,16 +333,16 @@ class dmr_receiver:
 
 
     def rx_SLOT_PI(m_slot, m_buf):
-        algid   = ord(m_buf[0])
-        keyid   = ord(m_buf[2])
-        mi      = (ord(m_buf[3]) << 24) + (ord(m_buf[4]) << 16) + (ord(m_buf[5]) << 8) + ord(m_buf[6])
-        dstaddr = (ord(m_buf[7]) << 16) + (ord(m_buf[8]) << 8) + ord(m_buf[9])
+        algid   = get_ordinals(m_buf[0])
+        keyid   = get_ordinals(m_buf[2])
+        mi      = get_ordinals[3:7]
+        dstaddr = get_ordinals(m_buf[7:10])
         if self.debug >= 9:
             sys.stderr.write("%f [%d] PI HEADER: slot(%d), algId(%02x), keyId(%02x), mi(%08x), grpAddr(%06x)\n" % (time.time(), self.msgq_id, m_slot, algid, keyid, mi, dstaddr))
 
 
 class rx_ctl(object):
-    def __init__(self, debug=0, frequency_set=None, slot_set=None, chans=None):
+    def __init__(self, debug=0, frequency_set=None, slot_set=None, nbfm_ctrl=None, chans=None):
         self.frequency_set = frequency_set
         self.slot_set = slot_set
         self.debug = debug
@@ -363,7 +364,7 @@ class rx_ctl(object):
         for rx_id in self.receivers:
             self.receivers[rx_id].post_init()
 
-    def add_receiver(self, msgq_id, config, meta_q = None):
+    def add_receiver(self, msgq_id, config, meta_q = None, freq = 0):
         self.receivers[msgq_id] = dmr_receiver(msgq_id, self.frequency_set, self.slot_set, self.chans, self.debug)
 
     def process_qmsg(self, msg):

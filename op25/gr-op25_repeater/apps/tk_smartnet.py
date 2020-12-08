@@ -42,58 +42,6 @@ EXPIRY_TIMER = 0.2       # Number of seconds between checks for tgid expiry
 
 #################
 # Helper functions
-def utf_ascii(ustr):
-    if sys.version[0] == '2':
-        return (ustr.decode("utf-8")).encode("ascii", "ignore")
-    else:
-        return ustr
-
-def get_ordinals(s):
-        t = 0
-        if type(s) is not str and isinstance(s, bytes):
-                for c in s:
-                        t = (t << 8) + c
-        else:
-                for c in s:
-                        t = (t << 8) + ord(c)
-        return t
-
-def get_frequency( f):    # return frequency in Hz
-    if str(f).find('.') == -1:    # assume in Hz
-        return int(f)
-    else:     # assume in MHz due to '.'
-        return int(float(f) * 1000000)
-
-def get_int_dict(s, msgq_id = 0):      # used to read blacklist/whitelist files
-    d = {}
-    try:
-        with open(s,"r") as f:
-            for v in f:
-                v = v.split("\t",1)                        # split on tab
-                try:
-                    v0 = int(v[0])                         # first parameter is tgid or start of tgid range
-                    v1 = v0
-                    if (len(v) > 1) and (int(v[1]) > v0):  # second parameter if present is end of tgid range
-                        v1 = int(v[1])
-
-                    for tg in range(v0, (v1 + 1)):
-                            if tg not in d:      # is this a new tg?
-                                    d[tg] = []   # if so, add to dict (key only, value null)
-                                    sys.stderr.write('%s [%d] added talkgroup %d from %s\n' % (log_ts.get(), msgq_id, tg,s))
-
-                except (IndexError, ValueError) as ex:
-                    continue
-        f.close()
-    except (IOError) as ex:
-        sys.stderr.write("%s: %s\n" % (ex.strerror, s))
-
-    return dict.fromkeys(d)
-
-def from_dict(d, key, def_val):
-    if key in d and d[key] != "":
-        return d[key]
-    else:
-        return def_val
 
 def meta_update(meta_q, tgid = None, tag = None):
     if meta_q is None:
