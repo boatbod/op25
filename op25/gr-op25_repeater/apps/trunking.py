@@ -380,6 +380,10 @@ class trunked_system (object):
             self.whitelist.pop(tgid)
             if self.debug > 1:
                 sys.stderr.write("%s de-whitelisting tgid(%d)\n" % (log_ts.get(), tgid))
+            if len(self.whitelist) == 0:
+                self.whitelist = None
+                if self.debug > 1:
+                    sys.stderr.write("%s removing empty whitelist\n" % log_ts.get())
         self.blacklist[tgid] = end_time
         if self.debug > 1:
             sys.stderr.write("%s blacklisting tgid(%d)\n" % (log_ts.get(), tgid))
@@ -391,7 +395,9 @@ class trunked_system (object):
             self.blacklist.pop(tgid)
             if self.debug > 1:
                 sys.stderr.write("%s de-blacklisting tgid(%d)\n" % (log_ts.get(), tgid))
-        if not self.whitelist or tgid in self.whitelist:
+        if not self.whitelist:
+            self.whitelist = {}
+        if tgid in self.whitelist:
             return
         self.whitelist[tgid] = None
         if self.debug > 1:
@@ -1123,6 +1129,8 @@ class rx_ctl (object):
             return 
         elif m_type == -2:  # request from gui
             cmd = msg.to_string()
+            if type(cmd) is not str and isinstance(cmd, bytes):
+                cmd = cmd.decode()
             if self.debug > 10:
                 sys.stderr.write('process_qmsg: command: %s\n' % cmd)
             self.update_state(cmd, curr_time, int(msg.arg1()))
@@ -1457,7 +1465,7 @@ class rx_ctl (object):
                     sys.stderr.write("%s whitelist tgid(%d) out of range (1-65534)\n" % (log_ts.get(), cmd_data))
                 return
             tsys.add_whitelist(cmd_data)
-            if self.current_tgid and self.whitelist and self.current_tgid not in self.whitelist:
+            if self.current_tgid and tsys.whitelist and self.current_tgid not in tsys.whitelist:
                 self.current_tgid = None
                 self.tgid_hold = None
                 self.tgid_hold_until = curr_time
