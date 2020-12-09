@@ -1017,6 +1017,8 @@ class p25_receiver(object):
         self.talkgroups[tgid]['receiver'] = self
 
     def ui_command(self, cmd, data, curr_time):
+        if self.debug > 10:
+            sys.stderr.write("%s [%d] ui_command: cmd(%s), data(%d), time(%f)\n" % (log_ts.get(), self.msgq_id, cmd, data, curr_time))
         if cmd == 'hold':
             self.hold_talkgroup(data, curr_time)
         elif cmd == 'whitelist':
@@ -1114,10 +1116,12 @@ class p25_receiver(object):
             return
         if end_time is None and self.whitelist and tgid in self.whitelist:
             self.whitelist.pop(tgid)
-            if len(self.whitelist) == 0:
-                self.whitelist = None
             if self.debug > 1:
                 sys.stderr.write("%s [%d] de-whitelisting: tgid(%d)\n" % (log_ts.get(), self.msgq_id, tgid))
+            if len(self.whitelist) == 0:
+                self.whitelist = None
+                if self.debug > 1:
+                    sys.stderr.write("%s removing empty whitelist\n" % log_ts.get())
         self.blacklist[tgid] = end_time
         if self.debug > 1:
             sys.stderr.write("%s [%d] blacklisting: tgid(%d)\n" % (log_ts.get(), self.msgq_id, tgid))
@@ -1211,7 +1215,7 @@ class p25_receiver(object):
 
         meta_update(self.meta_q, tgid, self.talkgroups[tgid]['tag'], msgq_id=self.msgq_id)
 
-    def expire_talkgroup(self, tgid=None, update_meta = True, reason="unk"):
+    def expire_talkgroup(self, tgid=None, update_meta = True, reason="unk", auto_hold = True):
         if self.current_tgid is None:
             return
             
@@ -1221,8 +1225,9 @@ class p25_receiver(object):
         self.talkgroups[self.current_tgid]['srcaddr'] = 0
         if self.debug > 1:
             sys.stderr.write("%s [%d] releasing:  tg(%d), freq(%f), slot(%s), reason(%s)\n" % (log_ts.get(), self.msgq_id, self.current_tgid, (self.tuned_frequency/1e6), get_slot(self.current_slot), reason))
-        self.hold_tgid = self.current_tgid
-        self.hold_until = time.time() + TGID_HOLD_TIME
+        if auto_hold:
+            self.hold_tgid = self.current_tgid
+            self.hold_until = time.time() + TGID_HOLD_TIME
         self.current_tgid = None
         self.current_slot = None
 
@@ -1246,7 +1251,7 @@ class p25_receiver(object):
             if self.debug > 1:
                 sys.stderr.write ('%s [%d] set hold tg(%d) until %f\n' % (log_ts.get(), self.msgq_id, self.hold_tgid, self.hold_until))
             if self.current_tgid != self.hold_tgid:
-                self.expire_talkgroup(reason="new hold")
+                self.expire_talkgroup(reason="new hold", auto_hold = False)
                 self.current_tgid = self.hold_tgid
         elif self.hold_mode is False:
             if self.current_tgid:
@@ -1261,7 +1266,7 @@ class p25_receiver(object):
             self.hold_tgid = None
             self.hold_until = curr_time
             self.hold_mode = False
-            self.expire_talkgroup(reason="clear hold")
+            self.expire_talkgroup(reason="clear hold", auto_hold = False)
 
     def get_status(self):
         cc_tag = "Control Channel" if self.system.has_cc(self.msgq_id) else None
