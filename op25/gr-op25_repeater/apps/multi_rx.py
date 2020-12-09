@@ -710,9 +710,6 @@ class rx_block (gr.top_block):
         elif s == 'set_debug':
             dbglvl = int(msg.arg1())
             self.set_debug(dbglvl)
-        #elif s == 'add_default_config':
-        #    nac = msg.arg1()
-        #    self.trunk_rx.add_default_config(int(nac))
         elif s == 'get_config':
             if self.terminal is not None and self.terminal_config is not None:
                 self.terminal_config['json_type'] = "terminal_config"
@@ -726,7 +723,7 @@ class rx_block (gr.top_block):
             self.trunk_rx.dump_tgids()
         elif s in RX_COMMANDS:
             if self.trunking is not None and self.trunk_rx is not None:
-                self.trunk_rx.ui_command(msg.to_string(), msg.arg1(), msg.arg2())
+                self.trunk_rx.ui_command(s, msg.arg1(), msg.arg2())
         return False
 
     def ui_freq_update(self):
