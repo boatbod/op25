@@ -57,6 +57,7 @@ class trunked_system (object):
         self.ns_wacn = -1
         self.ns_chan = 0
         self.voice_frequencies = {}
+        self.skiplist = {}
         self.blacklist = {}
         self.whitelist = None
         self.tgid_map = {}
@@ -298,6 +299,15 @@ class trunked_system (object):
                 sys.stderr.write("%s removing expired blacklist: tg(%d)\n" % (log_ts.get(), tg))
             self.blacklist.pop(tg)
 
+    def skiplist_update(self, start_time):
+        expired_tgs = [tg for tg in list(self.skiplist.keys())
+                            if self.skiplist[tg] is not None
+                            and self.skiplist[tg] < start_time]
+        for tg in expired_tgs:
+            self.skiplist.pop(tg)
+            if self.debug > 1:
+                sys.stderr.write("%s removing expired skiplist: tg(%d)\n" % (log_ts.get(), tg));
+
     def add_patch(self, sg, ga1, ga2, ga3):
         if sg not in self.patches:
             self.patches[sg] = {}
@@ -340,6 +350,7 @@ class trunked_system (object):
 
     def find_talkgroup(self, start_time, tgid=None, hold=False):
         tgt_tgid = None
+        self.skiplist_update(start_time)
         self.blacklist_update(start_time)
 
         if tgid is not None and tgid in self.talkgroups:
@@ -349,6 +360,8 @@ class trunked_system (object):
             if hold:
                 break
             if self.talkgroups[active_tgid]['time'] < start_time:
+                continue
+            if active_tgid in self.skiplist:
                 continue
             if active_tgid in self.blacklist and (not self.whitelist or active_tgid not in self.whitelist):
                 continue
@@ -370,6 +383,17 @@ class trunked_system (object):
         for tgid in sorted(self.talkgroups.keys()):
             sys.stderr.write("%d " % tgid);
         sys.stderr.write("}\n") 
+
+    def add_skiplist(self, tgid, end_time=None):
+        if not tgid or (tgid <= 0) or (tgid > 65534):
+            if self.debug > 1:
+                sys.stderr.write("%s skiplist tgid(%d) out of range (1-65534)\n" % (log_ts.get(), tgid))
+            return
+        if tgid in self.skiplist:
+            return
+        self.skiplist[tgid] = end_time
+        if self.debug > 1:
+            sys.stderr.write("%s skiplisting: tgid(%d)\n" % (log_ts.get(), tgid))
 
     def add_blacklist(self, tgid, end_time=None):
         if not tgid:
@@ -887,7 +911,7 @@ class rx_ctl (object):
         if (state == 1) and (self.meta_state == 1): # don't update more than once for an idle channel (state=1)
             return
 
-        if self.debug > 1:
+        if self.debug > 10:
             sys.stderr.write("%s do_metadata state=%d: [%s] %s\n" % (log_ts.get(), state, tgid, tag))
         self.meta_update(tgid, tag)
         self.meta_state = state
@@ -1442,7 +1466,9 @@ class rx_ctl (object):
                 end_time = None
                 if command == 'skip':
                     end_time = curr_time + self.TGID_SKIP_TIME
-                tsys.add_blacklist(self.current_tgid, end_time=end_time)
+                    tsys.add_skiplist(self.current_tgid, end_time=end_time)
+                else:
+                    tsys.add_blacklist(self.current_tgid, end_time=end_time)
                 self.current_tgid = None
                 self.current_srcaddr = 0
                 self.current_grpaddr = 0
@@ -1458,7 +1484,11 @@ class rx_ctl (object):
                     if self.debug > 0:
                         sys.stderr.write("%s blacklist tgid(%d) out of range (1-65534)\n" % (log_ts.get(), cmd_data))
                     return
-                tsys.add_blacklist(cmd_data)
+                if command == 'skip':
+                    end_time = curr_time + self.TGID_SKIP_TIME
+                    tsys.add_skiplist(cmd_data, end_time=end_time)
+                else:
+                    tsys.add_blacklist(cmd_data)
         elif command == 'whitelist':
             if (cmd_data <= 0) or (cmd_data > 65534):
                 if self.debug > 0:
