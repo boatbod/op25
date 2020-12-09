@@ -911,7 +911,7 @@ class rx_ctl (object):
         if (state == 1) and (self.meta_state == 1): # don't update more than once for an idle channel (state=1)
             return
 
-        if self.debug > 1:
+        if self.debug > 10:
             sys.stderr.write("%s do_metadata state=%d: [%s] %s\n" % (log_ts.get(), state, tgid, tag))
         self.meta_update(tgid, tag)
         self.meta_state = state
