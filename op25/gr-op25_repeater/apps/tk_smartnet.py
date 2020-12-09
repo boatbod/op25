@@ -175,6 +175,7 @@ class osw_receiver(object):
         self.osw_q = deque(maxlen=OSW_QUEUE_SIZE)
         self.voice_frequencies = {}
         self.talkgroups = {}
+        self.skiplist = {}
         self.blacklist = {}
         self.whitelist = None
         self.cc_list = []
@@ -645,7 +646,7 @@ class voice_receiver(object):
             self.add_whitelist(data)
         elif cmd == 'skip':
             if self.current_tgid is not None:
-                self.add_blacklist(self.current_tgid, curr_time + TGID_SKIP_TIME)
+                self.add_skiplist(self.current_tgid, curr_time + TGID_SKIP_TIME)
         elif cmd == 'lockout':
             if (data == 0) and self.current_tgid is not None:
                 self.add_blacklist(self.current_tgid)
@@ -676,6 +677,22 @@ class voice_receiver(object):
             self.expire_talkgroup(reason="duid15")
             rc = True
         return rc
+
+    def add_skiplist(self, tgid, end_time=None):
+        if not tgid or (tgid <= 0) or (tgid > 65534):
+            if self.debug > 1:
+                sys.stderr.write("%s [%d] skiplist tgid(%d) out of range (1-65534)\n" % (log_ts.get(), self.msgq_id, tgid))
+            return
+        if tgid in self.skiplist:
+            return
+        self.skiplist[tgid] = end_time
+        if self.debug > 1:
+            sys.stderr.write("%s [%d] skiplisting: tgid(%d)\n" % (log_ts.get(), self.msgq_id, tgid))
+        if self.current_tgid and self.current_tgid in self.skiplist:
+            self.expire_talkgroup(reason = "skiplisted")
+            self.hold_mode = False
+            self.hold_tgid = None
+            self.hold_until = time.time()
 
     def add_blacklist(self, tgid, end_time=None):
         if not tgid or (tgid <= 0) or (tgid > 65534):
@@ -730,6 +747,15 @@ class voice_receiver(object):
         for tg in expired_tgs:
             self.blacklist.pop(tg)
 
+    def skiplist_update(self, start_time):
+        expired_tgs = [tg for tg in list(self.skiplist.keys())
+                            if self.skiplist[tg] is not None
+                            and self.skiplist[tg] < start_time]
+        for tg in expired_tgs:
+            self.skiplist.pop(tg)
+            if self.debug > 1:
+                sys.stderr.write("%s [%d] removing expired skiplist: tg(%d)\n" % (log_ts.get(), self.msgq_id, tg));
+
     def find_talkgroup(self, start_time, tgid=None, hold=False):
         tgt_tgid = None
         self.blacklist_update(start_time)
@@ -742,6 +768,8 @@ class voice_receiver(object):
             if hold:
                 break
             if self.talkgroups[active_tgid]['time'] < start_time:
+                continue
+            if active_tgid in self.skiplist:
                 continue
             if active_tgid in self.blacklist and (not self.whitelist or active_tgid not in self.whitelist):
                 continue
