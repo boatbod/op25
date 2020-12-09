@@ -686,10 +686,12 @@ class voice_receiver(object):
             return
         if end_time is None and self.whitelist and tgid in self.whitelist:
             self.whitelist.pop(tgid)
+            if self.debug > 1:
+                sys.stderr.write("%s [%d] de-whitelisting: tgid(%d)\n" % (log_ts.get(), self.msgq_id, tgid))
             if len(self.whitelist) == 0:
                 self.whitelist = None
-            if self.debug > 1:
-                sys.stderr.write("%s [%d] de-whitelisting tgid(%d)\n" % (log_ts.get(), self.msgq_id, tgid))
+                if self.debug > 1:
+                    sys.stderr.write("%s removing empty whitelist\n" % log_ts.get())
         self.blacklist[tgid] = end_time
         if self.debug > 1:
             sys.stderr.write("%s [%d] blacklisting tgid(%d)\n" % (log_ts.get(), self.msgq_id, tgid))
@@ -789,7 +791,7 @@ class voice_receiver(object):
             if self.debug > 0:
                 sys.stderr.write ('%s [%d] set hold tg(%d) until %f\n' % (log_ts.get(), self.msgq_id, self.hold_tgid, self.hold_until))
             if self.current_tgid != self.hold_tgid:
-                self.expire_talkgroup(reason="new hold")
+                self.expire_talkgroup(reason="new hold", auto_hold = False)
                 self.current_tgid = self.hold_tgid
         elif self.hold_mode is False:
             if self.current_tgid:
@@ -804,7 +806,7 @@ class voice_receiver(object):
             self.hold_tgid = None
             self.hold_until = curr_time
             self.hold_mode = False
-            self.expire_talkgroup(reason="clear hold")
+            self.expire_talkgroup(reason="clear hold", auto_hold = False)
 
     def tune_voice(self, freq, tgid):
         if freq != self.tuned_frequency:
@@ -820,7 +822,7 @@ class voice_receiver(object):
         self.slot_set({'tuner': self.msgq_id,'slot': 0})                      # always enable digital p25cai
         self.nbfm_ctrl(self.msgq_id, (self.talkgroups[tgid]['mode'] != 1) )   # enable nbfm unless mode is digital
 
-    def expire_talkgroup(self, tgid=None, update_meta = True, reason="unk"):
+    def expire_talkgroup(self, tgid=None, update_meta = True, reason="unk", auto_hold = True):
         expire_time = time.time()
         self.nbfm_ctrl(self.msgq_id, False)                                   # disable nbfm
         self.slot_set({'tuner': self.msgq_id,'slot': 4})                      # disable p25cai
@@ -832,8 +834,9 @@ class voice_receiver(object):
         self.talkgroups[self.current_tgid]['release_time'] = expire_time
         if self.debug > 1:
             sys.stderr.write("%s [%d] releasing:  tg(%d), freq(%f), reason(%s)\n" % (log_ts.get(), self.msgq_id, self.current_tgid, (self.tuned_frequency/1e6), reason))
-        self.hold_tgid = self.current_tgid
-        self.hold_until = expire_time + TGID_HOLD_TIME
+        if auto_hold:
+            self.hold_tgid = self.current_tgid
+            self.hold_until = expire_time + TGID_HOLD_TIME
         self.current_tgid = None
 
         if update_meta:
