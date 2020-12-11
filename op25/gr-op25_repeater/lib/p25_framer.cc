@@ -37,6 +37,7 @@ static const int max_frame_lengths[16] = {
 p25_framer::p25_framer(int debug, int msgq_id) :
     d_debug(debug),
     d_msgq_id(msgq_id),
+    d_expected_nac(0),
     reverse_p(0),
     nid_syms(0),
     next_bit(0),
@@ -103,14 +104,24 @@ bool p25_framer::nid_codeword(uint64_t acc) {
     if ((nid_word >> 1) == 0)
         return false;
 
+    // Validate NAC meets expectations. NAC values of 0, 0xf7e, 0xf7f pass all traffic
+    if ((d_expected_nac != 0) && (d_expected_nac != 0xf7e) && (d_expected_nac != 0xf7f) && (nac != d_expected_nac)) {
+        fprintf(stderr, "%s p25_framer::nid_codeword: NAC check fail: received=%03x, expected=%03x\n", logts.get(d_msgq_id), nac, d_expected_nac);
+        return false;
+    }
+
     // Validate duid and parity bit (TIA-102-BAAC)
-    if (((duid == 0) || (duid == 3) || (duid == 7) || (duid == 12) || (duid == 15)) && !parity)
+    if (((duid == 0) || (duid == 3) || (duid == 7) || (duid == 12) || (duid == 15)) && !parity) {
         return true;
-    else if (((duid == 5) || (duid == 10)) & parity)
+    }
+    else if (((duid == 5) || (duid == 10)) & parity) {
         return true;
-    else
-        if (d_debug >= 10)
+    }
+    else {
+        if (d_debug >= 10) {
             fprintf(stderr, "%s p25_framer::nid_codeword: duid/parity check fail: nid=%016lx, ec=%d\n", logts.get(d_msgq_id), nid_word, ec);
+        }
+    }
     return false;
 }
 

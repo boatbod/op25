@@ -125,6 +125,9 @@ class p25_decoder_sink_b(gr.hier_block2):
             return
         self.audio_sink[index].close()
 
+    def set_nac(self, nac, index=0):
+        self.p25_decoders[index].set_nac(nac)
+
     def set_slotid(self, slot, index=0):
         self.p25_decoders[index].set_slotid(slot)
 

@@ -189,6 +189,14 @@ namespace gr {
             framer->set_debug(debug);
         }
 
+        void p25p1_fdma::set_nac(int nac)
+        {
+            d_nac = nac;
+            framer->set_nac(nac);
+            if (d_debug >= 10)
+                fprintf(stderr, "%s p25p1_fdma::set_nac: 0x%03x\n", logts.get(d_msgq_id), d_nac);
+        }
+
         p25p1_fdma::p25p1_fdma(const op25_audio& udp, int debug, bool do_imbe, bool do_output, bool do_msgq, gr::msg_queue::sptr queue, std::deque<int16_t> &output_queue, bool do_audio_output, bool do_nocrypt, int msgq_id) :
             qtimer(op25_timer(TIMEOUT_THRESHOLD)),
             op25audio(udp),
@@ -205,7 +213,8 @@ namespace gr {
             d_do_audio_output(do_audio_output),
             ess_algid(0x80),
             ess_keyid(0),
-            vf_tgid(0)
+            vf_tgid(0),
+            d_nac(0)
         {
         }
 

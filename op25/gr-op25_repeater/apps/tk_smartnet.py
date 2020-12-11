@@ -56,8 +56,9 @@ def meta_update(meta_q, tgid = None, tag = None):
 #################
 # Main trunking class
 class rx_ctl(object):
-    def __init__(self, debug=0, frequency_set=None, slot_set=None, nbfm_ctrl=None, chans={}):
+    def __init__(self, debug=0, frequency_set=None, nac_set=None, slot_set=None, nbfm_ctrl=None, chans={}):
         self.frequency_set = frequency_set
+        self.nac_set = nac_set
         self.slot_set = slot_set
         self.nbfm_ctrl = nbfm_ctrl
         self.debug = debug

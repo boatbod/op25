@@ -47,6 +47,7 @@ namespace gr{
                 void rx_sym(const uint8_t sym);
                 void sync_reset(void);
                 void reset_timer(void) { };
+                void set_nac(int nac) { };
                 void set_slot_mask(int mask) { };
                 void set_slot_key(int mask) { };
                 void set_xormask(const char* p) { };

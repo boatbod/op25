@@ -29,11 +29,13 @@ class p25_framer
         uint32_t frame_size_limit;
         int d_debug;
         int d_msgq_id;
+        int d_expected_nac;
         log_ts logts;
 
     public:
         p25_framer(int debug = 0, int msgq_id = 0);
         ~p25_framer ();	// destructor
+        void set_nac(int nac) { d_expected_nac = nac; }
         void set_debug(int debug) { d_debug = debug; }
         bool rx_sym(uint8_t dibit) ;
         uint32_t load_nid(const uint8_t *syms, int nsyms);

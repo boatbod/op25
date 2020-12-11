@@ -45,6 +45,11 @@ namespace gr {
                 d_sync->set_xormask(p);
         }
 
+        void frame_assembler_impl::set_nac(int nac) {
+            if (d_sync)
+                d_sync->set_nac(nac);
+        }
+
         void frame_assembler_impl::set_slotid(int slotid) {
             if (d_sync)
                 d_sync->set_slot_mask(slotid);

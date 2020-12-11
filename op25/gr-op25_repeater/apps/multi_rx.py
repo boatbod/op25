@@ -397,6 +397,9 @@ class channel(object):
         if 'eye' in self.sinks:
             self.sinks['eye'].set_sps(self.config['if_rate'] / rate)
 
+    def set_nac(self, nac):
+        self.decoder.set_nac(nac)
+
     def set_slot(self, slot):
         self.decoder.set_slotid(slot)
 
@@ -531,7 +534,7 @@ class rx_block (gr.top_block):
             self.trunking = None
 
         if self.trunking is not None:
-            self.trunk_rx = self.trunking.rx_ctl(frequency_set = self.change_freq, slot_set = self.set_slot, nbfm_ctrl = self.nbfm_control, debug = self.verbosity, chans = config['chans'])
+            self.trunk_rx = self.trunking.rx_ctl(frequency_set = self.change_freq, nac_set = self.set_nac, slot_set = self.set_slot, nbfm_ctrl = self.nbfm_control, debug = self.verbosity, chans = config['chans'])
             self.du_watcher = du_queue_watcher(self.rx_q, self.trunk_rx.process_qmsg)
             sys.stderr.write("Enabled trunking module: %s\n" % config['module'])
 
@@ -646,7 +649,7 @@ class rx_block (gr.top_block):
             return False
 
         chan = self.channels[tuner]
-        if 'sigtype' in params and params['sigtype'] == "P25": # P25 specific TDMA config
+        if 'sigtype' in params and params['sigtype'] == "P25": # P25 specific config
             chan.configure_p25_tdma(params)
 
         if not chan.set_freq(params['freq']):
@@ -669,6 +672,12 @@ class rx_block (gr.top_block):
             self.trunk_rx.receivers[tuner].tune_time = params['time']
 
         return True
+
+    def set_nac(self, params):
+        tuner = params['tuner']
+        chan = self.channels[tuner]
+        if 'nac' in params:
+            chan.set_nac(params['nac'])
 
     def set_slot(self, params):
         tuner = params['tuner']

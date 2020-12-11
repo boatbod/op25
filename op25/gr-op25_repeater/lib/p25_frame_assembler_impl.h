@@ -55,6 +55,7 @@ namespace gr {
   // internal functions
 
     void set_xormask(const char*p) ;
+    void set_nac(int nac) ;
     void set_slotid(int slotid) ;
     void set_slotkey(int key) ;
     void set_debug(int debug) ;
