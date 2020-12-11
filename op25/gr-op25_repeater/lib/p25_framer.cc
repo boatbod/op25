@@ -104,11 +104,9 @@ bool p25_framer::nid_codeword(uint64_t acc) {
     if ((nid_word >> 1) == 0)
         return false;
 
-    // Validate NAC is same as expected, if set
-    if ((d_expected_nac) && (nac != d_expected_nac)) {
-        if (d_debug >= 10) {
-            fprintf(stderr, "%s p25_framer::nid_codeword: nac check fail: nac=%03x, expected=%03x\n", logts.get(d_msgq_id), nac, d_expected_nac);
-        }
+    // Validate NAC meets expectations. NAC values of 0, 0xf7e, 0xf7f pass all traffic
+    if ((d_expected_nac != 0) && (d_expected_nac != 0xf7e) && (d_expected_nac != 0xf7f) && (nac != d_expected_nac)) {
+        fprintf(stderr, "%s p25_framer::nid_codeword: NAC check fail: received=%03x, expected=%03x\n", logts.get(d_msgq_id), nac, d_expected_nac);
         return false;
     }
 
