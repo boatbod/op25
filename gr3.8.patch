@@ -1,3 +1,25 @@
+diff --git a/install.sh b/install.sh
+index cf50de5..e1d934f 100755
+--- a/install.sh
++++ b/install.sh
+@@ -10,9 +10,16 @@ if [ ! -d op25/gr-op25 ]; then
+ 	exit
+ fi
+ 
++sudo sed -i -- 's/^# *deb-src/deb-src/' /etc/apt/sources.list
++
+ sudo apt-get update
+ sudo apt-get build-dep gnuradio
+-sudo apt-get install gnuradio gnuradio-dev gr-osmosdr librtlsdr-dev libuhd-dev  libhackrf-dev libitpp-dev libpcap-dev cmake git swig build-essential pkg-config doxygen python-numpy python-waitress python-requests gnuplot-x11
++sudo apt-get install gnuradio gnuradio-dev gr-osmosdr librtlsdr-dev libuhd-dev  libhackrf-dev libitpp-dev libpcap-dev cmake git swig build-essential pkg-config doxygen python3-numpy python3-waitress python3-requests gnuplot-x11
++
++if [ ! -x /usr/bin/python ]; then
++	echo ====== installing python-is-python3
++	sudo apt-get install python-is-python3
++fi
+ 
+ if [ ! -f /etc/modprobe.d/blacklist-rtl.conf ]; then
+ 	echo ====== installing blacklist-rtl.conf
 diff --git a/CMakeLists.txt b/CMakeLists.txt
 index aa013a3..23d273d 100644
 --- a/CMakeLists.txt
@@ -40,23 +62,6 @@ index 569667b..f175cc5 100644
      list(APPEND GR_SWIG_INCLUDE_DIRS ${PYTHON_INCLUDE_PATH}) #deprecated name (now dirs)
      list(APPEND GR_SWIG_INCLUDE_DIRS ${PYTHON_INCLUDE_DIRS})
      list(APPEND GR_SWIG_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR})
-diff --git a/install.sh b/install.sh
-index cf50de5..a2d8366 100755
---- a/install.sh
-+++ b/install.sh
-@@ -10,9 +10,11 @@ if [ ! -d op25/gr-op25 ]; then
- 	exit
- fi
- 
-+sudo sed -i -- 's/^# *deb-src/deb-src/' /etc/apt/sources.list
-+
- sudo apt-get update
- sudo apt-get build-dep gnuradio
--sudo apt-get install gnuradio gnuradio-dev gr-osmosdr librtlsdr-dev libuhd-dev  libhackrf-dev libitpp-dev libpcap-dev cmake git swig build-essential pkg-config doxygen python-numpy python-waitress python-requests gnuplot-x11
-+sudo apt-get install gnuradio gnuradio-dev gr-osmosdr librtlsdr-dev libuhd-dev  libhackrf-dev libitpp-dev libpcap-dev cmake git swig build-essential pkg-config doxygen python3-numpy python3-waitress python3-requests gnuplot-x11
- 
- if [ ! -f /etc/modprobe.d/blacklist-rtl.conf ]; then
- 	echo ====== installing blacklist-rtl.conf
 diff --git a/op25/gr-op25/CMakeLists.txt b/op25/gr-op25/CMakeLists.txt
 index 3ab2a79..3c79adf 100644
 --- a/op25/gr-op25/CMakeLists.txt
@@ -158,126 +163,6 @@ index 68d51e8..4aa697f 100644
  if(NOT CPPUNIT_FOUND)
      message(FATAL_ERROR "CppUnit required to compile op25_repeater")
  endif()
-diff --git a/op25/gr-op25_repeater/apps/audio.py b/op25/gr-op25_repeater/apps/audio.py
-index af5fe9a..934dcc9 100755
---- a/op25/gr-op25_repeater/apps/audio.py
-+++ b/op25/gr-op25_repeater/apps/audio.py
-@@ -1,4 +1,4 @@
--#!/usr/bin/env python
-+#!/usr/bin/env python3
- 
- # Copyright 2017, 2018 Graham Norbury
- # 
-diff --git a/op25/gr-op25_repeater/apps/multi_rx.py b/op25/gr-op25_repeater/apps/multi_rx.py
-index 2fc76b1..83e30e7 100755
---- a/op25/gr-op25_repeater/apps/multi_rx.py
-+++ b/op25/gr-op25_repeater/apps/multi_rx.py
-@@ -1,4 +1,4 @@
--#!/usr/bin/env python
-+#!/usr/bin/env python3
- 
- # Copyright 2011, 2012, 2013, 2014, 2015, 2016, 2017 Max H. Parke KA1RBI
- # Copyright 2020 Graham J. Norbury - gnorbury@bondcar.com
-diff --git a/op25/gr-op25_repeater/apps/rx.py b/op25/gr-op25_repeater/apps/rx.py
-index 3ef534c..35b42dd 100755
---- a/op25/gr-op25_repeater/apps/rx.py
-+++ b/op25/gr-op25_repeater/apps/rx.py
-@@ -1,4 +1,4 @@
--#!/usr/bin/env python
-+#!/usr/bin/env python3
- 
- # Copyright 2008-2011 Steve Glass
- # 
-diff --git a/op25/gr-op25_repeater/apps/terminal.py b/op25/gr-op25_repeater/apps/terminal.py
-index 6d0e055..6a6f6c7 100755
---- a/op25/gr-op25_repeater/apps/terminal.py
-+++ b/op25/gr-op25_repeater/apps/terminal.py
-@@ -1,4 +1,4 @@
--#!/usr/bin/env python
-+#!/usr/bin/env python3
- 
- # Copyright 2008-2011 Steve Glass
- # 
-diff --git a/op25/gr-op25_repeater/apps/tx/dv_tx.py b/op25/gr-op25_repeater/apps/tx/dv_tx.py
-index 80690cf..ad5932b 100755
---- a/op25/gr-op25_repeater/apps/tx/dv_tx.py
-+++ b/op25/gr-op25_repeater/apps/tx/dv_tx.py
-@@ -1,4 +1,4 @@
--#!/usr/bin/env python
-+#!/usr/bin/env python3
- 
- #################################################################################
- # 
-diff --git a/op25/gr-op25_repeater/apps/tx/generate-tsbks.py b/op25/gr-op25_repeater/apps/tx/generate-tsbks.py
-index deabd4a..57ddf09 100755
---- a/op25/gr-op25_repeater/apps/tx/generate-tsbks.py
-+++ b/op25/gr-op25_repeater/apps/tx/generate-tsbks.py
-@@ -1,4 +1,4 @@
--#! /usr/bin/python
-+#! /usr/bin/python3
- 
- from p25craft import make_fakecc_tsdu
- 
-diff --git a/op25/gr-op25_repeater/apps/tx/multi_tx.py b/op25/gr-op25_repeater/apps/tx/multi_tx.py
-index 9ea3d86..56af87a 100755
---- a/op25/gr-op25_repeater/apps/tx/multi_tx.py
-+++ b/op25/gr-op25_repeater/apps/tx/multi_tx.py
-@@ -1,4 +1,4 @@
--#!/usr/bin/env python
-+#!/usr/bin/env python3
- 
- #################################################################################
- # 
-diff --git a/op25/gr-op25_repeater/apps/tx/op25_tx.py b/op25/gr-op25_repeater/apps/tx/op25_tx.py
-index b95ce2c..58df7a0 100755
---- a/op25/gr-op25_repeater/apps/tx/op25_tx.py
-+++ b/op25/gr-op25_repeater/apps/tx/op25_tx.py
-@@ -1,4 +1,4 @@
--#!/usr/bin/env python
-+#!/usr/bin/env python3
- #
- # Copyright 2005,2006,2007 Free Software Foundation, Inc.
- # 
-diff --git a/op25/gr-op25_repeater/apps/tx/p25craft.py b/op25/gr-op25_repeater/apps/tx/p25craft.py
-index 5de2b36..b88257a 100755
---- a/op25/gr-op25_repeater/apps/tx/p25craft.py
-+++ b/op25/gr-op25_repeater/apps/tx/p25craft.py
-@@ -1,4 +1,4 @@
--#!/usr/bin/python
-+#!/usr/bin/python3
- #
- # p25craft.py - utility for crafting APCO P25 packets
- #
-diff --git a/op25/gr-op25_repeater/apps/tx/unpack.py b/op25/gr-op25_repeater/apps/tx/unpack.py
-index 7cbf05b..73a861a 100755
---- a/op25/gr-op25_repeater/apps/tx/unpack.py
-+++ b/op25/gr-op25_repeater/apps/tx/unpack.py
-@@ -1,4 +1,4 @@
--#!/usr/bin/env python
-+#!/usr/bin/env python3
- from gnuradio import gr, gru, audio, eng_notation, blocks
- from gnuradio.eng_option import eng_option
- from optparse import OptionParser
-diff --git a/op25/gr-op25_repeater/apps/util/arb-resample.py b/op25/gr-op25_repeater/apps/util/arb-resample.py
-index 56a762f..2bf75af 100755
---- a/op25/gr-op25_repeater/apps/util/arb-resample.py
-+++ b/op25/gr-op25_repeater/apps/util/arb-resample.py
-@@ -1,4 +1,4 @@
--#!/usr/bin/env python
-+#!/usr/bin/env python3
- 
- import sys
- import math
-diff --git a/op25/gr-op25_repeater/apps/util/cqpsk-demod-file.py b/op25/gr-op25_repeater/apps/util/cqpsk-demod-file.py
-index 0e553c7..56d3c3b 100755
---- a/op25/gr-op25_repeater/apps/util/cqpsk-demod-file.py
-+++ b/op25/gr-op25_repeater/apps/util/cqpsk-demod-file.py
-@@ -1,4 +1,4 @@
--#!/usr/bin/env python
-+#!/usr/bin/env python3
- 
- #
- # (C) Copyright 2010, 2014 Max H. Parke, KA1RBI
 diff --git a/op25/gr-op25_repeater/lib/CMakeLists.txt b/op25/gr-op25_repeater/lib/CMakeLists.txt
 index 8d3ae9e..6b0003d 100755
 --- a/op25/gr-op25_repeater/lib/CMakeLists.txt
