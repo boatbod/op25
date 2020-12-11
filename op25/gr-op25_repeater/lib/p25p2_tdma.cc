@@ -108,12 +108,18 @@ p25p2_tdma::p25p2_tdma(const op25_audio& udp, int slotid, int debug, bool do_msg
 	ess_keyid(0),
 	mbe_err_cnt(0),
 	tone_frame(false),
-	p2framer()
+	p2framer(),
+	d_nac(0)
 {
 	assert (slotid == 0 || slotid == 1);
 	mbe_initMbeParms (&cur_mp, &prev_mp, &enh_mp);
 	mbe_initToneParms (&tone_mp);
 	mbe_initErrParms (&errs_mp);
+}
+
+void p25p2_tdma::set_nac(int nac)
+{
+    d_nac = nac;
 }
 
 bool p25p2_tdma::rx_sym(uint8_t sym)

@@ -48,6 +48,11 @@ namespace gr {
     void p25_frame_assembler_impl::set_slotkey(int key) {
     }
 
+    void p25_frame_assembler_impl::set_nac(int nac) {
+		p1fdma.set_nac(nac);
+        p2tdma.set_nac(nac);
+    }
+
     void p25_frame_assembler_impl::reset_timer() {
 		p1fdma.reset_timer();
     }

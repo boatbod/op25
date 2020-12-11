@@ -85,8 +85,9 @@ def get_tgid(tgid):
 #################
 # Main trunking class
 class rx_ctl(object):
-    def __init__(self, debug=0, frequency_set=None, slot_set=None, nbfm_ctrl=None, chans={}):
+    def __init__(self, debug=0, frequency_set=None, nac_set=None, slot_set=None, nbfm_ctrl=None, chans={}):
         self.frequency_set = frequency_set
+        self.nac_set = nac_set
         self.slot_set = slot_set
         self.nbfm_ctrl = nbfm_ctrl
         self.debug = debug
@@ -116,6 +117,7 @@ class rx_ctl(object):
             rx_rcvr = p25_receiver(debug         = self.debug,
                                    msgq_id       = msgq_id,
                                    frequency_set = self.frequency_set,
+                                   nac_set       = self.nac_set,
                                    slot_set      = self.slot_set,
                                    system        = rx_sys,
                                    config        = config,
@@ -903,11 +905,12 @@ class p25_system(object):
 #################
 # P25 receiver class
 class p25_receiver(object):
-    def __init__(self, debug, msgq_id, frequency_set, slot_set, system, config, meta_q = None, freq = 0):
+    def __init__(self, debug, msgq_id, frequency_set, nac_set, slot_set, system, config, meta_q = None, freq = 0):
         self.debug = debug
         self.msgq_id = msgq_id
         self.config = config
         self.frequency_set = frequency_set
+        self.nac_set = nac_set
         self.slot_set = slot_set
         self.system = system
         self.meta_q = meta_q
@@ -920,6 +923,7 @@ class p25_receiver(object):
         self.blacklist = {}
         self.whitelist = None
         self.crypt_behavior = self.system.get_crypt_behavior()
+        self.current_nac = 0
         self.current_tgid = None
         self.current_slot = None
         self.hold_tgid = None
@@ -958,6 +962,10 @@ class p25_receiver(object):
         else:
             self.whitelist = self.system.get_whitelist()
 
+    def set_nac(self, nac):
+        self.current_nac = nac
+        self.nac_set({'tuner': self.msgq_id,'nac': nac})
+
     def tune_cc(self, freq):
         if freq is None or int(freq) == 0:  # freq will be None when there is already another receiver listening to the control channel
             if not self.tuner_idle:
@@ -967,6 +975,9 @@ class p25_receiver(object):
                 self.tuner_idle = True
                 self.current_slot = None
             return
+
+        if self.current_nac != self.system.get_nac():
+            self.set_nac(self.system.get_nac())
 
         if self.tuner_idle:
             self.slot_set({'tuner': self.msgq_id,'slot': 0})     # enable receiver
@@ -992,6 +1003,9 @@ class p25_receiver(object):
             if self.debug >= 5:
                 sys.stderr.write("%s [%d] releasing control channel\n" % (log_ts.get(), self.msgq_id))
             self.system.release_cc(self.msgq_id)                 # release control channel responsibility
+
+        if self.current_nac != self.system.get_nac():
+            self.set_nac(self.system.get_nac())
 
         if (freq != self.tuned_frequency) or (slot != self.current_slot):
             nac, wacn, sysid, valid = self.system.get_tdma_params()

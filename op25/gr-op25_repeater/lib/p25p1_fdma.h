@@ -75,6 +75,7 @@ namespace gr {
                 int  d_msgq_id;
                 bool d_do_audio_output;
                 bool d_do_nocrypt;
+                int d_nac;
                 gr::msg_queue::sptr d_msg_queue;
                 std::deque<int16_t> &output_queue;
                 p25_framer* framer;
@@ -95,6 +96,7 @@ namespace gr {
 
             public:
                 void set_debug(int debug);
+                void set_nac(int nac);
                 void reset_timer();
                 void rx_sym (const uint8_t *syms, int nsyms);
                 p25p1_fdma(const op25_audio& udp, int debug, bool do_imbe, bool do_output, bool do_msgq, gr::msg_queue::sptr queue, std::deque<int16_t> &output_queue, bool do_audio_output, bool do_nocrypt, int msgq_id = 0);

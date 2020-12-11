@@ -788,7 +788,7 @@ def get_int_dict(s):
     return dict.fromkeys(d)
 
 class rx_ctl (object):
-    def __init__(self, debug=0, frequency_set=None, conf_file=None, logfile_workers=None, meta_update=None, crypt_behavior=0, slot_set=None, nbfm_ctrl=None, chans={}):
+    def __init__(self, debug=0, frequency_set=None, conf_file=None, logfile_workers=None, meta_update=None, crypt_behavior=0, nac_set=None, slot_set=None, nbfm_ctrl=None, chans={}):
         class _states(object):
             ACQ = 0
             CC = 1
@@ -799,6 +799,7 @@ class rx_ctl (object):
         self.trunked_systems = {}
         self.receivers = {}
         self.frequency_set = frequency_set
+        self.nac_set = nac_set
         self.meta_update = meta_update
         self.crypt_behavior = crypt_behavior
         self.meta_state = 0
@@ -879,6 +880,7 @@ class rx_ctl (object):
             for worker in self.logfile_workers:
                 worker['demod'].connect_chain('fsk4')
 
+        self.nac_set({'tuner': 0,'nac': self.current_nac})
         self.set_frequency({
             'freq':   tsys.trunk_cc,
             'tgid':   None,
@@ -1197,6 +1199,7 @@ class rx_ctl (object):
                     self.configs[nac] = self.configs.pop(0)
                     self.nacs = list(self.configs.keys())
                     self.current_nac = nac
+                    self.nac_set({'tuner': 0,'nac': nac})
                 else:
                     sys.stderr.write("%s NAC %x not configured\n" % (log_ts.get(), nac))
                 return
@@ -1531,12 +1534,13 @@ class rx_ctl (object):
             self.trunked_systems[0] = self.trunked_systems.pop(self.current_nac)
             self.configs[0] = self.configs.pop(self.current_nac)
             self.nacs = list(self.configs.keys())
-            self.current_nac = 0
+            self.current_nac = 0 
             self.current_state = self.states.CC
             self.current_tgid = None
             self.current_srcaddr = 0
             self.current_grpaddr = 0
             self.current_encrypted = 0
+            self.nac_set({'tuner': 0,'nac': 0})
             tsys.reset()
 
         if self.current_state != self.states.CC and self.tgid_hold_until <= curr_time and self.hold_mode is False and new_state is None:
@@ -1565,6 +1569,7 @@ class rx_ctl (object):
             nac = self.current_nac = new_nac
             tsys = self.trunked_systems[nac]
             new_frequency = tsys.trunk_cc
+            self.nac_set({'tuner': 0,'nac': new_nac})
             self.current_srcaddr = 0
             self.current_grpaddr = 0
             self.current_encrypted = 0

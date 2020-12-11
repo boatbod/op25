@@ -47,7 +47,7 @@ class dmr_chan:
         self.debug = dbglvl
 
 class dmr_receiver:
-    def __init__(self, msgq_id, frequency_set=None, slot_set=None, chans={}, debug=0):
+    def __init__(self, msgq_id, frequency_set=None, nac_set=None, slot_set=None, chans={}, debug=0):
         class _states(object):
             IDLE = 0
             CC   = 1
@@ -58,6 +58,7 @@ class dmr_receiver:
         self.states = _states
         self.current_state = self.states.IDLE
         self.frequency_set = frequency_set
+        self.nac_set = nac_set
         self.slot_set = slot_set
         self.msgq_id = msgq_id
         self.debug = debug

@@ -49,6 +49,7 @@ public:
 	~p25p2_tdma();	// destructor
 	void set_xormask(const char*p);
 	void set_debug(int debug);
+	void set_nac(int nac);
 	bool rx_sym(uint8_t sym);
 	int handle_frame(void) ;
 private:
@@ -74,9 +75,8 @@ private:
 	bool d_do_nocrypt;
 	const op25_audio& op25audio;
 	log_ts logts;
-
+    int d_nac;
 	int d_debug;
-
 	int burst_id;
 	inline int track_vb(int burst_type) { return burst_id = (burst_type == 0) ? (++burst_id % 5) : 4; }
 	inline void reset_vb(void) { burst_id = -1; }

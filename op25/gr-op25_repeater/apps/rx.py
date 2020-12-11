@@ -340,7 +340,7 @@ class p25_rx_block (gr.top_block):
                 logfile_workers.append({'demod': demod, 'decoder': decoder, 'active': False})
                 self.connect(source, demod, decoder)
 
-        self.trunk_rx = trunking.rx_ctl(frequency_set = self.change_freq, debug = self.options.verbosity, conf_file = self.options.trunk_conf_file, logfile_workers=logfile_workers, meta_update = self.meta_update, crypt_behavior = self.options.crypt_behavior)
+        self.trunk_rx = trunking.rx_ctl(frequency_set = self.change_freq, nac_set = self.set_nac, debug = self.options.verbosity, conf_file = self.options.trunk_conf_file, logfile_workers=logfile_workers, meta_update = self.meta_update, crypt_behavior = self.options.crypt_behavior)
 
         self.du_watcher = du_queue_watcher(self.rx_q, self.trunk_rx.process_qmsg)
 
@@ -373,6 +373,10 @@ class p25_rx_block (gr.top_block):
         self.disconnect_demods()
         self.current_speed = new_speed
         self.connect_fsk4_demod()
+
+    def set_nac(self, params):
+        if 'nac' in params:
+            self.decoder.set_nac(params['nac'])
 
     def configure_tdma(self, params):
         if params['tdma'] is not None and not self.options.phase2_tdma:
