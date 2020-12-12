@@ -387,8 +387,10 @@ class p25_demod_cb(p25_demod_base):
         self.clock.set_omega(self.sps)
 
     def reset(self):
-        if self.connect_state == 'cqpsk':
+        if callable(getattr(self.clock, 'reset', None)):
             self.clock.reset()
+        if callable(getattr(self.fsk4_demod, 'reset', None)):
+            self.fsk4_demod.reset()
 
     def set_relative_frequency(self, freq):
         if abs(freq) > ((self.input_rate / 2) - (self.if1 / 2)):
