@@ -71,7 +71,7 @@ class trunked_system (object):
         self.cc_timeouts = -1
         self.CC_HUNT_TIME = 5.0
         self.PATCH_EXPIRY_TIME = 20.0
-        self.FREQ_EXPIRY_TIME = 1.0
+        self.FREQ_EXPIRY_TIME = 1.2
         self.center_frequency = 0
         self.last_tsbk = 0
         self.talkgroups = {}
@@ -283,6 +283,8 @@ class trunked_system (object):
                 tgid = self.voice_frequencies[frequency]['tgid'][slot]
                 if tgid is not None and tgid != curr_tgid and curr_time >= self.voice_frequencies[frequency]['ts'][slot] + self.FREQ_EXPIRY_TIME:
                     self.voice_frequencies[frequency]['tgid'][slot] = None
+                    if self.debug >= 5:
+                        sys.stderr.write("%s clear tgid=%d, freq=%f, slot=%d\n" % (log_ts.get(), tgid, (frequency/1e6), slot))
 
     def get_updated_talkgroups(self, start_time):
         return [tgid for tgid in self.talkgroups if (
