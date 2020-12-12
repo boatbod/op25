@@ -201,6 +201,17 @@ namespace gr {
     }
 
     /*
+     * Reset tracking loops.
+     */
+    void
+    fsk4_demod_ff_impl::reset() {
+        fine_frequency_correction = 0.0;
+        coarse_frequency_correction = 0.0;
+        d_symbol_clock = 0.0;
+        d_symbol_spread = 2.0;
+    }
+
+    /*
      * Our virtual destructor.
      */
     fsk4_demod_ff_impl::~fsk4_demod_ff_impl()

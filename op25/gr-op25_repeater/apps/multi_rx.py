@@ -107,7 +107,7 @@ class device(object):
         self.offset = int(from_dict(config, 'offset', 0))
 
         self.frequency = int(from_dict(config, 'frequency', 800000000))
-        self.fractional_corr = (int(round(self.ppm)) - self.ppm) * (self.frequency/1e6)
+        self.fractional_corr = int((int(round(self.ppm)) - self.ppm) * (self.frequency/1e6))
         self.src.set_center_freq(self.frequency + self.offset)
 
     def get_ppm(self):
@@ -348,14 +348,19 @@ class channel(object):
             if self.device.tunable:                                                                  # then hard tune if allowed
                 self.device.frequency = self.frequency
                 self.device.src.set_center_freq(self.frequency + self.device.offset)
-                self.device.fractional_corr = (int(round(self.device.ppm)) - self.device.ppm) * (self.device.frequency/1e6)        # Calc frac ppm using new freq
+                self.device.fractional_corr = int((int(round(self.device.ppm)) - self.device.ppm) * (self.device.frequency/1e6))        # Calc frac ppm using new freq
                 self.demod.set_relative_frequency(self.device.offset + self.device.frequency + self.device.fractional_corr - freq)
+                if self.verbosity >= 9:
+                    sys.stderr.write("%s [%d] Hardware tune: dev_freq(%d), dev_off(%d), dev_frac(%d), tune_freq(%d)\n" % (log_ts.get(), self.msgq_id, self.device.frequency, self.device.offset, self.device.fractional_corr, (self.device.frequency - (self.device.offset + self.device.frequency + self.device.fractional_corr - freq))))
             else:                                                                                    # otherwise fail and reset to prev freq
                 self.demod.set_relative_frequency(self.device.offset + self.device.frequency + self.device.fractional_corr - old_freq)
                 self.frequency = old_freq
                 if self.verbosity:
                     sys.stderr.write("%s [%d] Unable to tune %s to frequency %f\n" % (log_ts.get(), self.msgq_id, self.name, (freq/1e6)))
                 return False
+        else:
+            if self.verbosity >= 9:
+                sys.stderr.write("%s [%d] Relative tune: dev_freq(%d), dev_off(%d), dev_frac(%d), tune_freq(%d)\n" % (log_ts.get(), self.msgq_id, self.device.frequency, self.device.offset, self.device.fractional_corr, (self.device.frequency - (self.device.offset + self.device.frequency + self.device.fractional_corr - freq))))
         if 'fft' in self.sinks:
                 self.sinks['fft'].set_center_freq(self.device.frequency)
                 self.sinks['fft'].set_relative_freq(self.device.frequency - freq)
@@ -369,7 +374,7 @@ class channel(object):
         self.device.ppm -= get_fractional_ppm(self.device.frequency, adjustment)
         self.device.src.set_freq_corr(int(round(self.device.ppm)))
         self.device.src.set_center_freq(self.device.frequency + self.device.offset)
-        self.device.fractional_corr = (int(round(self.device.ppm)) - self.device.ppm) * (self.device.frequency/1e6)
+        self.device.fractional_corr = int((int(round(self.device.ppm)) - self.device.ppm) * (self.device.frequency/1e6))
         self.demod.set_relative_frequency(self.device.offset + self.device.frequency + self.device.fractional_corr - self.frequency)
         self.demod.reset()          # reset gardner-costas tracking loop
 
