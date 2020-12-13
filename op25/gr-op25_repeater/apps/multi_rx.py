@@ -218,10 +218,10 @@ class channel(object):
         if plot is None or plot not in self.sinks or self.tb.terminal_type is None:
             return
         if self.tb.terminal_type == "http":
-            self.sinks[plot].gnuplot.set_interval(self.tb.http_plot_interval)
-            self.sinks[plot].gnuplot.set_output_dir(self.tb.http_plot_directory)
+            self.sinks[plot][0].gnuplot.set_interval(self.tb.http_plot_interval)
+            self.sinks[plot][0].gnuplot.set_output_dir(self.tb.http_plot_directory)
         else:
-            self.sinks[plot].gnuplot.set_interval(self.tb.curses_plot_interval)
+            self.sinks[plot][0].gnuplot.set_interval(self.tb.curses_plot_interval)
 
     def toggle_plot(self, plot_type):
         if plot_type == 1:
@@ -237,18 +237,22 @@ class channel(object):
         elif plot_type == 6:
             self.toggle_tuner_plot()
 
+    def close_plots(self):
+        for plot in list(self.sinks.keys()):
+            self.sinks[plot][1]()
+
     def toggle_eye_plot(self):
         if 'eye' not in self.sinks:
             sink = eye_sink_f(plot_name=("Ch:%s" % self.name), chan=self.msgq_id)
             sink.set_sps(self.config['if_rate'] / self.symbol_rate)
-            self.sinks['eye'] = sink
+            self.sinks['eye'] = (sink, self.toggle_eye_plot)
             self.set_plot_destination('eye')
             self.tb.lock()
             self.demod.connect_fm_demod()                   # add fm demod to flowgraph if not already present
             self.demod.connect_bb('symbol_filter', sink)
             self.tb.unlock()
         else:
-            sink = self.sinks.pop('eye')
+            (sink, fn) = self.sinks.pop('eye')
             self.tb.lock()
             self.demod.disconnect_bb(sink)
             self.demod.disconnect_fm_demod()                # remove fm demod from flowgraph if no longer needed
@@ -258,14 +262,14 @@ class channel(object):
     def toggle_tuner_plot(self):
         if 'tuner' not in self.sinks:
             sink = tuner_sink_f(plot_name=("Ch:%s" % self.name), chan=self.msgq_id)
-            self.sinks['tuner'] = sink
+            self.sinks['tuner'] = (sink, self.toggle_tuner_plot)
             self.set_plot_destination('tuner')
             self.tb.lock()
             self.demod.connect_fm_demod()                   # add fm demod to flowgraph if not already present
             self.demod.connect_bb_tuner('symbol_filter', sink)
             self.tb.unlock()
         else:
-            sink = self.sinks.pop('tuner')
+            (sink, fn) = self.sinks.pop('tuner')
             self.tb.lock()
             self.demod.disconnect_bb_tuner(sink)
             self.demod.disconnect_fm_demod()                # remove fm demod from flowgraph if no longer needed
@@ -275,13 +279,13 @@ class channel(object):
     def toggle_symbol_plot(self):
         if 'symbol' not in self.sinks:
             sink = symbol_sink_f(plot_name=("Ch:%s" % self.name), chan=self.msgq_id)
-            self.sinks['symbol'] = sink
+            self.sinks['symbol'] = (sink, self.toggle_symbol_plot)
             self.set_plot_destination('symbol')
             self.tb.lock()
             self.demod.connect_float(sink)
             self.tb.unlock()
         else:
-            sink = self.sinks.pop('symbol')
+            (sink, fn) = self.sinks.pop('symbol')
             self.tb.lock()
             self.demod.disconnect_float(sink)
             self.tb.unlock()
@@ -290,7 +294,7 @@ class channel(object):
     def toggle_fft_plot(self):
         if 'fft' not in self.sinks:
             sink = fft_sink_c(plot_name=("Ch:%s" % self.name), chan=self.msgq_id)
-            self.sinks['fft'] = sink
+            self.sinks['fft'] = (sink, self.toggle_fft_plot)
             self.set_plot_destination('fft')
             sink.set_offset(self.device.offset)
             sink.set_center_freq(self.device.frequency)
@@ -300,7 +304,7 @@ class channel(object):
             self.demod.connect_complex('src', sink)
             self.tb.unlock()
         else:
-            sink = self.sinks.pop('fft')
+            (sink, fn) = self.sinks.pop('fft')
             self.tb.lock()
             self.demod.disconnect_complex(sink)
             self.tb.unlock()
@@ -309,14 +313,14 @@ class channel(object):
     def toggle_mixer_plot(self):
         if 'mixer' not in self.sinks:
             sink = mixer_sink_c(plot_name=("Ch:%s" % self.name), chan=self.msgq_id)
-            self.sinks['mixer'] = sink
+            self.sinks['mixer'] = (sink, self.toggle_mixer_plot)
             self.set_plot_destination('mixer')
             sink.set_width(self.config['if_rate'])
             self.tb.lock()
             self.demod.connect_complex('cutoff', sink)
             self.tb.unlock()
         else:
-            sink = self.sinks.pop('mixer')
+            (sink, fn) = self.sinks.pop('mixer')
             self.tb.lock()
             self.demod.disconnect_complex(sink)
             self.tb.unlock()
@@ -327,13 +331,13 @@ class channel(object):
             return
         if 'constellation' not in self.sinks:
             sink = constellation_sink_c(plot_name=("Ch:%s" % self.name), chan=self.msgq_id)
-            self.sinks['constellation'] = sink
+            self.sinks['constellation'] = (sink, self.toggle_constellation_plot)
             self.set_plot_destination('constellation')
             self.tb.lock()
             self.demod.connect_complex('diffdec', sink)
             self.tb.unlock()
         else:
-            sink = self.sinks.pop('constellation')
+            (sink, fn) = self.sinks.pop('constellation')
             self.tb.lock()
             self.demod.disconnect_complex(sink)
             self.tb.unlock()
@@ -362,8 +366,8 @@ class channel(object):
             if self.verbosity >= 9:
                 sys.stderr.write("%s [%d] Relative tune: dev_freq(%d), dev_off(%d), dev_frac(%d), tune_freq(%d)\n" % (log_ts.get(), self.msgq_id, self.device.frequency, self.device.offset, self.device.fractional_corr, (self.device.frequency - (self.device.offset + self.device.frequency + self.device.fractional_corr - freq))))
         if 'fft' in self.sinks:
-                self.sinks['fft'].set_center_freq(self.device.frequency)
-                self.sinks['fft'].set_relative_freq(self.device.frequency - freq)
+                self.sinks['fft'][0].set_center_freq(self.device.frequency)
+                self.sinks['fft'][0].set_relative_freq(self.device.frequency - freq)
         if self.verbosity >= 9:
             sys.stderr.write("%s [%d] Tuning to frequency %f\n" % (log_ts.get(), self.msgq_id, (freq/1e6)))
         self.demod.reset()          # reset gardner-costas tracking loop
@@ -400,7 +404,7 @@ class channel(object):
         self.symbol_rate = rate
         self.demod.set_omega(rate)
         if 'eye' in self.sinks:
-            self.sinks['eye'].set_sps(self.config['if_rate'] / rate)
+            self.sinks['eye'][0].set_sps(self.config['if_rate'] / rate)
 
     def set_nac(self, nac):
         self.decoder.set_nac(nac)
@@ -413,7 +417,7 @@ class channel(object):
 
     def kill(self):
         for sink in self.sinks:
-            self.sinks[sink].kill()
+            self.sinks[sink][0].kill()
 
 class rx_block (gr.top_block):
 
@@ -436,6 +440,8 @@ class rx_block (gr.top_block):
         self.rx_q = gr.msg_queue(100)
         self.ui_in_q = gr.msg_queue(10)
         self.ui_out_q = gr.msg_queue(10)
+        self.ui_timeout = 5.0
+        self.ui_last_update = 0.0
 
         gr.top_block.__init__(self)
         self.device_id_by_name = {}
@@ -523,6 +529,7 @@ class rx_block (gr.top_block):
         self.curses_plot_interval = float(from_dict(config, 'curses_plot_interval', 0.0))
         self.http_plot_interval = float(from_dict(config, 'http_plot_interval', 1.0))
         self.http_plot_directory = str(from_dict(config, 'http_plot_directory', "../www/images"))
+        self.ui_timeout = float(from_dict(config, 'terminal_timeout', 5.0))
 
     def configure_trunking(self, config):
         if (("module" in config and (config['module'] == "")) or 
@@ -703,6 +710,7 @@ class rx_block (gr.top_block):
         if s == 'quit':
             return True
         elif s == 'update':                 # UI initiated update request
+            self.ui_last_update = time.time()
             self.ui_freq_update()
             if self.trunking is None or self.trunk_rx is None:
                 return False
@@ -735,6 +743,12 @@ class rx_block (gr.top_block):
                 return False
         elif s == 'dump_tgids':
             self.trunk_rx.dump_tgids()
+        elif s == 'watchdog':
+            if self.ui_last_update > 0 and (time.time() > (self.ui_last_update + self.ui_timeout)):
+                self.ui_last_update = 0
+                sys.stderr.write("%s UI Timeout\n" % log_ts.get())
+                for chan in self.channels:
+                    chan.close_plots()
         elif s in RX_COMMANDS:
             if self.trunking is not None and self.trunk_rx is not None:
                 self.trunk_rx.ui_command(s, msg.arg1(), msg.arg2())
@@ -762,8 +776,8 @@ class rx_block (gr.top_block):
         filenames = []
         for chan in self.channels:
             for sink in chan.sinks:
-                if chan.sinks[sink].gnuplot.filename is not None:
-                    filenames.append(chan.sinks[sink].gnuplot.filename)
+                if chan.sinks[sink][0].gnuplot.filename is not None:
+                    filenames.append(chan.sinks[sink][0].gnuplot.filename)
         d = {'json_type': 'rx_update', 'files': filenames}
         msg = gr.message().make_from_string(json.dumps(d), -4, 0, 0)
         self.ui_in_q.insert_tail(msg)
@@ -854,6 +868,8 @@ class rx_main(object):
             if self.tb.get_interactive():
                 while self.keep_running:
                     time.sleep(1)
+                    msg = gr.message().make_from_string("watchdog", -2, 0, 0)
+                    self.tb.ui_out_q.insert_tail(msg)
             else:
                 self.tb.wait() # curiously wait() matures when a flowgraph gets locked
             sys.stderr.write('Flowgraph complete. Exiting\n')
