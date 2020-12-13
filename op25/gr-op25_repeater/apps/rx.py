@@ -120,6 +120,8 @@ class p25_rx_block (gr.top_block):
         self.last_freq_params = {'freq' : 0.0, 'tgid' : None, 'tag' : "", 'tdma' : None}
         self.meta_server = None
         self.stream_url = ""
+        self.ui_last_update = 0
+        self.ui_timeout = 5.0
 
         self.src = None
         if (not options.ifile) and (not options.input) and (not options.audio) and (not options.audio_if) and (not options.symbols):
@@ -887,6 +889,7 @@ class p25_rx_block (gr.top_block):
             s = s.decode()
         if s == 'quit': return True
         elif s == 'update':
+            self.ui_last_update = time.time()
             self.freq_update()
             if self.trunk_rx is None:
                 return False    ## possible race cond - just ignore
@@ -911,6 +914,12 @@ class p25_rx_block (gr.top_block):
         elif s == 'add_default_config':
             nac = msg.arg1()
             self.trunk_rx.add_default_config(int(nac))
+        elif s == 'watchdog':
+            if self.ui_last_update > 0 and (time.time() > (self.ui_last_update + self.ui_timeout)):
+                self.ui_last_update = 0
+                sys.stderr.write("%s UI Timeout\n" % log_ts.get())
+                self.toggle_plot(0)
+
         elif s in RX_COMMANDS:
             self.rx_q.insert_tail(msg)
         return False
@@ -955,6 +964,8 @@ class rx_main(object):
             else:
                 while self.keep_running:
                     time.sleep(1)
+                    msg = gr.message().make_from_string("watchdog", -2, 0, 0)
+                    self.tb.output_q.insert_tail(msg)
             sys.stderr.write('Flowgraph completed. Exiting\n')
         except:
             sys.stderr.write('main: exception occurred\n')

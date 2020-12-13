@@ -55,6 +55,7 @@ namespace gr {
        * Nominal levels are -3, -1, +1, and +3.
        */
       static sptr make(gr::msg_queue::sptr queue, float sample_rate_Hz, float symbol_rate_Hz, bool bfsk = false);
+      virtual void reset() {}
     };
 
   } // namespace op25

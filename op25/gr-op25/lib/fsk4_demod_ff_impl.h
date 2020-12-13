@@ -56,6 +56,7 @@ namespace gr {
      public:
       fsk4_demod_ff_impl(gr::msg_queue::sptr queue, float sample_rate_Hz, float symbol_rate_Hz, bool bfsk = false);
       ~fsk4_demod_ff_impl();
+      void reset();
 
       // Where all the action really happens
       void forecast (int noutput_items, gr_vector_int &ninput_items_required);
