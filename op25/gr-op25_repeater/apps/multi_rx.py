@@ -409,9 +409,6 @@ class channel(object):
     def set_nac(self, nac):
         self.decoder.set_nac(nac)
 
-    def set_nac(self, nac):
-        self.decoder.set_nac(nac)
-
     def set_slot(self, slot):
         self.decoder.set_slotid(slot)
 
