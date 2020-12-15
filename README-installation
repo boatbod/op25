@@ -3,16 +3,13 @@ How to Install OP25
 These high level instructions will lead you through installing op25
 on Debian based Linux systems such as Ubuntu, Linux Mint and similar.
 
-Note 1: op25 is currently tested against gnuradio-3.7 and python2.  The code
-is written to be largely python-version agnostic but there are elements of
-the build process (e.g. swig scripts) that may rely on python2.  Patches
-for gnuradio-3.8 are included for those wishing to experiment, but at this
-point they are not tested and may not function as intended.
+Note 1: op25 is currently tested against gnuradio-3.7/python2 with Ubuntu 16.04
+and gnuradio-3.8/python3 with Ubuntu 20.04.  
 
 Note 2: versions of cmake later than 3.10.3 have been known to cause dependency
-issues while building the swig libraries. At the current time if you experience
-build difficulties of this sort, try dropping back to cmake-3.10.3, delete the
-contents of ~/op25/build/ and start over.
+issues while building the swig libraries on pyhton2. At the current time if you
+experience build difficulties of this sort, try dropping back to cmake-3.10.3,
+delete the contents of ~/op25/build/ and start over.
 
 Note 3: There is also a ./rebuild.sh script that will (optionally) update & rebuild op25, local changes must be committed or reverted for update to happen.
 
