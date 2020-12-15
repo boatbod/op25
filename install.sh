@@ -37,8 +37,6 @@ if [ ! -f /etc/modprobe.d/blacklist-rtl.conf ]; then
 	sudo install -m 0644 ./blacklist-rtl.conf /etc/modprobe.d/
 fi
 
-exit
-
 mkdir build
 cd build
 cmake ../
