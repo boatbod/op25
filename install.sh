@@ -10,9 +10,10 @@ if [ ! -d op25/gr-op25 ]; then
 	exit
 fi
 
-#sudo apt-get update
+echo "Updating packages list"
+sudo apt-get update
 
-GR_VER=$(dpkg-query -f '${Version}\n' --show gnuradio | sed  s/\.[0123456789]*\.[^.]*$//g)
+GR_VER=$(apt list gnuradio 2>/dev/null | grep -m 1 gnuradio | cut -d' ' -f2 | cut -d'.' -f1,2)
 if [ ${GR_VER} = "3.8" ]; then
     echo "Installing for GNURadio 3.8"
     cat gr3.8.patch | patch -N -p1 -r -
