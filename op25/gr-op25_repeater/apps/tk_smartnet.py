@@ -206,6 +206,9 @@ class osw_receiver(object):
     def get_whitelist(self):
         return self.whitelist
 
+    def get_skiplist(self):
+        return self.skiplist
+
     def get_msgq_id(self):
         return self.msgq_id
 
@@ -612,6 +615,7 @@ class voice_receiver(object):
         self.hold_mode = False
         self.tgid_hold_time = TGID_HOLD_TIME
         self.blacklist = {}
+        self.skiplist = {}
         self.whitelist = None
         self.vc_retries = 0
 
@@ -629,6 +633,7 @@ class voice_receiver(object):
         meta_update(self.meta_q)
 
     def load_bl_wl(self):
+        self.skiplist = self.controll.get_skiplist()
         if 'blacklist' in self.config and self.config['blacklist'] != "":
             sys.stderr.write("%s [%d] reading channel blacklist file: %s\n" % (log_ts.get(), self.msgq_id, self.config['blacklist']))
             self.blacklist = get_int_dict(self.config['blacklist'], self.msgq_id)
