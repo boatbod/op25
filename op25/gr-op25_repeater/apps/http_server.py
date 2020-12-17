@@ -73,7 +73,7 @@ def post_req(environ, start_response, postdata):
         valid_req = True
         time.sleep(0.2)
     except:
-        sys.stderr.write('post_req: error processing input: %s:\n' % (postdata))
+        sys.stderr.write('post_req: error processing input: %s\n%s\n' % (postdata, traceback.format_exc()))
 
     resp_msg = []
     while not my_recv_q.empty_p():
