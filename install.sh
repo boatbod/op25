@@ -22,7 +22,7 @@ if [ ${GR_VER} = "3.8" ]; then
     sudo apt-get install gnuradio gnuradio-dev gr-osmosdr librtlsdr-dev libuhd-dev  libhackrf-dev libitpp-dev libpcap-dev cmake git swig build-essential pkg-config doxygen python3-numpy python3-waitress python3-requests gnuplot-x11
 
     # Tell op25 to use python3
-    echo "/usr/bin/python3" > op25/op25/gr-op25_repeater/apps/op25_python
+    echo "/usr/bin/python3" > op25/gr-op25_repeater/apps/op25_python
 
 else
     echo "Installing for GNURadio 3.7"
@@ -30,7 +30,7 @@ else
     sudo apt-get install gnuradio gnuradio-dev gr-osmosdr librtlsdr-dev libuhd-dev  libhackrf-dev libitpp-dev libpcap-dev cmake git swig build-essential pkg-config doxygen python-numpy python-waitress python-requests gnuplot-x11
 
     # Tell op25 to use python2
-    echo "/usr/bin/python" > op25/op25/gr-op25_repeater/apps/op25_python
+    echo "/usr/bin/python" > op25/gr-op25_repeater/apps/op25_python
 
 fi
 
