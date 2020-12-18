@@ -208,7 +208,7 @@ class curses_terminal(threading.Thread):
                     dbglvl = 0
             except:
                 dbglvl = None
-            if dbglvl >= 0:
+            if dbglvl is not None and dbglvl >= 0:
                 self.send_command('set_debug', dbglvl, int(self.current_msgqid))
         elif c == ord('H'):
             self.prompt.addstr(0, 0, 'Hold tgid')
