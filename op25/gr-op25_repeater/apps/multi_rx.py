@@ -1,5 +1,4 @@
-#!/usr/bin/env python
-
+#!/bin/sh
 # Copyright 2011, 2012, 2013, 2014, 2015, 2016, 2017 Max H. Parke KA1RBI
 # Copyright 2020 Graham J. Norbury - gnorbury@bondcar.com
 # 
@@ -20,6 +19,29 @@
 # Software Foundation, Inc., 51 Franklin Street, Boston, MA
 # 02110-1301, USA.
 
+"true" '''\'
+DEFAULT_PYTHON2=/usr/bin/python
+DEFAULT_PYTHON3=/usr/bin/python3
+if [ -f op25_python ]; then
+    OP25_PYTHON=$(cat op25_python)
+else
+    OP25_PYTHON="/usr/bin/python"
+fi
+
+if [ -x $OP25_PYTHON ]; then
+    echo Using Python $OP25_PYTHON >&2
+    exec $OP25_PYTHON "$0" "$@"
+elif [ -x $DEFAULT_PYTHON2 ]; then
+    echo Using Python $DEFAULT_PYTHON2 >&2
+    exec $DEFAULT_PYTHON2 "$0" "$@"
+elif [ -x $DEFAULT_PYTHON3 ]; then
+    echo Using Python $DEFAULT_PYTHON3 >&2
+    exec $DEFAULT_PYTHON3 "$0" "$@"
+else
+    echo Unable to find Python >&2
+fi
+exit 127
+'''
 import io
 import os
 import sys
@@ -574,7 +596,7 @@ class rx_block (gr.top_block):
                     sys.stderr.write("Configuring metadata stream #%d [%s]: %s\n" % (idx, stream_name, stream['icecastServerAddress'] + "/" + stream['icecastMountpoint']))
                 except:
                     sys.stderr.write("Error configuring metadata stream #%d; %s\n" % (idx, sys.exc_info()[1]))
-                    sys.exc_clear()
+                    #sys.exc_clear()
             else:
                 sys.stderr.write("Ignoring unnamed metadata stream #%d\n" % idx)
             idx += 1
