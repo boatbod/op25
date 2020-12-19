@@ -1,5 +1,4 @@
-#!/usr/bin/env python
-
+#!/bin/sh
 # Copyright 2008-2011 Steve Glass
 # 
 # Copyright 2011, 2012, 2013, 2014, 2015, 2016, 2017 Max H. Parke KA1RBI
@@ -21,6 +20,29 @@
 # Software Foundation, Inc., 51 Franklin Street, Boston, MA
 # 02110-1301, USA.
 
+"true" '''\'
+DEFAULT_PYTHON2=/usr/bin/python
+DEFAULT_PYTHON3=/usr/bin/python3
+if [ -f op25_python ]; then
+    OP25_PYTHON=$(cat op25_python)
+else
+    OP25_PYTHON="/usr/bin/python"
+fi
+
+if [ -x $OP25_PYTHON ]; then
+    echo Using Python $OP25_PYTHON >&2
+    exec $OP25_PYTHON "$0" "$@"
+elif [ -x $DEFAULT_PYTHON2 ]; then
+    echo Using Python $DEFAULT_PYTHON2 >&2
+    exec $DEFAULT_PYTHON2 "$0" "$@"
+elif [ -x $DEFAULT_PYTHON3 ]; then
+    echo Using Python $DEFAULT_PYTHON3 >&2
+    exec $DEFAULT_PYTHON3 "$0" "$@"
+else
+    echo Unable to find Python >&2
+fi
+exit 127
+'''
 import sys
 import curses
 import curses.textpad
@@ -208,7 +230,7 @@ class curses_terminal(threading.Thread):
                     dbglvl = 0
             except:
                 dbglvl = None
-            if dbglvl >= 0:
+            if dbglvl is not None and dbglvl >= 0:
                 self.send_command('set_debug', dbglvl, int(self.current_msgqid))
         elif c == ord('H'):
             self.prompt.addstr(0, 0, 'Hold tgid')
@@ -451,7 +473,11 @@ class curses_terminal(threading.Thread):
 
     def send_command(self, command, arg1 = 0, arg2 = 0):
         if self.sock:
-            self.sock.send(json.dumps({'command': command, 'arg1': arg1, 'arg2': arg2}))
+            js = json.dumps({'command': command, 'arg1': arg1, 'arg2': arg2})
+            if sys.version[0] > '2':
+                if type(js) is str:
+                    js = js.encode()
+            self.sock.send(js)
         else:
             msg = gr.message().make_from_string(command, -2, arg1, arg2)
             self.output_q.insert_tail(msg)
