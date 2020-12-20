@@ -222,7 +222,10 @@ class p25_rx_block (gr.top_block):
         # wait for gdb
         if options.pause:
             sys.stdout.write("Ready for GDB to attach (pid = %d)\n" % (os.getpid(),))
-            input("Press 'Enter' to continue...")
+            if sys.version[0] > '2':
+                input("Press 'Enter' to continue...")
+            else:
+                raw_input("Press 'Enter' to continue...")
 
         self.input_q = gr.msg_queue(10)
         self.output_q = gr.msg_queue(10)

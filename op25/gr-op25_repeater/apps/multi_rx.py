@@ -875,7 +875,10 @@ class rx_main(object):
         # wait for gdb
         if options.pause:
             sys.stdout.write("Ready for GDB to attach (pid = %d)\n" % (os.getpid(),))
-            input("Press 'Enter' to continue...")
+            if sys.version[0] > '2':
+                input("Press 'Enter' to continue...")
+            else:
+                raw_input("Press 'Enter' to continue...")
 
         if options.config_file == '-':
             config = json.loads(sys.stdin.read())
