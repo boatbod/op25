@@ -838,12 +838,15 @@ class du_queue_watcher(threading.Thread):
         self.start()
 
     def run(self):
-        while(self.keep_running):
-            msg = self.msgq.delete_head()
-            if msg is not None:
-                self.callback(msg)
-            else:
-                self.keep_running = False
+        try:
+            while(self.keep_running):
+                msg = self.msgq.delete_head()
+                if msg is not None:
+                    self.callback(msg)
+                else:
+                    self.keep_running = False
+        except:
+            self.keep_running = False
 
     def kill(self):
         self.keep_running = False
