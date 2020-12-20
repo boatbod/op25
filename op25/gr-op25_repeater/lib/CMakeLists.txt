@@ -85,7 +85,11 @@ else(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     find_library(GR_FILTER_LIBRARY libgnuradio-filter.so )
 endif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
 set(GR_FILTER_LIBRARIES ${GR_FILTER_LIBRARY})
-target_link_libraries(gnuradio-op25_repeater ${Boost_LIBRARIES} ${GNURADIO_RUNTIME_LIBRARIES} ${GR_FILTER_LIBRARIES} imbe_vocoder)
+if ("${Gnuradio_VERSION}" VERSION_LESS "3.8.0")
+    target_link_libraries(gnuradio-op25_repeater ${Boost_LIBRARIES} ${GNURADIO_RUNTIME_LIBRARIES} ${GR_FILTER_LIBRARIES} imbe_vocoder)
+else()
+    target_link_libraries(gnuradio-op25_repeater ${Boost_LIBRARIES} gnuradio::gnuradio-runtime ${GR_FILTER_LIBRARIES} imbe_vocoder)
+endif()
 set_target_properties(gnuradio-op25_repeater PROPERTIES DEFINE_SYMBOL "gnuradio_op25_repeater_EXPORTS")
 
 ########################################################################

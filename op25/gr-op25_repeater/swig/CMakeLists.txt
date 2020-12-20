@@ -21,7 +21,7 @@
 # Include swig generation macros
 ########################################################################
 find_package(SWIG)
-find_package(PythonLibs 2)
+find_package(PythonLibs ${OP25_PYTHOM_VER})
 if(NOT SWIG_FOUND OR NOT PYTHONLIBS_FOUND)
     return()
 endif()
@@ -31,9 +31,13 @@ include(GrPython)
 ########################################################################
 # Setup swig generation
 ########################################################################
-foreach(incdir ${GNURADIO_RUNTIME_INCLUDE_DIRS})
-    list(APPEND GR_SWIG_INCLUDE_DIRS ${incdir}/gnuradio/swig)
-endforeach(incdir)
+if ("${Gnuradio_VERSION}" VERSION_LESS "3.8.0")
+    foreach(incdir ${GNURADIO_RUNTIME_INCLUDE_DIRS})
+        list(APPEND GR_SWIG_INCLUDE_DIRS ${incdir}/gnuradio/swig)
+    endforeach(incdir)
+else()
+    set(GR_SWIG_INCLUDE_DIRS $<TARGET_PROPERTY:gnuradio::runtime_swig,INTERFACE_INCLUDE_DIRECTORIES>)
+endif()
 
 set(GR_SWIG_LIBRARIES gnuradio-op25_repeater)
 set(GR_SWIG_DOC_FILE ${CMAKE_CURRENT_BINARY_DIR}/op25_repeater_swig_doc.i)
@@ -44,7 +48,7 @@ GR_SWIG_MAKE(op25_repeater_swig op25_repeater_swig.i)
 ########################################################################
 # Install the build swig module
 ########################################################################
-GR_SWIG_INSTALL(TARGETS op25_repeater_swig DESTINATION ${GR_PYTHON_DIR}/op25_repeater)
+GR_SWIG_INSTALL(TARGETS op25_repeater_swig DESTINATION ${OP25_PYTHON_DIR}/op25_repeater)
 
 ########################################################################
 # Install swig .i files for development
