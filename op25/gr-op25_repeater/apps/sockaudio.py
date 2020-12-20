@@ -297,6 +297,7 @@ class pa_sound(object):
 
     def close(self):
         self.libpa.pa_simple_free(self.out)
+        self.out = None
 
     def setup(self, pcm_format, pcm_channels, pcm_rate, pcm_buffer_size):
         self.ss.format = PA_SAMPLE_S16LE # fixed format
@@ -382,9 +383,11 @@ class socket_audio(object):
         else:
             if pcm_device.lower() == "pulse":
                 try:
-                    self.pcm = pa_sound()       # first try to use PulseAudio
+                    self.pcm = pa_sound()       # first try to open PulseAudio
+                    self.pcm.drain()            # and make sure it actually works
                     sys.stderr.write("using PulseAudio sound system\n")
                 except:
+                    self.pcm = None
                     sys.stderr.write("unable to load PulseAudio library\n")
                     pcm_device = "default"
 

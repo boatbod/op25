@@ -725,6 +725,8 @@ class rx_block (gr.top_block):
 
     def process_qmsg(self, msg):            # Handle UI requests
         RX_COMMANDS = 'skip lockout hold whitelist reload'.split()
+        if msg is None:
+            return True
         s = msg.to_string()
         if type(s) is not str and isinstance(s, bytes):
             # should only get here if python3
@@ -812,6 +814,10 @@ class rx_block (gr.top_block):
             if self.audio_instances[instance] is not None:
                 self.audio_instances[instance].stop()
 
+        for meta_s in self.meta_streams:
+            if self.meta_streams[meta_s] is not None:
+                self.meta_streams[meta_s][0].stop()
+
         if self.terminal is not None:
             self.terminal.end_terminal()
 
@@ -832,9 +838,15 @@ class du_queue_watcher(threading.Thread):
         self.start()
 
     def run(self):
-        while(self.keep_running):
-            msg = self.msgq.delete_head()
-            self.callback(msg)
+        try:
+            while(self.keep_running):
+                msg = self.msgq.delete_head()
+                if msg is not None:
+                    self.callback(msg)
+                else:
+                    self.keep_running = False
+        except:
+            self.keep_running = False
 
     def kill(self):
         self.keep_running = False
@@ -866,7 +878,10 @@ class rx_main(object):
         # wait for gdb
         if options.pause:
             sys.stdout.write("Ready for GDB to attach (pid = %d)\n" % (os.getpid(),))
-            input("Press 'Enter' to continue...")
+            if sys.version[0] > '2':
+                input("Press 'Enter' to continue...")
+            else:
+                raw_input("Press 'Enter' to continue...")
 
         if options.config_file == '-':
             config = json.loads(sys.stdin.read())
@@ -880,7 +895,7 @@ class rx_main(object):
         sys.stderr.write('python version detected: %s\n' % sys.version)
 
     def process_qmsg(self, msg):
-        if self.tb.process_qmsg(msg):
+        if msg is None or self.tb.process_qmsg(msg):
             self.tb.stop()
             self.keep_running = False
 

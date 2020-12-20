@@ -9,6 +9,7 @@ stderr*
 *.txt
 *.liq
 *.bin
+op25_python
 
 # Tracked files that would otherwise be excluded
 !op25.sh

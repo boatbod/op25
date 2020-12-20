@@ -4,7 +4,8 @@ These high level instructions will lead you through installing op25
 on Debian based Linux systems such as Ubuntu, Linux Mint and similar.
 
 Note 1: op25 is currently tested against gnuradio-3.7/python2 with Ubuntu 16.04
-and gnuradio-3.8/python3 with Ubuntu 20.04.  
+and gnuradio-3.8/python3 with Ubuntu 20.04. Build environment automatically figures
+out which version of gnuradio you have and therefore which version of python to use. 
 
 Note 2: versions of cmake later than 3.10.3 have been known to cause dependency
 issues while building the swig libraries on pyhton2. At the current time if you
