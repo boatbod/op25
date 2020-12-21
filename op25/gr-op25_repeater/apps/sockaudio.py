@@ -274,6 +274,7 @@ class _struct_pa_sample_spec(Structure):
 
 class pa_sound(object):
     def __init__(self):
+        self.out = None
         self.error = c_int(0)
         self.libpa = cdll.LoadLibrary("libpulse-simple.so.0")
        	self.libpa.strerror.restype = c_char_p
@@ -383,20 +384,19 @@ class socket_audio(object):
         else:
             if pcm_device.lower() == "pulse":
                 try:
-                    self.pcm = pa_sound()       # first try to open PulseAudio
-                    self.pcm.drain()            # and make sure it actually works
+                    self.pcm = pa_sound()   # first try to open PulseAudio
                     sys.stderr.write("using PulseAudio sound system\n")
-                except:
+                except Exception as e:
                     self.pcm = None
-                    sys.stderr.write("unable to load PulseAudio library\n")
+                    sys.stderr.write("unable to load PulseAudio library\n%s\n" % e)
                     pcm_device = "default"
 
             if self.pcm is None:
                 try:
                     self.pcm = alsasound()  # if PulseAudio not available, try to use ALSA
                     sys.stderr.write("using ALSA sound system\n")
-                except:
-                    sys.stderr.write("unable to load ALSA library\n")
+                except Exception as e:
+                    sys.stderr.write("unable to load ALSA library\n%s\n" % e)
 
         if self.pcm is not None:
             self.setup_pcm(pcm_device)
