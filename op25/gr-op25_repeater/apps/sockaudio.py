@@ -291,7 +291,7 @@ class pa_sound(object):
             None,
             byref(self.error)))
 
-        if not self.out:
+        if self.out is None:
             sys.stderr.write("%s Could not open PulseAudio stream: %s\n" % (log_ts.get(), self.libpa.strerror(self.error)))
 
         return self.error.value

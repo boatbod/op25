@@ -343,9 +343,10 @@ class dmr_receiver:
 
 
 class rx_ctl(object):
-    def __init__(self, debug=0, frequency_set=None, slot_set=None, nbfm_ctrl=None, chans=None):
+    def __init__(self, debug=0, frequency_set=None, nac_set=None, slot_set=None, nbfm_ctrl=None, chans=None):
         self.frequency_set = frequency_set
         self.slot_set = slot_set
+        self.nac_set = nac_set
         self.debug = debug
         self.receivers = {}
 
@@ -366,7 +367,7 @@ class rx_ctl(object):
             self.receivers[rx_id].post_init()
 
     def add_receiver(self, msgq_id, config, meta_q = None, freq = 0):
-        self.receivers[msgq_id] = dmr_receiver(msgq_id, self.frequency_set, self.slot_set, self.chans, self.debug)
+        self.receivers[msgq_id] = dmr_receiver(msgq_id, self.frequency_set, self.nac_set, self.slot_set, self.chans, self.debug)
 
     def process_qmsg(self, msg):
         m_proto = ctypes.c_int16(msg.type() >> 16).value  # upper 16 bits of msg.type() is signed protocol
