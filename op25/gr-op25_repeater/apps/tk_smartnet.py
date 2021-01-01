@@ -308,6 +308,7 @@ class osw_receiver(object):
             self.enqueue(osw_addr, osw_grp, osw_cmd, m_ts)
             self.stats['osw_count'] += 1
             self.last_osw = m_ts
+            self.cc_retries = 0
 
         rc = False
         rc |= self.process_osws()

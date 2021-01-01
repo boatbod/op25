@@ -364,6 +364,12 @@ class p25_system(object):
         else:
             return True
 
+    def valid_cc(self, msgq_id):
+        if msgq_id is None or self.cc_msgq_id is None or msgq_id != self.cc_msgq_id:
+            return False;
+        self.cc_retries = 0
+        return True
+
     def timeout_cc(self, msgq_id):
         if msgq_id is None or self.cc_msgq_id is None or msgq_id != self.cc_msgq_id:
             return False;
@@ -389,11 +395,11 @@ class p25_system(object):
         self.set_nac(nac)
 
         updated = 0
-        if m_type == 7: # TSBK
+        if m_type == 7 and self.valid_cc(m_rxid): # TSBK
             t = get_ordinals(s)
             updated += self.decode_tsbk(m_rxid, t)
 
-        elif m_type == 12: # MBT
+        elif m_type == 12 and self.valid_cc(m_rxid): # MBT
             s1 = s[:10]     # header without crc
             s2 = s[12:]
             header = get_ordinals(s1)
