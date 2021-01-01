@@ -633,7 +633,7 @@ class voice_receiver(object):
         meta_update(self.meta_q)
 
     def load_bl_wl(self):
-        self.skiplist = self.controll.get_skiplist()
+        self.skiplist = self.control.get_skiplist()
         if 'blacklist' in self.config and self.config['blacklist'] != "":
             sys.stderr.write("%s [%d] reading channel blacklist file: %s\n" % (log_ts.get(), self.msgq_id, self.config['blacklist']))
             self.blacklist = get_int_dict(self.config['blacklist'], self.msgq_id)
