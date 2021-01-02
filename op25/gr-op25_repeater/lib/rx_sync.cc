@@ -296,7 +296,8 @@ void rx_sync::codeword(const uint8_t* cw, const enum codeword_types codeword_typ
 	uint8_t tmp_codeword [144];
 	uint32_t E0, ET;
 	uint32_t u[8];
-	size_t errs = 0, rc = 0;
+	size_t errs = 0;
+    int rc = 0;
 	bool do_fullrate = false;
 	bool do_silence = false;
 	bool do_tone = false;
