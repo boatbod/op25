@@ -411,8 +411,8 @@ class socket_audio(object):
             readable, writable, exceptional = select.select( [self.sock_a, self.sock_b], [], [self.sock_a, self.sock_b], 5.0)
             in_a = None
             in_b = None
-            data_a = ""
-            data_b = ""
+            data_a = bytearray()
+            data_b = bytearray()
             flag_a = -1
             flag_b = -1
 
