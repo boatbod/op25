@@ -60,7 +60,6 @@ void rx_sync::cbuf_insert(const uint8_t c) {
 
 void rx_sync::reset_timer(void) {
 	sync_timer.reset();
-	p25fdma.reset_timer();
 }
 
 void rx_sync::sync_reset(void) {
@@ -519,6 +518,7 @@ void rx_sync::rx_sym(const uint8_t sym)
 		break;
 	case RX_TYPE_P25P2:
 		p25tdma.handle_packet(symbol_ptr); // passing 180 dibit packets is faster than bit-shuffling via p25tdma::rx_sym()
+        p25fdma.reset_timer();             // reset FDMA timer in case of long TDMA transmissions
 		break;
 	case RX_TYPE_DMR:
 		// frame with explicit sync resets expiration counter
