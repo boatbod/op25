@@ -329,7 +329,7 @@ class pa_sound(object):
 # Wrapper to emulate pcm writes of sound samples to stdout (for liquidsoap)
 class stdout_wrapper(object): 
     def __init__(self):
-        self.silence = chr(0) * 640
+        self.silence = bytearray(640)
         pass
 
     def open(self, hwdev):
@@ -379,7 +379,7 @@ class socket_audio(object):
         self.pcm = None
         if dest_stdout:
             pcm_device = "stdout"
-            sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0) # reopen stdout with buffering disabled
+            sys.stdout = os.fdopen(sys.stdout.fileno(), 'wb', 0) # reopen stdout with buffering disabled
             self.pcm = stdout_wrapper()
         else:
             if pcm_device.lower() == "pulse":
@@ -410,8 +410,8 @@ class socket_audio(object):
             readable, writable, exceptional = select.select( [self.sock_a, self.sock_b], [], [self.sock_a, self.sock_b], 5.0)
             in_a = None
             in_b = None
-            data_a = ""
-            data_b = ""
+            data_a = bytearray()
+            data_b = bytearray()
             flag_a = -1
             flag_b = -1
 
