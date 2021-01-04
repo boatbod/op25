@@ -11,7 +11,7 @@ set("log.level", 1)
 # Make the native sample rate compatible with op25
 set("frame.audio.samplerate", 8000)
 
-input = mksafe(input.external(buffer=0.25, channels=2, samplerate=8000, restart_on_error=false, "./audio.py -x 1.3 -s"))
+input = mksafe(input.external(buffer=0.25, channels=2, samplerate=8000, restart_on_error=false, "./audio.py -x 1.5 -s"))
 # Consider increasing the buffer value on slow systems such as RPi3. e.g. buffer=0.25
 # Longer buffer results in less choppy audio but at the expense of increased latency.
 
@@ -27,7 +27,7 @@ input = mksafe(input.external(buffer=0.25, channels=2, samplerate=8000, restart_
 #input = filter.iir.butterworth.low(frequency = 3250.0, order = 4, input)
 
 # Compression
-input = compress(input, attack = 2.0, gain = 5.0, knee = 13.0, ratio = 2.0, release = 12.3, threshold = -18.0, rms_window = 1.0)
+input = compress(input, attack = 2.0, gain = 0.0, knee = 13.0, ratio = 2.0, release = 12.3, threshold = -18.0, rms_window = 1.0)
 
 # Normalization
 input = normalize(input, gain_max = 6.0, gain_min = -6.0, target = -16.0, threshold = -65.0)
