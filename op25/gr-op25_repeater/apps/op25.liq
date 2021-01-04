@@ -11,7 +11,7 @@ set("log.level", 1)
 # Make the native sample rate compatible with op25
 set("frame.audio.samplerate", 8000)
 
-input = mksafe(input.external(buffer=0.025, channels=2, samplerate=8000, restart_on_error=false, "./audio.py -x 1.5 -s"))
+input = mksafe(input.external(buffer=0.25, channels=2, samplerate=8000, restart_on_error=false, "./audio.py -x 1.3 -s"))
 # Consider increasing the buffer value on slow systems such as RPi3. e.g. buffer=0.25
 # Longer buffer results in less choppy audio but at the expense of increased latency.
 
