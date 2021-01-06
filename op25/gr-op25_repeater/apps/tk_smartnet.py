@@ -252,6 +252,10 @@ class osw_receiver(object):
                 sreader = csv.reader(csvfile, delimiter='\t', quotechar='"', quoting=csv.QUOTE_ALL)
                 for row in sreader:
                     try:
+                        if ord(row[0][0]) == 0xfeff:
+                            row[0] = row[0][1:] # remove UTF8_BOM (Python2 version)
+                        if ord(row[0][0]) == 0xef and ord(row[0][1]) == 0xbb and ord(row[0][2]) == 0xbf:
+                            row[0] = row[0][3:] # remove UTF8_BOM (Python3 version)
                         tgid = int(row[0])
                         tag = utf_ascii(row[1])
                     except (IndexError, ValueError) as ex:
