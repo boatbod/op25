@@ -304,10 +304,10 @@ class osw_receiver(object):
             if self.cc_retries >= CC_TIMEOUT_RETRIES:
                 self.tune_next_cc()
 
-        elif (m_type == 0): # OSW Receieved
+        elif (m_type == 0): # OSW Received
             s = msg.to_string()
-            osw_addr = get_ordinals(s[:2])
-            osw_grp  = get_ordinals(s[2])
+            osw_addr = get_ordinals(s[0:2])
+            osw_grp  = get_ordinals(s[2:3])
             osw_cmd  = get_ordinals(s[3:5])
             self.enqueue(osw_addr, osw_grp, osw_cmd, m_ts)
             self.stats['osw_count'] += 1
