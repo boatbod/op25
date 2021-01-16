@@ -32,14 +32,14 @@ def utf_ascii(ustr):
         return ustr
 
 def get_ordinals(s):
-        t = 0
-        if type(s) is not str and isinstance(s, bytes):
-                for c in s:
-                        t = (t << 8) + c
-        else:
-                for c in s:
-                        t = (t << 8) + ord(c)
-        return t
+    t = 0
+    if type(s) is not str and isinstance(s, bytes):
+        for c in s:
+            t = (t << 8) + c
+    else:
+        for c in s:
+            t = (t << 8) + ord(c)
+    return t
 
 def get_frequency( f):    # return frequency in Hz
     if str(f).find('.') == -1:    # assume in Hz
