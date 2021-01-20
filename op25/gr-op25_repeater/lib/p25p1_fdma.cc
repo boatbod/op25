@@ -716,7 +716,9 @@ namespace gr {
 
         // Load a frame starting with NID block (used by multi_rx.py)
         uint32_t p25p1_fdma::load_nid(const uint8_t *syms, int nsyms) {
-            return framer->load_nid(syms, nsyms);
+            uint32_t fr_len = framer->load_nid(syms, nsyms);
+            check_timeout();
+            return fr_len;
         }
 
         // Load remainder of frame body (used by multi_rx.py)

@@ -252,6 +252,10 @@ class osw_receiver(object):
                 sreader = csv.reader(csvfile, delimiter='\t', quotechar='"', quoting=csv.QUOTE_ALL)
                 for row in sreader:
                     try:
+                        if ord(row[0][0]) == 0xfeff:
+                            row[0] = row[0][1:] # remove UTF8_BOM (Python2 version)
+                        if ord(row[0][0]) == 0xef and ord(row[0][1]) == 0xbb and ord(row[0][2]) == 0xbf:
+                            row[0] = row[0][3:] # remove UTF8_BOM (Python3 version)
                         tgid = int(row[0])
                         tag = utf_ascii(row[1])
                     except (IndexError, ValueError) as ex:
@@ -300,14 +304,15 @@ class osw_receiver(object):
             if self.cc_retries >= CC_TIMEOUT_RETRIES:
                 self.tune_next_cc()
 
-        elif (m_type == 0): # OSW Receieved
+        elif (m_type == 0): # OSW Received
             s = msg.to_string()
-            osw_addr = get_ordinals(s[:2])
-            osw_grp  = get_ordinals(s[2])
+            osw_addr = get_ordinals(s[0:2])
+            osw_grp  = get_ordinals(s[2:3])
             osw_cmd  = get_ordinals(s[3:5])
             self.enqueue(osw_addr, osw_grp, osw_cmd, m_ts)
             self.stats['osw_count'] += 1
             self.last_osw = m_ts
+            self.cc_retries = 0
 
         rc = False
         rc |= self.process_osws()
@@ -633,7 +638,7 @@ class voice_receiver(object):
         meta_update(self.meta_q)
 
     def load_bl_wl(self):
-        self.skiplist = self.controll.get_skiplist()
+        self.skiplist = self.control.get_skiplist()
         if 'blacklist' in self.config and self.config['blacklist'] != "":
             sys.stderr.write("%s [%d] reading channel blacklist file: %s\n" % (log_ts.get(), self.msgq_id, self.config['blacklist']))
             self.blacklist = get_int_dict(self.config['blacklist'], self.msgq_id)

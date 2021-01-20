@@ -25,6 +25,7 @@ import collections
 import ctypes
 import time
 import json
+import codecs
 from helper_funcs import *
 from log_ts import log_ts
 from gnuradio import gr
@@ -314,9 +315,14 @@ class p25_system(object):
             sreader = csv.reader(csvfile, delimiter='\t', quotechar='"', quoting=csv.QUOTE_ALL)
             for row in sreader:
                 try:
+                    if ord(row[0][0]) == 0xfeff:
+                        row[0] = row[0][1:] # remove UTF8_BOM (Python2 version)
+                    if ord(row[0][0]) == 0xef and ord(row[0][1]) == 0xbb and ord(row[0][2]) == 0xbf:
+                        row[0] = row[0][3:] # remove UTF8_BOM (Python3 version)
                     tgid = int(row[0])
                     tag = utf_ascii(row[1])
                 except (IndexError, ValueError) as ex:
+                    sys.stderr.write("read_tags_file: exception %s\n" % ex)
                     continue
                 if len(row) >= 3:
                     try:
@@ -364,6 +370,12 @@ class p25_system(object):
         else:
             return True
 
+    def valid_cc(self, msgq_id):
+        if msgq_id is None or self.cc_msgq_id is None or msgq_id != self.cc_msgq_id:
+            return False;
+        self.cc_retries = 0
+        return True
+
     def timeout_cc(self, msgq_id):
         if msgq_id is None or self.cc_msgq_id is None or msgq_id != self.cc_msgq_id:
             return False;
@@ -389,11 +401,11 @@ class p25_system(object):
         self.set_nac(nac)
 
         updated = 0
-        if m_type == 7: # TSBK
+        if m_type == 7 and self.valid_cc(m_rxid): # TSBK
             t = get_ordinals(s)
             updated += self.decode_tsbk(m_rxid, t)
 
-        elif m_type == 12: # MBT
+        elif m_type == 12 and self.valid_cc(m_rxid): # MBT
             s1 = s[:10]     # header without crc
             s2 = s[12:]
             header = get_ordinals(s1)

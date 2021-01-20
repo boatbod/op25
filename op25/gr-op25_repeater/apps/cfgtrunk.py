@@ -54,9 +54,13 @@ def read_configs(tsv_filename):
     configs = {}
     idx = 0
     try:
-        with open(tsv_filename, 'rb') as csvfile:
+        with open(tsv_filename, 'r') as csvfile:
             sreader = csv.reader(csvfile, delimiter='\t', quotechar='"', quoting=csv.QUOTE_ALL)
             for row in sreader:
+                if ord(row[0][0]) == 0xfeff:
+                    row[0] = row[0][1:] # remove UTF8_BOM (Python2 version)
+                if ord(row[0][0]) == 0xef and ord(row[0][1]) == 0xbb and ord(row[0][2]) == 0xbf:
+                    row[0] = row[0][3:] # remove UTF8_BOM (Python3 version)
                 if row[0].startswith('#'):
                     continue 
                 if not hdrmap:
@@ -84,7 +88,7 @@ def read_configs(tsv_filename):
     return hdrmap, configs
 
 def write_configs(tsv_filename, hdrmap, configs):
-    with open(tsv_filename, 'wb') as csvfile:
+    with open(tsv_filename, 'w') as csvfile:
         swriter = csv.writer(csvfile, delimiter='\t', quotechar='"', quoting=csv.QUOTE_ALL)
         swriter.writerow(hdrmap) # Header
         for idx in configs:      # Data
