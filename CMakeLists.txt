@@ -59,7 +59,7 @@ if ("${Gnuradio_VERSION}" VERSION_LESS "2.7.0")
 elseif ("${Gnuradio_VERSION}" VERSION_LESS "3.8.0")
     set(OP25_PYTHON_VER 2)
 else()
-    set(OP25_PYTHON_VER 3) 
+    set(OP25_PYTHON_VER 3)
 endif()
 MESSAGE(STATUS "Configuring for Python ${OP25_PYTHON_VER}")
 
