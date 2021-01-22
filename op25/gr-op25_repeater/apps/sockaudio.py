@@ -269,35 +269,39 @@ class alsasound(object):
 
 class _struct_pa_sample_spec(Structure):
     _fields_ = [("format", c_int),
-                ("rate", c_uint32),
-                ("channels", c_uint8)]
+                ("rate", c_int),
+                ("channels", c_byte)]
 
 class pa_sound(object):
     def __init__(self):
-        self.out = None
+        self.out = c_void_p(None)
         self.error = c_int(0)
         self.libpa = cdll.LoadLibrary("libpulse-simple.so.0")
        	self.libpa.strerror.restype = c_char_p
         self.ss = _struct_pa_sample_spec(PA_SAMPLE_S16LE, 8000, 2)
 
     def open(self, hwdevice):
-        self.out = c_void_p(self.libpa.pa_simple_new(None,
-		    "OP25".encode("ascii"),
-            PA_STREAM_PLAYBACK,
-            None,
-		    "OP25 Playback".encode('ascii'),
-            byref(self.ss),
-		    None,
-            None,
-            byref(self.error)))
+        pa_simple_new = self.libpa.pa_simple_new
+        pa_simple_new.restype = c_void_p
+        self.out = pa_simple_new(None,
+                                "OP25".encode("ascii"),
+                                PA_STREAM_PLAYBACK,
+                                None,
+                                "OP25 Playback".encode('ascii'),
+                                byref(self.ss),
+                                None,
+                                None,
+                                byref(self.error))
 
         if self.out is None:
-            sys.stderr.write("%s Could not open PulseAudio stream: %s\n" % (log_ts.get(), self.libpa.strerror(self.error)))
+            sys.stderr.write("Could not open PulseAudio stream: %s\n" % self.libpa.strerror(self.error))
+        else:
+            sys.stderr.write("Opened PulseAudio stream: %016x\n" % self.out)
 
         return self.error.value
 
     def close(self):
-        self.libpa.pa_simple_free(self.out)
+        self.libpa.pa_simple_free(c_void_p(self.out))
         self.out = None
 
     def setup(self, pcm_format, pcm_channels, pcm_rate, pcm_buffer_size):
@@ -307,15 +311,15 @@ class pa_sound(object):
         return 0
 
     def write(self, pcm_data):
-        self.libpa.pa_simple_write(self.out, pcm_data, len(pcm_data), byref(self.error))
+        self.libpa.pa_simple_write(c_void_p(self.out), pcm_data, len(pcm_data), byref(self.error))
         return self.error
 
     def drain(self):
-        self.libpa.pa_simple_drain(self.out, byref(self.error))
+        self.libpa.pa_simple_drain(c_void_p(self.out), byref(self.error))
         return self.error.value
 
     def drop(self):
-        self.libpa.pa_simple_flush(self.out, byref(self.error))
+        self.libpa.pa_simple_flush(c_void_p(self.out), byref(self.error))
         return self.error.value
 
     def dump(self):
