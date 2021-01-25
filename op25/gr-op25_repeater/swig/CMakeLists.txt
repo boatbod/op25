@@ -21,7 +21,7 @@
 # Include swig generation macros
 ########################################################################
 find_package(SWIG)
-find_package(PythonLibs ${OP25_PYTHOM_VER})
+find_package(PythonLibs ${OP25_PYTHON_VER})
 if(NOT SWIG_FOUND OR NOT PYTHONLIBS_FOUND)
     return()
 endif()
