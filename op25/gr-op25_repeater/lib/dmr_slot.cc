@@ -41,11 +41,10 @@
 #include "crc16.h"
 
 dmr_slot::dmr_slot(const int chan, const int debug, int msgq_id, gr::msg_queue::sptr queue) :
-	d_chan(chan),
-	d_slot_mask(3),
-	d_debug(debug),
-	d_msgq_id(msgq_id),
-	d_msg_queue(queue),
+	d_rc(0),
+	d_sb(0),
+	d_pdp_bf(0),
+	d_pdp_poc(0),
 	d_mbc_state(DATA_INVALID),
 	d_dhdr_state(DATA_INVALID),
 	d_pdp_state(DATA_INVALID),
@@ -54,12 +53,13 @@ dmr_slot::dmr_slot(const int chan, const int debug, int msgq_id, gr::msg_queue::
 	d_sb_valid(false),
 	d_pi_valid(false),
 	d_dhdr_valid(false),
-	d_pdp_bf(0),
-	d_pdp_poc(0),
-	d_rc(0),
-	d_sb(0),
 	d_type(0),
-	d_cc(0)
+	d_cc(0),
+	d_msgq_id(msgq_id),
+	d_debug(debug),
+	d_chan(chan),
+	d_slot_mask(3),
+	d_msg_queue(queue)
 {
 	memset(d_slot, 0, sizeof(d_slot));
 	d_slot_type.clear();
@@ -132,9 +132,9 @@ dmr_slot::decode_slot_type() {
 	d_slot_type.clear();
 
 	// deinterleave
-	for (int i = SLOT_L; i < SYNC_EMB; i++)
+	for (unsigned int i = SLOT_L; i < SYNC_EMB; i++)
 		d_slot_type.push_back(d_slot[i]);
-	for (int i = SLOT_R; i < (SLOT_R + 10); i++)
+	for (unsigned int i = SLOT_R; i < (SLOT_R + 10); i++)
 		d_slot_type.push_back(d_slot[i]);
 
 	// golay (20,8) hamming-weight of 6 reliably corrects at most 2 bit-errors
@@ -364,7 +364,7 @@ dmr_slot::decode_mbc_continue(uint8_t* mbc) {
 
 		// pack MBC and send up the stack
 		std::string mbc_msg(d_mbc.size()/8,0);
-		for (int i = 0; i < d_mbc.size(); i++) {
+		for (size_t i = 0; i < d_mbc.size(); i++) {
 			mbc_msg[i/8] = (mbc_msg[i/8] << 1) + d_mbc[i];
 		}
 		send_msg(mbc_msg, M_DMR_SLOT_MBC);
@@ -649,9 +649,9 @@ dmr_slot::decode_emb() {
 	bit_vector emb_sig;
 
 	// deinterleave
-	for (int i = SYNC_EMB; i < (SYNC_EMB + 8); i++)
+	for (unsigned int i = SYNC_EMB; i < (SYNC_EMB + 8); i++)
 		emb_sig.push_back(d_slot[i]);
-	for (int i = (SLOT_R - 8); i < SLOT_R; i++)
+	for (unsigned int i = (SLOT_R - 8); i < SLOT_R; i++)
 		emb_sig.push_back(d_slot[i]);
 
 	// quadratic residue FEC

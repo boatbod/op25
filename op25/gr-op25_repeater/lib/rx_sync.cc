@@ -203,23 +203,23 @@ void rx_sync::ysf_sync(const uint8_t dibitbuf[], bool& ysf_fullrate, bool& unmut
 }
 
 rx_sync::rx_sync(const char * options, int debug, int msgq_id, gr::msg_queue::sptr queue) :	// constructor
-	d_slot_key(0),
-	d_slot_mask(3),
+	sync_timer(op25_timer(1000000)),
 	d_symbol_count(0),
 	d_sync_reg(0),
 	d_cbuf_idx(0),
 	d_current_type(RX_TYPE_NONE),
 	d_rx_count(0),
 	d_expires(0),
-	d_stereo(true),
-	d_debug(debug),
+	d_slot_mask(3),
+	d_slot_key(0),
+	p25fdma(d_audio, debug, true, false, true, queue, d_output_queue[0], true, true, msgq_id),
+	p25tdma(d_audio, 0, debug, true, queue, d_output_queue[0], true, true, msgq_id),
+	dmr(debug, msgq_id, queue),
 	d_msgq_id(msgq_id),
 	d_msg_queue(queue),
-	sync_timer(op25_timer(1000000)),
-	d_audio(options, debug),
-	dmr(debug, msgq_id, queue),
-	p25fdma(d_audio, debug, true, false, true, queue, d_output_queue[0], true, true, msgq_id),
-	p25tdma(d_audio, 0, debug, true, queue, d_output_queue[0], true, true, msgq_id)
+	d_stereo(true),
+	d_debug(debug),
+	d_audio(options, debug)
 {
 	if (msgq_id >= 0)
 		d_stereo = false; // single channel audio for trunking
@@ -258,6 +258,8 @@ void rx_sync::sync_timeout(rx_types proto)
 			msg = gr::message::make_from_string(m_buf, get_msg_type(PROTOCOL_DMR, M_DMR_TIMEOUT), (d_msgq_id << 1), logts.get_ts());
 			d_msg_queue->insert_tail(msg);
 			break;
+		default:
+			break;
 		}
     }
 	reset_timer();
@@ -280,6 +282,8 @@ void rx_sync::sync_established(rx_types proto)
 			d_msg_queue->insert_tail(msg);
 			break;
 		case RX_TYPE_DMR:
+			break;
+		default:
 			break;
         }
     }
@@ -434,14 +438,14 @@ void rx_sync::rx_sym(const uint8_t sym)
 {
 	uint8_t bitbuf[864*2];
 	enum rx_types sync_detected = RX_TYPE_NONE;
-	int current_slot;
 	bool unmute;
 	uint8_t tmpcw[144];
 	bool ysf_fullrate;
 	int excess_count = 0;
 
-    if (d_slot_mask & 0x4) // Setting bit 3 of slot mask disables framing for idle receiver 
+    if (d_slot_mask & 0x4) { // Setting bit 3 of slot mask disables framing for idle receiver 
         return;
+    }
 
 	d_symbol_count ++;
 	d_sync_reg = (d_sync_reg << 2) | (sym & 3);

@@ -35,6 +35,7 @@ namespace gr{
                 virtual void set_xormask(const char* p) = 0;
                 rx_base(const char * options, int debug, int msgq_id, gr::msg_queue::sptr queue) { };
                 rx_base() {}; // default constructor called by derived classes
+                virtual ~rx_base() {};
         };
 
     } // end namespace op25_repeater

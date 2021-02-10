@@ -25,8 +25,9 @@ if((CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR
     CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     AND NOT WIN32)
     #http://gcc.gnu.org/wiki/Visibility
-    add_definitions(-fvisibility=hidden)
-    add_definitions(-fvisibility-inlines-hidden)
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fvisibility=hidden")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fvisibility=hidden")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fvisibility-inlines-hidden")
 endif()
 
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
@@ -41,16 +42,18 @@ endif()
 
 # TODO: fix all the warnings these options generate!
 # Misc options
-#if(CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR
-#    CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-#    add_definitions(-Wall)
-#    add_definitions(-Wextra)
-#    add_definitions(-Wno-unused-parameter)
-#    add_definitions(-Wsign-compare)
-#    #add_definitions(-Wconversion)
-#    #add_definitions(-pedantic)
-#    #add_definitions(-ansi)
-#endif()
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR
+    CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    add_definitions(-Wall)
+    add_definitions(-Wextra)
+    add_definitions(-Wsign-compare)
+    add_definitions(-Wno-unused-parameter)
+    add_definitions(-Wno-unused-function)
+    add_definitions(-Wno-missing-field-initializers)
+    #add_definitions(-Wconversion)
+    #add_definitions(-pedantic)
+    #add_definitions(-ansi)
+endif()
 
 # SIMD
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64|x86")

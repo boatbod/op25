@@ -775,7 +775,6 @@ software_imbe_decoder::decode(const voice_codeword& cw)
 	unsigned int u1,u2,u3,u4,u5,u6,u7;
 	unsigned int E0 = 0;
 	unsigned int ET = 0;
-	unsigned char O[12];
 
 	// PN/Hamming/Golay - etc.
 	imbe_header_decode(cw, u0, u1, u2, u3, u4, u5, u6, u7, E0, ET) ;
@@ -1105,6 +1104,7 @@ software_imbe_decoder::decode_tone(int _ID, int _AD, int * _n)
       // zero amplitude
       case 255:
          freq1 = 0; freq2 = 0;
+         break;
       default:
       // single tones, calculated frequency
          if ((_ID >= 7) && (_ID <= 122)) {
@@ -1575,7 +1575,6 @@ void
 software_imbe_decoder::synth_voiced()
 {
    float MaxL;
-   float Tmp;
    float Dpl;
    float Dwl;
    float THa;
@@ -1598,7 +1597,7 @@ software_imbe_decoder::synth_voiced()
    for(ell = 1; ell <= L/4; ell++) {
       phi[ell][ New] = psi1 * ell;
    }
-   Tmp = Luv / L;
+
    for(; ell <= MaxL; ell++) {
       phi[ell][ New] = psi1 * ell /* + Tmp * PhzNz[ell] */;
    }

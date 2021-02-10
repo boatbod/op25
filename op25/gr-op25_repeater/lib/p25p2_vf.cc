@@ -727,7 +727,7 @@ static const uint32_t pr_n[4096] = {	\
 		vf[70] = c2[4];
 		vf[71] = c3[0];
 
-		for (int i=0; i<sizeof(vf)/2; i++) {
+		for (size_t i=0; i<sizeof(vf)/2; i++) {
 			_vf[i] = (vf[i*2] << 1) | vf[i*2+1];
 		}
 	}
@@ -739,7 +739,7 @@ static const uint32_t pr_n[4096] = {	\
 		uint8_t c2[11];
 		uint8_t c3[14];
 
-		for (int i=0; i<sizeof(vf)/2; i++) {
+		for (size_t i=0; i<sizeof(vf)/2; i++) {
 			vf[i*2]   = (_vf[i] >> 1) & 1;
 			vf[i*2+1] = _vf[i] & 1;
 		}

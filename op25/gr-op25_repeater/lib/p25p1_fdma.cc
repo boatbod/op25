@@ -140,7 +140,6 @@ namespace gr {
             int b, d, j;
             int state = 0;
             uint8_t codeword;
-            uint16_t crc;
 
             static const uint8_t next_words[4][4] = {
                 {0x2, 0xC, 0x1, 0xF},
@@ -198,23 +197,23 @@ namespace gr {
         }
 
         p25p1_fdma::p25p1_fdma(const op25_audio& udp, int debug, bool do_imbe, bool do_output, bool do_msgq, gr::msg_queue::sptr queue, std::deque<int16_t> &output_queue, bool do_audio_output, bool do_nocrypt, int msgq_id) :
-            qtimer(op25_timer(TIMEOUT_THRESHOLD)),
-            op25audio(udp),
             write_bufp(0),
             d_debug(debug),
             d_do_imbe(do_imbe),
             d_do_output(do_output),
-            d_msgq_id(msgq_id),
             d_do_msgq(do_msgq),
+            d_msgq_id(msgq_id),
+            d_do_audio_output(do_audio_output),
+            d_do_nocrypt(do_nocrypt),
+            d_nac(0),
             d_msg_queue(queue),
             output_queue(output_queue),
             framer(new p25_framer(debug, msgq_id)),
-            d_do_nocrypt(do_nocrypt),
-            d_do_audio_output(do_audio_output),
-            ess_algid(0x80),
+            qtimer(op25_timer(TIMEOUT_THRESHOLD)),
+            op25audio(udp),
             ess_keyid(0),
-            vf_tgid(0),
-            d_nac(0)
+            ess_algid(0x80),
+            vf_tgid(0)
         {
         }
 
@@ -479,7 +478,7 @@ namespace gr {
             uint8_t op, lb = 0;
             block_vector deinterleave_buf;
             if (process_blocks(fr, fr_len, deinterleave_buf) == 0) {
-                for (int j = 0; (j < deinterleave_buf.size()) && (lb == 0); j++) {
+                for (size_t j = 0; (j < deinterleave_buf.size()) && (lb == 0); j++) {
                     if (crc16(deinterleave_buf[j].data(), 12) != 0) // validate CRC
                         return;
 

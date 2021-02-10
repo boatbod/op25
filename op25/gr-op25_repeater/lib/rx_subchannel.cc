@@ -28,9 +28,9 @@ namespace gr{
         // constructor
         rx_subchannel::rx_subchannel(const char * options, int debug, int msgq_id, gr::msg_queue::sptr queue) :
             d_debug(debug),
-            d_flag_reg(0),
             d_msgq_id(msgq_id),
-            d_msg_queue(queue) {
+            d_msg_queue(queue),
+            d_flag_reg(0) {
             fprintf(stderr, "%s rx_subchannel::rx_sym: subchannel monitoring enabled\n", logts.get(d_msgq_id));
         }
 

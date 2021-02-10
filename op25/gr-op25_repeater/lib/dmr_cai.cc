@@ -37,13 +37,13 @@
 #include "crc16.h"
 
 dmr_cai::dmr_cai(int debug, int msgq_id, gr::msg_queue::sptr queue) :
+	d_slot{dmr_slot(0, debug, msgq_id, queue), dmr_slot(1, debug, msgq_id, queue)},
+	d_slot_mask(3),
+	d_chan(0),
+	d_shift_reg(0),
 	d_debug(debug),
 	d_msgq_id(msgq_id),
-	d_msg_queue(queue),
-	d_shift_reg(0),
-	d_chan(0),
-	d_slot_mask(3),
-	d_slot{dmr_slot(0, debug, msgq_id, queue), dmr_slot(1, debug, msgq_id, queue)} 
+	d_msg_queue(queue)
 {
 	d_cach_sig.clear();
 	memset(d_frame, 0, sizeof(d_frame));
@@ -84,7 +84,7 @@ dmr_cai::load_frame(const uint8_t fr_sym[], bool& unmute) {
 	// but the question is how many bit errors is too many...
 	bool sync_rxd = false;
 	uint64_t sl_sync = load_reg64(d_frame + SYNC_EMB + 24, 48);
-	for (int i = 0; i < DMR_SYNC_MAGICS_COUNT; i ++) {
+	for (unsigned int i = 0; i < DMR_SYNC_MAGICS_COUNT; i ++) {
 		if (__builtin_popcountll(sl_sync ^ DMR_SYNC_MAGICS[i]) <= DMR_SYNC_THRESHOLD) {
 			sl_sync = DMR_SYNC_MAGICS[i];
 			sync_rxd = true;
@@ -125,13 +125,12 @@ dmr_cai::load_frame(const uint8_t fr_sym[], bool& unmute) {
 
 void
 dmr_cai::extract_cach_fragment() {
-	int tact, tact_at, tact_tc, tact_lcss;
+	int tact, tact_tc, tact_lcss;
 	uint8_t tactbuf[sizeof(cach_tact_bits)];
 
 	for (size_t i=0; i<sizeof(cach_tact_bits); i++)
 		tactbuf[i] = d_frame[CACH + cach_tact_bits[i]];
 	tact = hamming_7_4_decode[load_i(tactbuf, 7)];
-	tact_at   = (tact>>3) & 1; // Access Type
 	tact_tc   = (tact>>2) & 1; // TDMA Channel
 	tact_lcss = tact & 3;      // Link Control Start/Stop
 	d_shift_reg = (d_shift_reg << 1) + tact_tc;
@@ -156,7 +155,6 @@ dmr_cai::extract_cach_fragment() {
 				d_cach_sig.push_back(d_frame[CACH + cach_payload_bits[i]]);
 			break;
 	}
-	
 }
 
 bool
