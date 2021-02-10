@@ -48,14 +48,14 @@ static uint16_t crc12(const uint8_t bits[], unsigned int len) {
 		return 0;
 	}
 	memset (buf, 0, sizeof(buf));
-	for (int i=0; i<len; i++){
+	for (unsigned int i=0; i<len; i++){
 		buf[i] = bits[i];
 	}
-	for (int i=0; i<len; i++)
+	for (unsigned int i=0; i<len; i++)
 		if (buf[i])
-			for (int j=0; j<K+1; j++)
+			for (unsigned int j=0; j<K+1; j++)
 				buf[i+j] ^= poly[j];
-	for (int i=0; i<K; i++){
+	for (unsigned int i=0; i<K; i++){
 		crc = (crc << 1) + buf[len + i];
 	}
 	return crc ^ 0xfff;
@@ -63,7 +63,7 @@ static uint16_t crc12(const uint8_t bits[], unsigned int len) {
 
 static bool crc12_ok(const uint8_t bits[], unsigned int len) {
 	uint16_t crc = 0;
-	for (int i=0; i < 12; i++) {
+	for (unsigned int i=0; i < 12; i++) {
 		crc = (crc << 1) + bits[len+i];
 	}
 	return (crc == crc12(bits,len));
@@ -88,28 +88,28 @@ static const uint8_t mac_msg_len[256] = {
 	 0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 11, 13, 11,  0,  0,  0 };
 
 p25p2_tdma::p25p2_tdma(const op25_audio& udp, int slotid, int debug, bool do_msgq, gr::msg_queue::sptr queue, std::deque<int16_t> &qptr, bool do_audio_output, bool do_nocrypt, int msgq_id) :	// constructor
-	op25audio(udp),
-	write_bufp(0),
 	tdma_xormask(new uint8_t[SUPERFRAME_SIZE]),
 	symbols_received(0),
 	packets(0),
+	write_bufp(0),
 	d_slotid(slotid),
-	d_do_msgq(do_msgq),
+	mbe_err_cnt(0),
+	tone_frame(false),
 	d_msg_queue(queue),
-	d_msgq_id(msgq_id),
 	output_queue_decode(qptr),
-	d_debug(debug),
+	d_do_msgq(do_msgq),
+	d_msgq_id(msgq_id),
 	d_do_audio_output(do_audio_output),
 	d_do_nocrypt(do_nocrypt),
+	op25audio(udp),
+	d_nac(0),
+	d_debug(debug),
 	burst_id(-1),
 	ESS_A(28,0),
 	ESS_B(16,0),
-	ess_algid(0x80),
 	ess_keyid(0),
-	mbe_err_cnt(0),
-	tone_frame(false),
-	p2framer(),
-	d_nac(0)
+	ess_algid(0x80),
+	p2framer()
 {
 	assert (slotid == 0 || slotid == 1);
 	mbe_initMbeParms (&cur_mp, &prev_mp, &enh_mp);
@@ -153,7 +153,6 @@ p25p2_tdma::set_xormask(const char*p) {
 int p25p2_tdma::process_mac_pdu(const uint8_t byte_buf[], const unsigned int len, const int rs_errs) 
 {
 	unsigned int opcode = (byte_buf[0] >> 5) & 0x7;
-	unsigned int offset = (byte_buf[0] >> 2) & 0x7;
 
         switch (opcode)
         {
@@ -467,7 +466,8 @@ void p25p2_tdma::decode_mac_msg(const uint8_t byte_buf[], const unsigned int len
 
 int p25p2_tdma::handle_acch_frame(const uint8_t dibits[], bool fast) 
 {
-	int i, j, rc, rs_errs = 0;
+	int rc, rs_errs = 0;
+	unsigned int i, j = 0;
 	uint8_t bits[512];
 	std::vector<uint8_t> HB(63,0);
 	std::vector<int> Erasures;
@@ -527,8 +527,8 @@ int p25p2_tdma::handle_acch_frame(const uint8_t dibits[], bool fast)
 		return -1;
 
 	// Adjust FEC error counter to eliminate erasures
-	if (rs_errs >= Erasures.size())
-		rs_errs -= Erasures.size();
+	if (rs_errs >= (int)Erasures.size())
+		rs_errs -= (int)Erasures.size();
 
 	if (fast) {
 		j = 9;
@@ -550,7 +550,7 @@ int p25p2_tdma::handle_acch_frame(const uint8_t dibits[], bool fast)
 
 	rc = -1;
 	if (crc12_ok(bits, len)) { // TODO: rewrite crc12 so we don't have to do so much bit manipulation
-		for (int i=0; i<len/8; i++) {
+		for (i=0; i<len/8; i++) {
 			byte_buf[i] = (bits[i*8 + 0] << 7) + (bits[i*8 + 1] << 6) + (bits[i*8 + 2] << 5) + (bits[i*8 + 3] << 4) + (bits[i*8 + 4] << 3) + (bits[i*8 + 5] << 2) + (bits[i*8 + 6] << 1) + (bits[i*8 + 7] << 0);
 		}
 		rc = process_mac_pdu(byte_buf, len/8, rs_errs);
@@ -648,7 +648,7 @@ int p25p2_tdma::handle_frame(void)
 {
 	uint8_t dibits[180];
 	int rc;
-	for (int i=0; i<sizeof(dibits); i++)
+	for (size_t i=0; i<sizeof(dibits); i++)
 		dibits[i] = p2framer.d_frame_body[i*2+1] + (p2framer.d_frame_body[i*2] << 1);
 	rc = handle_packet(dibits);
 	return rc;
@@ -720,7 +720,7 @@ void p25p2_tdma::handle_4V2V_ess(const uint8_t dibits[])
                 }
         }
         else {
-                int i, j, k;
+                int i, j;
 
                 j = 0;
                 for (i = 0; i < 28; i++) { // ESS-A is 28 hexbits / 84 dibits

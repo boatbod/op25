@@ -151,7 +151,6 @@ static void clear_bits(bit_vector& v) {
 }
 
 p25p1_voice_encode::p25p1_voice_encode(bool verbose_flag, int stretch_amt, const op25_audio& udp, bool raw_vectors_flag, std::deque<uint8_t> &_output_queue) :
-        op25audio(udp),
 	frame_cnt(0),
 	write_bufp(0),
 	peak_amplitude(0),
@@ -160,22 +159,23 @@ p25p1_voice_encode::p25p1_voice_encode(bool verbose_flag, int stretch_amt, const
 	codeword_ct(0),
 	sampbuf_ct(0),
 	stretch_count(0),
-	output_queue(_output_queue),
 	f_body(P25_VOICE_FRAME_SIZE),
+	op25audio(udp),
+	output_queue(_output_queue),
 	opt_dump_raw_vectors(raw_vectors_flag),
 	opt_verbose(verbose_flag)
-    {
-	opt_stretch_amt = 0;
-	if (stretch_amt < 0) {
-		opt_stretch_sign = -1;
-		opt_stretch_amt = 0 - stretch_amt;
-	} else {
-		opt_stretch_sign = 1;
-		opt_stretch_amt = stretch_amt;
-	}
+	{
+		opt_stretch_amt = 0;
+		if (stretch_amt < 0) {
+			opt_stretch_sign = -1;
+			opt_stretch_amt = 0 - stretch_amt;
+		} else {
+			opt_stretch_sign = 1;
+			opt_stretch_amt = stretch_amt;
+		}
 
-	clear_bits(f_body);
-    }
+		clear_bits(f_body);
+	}
 
     /*
      * Our virtual destructor.

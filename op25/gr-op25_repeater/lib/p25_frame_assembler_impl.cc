@@ -93,15 +93,15 @@ static const int MAX_IN = 1;	// maximum number of input streams
 		   gr::io_signature::make ((do_output) ? 1 : 0, (do_output) ? 1 : 0, (do_audio_output && do_output) ? sizeof(int16_t) : ((do_output) ? sizeof(char) : 0 ))),
 	d_do_imbe(do_imbe),
 	d_do_output(do_output),
-	output_queue(),
-	op25audio(udp_host, port, debug),
 	p1fdma(op25audio, debug, do_imbe, do_output, do_msgq, queue, output_queue, do_audio_output, do_nocrypt),
 	d_do_audio_output(do_audio_output),
 	d_do_phase2_tdma(do_phase2_tdma),
 	d_do_nocrypt(do_nocrypt),
 	p2tdma(op25audio, 0, debug, do_msgq, queue, output_queue, do_audio_output, do_nocrypt),
 	d_do_msgq(do_msgq),
-	d_msg_queue(queue)
+	d_msg_queue(queue),
+	output_queue(),
+	op25audio(udp_host, port, debug)
 {
         fprintf(stderr, "p25_frame_assembler_impl: do_imbe[%d], do_output[%d], do_audio_output[%d], do_phase2_tdma[%d], do_nocrypt[%d]\n", do_imbe, do_output, do_audio_output, do_phase2_tdma, do_nocrypt);
 }

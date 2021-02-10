@@ -28,12 +28,13 @@ namespace gr{
         // constructor
         rx_smartnet::rx_smartnet(const char * options, int debug, int msgq_id, gr::msg_queue::sptr queue) :
             d_debug(debug),
-            d_cbuf_idx(0),
             d_msgq_id(msgq_id),
             d_msg_queue(queue),
-            sync_timer(op25_timer(1000000)) {
-                sync_reset();
-            }
+            sync_timer(op25_timer(1000000)),
+            d_cbuf_idx(0)
+        {
+            sync_reset();
+        }
 
         // destructor
         rx_smartnet::~rx_smartnet() {
@@ -179,7 +180,7 @@ namespace gr{
                 d_pkt.raw_data[2] = d_pkt.group;
                 d_pkt.raw_data[3] = d_pkt.command >> 8;
                 d_pkt.raw_data[4] = d_pkt.command & 0xff;
-                d_pkt.raw_data[6] = 0;
+                d_pkt.raw_data[5] = 0;
             }
 
             return crc_ok;

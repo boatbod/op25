@@ -51,9 +51,9 @@ static void clear_bits(bit_vector& v) {
 }
 
 p25p1_voice_decode::p25p1_voice_decode(bool verbose_flag, const op25_audio& udp, std::deque<int16_t> &_output_queue) :
-        op25audio(udp),
 	write_bufp(0),
 	rxbufp(0),
+	op25audio(udp),
 	output_queue(_output_queue),
 	opt_verbose(verbose_flag)
     {

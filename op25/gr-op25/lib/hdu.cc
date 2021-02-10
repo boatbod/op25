@@ -110,7 +110,8 @@ hdu::apply_golay_correction(bit_vector& frame)
       { 762, 763, 764, 765, 766, 767, 768, 769, 770, 771, 772, 773, 774, 775, 776, 777, 778, 779 }
    };
    for(size_t i = 0; i < NOF_GOLAY_CODEWORDS; ++i) {
-      uint32_t cw = extract(frame, GOLAY_CODEWORDS[i], GOLAY_CODEWORD_SZ);
+      extract(frame, GOLAY_CODEWORDS[i], GOLAY_CODEWORD_SZ);
+//      uint32_t cw = extract(frame, GOLAY_CODEWORDS[i], GOLAY_CODEWORD_SZ);
 //      uint32_t d = golay_decode(cw);
 //      uint32 cw = golay_encode(cw);
 //      yank_back(d, PAD_SZ, frame, GOLAY_CODEWORDS[i], GOLAY_DATA_SZ);

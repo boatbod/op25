@@ -178,7 +178,7 @@ void gardner_costas_cc_impl::set_omega (float omega) {
     int num_complex = std::max(d_twice_sps*2, 16);
     if (num_complex > NUM_COMPLEX)
         fprintf(stderr, "gardner_costas_cc: warning omega %f size %d exceeds NUM_COMPLEX %d\n", omega, num_complex, NUM_COMPLEX);
-    memset(d_dl, 0, NUM_COMPLEX * sizeof(gr_complex));
+    *d_dl = gr_complex(0,0); //memset(d_dl, 0, NUM_COMPLEX * sizeof(gr_complex));
 }
 
 float gardner_costas_cc_impl::get_freq_error (void) {

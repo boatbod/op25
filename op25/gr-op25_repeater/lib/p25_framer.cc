@@ -35,18 +35,18 @@ static const int max_frame_lengths[16] = {
 
 // constructor
 p25_framer::p25_framer(int debug, int msgq_id) :
-    d_debug(debug),
-    d_msgq_id(msgq_id),
-    d_expected_nac(0),
     reverse_p(0),
     nid_syms(0),
     next_bit(0),
     nid_accum(0),
+    frame_size_limit(0),
+    d_debug(debug),
+    d_msgq_id(msgq_id),
+    d_expected_nac(0),
+    symbols_received(0),
     nac(0),
     duid(0),
     parity(0),
-    frame_size_limit(0),
-    symbols_received(0),
     frame_body(P25_VOICE_FRAME_SIZE)
 {
 }

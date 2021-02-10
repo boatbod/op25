@@ -1350,7 +1350,6 @@ void
 software_imbe_decoder::synth_voiced()
 {
    float MaxL;
-   float Tmp;
    float Dpl;
    float Dwl;
    float THa;
@@ -1373,7 +1372,7 @@ software_imbe_decoder::synth_voiced()
    for(ell = 1; ell <= L/4; ell++) {
       phi[ell][ New] = psi1 * ell;
    }
-   Tmp = Luv / L;
+
    for(; ell <= MaxL; ell++) {
       phi[ell][ New] = psi1 * ell /* + Tmp * PhzNz[ell] */;
    }

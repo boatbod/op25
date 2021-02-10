@@ -482,11 +482,10 @@ static void encode_ambe(const IMBE_PARAM *imbe_param, int b[], mbe_parms*cur_mp,
 		b[4+ii] = error_index;
 	}
 	// fprintf (stderr, "B\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\n", b[0], b[1], b[2], b[3], b[4], b[5], b[6], b[7], b[8]);
-	int rc;
 	if (dstar)
-		rc = mbe_dequantizeAmbe2400Parms (cur_mp, prev_mp, errs_mp, b);
+		mbe_dequantizeAmbe2400Parms (cur_mp, prev_mp, errs_mp, b);
 	else
-		rc = mbe_dequantizeAmbe2250Parms (cur_mp, prev_mp, errs_mp, b);
+		mbe_dequantizeAmbe2250Parms (cur_mp, prev_mp, errs_mp, b);
 	mbe_moveMbeParms (cur_mp, prev_mp);
 }
 
@@ -545,8 +544,8 @@ static void encode_49bit(uint8_t outp[49], const int b[9]) {
 ambe_encoder::ambe_encoder(void)
 	: d_49bit_mode(false),
 	d_dstar_mode(false),
-	d_alt_dstar_interleave(false),
-	d_gain_adjust(0)
+	d_gain_adjust(0),
+	d_alt_dstar_interleave(false)
 {
 	mbe_parms enh_mp;
 	mbe_initMbeParms (&cur_mp, &prev_mp, &enh_mp);

@@ -78,7 +78,8 @@ private:
     int d_nac;
 	int d_debug;
 	int burst_id;
-	inline int track_vb(int burst_type) { return burst_id = (burst_type == 0) ? (++burst_id % 5) : 4; }
+	//inline int track_vb(int burst_type) { return burst_id = (burst_type == 0) ? (++burst_id % 5) : 4; }
+	inline int track_vb(int burst_type) { burst_id++; return burst_id = (burst_type == 0) ? (burst_id % 5) : 4; }
 	inline void reset_vb(void) { burst_id = -1; }
 
 	ezpwd::RS<63,35> rs28;      // Reed-Solomon decoder object
