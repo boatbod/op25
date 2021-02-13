@@ -14,7 +14,9 @@ cmake_policy(SET CMP0045 OLD)
 #select the release build type by default to get optimization flags
 if(NOT CMAKE_BUILD_TYPE)
    set(CMAKE_BUILD_TYPE "Release")
-   message(STATUS "Build type not specified: defaulting to release.")
+   message(STATUS "Build type not specified: defaulting to Release.")
+else()
+   message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 endif(NOT CMAKE_BUILD_TYPE)
 set(CMAKE_BUILD_TYPE ${CMAKE_BUILD_TYPE} CACHE STRING "")
 
@@ -40,10 +42,11 @@ else()
     message(WARNING "C++ standard could not be set because compiler is not GNU, Clang or MSVC.")
 endif()
 
-# TODO: fix all the warnings these options generate!
 # Misc options
-if(CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR
-    CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+if(NOT CMAKE_BUILD_TYPE STREQUAL "Release" AND
+   (CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR
+    CMAKE_CXX_COMPILER_ID STREQUAL "GNU"))
+    message(STATUS "Enabling enhanced compiler warnings for Non-Release build type")
     add_definitions(-Wall)
     add_definitions(-Wextra)
     add_definitions(-Wsign-compare)

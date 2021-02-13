@@ -224,7 +224,7 @@ namespace gr {
                 return;
             if (d_msg_queue->full_p())
                 return;
-            assert (len+2 <= sizeof(wbuf));
+            assert (len+2 <= (int)sizeof(wbuf));
             wbuf[p++] = (nac >> 8) & 0xff;
             wbuf[p++] = nac & 0xff;
             if (buf) {
