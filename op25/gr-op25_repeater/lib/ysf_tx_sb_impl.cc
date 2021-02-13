@@ -114,7 +114,7 @@ static inline void trellis_encode(uint8_t result[], const uint8_t source[], int 
 static inline void trellis_interleave(uint8_t result[], const uint8_t input[], int x, int y)
 {
 	static uint8_t tmp_result[200];
-	assert (x*y <= sizeof(tmp_result));
+	assert (x*y <= (int)sizeof(tmp_result));
 
 	trellis_encode(tmp_result, input, x*y);
 
