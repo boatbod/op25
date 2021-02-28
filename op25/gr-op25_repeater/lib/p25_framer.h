@@ -30,6 +30,7 @@ class p25_framer
         int d_debug;
         int d_msgq_id;
         uint32_t d_expected_nac;
+        int d_unexpected_nac;
         log_ts logts;
 
     public:

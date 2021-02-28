@@ -43,6 +43,7 @@ p25_framer::p25_framer(int debug, int msgq_id) :
     d_debug(debug),
     d_msgq_id(msgq_id),
     d_expected_nac(0),
+    d_unexpected_nac(0),
     symbols_received(0),
     nac(0),
     duid(0),
@@ -106,9 +107,13 @@ bool p25_framer::nid_codeword(uint64_t acc) {
 
     // Validate NAC meets expectations. NAC values of 0, 0xf7e, 0xf7f pass all traffic
     if ((d_expected_nac != 0) && (d_expected_nac != 0xf7e) && (d_expected_nac != 0xf7f) && (nac != d_expected_nac)) {
-        fprintf(stderr, "%s p25_framer::nid_codeword: NAC check fail: received=%03x, expected=%03x\n", logts.get(d_msgq_id), nac, d_expected_nac);
+        d_unexpected_nac++;
+        if (d_unexpected_nac >= 3) { // isolated occureence may be bit errors, repetitive is probably mis-configuration
+            fprintf(stderr, "%s p25_framer::nid_codeword: NAC check fail: received=%03x, expected=%03x\n", logts.get(d_msgq_id), nac, d_expected_nac);
+        }
         return false;
     }
+    d_unexpected_nac = 0;
 
     // Validate duid and parity bit (TIA-102-BAAC)
     if (((duid == 0) || (duid == 3) || (duid == 7) || (duid == 12) || (duid == 15)) && !parity) {
