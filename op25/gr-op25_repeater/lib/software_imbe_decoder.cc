@@ -907,10 +907,9 @@ software_imbe_decoder::decode_fullrate(uint32_t u0, uint32_t u1, uint32_t u2, ui
 			// in the synth_unvoiced procedure.  The final tweak is done by raising the
 			// voiced samples:
 			float sample = suv[en] + sv[en] * 4; //balance v/uv loudness
-//			if(abs((int)sample) > 32767) {
-//				sample = 32767 * (sample < 0) ? -1 : 1; // * sgn(sample)
-//			}
-			sample /= 32768.0;
+			if(abs((int)sample) > 32767) {
+				sample = (sample < 0) ? -32767 : 32767; // * sgn(sample)
+			}
 			samples->push_back(sample);
 		}
 	} else { // muted

@@ -606,7 +606,7 @@ namespace gr {
                             audio_samples *samples = software_decoder.audio();
                             for (int i=0; i < SND_FRAME; i++) {
                            	    if (samples->size() > 0) {
-                       		        snd[i] = (int16_t)(samples->front() * 32768.0);
+                       		        snd[i] = (int16_t)(samples->front());
                                     samples->pop_front();
                                 } else {
                                     snd[i] = 0;
