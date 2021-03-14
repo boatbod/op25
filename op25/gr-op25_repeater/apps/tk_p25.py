@@ -138,6 +138,7 @@ class rx_ctl(object):
         for rx in self.receivers:
             if self.receivers[rx]['rx_rcvr'] is not None:
                 self.receivers[rx]['rx_rcvr'].post_init()
+        self.check_cc_assignments()
 
     # process_qmsg is the main message dispatch handler connecting the 'radios' to python
     def process_qmsg(self, msg):
@@ -158,8 +159,25 @@ class rx_ctl(object):
                 updated += self.receivers[m_rxid]['rx_rcvr'].process_qmsg(msg, curr_time)   # send in-call messaging to p25_receiver objects
 
             if updated > 0:
-                for rx in self.systems[self.receivers[m_rxid]['sysname']]['receivers']:     # only have voice receivers scan for activity if something changed
+                # Check for voice receiver assignments
+                for rx in self.systems[self.receivers[m_rxid]['sysname']]['receivers']:
                     rx.scan_for_talkgroups(curr_time)
+
+                # Check for control channel reassignment
+                self.check_cc_assignments()
+
+    # Check for control channel assignments to idle receivers
+    def check_cc_assignments(self):
+        for p25_sysname in self.systems:
+            p25_system = self.systems[p25_sysname]['system']
+            if p25_system.cc_msgq_id is None:
+                for rx in self.systems[p25_sysname]['receivers']:
+                    if rx.tuner_idle:
+                        rx.tune_cc(p25_system.get_cc(rx.msgq_id))
+                        break
+            if p25_system.cc_msgq_id is None: # no receivers assigned
+                if self.debug >= 5:
+                    sys.stderr.write("%s [%s] has no idle receivers for control channel monitoring\n" % (log_ts.get(), p25_sysname))
 
     # ui_command handles all requests from user interface
     def ui_command(self, cmd, data, msgq_id):
@@ -765,7 +783,7 @@ class p25_system(object):
             self.voice_frequencies[frequency]['ts'] = [0.0, 0.0]
         if prev_freq is not None and not (prev_freq == frequency and prev_slot == tdma_slot):
             if self.debug >= 5:
-                sys.stderr.write("%s [%s] VF change: tgid: %s, prev_freq: %f, prev_slot: %s, new_freq: %f, new_slot: %s\n" % (log_ts.get(), self.sysname, tgid, prev_freq, prev_slot, frequency, tdma_slot))
+                sys.stderr.write("%s [%s] VF change: tgid: %s, prev_freq: %f, prev_slot: %s, new_freq: %f, new_slot: %s\n" % (log_ts.get(), self.sysname, tgid, prev_freq/1000000.0, prev_slot, frequency/1000000.0, tdma_slot))
             if prev_slot is None:
                 self.voice_frequencies[prev_freq]['tgid'] = [None, None]
             else:
@@ -775,13 +793,13 @@ class p25_system(object):
         self.voice_frequencies[frequency]['counter'] += 1
         if tdma_slot is None:   # FDMA mark both slots with same info
             if self.debug >= 10:
-                sys.stderr.write("%s [%s] VF ts ph1: tgid: %s, freq: %f\n" % (log_ts.get(), self.sysname, tgid, frequency))
+                sys.stderr.write("%s [%s] VF ts ph1: tgid: %s, freq: %f\n" % (log_ts.get(), self.sysname, tgid, frequency/1000000.0))
             for slot in [0, 1]:
                 self.voice_frequencies[frequency]['tgid'][slot] = tgid
                 self.voice_frequencies[frequency]['ts'][slot] = curr_time
         else:                   # TDMA mark just slot in use
             if self.debug >= 10:
-                sys.stderr.write("%s [%s] VF ts ph2: tgid: %s, freq: %f, slot: %s\n" % (log_ts.get(), self.sysname, tgid, frequency, tdma_slot))
+                sys.stderr.write("%s [%s] VF ts ph2: tgid: %s, freq: %f, slot: %s\n" % (log_ts.get(), self.sysname, tgid, frequency/1000000.0, tdma_slot))
             self.voice_frequencies[frequency]['tgid'][tdma_slot] = tgid
             self.voice_frequencies[frequency]['ts'][tdma_slot] = curr_time
 
@@ -794,7 +812,7 @@ class p25_system(object):
                 tgid = self.voice_frequencies[frequency]['tgid'][slot]
                 if tgid is not None and self.talkgroups[tgid]['receiver'] is None and curr_time >= self.voice_frequencies[frequency]['ts'][slot] + FREQ_EXPIRY_TIME:
                     if self.debug >= 10:
-                        sys.stderr.write("%s [%s] VF expire: tgid: %s, freq: %f, slot: %s, ts: %s\n" % (log_ts.get(), self.sysname, tgid, frequency, slot, log_ts.get(self.voice_frequencies[frequency]['ts'][slot])))
+                        sys.stderr.write("%s [%s] VF expire: tgid: %s, freq: %f, slot: %s, ts: %s\n" % (log_ts.get(), self.sysname, tgid, frequency/1000000.0, slot, log_ts.get(self.voice_frequencies[frequency]['ts'][slot])))
                     self.voice_frequencies[frequency]['tgid'][slot] = None
 
     def update_talkgroups(self, frequency, tgid, tdma_slot, srcaddr):
@@ -928,7 +946,7 @@ class p25_receiver(object):
         self.meta_q = meta_q
         self.meta_stream = from_dict(self.config, 'meta_stream_name', "")
         self.tuned_frequency = freq
-        self.tuner_idle = False
+        self.tuner_idle = True
         self.voice_frequencies = self.system.get_frequencies()
         self.talkgroups = self.system.get_talkgroups()
         self.skiplist = {}
@@ -958,7 +976,6 @@ class p25_receiver(object):
 
         self.load_bl_wl()
         self.tgid_hold_time = float(from_dict(self.system.config, 'tgid_hold_time', TGID_HOLD_TIME))
-        self.tune_cc(self.system.get_cc(self.msgq_id))
         meta_update(self.meta_q, msgq_id=self.msgq_id)
 
     def load_bl_wl(self):
@@ -978,14 +995,17 @@ class p25_receiver(object):
         self.current_nac = nac
         self.nac_set({'tuner': self.msgq_id,'nac': nac})
 
+    def idle_rx(self):
+        if not self.tuner_idle:
+            if self.debug >= 5:
+                sys.stderr.write("%s [%d] idling receiver\n" % (log_ts.get(), self.msgq_id))
+            self.slot_set({'tuner': self.msgq_id,'slot': 4}) # disable receiver (idle)
+            self.tuner_idle = True
+            self.current_slot = None
+
     def tune_cc(self, freq):
         if freq is None or int(freq) == 0:  # freq will be None when there is already another receiver listening to the control channel
-            if not self.tuner_idle:
-                if self.debug >= 5:
-                    sys.stderr.write("%s [%d] idling receiver\n" % (log_ts.get(), self.msgq_id))
-                self.slot_set({'tuner': self.msgq_id,'slot': 4}) # disable receiver (idle)
-                self.tuner_idle = True
-                self.current_slot = None
+            self.idle_rx()
             return
 
         if self.current_nac != self.system.get_nac():
@@ -1253,9 +1273,7 @@ class p25_receiver(object):
         if self.current_tgid is not None and self.current_tgid == tgid:  # active call remains, nothing to do
             return
 
-        if tgid is None:                                                 # no call, check if we need to assume control channel
-            if self.tuner_idle:
-                self.tune_cc(self.system.get_cc(self.msgq_id))
+        if tgid is None:                                                 # no call
             return
 
         if self.current_tgid is None:
@@ -1286,12 +1304,12 @@ class p25_receiver(object):
         self.current_tgid = None
         self.current_slot = None
 
-        if reason == "preempt":                         # Do not retune or update metadata if in middle of tuning to a different tgid
+        if reason == "preempt":                             # Do not retune or update metadata if in middle of tuning to a different tgid
             return
 
         if update_meta:
-            meta_update(self.meta_q, msgq_id=self.msgq_id)                    # Send Idle metadata update
-        self.tune_cc(self.system.get_cc(self.msgq_id))  # Retune to control channel (if needed)
+            meta_update(self.meta_q, msgq_id=self.msgq_id)  # Send Idle metadata update
+        self.idle_rx()                                      # Make receiver available
 
     def hold_talkgroup(self, tgid, curr_time):
         if tgid > 0:
