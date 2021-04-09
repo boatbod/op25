@@ -625,8 +625,7 @@ class trunked_system (object):
                 self.secondary[ f1 ] = 1
                 sorted_freqs = collections.OrderedDict(sorted(self.secondary.items()))
                 self.secondary = sorted_freqs
-            #if self.debug > 10:
-            if self.debug > 0:
+            if self.debug > 10:
                 sys.stderr.write('%s tsbk29 secondary cc exp: rfid %x stid %d ch1 %x(%s) ch2 %x(%s)\n' %(log_ts.get(), rfid, stid, ch1, self.channel_id_to_string(ch1), ch2, self.channel_id_to_string(ch2)))
         elif opcode == 0x30:
             mfrid  = (tsbk >> 80) & 0xff
