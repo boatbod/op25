@@ -899,7 +899,7 @@ class p25_rx_block (gr.top_block):
             return
         filenames = [sink.gnuplot.filename for sink in self.plot_sinks if sink.gnuplot.filename]
         error = None
-        if self.options.demod_type == 'cqpsk':
+        if self.options.demod_type == 'cqpsk' and self.demod is not None:
             error = self.demod.get_freq_error()
         d = {'json_type': 'rx_update', 'error': error, 'fine_tune': self.options.fine_tune, 'files': filenames}
         msg = gr.message().make_from_string(json.dumps(d), -4, 0, 0)
