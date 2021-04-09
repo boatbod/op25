@@ -614,6 +614,20 @@ class trunked_system (object):
             ta     = (tsbk >> 16) & 0xffffff
             if self.debug > 10:
                 sys.stderr.write('%s tsbk28 grp_aff_resp: mfrid: 0x%x, gav: %d, aga: %d, ga: %d, ta: %d\n' % (log_ts.get(), mfrid, gav, aga, ga, ta))
+        elif opcode == 0x29:   # secondary cc explicit form
+            mfrid = (tsbk >> 80) & 0xff
+            rfid  = (tsbk >> 72) & 0xff
+            stid  = (tsbk >> 64) & 0xff
+            ch1   = (tsbk >> 48) & 0xffff
+            ch2   = (tsbk >> 24) & 0xffff
+            f1 = self.channel_id_to_frequency(ch1)
+            if f1:
+                self.secondary[ f1 ] = 1
+                sorted_freqs = collections.OrderedDict(sorted(self.secondary.items()))
+                self.secondary = sorted_freqs
+            #if self.debug > 10:
+            if self.debug > 0:
+                sys.stderr.write('%s tsbk29 secondary cc exp: rfid %x stid %d ch1 %x(%s) ch2 %x(%s)\n' %(log_ts.get(), rfid, stid, ch1, self.channel_id_to_string(ch1), ch2, self.channel_id_to_string(ch2)))
         elif opcode == 0x30:
             mfrid  = (tsbk >> 80) & 0xff
             if mfrid == 0xA4:  # GRG_EXENC_CMD
