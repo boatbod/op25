@@ -953,12 +953,14 @@ class rx_ctl (object):
         with open(tsv_filename, 'r') as csvfile:
             sreader = csv.reader(csvfile, delimiter='\t', quotechar='"', quoting=csv.QUOTE_ALL)
             for row in sreader:
+                if len(row) == 0: # an empty line, ignore
+                    continue
                 if ord(row[0][0]) == 0xfeff:
                     row[0] = row[0][1:] # remove UTF8_BOM (Python2 version)
                 if ord(row[0][0]) == 0xef and ord(row[0][1]) == 0xbb and ord(row[0][2]) == 0xbf:
                     row[0] = row[0][3:] # remove UTF8_BOM (Python3 version)
                 if row[0].startswith('#'):
-                    continue 
+                    continue
                 if not hdrmap:
                     # process first line of tsv file - header line
                     for hdr in row:
@@ -971,7 +973,7 @@ class rx_ctl (object):
                     sys.stderr.write("Skipping invalid row in %s: %s\n" % (tsv_filename, row))
                     continue
                 for i in range(len(row)):
-                    if row[i]:
+                    if row[i].strip(): # ignore blank fields, or fields only spaces
                         fields[hdrmap[i]] = row[i]
                         if hdrmap[i] != 'sysname':
                             fields[hdrmap[i]] = fields[hdrmap[i]].lower()
