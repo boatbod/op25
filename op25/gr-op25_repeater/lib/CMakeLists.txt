@@ -44,7 +44,8 @@ list(APPEND op25_repeater_sources
     frame_assembler_impl.cc
     analog_udp_impl.cc
     rmsagc_ff_impl.cc
-    fsk4_slicer_fb_impl.cc )
+    fsk4_slicer_fb_impl.cc
+    iqfile_source_impl.cc )
 
 list(APPEND op25_repeater_sources
     bch.cc
