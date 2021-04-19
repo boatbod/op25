@@ -82,7 +82,8 @@ iqfile_source_impl::iqfile_source_impl(size_t itemsize,
       d_repeat_cnt(0),
       d_add_begin_tag(pmt::PMT_NIL)
 {
-    d_scale = pow(2, (itemsize * 8)) / 2;
+    d_scale = (pow(2, (d_itemsize * 8)) - 1) / 2;
+    fprintf(stderr, "iqfile_source::iqfile_source: filename=%s, itemsize=%ld, scale=%f\n", filename, d_itemsize, d_scale);
     open(filename, repeat, start_offset_items, length_items);
     do_update();
 
@@ -246,7 +247,9 @@ int iqfile_source_impl::work(int noutput_items,
 {
     gr_complex* out = (gr_complex*)output_items[0];
     uint64_t size = noutput_items * 2; // each complex output item requires I+Q input samples
-    char* fbuf = NULL;
+    uint64_t s_real, s_imag;
+    float    f_real, f_imag;
+    uint8_t* fbuf = NULL;
 
     do_update(); // update d_fp is reqd
     if (d_fp == NULL)
@@ -271,16 +274,27 @@ int iqfile_source_impl::work(int noutput_items,
         }
 
         uint64_t nitems_to_read = std::min(size, d_items_remaining);
-        fbuf = new char[nitems_to_read * d_itemsize];
+        fbuf = new uint8_t[nitems_to_read * d_itemsize];
 
         // Since the bounds of the file are known, unexpected nitems is an error
         if (nitems_to_read != fread(fbuf, d_itemsize, nitems_to_read, (FILE*)d_fp))
             throw std::runtime_error("fread error");
 
         // Convert each pair of samples to complex float and output
-        for (int i = 0; i < nitems_to_read; i+=2) {
-            out[0] = gr_complex((float)((fbuf[i] - d_scale)/d_scale), (float)((fbuf[i+1] - d_scale)/d_scale));
+        for (int i = 0; i < (nitems_to_read * d_itemsize); i+= (d_itemsize * 2)) {
+            s_real = 0;
+            s_imag = 0;
+            for (int j = 0; j < d_itemsize; j++) {
+                s_real = (s_real << 8) + (fbuf[i+j] & 0xff);
+                s_imag = (s_imag << 8) + (fbuf[i+j+d_itemsize] & 0xff);
+            }
+            f_real = (s_real - d_scale) / d_scale;
+            f_imag = (s_imag - d_scale) / d_scale;
+            //fprintf(stderr, "[%d] (sr, si) = (fr, fi) : (%lx, %lx) = (%f, %f)\n", i, s_real, s_imag, f_real, f_imag);
+            out[0] = gr_complex(f_real, f_imag);
             out++;
+            //if (i > 128)
+            //    abort();
         }
 
         size -= nitems_to_read;
