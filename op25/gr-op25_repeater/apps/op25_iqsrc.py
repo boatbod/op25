@@ -56,6 +56,10 @@ class op25_iqsrc_c(gr.hier_block2):
 
         # Create the source block
         self.iqsrc = op25_repeater.iqfile_source(self.iq_size, self.iq_file, False, 0, 0)
+        if self.iqsrc.is_dsd():
+            self.iq_rate = self.iqsrc.get_dsd_rate()
+            # TODO: self.iq_freq = self.iqsrc.get_dsd_freq()
+            # TODO: self.iq_ts = self.iqsrc.get_dsd_ts()
 
         # Create the throttle to set playback rate
         self.throttle = blocks.throttle(gr.sizeof_gr_complex, self.iq_rate)

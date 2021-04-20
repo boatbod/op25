@@ -94,6 +94,14 @@ public:
      * \brief Add a stream tag to the first sample of the file if true
      */
     virtual void set_begin_tag(pmt::pmt_t val) = 0;
+
+    /*!
+     * \brief Get DSD .IQ file header info
+     */
+    virtual bool is_dsd() = 0;
+    virtual uint32_t get_dsd_rate() = 0;
+    virtual uint32_t get_dsd_freq() = 0;
+    virtual uint32_t get_dsd_ts() = 0;
 };
 
 } /* namespace op25_repeater */

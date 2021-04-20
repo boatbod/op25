@@ -30,6 +30,7 @@
 #include <gnuradio/thread/thread.h>
 #include <fcntl.h>
 #include <stdio.h>
+#include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <cstdio>
@@ -74,11 +75,15 @@ iqfile_source_impl::iqfile_source_impl(size_t itemsize,
       d_itemsize(itemsize),
       d_start_offset_items(start_offset_items),
       d_length_items(length_items),
+      d_rate(0),
+      d_freq(0),
+      d_ts(0),
       d_fp(0),
       d_new_fp(0),
       d_repeat(repeat),
       d_updated(false),
       d_file_begin(true),
+      d_is_dsd(false),
       d_repeat_cnt(0),
       d_add_begin_tag(pmt::PMT_NIL)
 {
@@ -86,6 +91,7 @@ iqfile_source_impl::iqfile_source_impl(size_t itemsize,
     fprintf(stderr, "iqfile_source::iqfile_source: filename=%s, itemsize=%ld, scale=%f\n", filename, d_itemsize, d_scale);
     open(filename, repeat, start_offset_items, length_items);
     do_update();
+    check_header();
 
     std::stringstream str;
     str << name() << unique_id();
@@ -98,6 +104,30 @@ iqfile_source_impl::~iqfile_source_impl()
         fclose((FILE*)d_fp);
     if (d_new_fp)
         fclose((FILE*)d_new_fp);
+}
+
+void iqfile_source_impl::check_header()
+{
+    fpos_t  fpos;
+    uint8_t fbuf[16];
+    fgetpos(d_fp, &fpos); // save current file position
+    rewind(d_fp);         // move to beginning of file
+    if (fread(fbuf, 16, 1, (FILE*)d_fp) != 1) {
+        fclose(d_new_fp);
+        fprintf(stderr, "IQ file too small\n");
+        throw std::runtime_error("file is too small");
+    }
+
+    if (strncasecmp((char*)fbuf, "DSD", 3)) {
+        d_is_dsd = true;
+        d_rate = *((uint32_t*) &fbuf[4]);
+        d_freq = *((uint32_t*) &fbuf[8]);
+        d_ts = 0;
+        for (int i = 0; i < 4; i++)
+            d_ts = (d_ts << 8) + fbuf[i + 12];
+        fprintf(stderr, "iqfile_source_imply: dsd format: sample rate=%u, center freq=%u\n", d_rate, d_freq);
+    }
+    fsetpos(d_fp, &fpos); // restore original file position
 }
 
 bool iqfile_source_impl::seek(int64_t seek_point, int whence)

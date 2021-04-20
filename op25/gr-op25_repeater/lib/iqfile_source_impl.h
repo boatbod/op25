@@ -36,6 +36,9 @@ private:
     uint64_t d_start_offset_items;
     uint64_t d_length_items;
     uint64_t d_items_remaining;
+    uint32_t d_rate;
+    uint32_t d_freq;
+    uint32_t d_ts;
     float d_scale;
     FILE* d_fp;
     FILE* d_new_fp;
@@ -43,6 +46,7 @@ private:
     bool d_updated;
     bool d_file_begin;
     bool d_seekable;
+    bool d_is_dsd;
     long d_repeat_cnt;
     pmt::pmt_t d_add_begin_tag;
 
@@ -50,6 +54,7 @@ private:
     pmt::pmt_t _id;
 
     void do_update();
+    void check_header();
 
 public:
     iqfile_source_impl(size_t itemsize,
@@ -68,6 +73,11 @@ public:
              gr_vector_void_star& output_items);
 
     void set_begin_tag(pmt::pmt_t val);
+
+    inline bool     is_dsd()       { return d_is_dsd; }
+    inline uint32_t get_dsd_rate() { return d_rate; }
+    inline uint32_t get_dsd_freq() { return d_freq; }
+    inline uint32_t get_dsd_ts()   { return d_ts; }
 };
 
 } /* namespace op25_repeater */
