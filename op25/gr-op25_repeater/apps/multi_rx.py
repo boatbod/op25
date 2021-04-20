@@ -121,20 +121,31 @@ class device(object):
             for tup in config['gains'].split(','):
                 name, gain = tup.split(':')
                 self.src.set_gain(int(gain), str(name))
+
+            self.ppm = float(from_dict(config, 'ppm', "0.0"))
+            self.src.set_freq_corr(int(round(self.ppm)))
+
+            self.src.set_sample_rate(config['rate'])
+            self.sample_rate = config['rate']
+
+            self.offset = int(from_dict(config, 'offset', 0))
+
+            self.frequency = int(from_dict(config, 'frequency', 800000000))
+            self.fractional_corr = int((int(round(self.ppm)) - self.ppm) * (self.frequency/1e6))
+            self.src.set_center_freq(self.frequency + self.offset)
         else:
             self.src = op25_iqsrc.op25_iqsrc_c(str(config['name']), config)
+            self.ppm = float(from_dict(config, 'ppm', "0.0"))
+            if self.src.is_dsd():
+                self.frequency = self.src.get_center_freq()
+                self.sample_rate = self.src.get_sample_rate()
+                self.offset = 600000
+            else:
+                self.frequency = int(from_dict(config, 'frequency', 800000000))
+                self.sample_rate = config['rate']
+                self.offset = int(from_dict(config, 'offset', 0))
+            self.fractional_corr = int((int(round(self.ppm)) - self.ppm) * (self.frequency/1e6))
 
-        self.ppm = float(from_dict(config, 'ppm', "0.0"))
-        self.src.set_freq_corr(int(round(self.ppm)))
-
-        self.src.set_sample_rate(config['rate'])
-        self.sample_rate = config['rate']
-
-        self.offset = int(from_dict(config, 'offset', 0))
-
-        self.frequency = int(from_dict(config, 'frequency', 800000000))
-        self.fractional_corr = int((int(round(self.ppm)) - self.ppm) * (self.frequency/1e6))
-        self.src.set_center_freq(self.frequency + self.offset)
 
     def get_ppm(self):
         return self.ppm
