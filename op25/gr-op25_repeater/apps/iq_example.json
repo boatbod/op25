@@ -1,0 +1,85 @@
+{
+    "channels": [
+        {
+            "name": "Playback", 
+            "device": "sdr0",
+            "trunking_sysname": "",
+            "demod_type": "fsk4", 
+            "destination": "udp://127.0.0.1:23446", 
+            "meta_stream_name": "",
+            "excess_bw": 0.2, 
+            "filter_type": "rc", 
+            "if_rate": 24000, 
+            "plot": "fft,datascope",
+            "symbol_rate": 4800,
+            "enable_analog": "off",
+            "whitelist": "",
+            "blacklist": ""
+        }
+    ], 
+    "devices": [
+        {
+            "args": "iqsrc", 
+            "iq_file": "2021-04-17@222644.IQ",
+            "iq_size": 1,
+            "frequency": 497543750, 
+            "offset": 600000, 
+            "gains": "", 
+            "name": "sdr0", 
+            "ppm": 0.0, 
+            "rate": 2400000, 
+            "tunable": false
+        }
+    ],
+    "trunking": {
+        "module": "",
+        "chans": [
+            {
+                "nac": "0x0",
+                "sysname": "",
+                "control_channel_list": "",
+                "whitelist": "",
+                "tgid_tags_file": "",
+                "crypt_behavior": 0
+            }
+        ]
+    },
+    "metadata": {
+        "module": "icemeta.py",
+        "streams": [
+            {
+                "stream_name": "",
+                "meta_format_idle": "[idle]",
+                "meta_format_tgid": "[%TGID%]",
+                "meta_format_tag":  "[%TGID%] %TAG%",
+                "icecastServerAddress": "192.168.1.24:8000",
+                "icecastMountpoint": "op25-0",
+                "icecastMountExt": ".xspf",
+                "icecastPass": "greml1n5",
+                "delay": 0.0
+            }
+        ]
+    },
+    "audio": {
+        "module": "sockaudio.py",
+        "instances": [
+            {
+                "#instance_name": "",
+                "instance_name": "audio0",
+                "device_name": "pulse",
+                "udp_port": 23446,
+                "audio_gain": 1.0,
+                "number_channels": 1
+            }
+        ]
+    },
+    "terminal": {
+        "module": "terminal.py",
+        "terminal_type": "curses",
+        "curses_plot_interval": 0.1,
+        "http_plot_interval": 1.0,
+        "http_plot_directory": "../www/images",
+        "tuning_step_large": 1200,
+        "tuning_step_small": 100
+    }
+}

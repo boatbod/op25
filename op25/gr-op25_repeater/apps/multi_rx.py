@@ -62,6 +62,7 @@ import op25_repeater
 import p25_demodulator
 import p25_decoder
 import op25_nbfm
+import op25_iqsrc
 from log_ts import log_ts
 
 from gr_gnuplot import constellation_sink_c
@@ -100,25 +101,28 @@ class device(object):
         self.tunable = config['tunable']
 
         sys.stderr.write('device: %s\n' % config)
-        if config['args'].startswith('rtl') and config['rate'] not in speeds:
-            sys.stderr.write('WARNING: requested sample rate %d for device %s may not\n' % (config['rate'], config['name']))
-            sys.stderr.write("be optimal.  You may want to use one of the following rates\n")
-            sys.stderr.write('%s\n' % speeds)
-        sys.stderr.write('Device name: "%s", osmosdr args: "%s"\n' % (self.name, str(config['args'])))
-        self.src = osmosdr.source(str(config['args']))
+        if config['args'] != 'iqsrc':
+            if config['args'].startswith('rtl') and config['rate'] not in speeds:
+                sys.stderr.write('WARNING: requested sample rate %d for device %s may not\n' % (config['rate'], config['name']))
+                sys.stderr.write("be optimal.  You may want to use one of the following rates\n")
+                sys.stderr.write('%s\n' % speeds)
+            sys.stderr.write('Device name: "%s", osmosdr args: "%s"\n' % (self.name, str(config['args'])))
+            self.src = osmosdr.source(str(config['args']))
 
-        if 'gain_mode' in config:
-            gain_mode = from_dict(config, 'gain_mode', False)
-            if gain_mode:
-                self.src.set_gain_mode(True, 0)
-            else:
-                self.src.set_gain_mode(True, 0)  # UGH! Ugly workaround for gr-osmosdr airspy bug
-                self.src.set_gain_mode(False, 0)
-            sys.stderr.write("gr-osmosdr driver gain_mode: %s\n" % self.src.get_gain_mode())
+            if 'gain_mode' in config:
+                gain_mode = from_dict(config, 'gain_mode', False)
+                if gain_mode:
+                    self.src.set_gain_mode(True, 0)
+                else:
+                    self.src.set_gain_mode(True, 0)  # UGH! Ugly workaround for gr-osmosdr airspy bug
+                    self.src.set_gain_mode(False, 0)
+                sys.stderr.write("gr-osmosdr driver gain_mode: %s\n" % self.src.get_gain_mode())
 
-        for tup in config['gains'].split(','):
-            name, gain = tup.split(':')
-            self.src.set_gain(int(gain), str(name))
+            for tup in config['gains'].split(','):
+                name, gain = tup.split(':')
+                self.src.set_gain(int(gain), str(name))
+        else:
+            self.src = op25_iqsrc.op25_iqsrc_c(str(config['name']), config)
 
         self.ppm = float(from_dict(config, 'ppm', "0.0"))
         self.src.set_freq_corr(int(round(self.ppm)))
@@ -528,7 +532,7 @@ class rx_block (gr.top_block):
                     self.audio_instances[instance_name] = audio_s
                 except:
                     sys.stderr.write("Error configuring audio instance #%d; %s\n" % (idx, sys.exc_info()[1]))
-                    sys.exc_clear()
+                    #sys.exc_clear()
                     self.audio_instances[instance_name] = None
             else:
                 sys.stderr.write("Ignoring unnamed audio instance #%d\n" % idx)
