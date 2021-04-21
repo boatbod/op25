@@ -98,7 +98,7 @@ class device(object):
         speeds = [250000, 1000000, 1024000, 1800000, 1920000, 2000000, 2048000, 2400000, 2560000]
 
         self.name = config['name']
-        self.tunable = config['tunable']
+        self.tunable = bool(from_dict(config, 'tunable', False))
 
         sys.stderr.write('device: %s\n' % config)
         if config['args'] != 'iqsrc':
@@ -136,6 +136,7 @@ class device(object):
         else:
             self.src = op25_iqsrc.op25_iqsrc_c(str(config['name']), config)
             self.ppm = float(from_dict(config, 'ppm', "0.0"))
+            self.tunable = False
             if self.src.is_dsd():
                 self.frequency = self.src.get_center_freq()
                 self.sample_rate = self.src.get_sample_rate()

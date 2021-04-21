@@ -47,6 +47,7 @@ private:
     bool d_file_begin;
     bool d_seekable;
     bool d_is_dsd;
+    bool d_signed;
     long d_repeat_cnt;
     pmt::pmt_t d_add_begin_tag;
 
@@ -59,7 +60,7 @@ private:
 public:
     iqfile_source_impl(size_t itemsize,
                      const char* filename,
-                     bool repeat,
+                     bool iq_signed,
                      uint64_t offset,
                      uint64_t len);
     ~iqfile_source_impl();

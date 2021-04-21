@@ -54,11 +54,13 @@ class op25_iqsrc_c(gr.hier_block2):
 
         # load config
         self.iq_file = str(from_dict(config, 'iq_file', ""))
+        self.iq_seek = int(from_dict(config, 'iq_seek', 0))
         self.iq_size = int(from_dict(config, 'iq_size', 1))
+        self.iq_signed  = bool(from_dict(config, 'iq_signed', False))
         self.rate = int(from_dict(config, 'rate', 2400000))
 
         # Create the source block
-        self.iqsrc = op25_repeater.iqfile_source(self.iq_size, self.iq_file, False, 0, 0)
+        self.iqsrc = op25_repeater.iqfile_source(self.iq_size, self.iq_file, self.iq_signed, self.iq_seek, 0)
         if self.iqsrc.is_dsd():
             self.is_dsd_file = True
             self.rate = self.iqsrc.get_dsd_rate()
