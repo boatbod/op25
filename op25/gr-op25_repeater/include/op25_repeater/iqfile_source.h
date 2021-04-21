@@ -62,7 +62,7 @@ public:
      */
     static sptr make(size_t itemsize,
                      const char* filename,
-                     bool repeat = false,
+                     bool iq_signed = false,
                      uint64_t offset = 0,
                      uint64_t len = 0);
 

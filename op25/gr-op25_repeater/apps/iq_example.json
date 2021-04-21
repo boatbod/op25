@@ -21,13 +21,14 @@
         {
             "args": "iqsrc", 
             "iq_file": "2021-04-17@222644.IQ",
-            "iq_size": 1,
-            "frequency": 497543750, 
-            "offset": 600000, 
+            "iq_seek": 0,
+            "iq_size": 2,
+            "iq_signed": true,
+            "offset": 750000,
+            "rate": 3000000,
             "gains": "", 
             "name": "sdr0", 
             "ppm": 0.0, 
-            "rate": 2400000, 
             "tunable": false
         }
     ],

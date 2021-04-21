@@ -56,17 +56,17 @@ namespace op25_repeater {
 
 iqfile_source::sptr iqfile_source::make(size_t itemsize,
                                     const char* filename,
-                                    bool repeat,
+                                    bool iq_signed,
                                     uint64_t start_offset_items,
                                     uint64_t length_items)
 {
     return gnuradio::get_initial_sptr(new iqfile_source_impl(
-        itemsize, filename, repeat, start_offset_items, length_items));
+        itemsize, filename, iq_signed, start_offset_items, length_items));
 }
 
 iqfile_source_impl::iqfile_source_impl(size_t itemsize,
                                    const char* filename,
-                                   bool repeat,
+                                   bool iq_signed,
                                    uint64_t start_offset_items,
                                    uint64_t length_items)
     : gr::sync_block("iqfile_source",
@@ -80,18 +80,19 @@ iqfile_source_impl::iqfile_source_impl(size_t itemsize,
       d_ts(0),
       d_fp(0),
       d_new_fp(0),
-      d_repeat(repeat),
+      d_repeat(false),
       d_updated(false),
       d_file_begin(true),
       d_is_dsd(false),
+      d_signed(iq_signed),
       d_repeat_cnt(0),
       d_add_begin_tag(pmt::PMT_NIL)
 {
-    d_scale = (pow(2, (d_itemsize * 8)) - 1) / 2;
     fprintf(stderr, "iqfile_source::iqfile_source: filename=%s, itemsize=%ld, scale=%f\n", filename, d_itemsize, d_scale);
-    open(filename, repeat, start_offset_items, length_items);
+    open(filename, d_repeat, start_offset_items, length_items);
     do_update();
     check_header();
+    d_scale = (pow(2, (d_itemsize * 8)) - 1) / 2;
 
     std::stringstream str;
     str << name() << unique_id();
@@ -108,26 +109,34 @@ iqfile_source_impl::~iqfile_source_impl()
 
 void iqfile_source_impl::check_header()
 {
-    fpos_t  fpos;
+    long  foff;
     uint8_t fbuf[16];
-    fgetpos(d_fp, &fpos); // save current file position
-    rewind(d_fp);         // move to beginning of file
+    foff = ftell(d_fp); // save current file position
+    rewind(d_fp);       // move to beginning of file
     if (fread(fbuf, 16, 1, (FILE*)d_fp) != 1) {
         fclose(d_new_fp);
         fprintf(stderr, "IQ file too small\n");
         throw std::runtime_error("file is too small");
     }
 
-    if (strncasecmp((char*)fbuf, "DSD", 3)) {
+    // If file is DSD FMP format it has a 16 byte header providing info on
+    // sample rate, center frequency and a timestamp
+    // Note: DSD FMPA format unfortunately does not have a header
+    if (strncasecmp((char*)fbuf, "FMP", 3) == 0) {
         d_is_dsd = true;
+        d_itemsize = 1;
+        d_signed = false;
         d_rate = *((uint32_t*) &fbuf[4]);
         d_freq = *((uint32_t*) &fbuf[8]);
         d_ts = 0;
         for (int i = 0; i < 4; i++)
             d_ts = (d_ts << 8) + fbuf[i + 12];
-        fprintf(stderr, "iqfile_source_imply: dsd format: sample rate=%u, center freq=%u\n", d_rate, d_freq);
+        fprintf(stderr, "iqfile_source_imply: FMP format: sample rate=%u, center freq=%u\n", d_rate, d_freq);
     }
-    fsetpos(d_fp, &fpos); // restore original file position
+    if (d_is_dsd) {
+        foff += 16;
+    }
+    fseek(d_fp, foff, SEEK_SET); // restore original file position less any header
 }
 
 bool iqfile_source_impl::seek(int64_t seek_point, int whence)
@@ -277,7 +286,8 @@ int iqfile_source_impl::work(int noutput_items,
 {
     gr_complex* out = (gr_complex*)output_items[0];
     uint64_t size = noutput_items * 2; // each complex output item requires I+Q input samples
-    uint64_t s_real, s_imag;
+    uint16_t u_real, u_imag;
+    int16_t  s_real, s_imag;
     float    f_real, f_imag;
     uint8_t* fbuf = NULL;
 
@@ -312,19 +322,34 @@ int iqfile_source_impl::work(int noutput_items,
 
         // Convert each pair of samples to complex float and output
         for (int i = 0; i < (nitems_to_read * d_itemsize); i+= (d_itemsize * 2)) {
-            s_real = 0;
-            s_imag = 0;
-            for (int j = 0; j < d_itemsize; j++) {
-                s_real = (s_real << 8) + (fbuf[i+j] & 0xff);
-                s_imag = (s_imag << 8) + (fbuf[i+j+d_itemsize] & 0xff);
+            if (d_signed) {
+                s_real = *(int16_t*)&fbuf[i];
+                s_imag = *(int16_t*)&fbuf[i+d_itemsize];
+                f_real = s_real / d_scale;
+                f_imag = s_imag / d_scale;
+#if 0
+                fprintf(stderr, "[%d] (sr, si) = (fr, fi) : (%x, %x) = (%f, %f)\n", i, s_real, s_imag, f_real, f_imag);
+#endif
+            } else {
+                u_real = 0;
+                u_imag = 0;
+                for (int j = 0; j < d_itemsize; j++) {
+                    u_real = (u_real << 8) + (fbuf[i+j] & 0xff);
+                    u_imag = (u_imag << 8) + (fbuf[i+j+d_itemsize] & 0xff);
+                }
+                f_real = (u_real - d_scale) / d_scale;
+                f_imag = (u_imag - d_scale) / d_scale;
+#if 0
+                fprintf(stderr, "[%d] (sr, si) = (fr, fi) : (%x, %x) = (%f, %f)\n", i, u_real, u_imag, f_real, f_imag);
+#endif
             }
-            f_real = (s_real - d_scale) / d_scale;
-            f_imag = (s_imag - d_scale) / d_scale;
-            //fprintf(stderr, "[%d] (sr, si) = (fr, fi) : (%lx, %lx) = (%f, %f)\n", i, s_real, s_imag, f_real, f_imag);
+            
             out[0] = gr_complex(f_real, f_imag);
             out++;
-            //if (i > 128)
-            //    abort();
+#if 0
+            if (i > 128)
+                abort();
+#endif
         }
 
         size -= nitems_to_read;
