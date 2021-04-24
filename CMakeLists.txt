@@ -136,19 +136,10 @@ endif()
 MESSAGE(STATUS "Configuring for Python ${OP25_PYTHON_VER}")
 
 execute_process(COMMAND python${OP25_PYTHON_VER} -c "
-import os
-import sys
+import os.path
 from distutils import sysconfig
-pfx = '/usr/local'
-m1 = os.path.join('lib', 'python' + sys.version[:3], 'dist-packages')
-m2 = sysconfig.get_python_lib(plat_specific=True, prefix='')
-f1 = os.path.join(pfx, m1)
-f2 = os.path.join(pfx, m2)
-ok2 = f2 in sys.path
-if ok2:
-	print(m2)
-else:
-	print(m1)
+python_lib_path = sysconfig.get_python_lib(plat_specific=True, prefix='')
+print(python_lib_path)
 " OUTPUT_VARIABLE OP25_PYTHON_DIR OUTPUT_STRIP_TRAILING_WHITESPACE
 )
 MESSAGE(STATUS "OP25_PYTHON_DIR has been set to \"${OP25_PYTHON_DIR}\".")
