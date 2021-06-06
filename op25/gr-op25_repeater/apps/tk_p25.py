@@ -71,6 +71,15 @@ def add_default_tgid(tgs, tgid):
         tgs[tgid]['keyid'] = -1
         tgs[tgid]['receiver'] = None
 
+def add_default_rid(srcids, rid):
+    if srcids is None:
+        return
+    if rid not in srcids:
+        srcids[rid] = {'counter':0}
+        srcids[rid]['rid'] = rid
+        srcids[rid]['tag'] = ""
+        srcids[rid]['time'] = 0
+
 def get_slot(slot):
     if slot is not None:
         return str(slot)
@@ -197,6 +206,7 @@ class rx_ctl(object):
     def dump_tgids(self):
         for system in self.systems:
             self.systems[system]['system'].dump_tgids()
+            self.systems[system]['system'].dump_rids()
 
     def get_chan_status(self):
         d = {'json_type': 'channel_update'}
@@ -226,6 +236,7 @@ class p25_system(object):
         self.freq_table = {}
         self.voice_frequencies = {}
         self.talkgroups = {}
+        self.sourceids = {}
         self.patches = {}
         self.blacklist = {}
         self.whitelist = None
@@ -260,6 +271,10 @@ class p25_system(object):
         if 'tgid_tags_file' in self.config and self.config['tgid_tags_file'] != "":
             sys.stderr.write("%s [%s] reading system tgid_tags_file: %s\n" % (log_ts.get(), self.sysname, self.config['tgid_tags_file']))
             self.read_tags_file(self.config['tgid_tags_file'])
+
+        if 'rid_tags_file' in self.config and self.config['rid_tags_file'] != "":
+            sys.stderr.write("%s [%s] reading system rid_tags_file: %s\n" % (log_ts.get(), self.sysname, self.config['rid_tags_file']))
+            self.read_rids_file(self.config['rid_tags_file'])
 
         if 'blacklist' in self.config and self.config['blacklist'] != "":
             sys.stderr.write("%s [%s] reading system blacklist file: %s\n" % (log_ts.get(), self.sysname, self.config['blacklist']))
@@ -329,33 +344,61 @@ class p25_system(object):
 
     def read_tags_file(self, tags_file):
         import csv
-        with open(tags_file, 'r') as csvfile:
-            sreader = csv.reader(csvfile, delimiter='\t', quotechar='"', quoting=csv.QUOTE_ALL)
-            for row in sreader:
-                try:
-                    if ord(row[0][0]) == 0xfeff:
-                        row[0] = row[0][1:] # remove UTF8_BOM (Python2 version)
-                    if ord(row[0][0]) == 0xef and ord(row[0][1]) == 0xbb and ord(row[0][2]) == 0xbf:
-                        row[0] = row[0][3:] # remove UTF8_BOM (Python3 version)
-                    tgid = int(row[0])
-                    tag = utf_ascii(row[1])
-                except (IndexError, ValueError) as ex:
-                    sys.stderr.write("read_tags_file: exception %s\n" % ex)
-                    continue
-                if len(row) >= 3:
+        try:
+            with open(tags_file, 'r') as csvfile:
+                sreader = csv.reader(csvfile, delimiter='\t', quotechar='"', quoting=csv.QUOTE_ALL)
+                for row in sreader:
                     try:
-                        prio = int(row[2])
-                    except ValueError as ex:
+                        if ord(row[0][0]) == 0xfeff:
+                            row[0] = row[0][1:] # remove UTF8_BOM (Python2 version)
+                        if ord(row[0][0]) == 0xef and ord(row[0][1]) == 0xbb and ord(row[0][2]) == 0xbf:
+                            row[0] = row[0][3:] # remove UTF8_BOM (Python3 version)
+                        tgid = int(row[0])
+                        tag = utf_ascii(row[1])
+                    except (IndexError, ValueError) as ex:
+                        sys.stderr.write("read_tags_file: exception %s\n" % ex)
+                        continue
+                    if len(row) >= 3:
+                        try:
+                            prio = int(row[2])
+                        except ValueError as ex:
+                            prio = TGID_DEFAULT_PRIO
+                    else:
                         prio = TGID_DEFAULT_PRIO
-                else:
-                    prio = TGID_DEFAULT_PRIO
 
-                if tgid not in self.talkgroups:
-                    add_default_tgid(self.talkgroups, tgid)
-                self.talkgroups[tgid]['tag'] = tag
-                self.talkgroups[tgid]['prio'] = prio
-                if self.debug > 1:
-                    sys.stderr.write("%s [%s] setting tgid(%d), prio(%d), tag(%s)\n" % (log_ts.get(), self.sysname, tgid, prio, tag))
+                    if tgid not in self.talkgroups:
+                        add_default_tgid(self.talkgroups, tgid)
+                    self.talkgroups[tgid]['tag'] = tag
+                    self.talkgroups[tgid]['prio'] = prio
+                    if self.debug > 1:
+                        sys.stderr.write("%s [%s] setting tgid(%d), prio(%d), tag(%s)\n" % (log_ts.get(), self.sysname, tgid, prio, tag))
+        except (IOError) as ex:
+            sys.stderr.write("read_tags_file: exception %s\n" % ex)
+
+    def read_rids_file(self, tags_file):
+        import csv
+        try:
+            with open(tags_file, 'r') as csvfile:
+                sreader = csv.reader(csvfile, delimiter='\t', quotechar='"', quoting=csv.QUOTE_ALL)
+                for row in sreader:
+                    try:
+                        if ord(row[0][0]) == 0xfeff:
+                            row[0] = row[0][1:] # remove UTF8_BOM (Python2 version)
+                        if ord(row[0][0]) == 0xef and ord(row[0][1]) == 0xbb and ord(row[0][2]) == 0xbf:
+                            row[0] = row[0][3:] # remove UTF8_BOM (Python3 version)
+                        rid = int(row[0])
+                        tag = utf_ascii(row[1])
+                    except (IndexError, ValueError) as ex:
+                        sys.stderr.write("read_rid_file: exception %s\n" % ex)
+                        continue
+
+                    if rid not in self.sourceids:
+                        add_default_rid(self.sourceids, rid)
+                    self.sourceids[rid]['tag'] = tag
+                    if self.debug > 1:
+                        sys.stderr.write("%s [%s] setting rid(%d), tag(%s)\n" % (log_ts.get(), self.sysname, rid, tag))
+        except (IOError) as ex:
+            sys.stderr.write("read_rid_file: exception %s\n" % ex)
 
     def get_cc(self, msgq_id):
         if msgq_id is None:
@@ -905,10 +948,22 @@ class p25_system(object):
                     sys.stderr.write("%s [%s] expired_patches: expiring patch sg(%d)\n" % (log_ts.get(), self.sysname, sg))
         return updated
 
+    def get_rid_tag(self, srcaddr):
+        if srcaddr is None or srcaddr not in self.sourceids:
+            return ""
+        else:
+            return self.sourceids[srcaddr]['tag']
+
     def dump_tgids(self):
         sys.stderr.write("Known tgids: { ")
         for tgid in sorted(self.talkgroups.keys()):
             sys.stderr.write("%d " % tgid);
+        sys.stderr.write("}\n") 
+
+    def dump_rids(self):
+        sys.stderr.write("Known rids: { ")
+        for rid in sorted(self.sourceids.keys()):
+            sys.stderr.write("%d " % rid);
         sys.stderr.write("}\n") 
 
     def to_json(self):  # ugly but required for compatibility with P25 trunking and terminal modules
@@ -1143,6 +1198,9 @@ class p25_receiver(object):
 
             if srcaddr > 0:
                 self.talkgroups[self.current_tgid]['srcaddr'] = srcaddr
+                add_default_rid(self.system.sourceids, srcaddr)
+                self.system.sourceids[srcaddr]['counter'] += 1
+                self.system.sourceids[srcaddr]['time'] = curr_time
 
             if self.crypt_behavior > 1:
                 if self.talkgroups[self.current_tgid]['encrypted'] == 1:
@@ -1364,6 +1422,7 @@ class p25_receiver(object):
         d['system'] = self.config['trunking_sysname']
         d['tag'] = self.talkgroups[self.current_tgid]['tag'] if self.current_tgid is not None else cc_tag
         d['srcaddr'] = self.talkgroups[self.current_tgid]['srcaddr'] if self.current_tgid is not None else 0
+        d['srctag'] = self.system.get_rid_tag(self.talkgroups[self.current_tgid]['srcaddr']) if self.current_tgid is not None else ""
         d['encrypted'] = self.talkgroups[self.current_tgid]['encrypted'] if self.current_tgid is not None else 0
         d['mode'] = None
         d['stream'] = self.meta_stream
