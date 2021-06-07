@@ -74,8 +74,9 @@
                 "control_channel_list": "773.84375",
                 "whitelist": "",
                 "blacklist": "",
-                "tgid_tags_file": "first.tsv",
-                "crypt_behavior": 1
+                "tgid_tags_file": "trunk-tags.tsv",
+                "rid_tags_file": "trunk-rids.tsv",
+                "crypt_behavior": 2
             }
         ]
     },
