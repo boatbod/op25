@@ -346,8 +346,10 @@ class p25_system(object):
         import csv
         try:
             with open(tags_file, 'r') as csvfile:
-                sreader = csv.reader(csvfile, delimiter='\t', quotechar='"', quoting=csv.QUOTE_ALL)
+                sreader = csv.reader(decomment(csvfile), delimiter='\t', quotechar='"', quoting=csv.QUOTE_ALL)
                 for row in sreader:
+                    if len(row) < 2:
+                        continue
                     try:
                         if ord(row[0][0]) == 0xfeff:
                             row[0] = row[0][1:] # remove UTF8_BOM (Python2 version)
@@ -379,8 +381,10 @@ class p25_system(object):
         import csv
         try:
             with open(tags_file, 'r') as csvfile:
-                sreader = csv.reader(csvfile, delimiter='\t', quotechar='"', quoting=csv.QUOTE_ALL)
+                sreader = csv.reader(decomment(csvfile), delimiter='\t', quotechar='"', quoting=csv.QUOTE_ALL)
                 for row in sreader:
+                    if len(row) < 2:
+                        continue
                     try:
                         if ord(row[0][0]) == 0xfeff:
                             row[0] = row[0][1:] # remove UTF8_BOM (Python2 version)
@@ -390,6 +394,7 @@ class p25_system(object):
                         tag = utf_ascii(row[1])
                     except (IndexError, ValueError) as ex:
                         sys.stderr.write("read_rid_file: exception %s\n" % ex)
+                        sys.stderr.write("row: %s\n" % row)
                         continue
 
                     if rid not in self.sourceids:

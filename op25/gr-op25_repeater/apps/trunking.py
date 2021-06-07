@@ -951,8 +951,10 @@ class rx_ctl (object):
         hdrmap = []
         configs = {}
         with open(tsv_filename, 'r') as csvfile:
-            sreader = csv.reader(csvfile, delimiter='\t', quotechar='"', quoting=csv.QUOTE_ALL)
+            sreader = csv.reader(decomment(csvfile), delimiter='\t', quotechar='"', quoting=csv.QUOTE_ALL)
             for row in sreader:
+                if len(row) < 4:
+                    continue
                 if ord(row[0][0]) == 0xfeff:
                     row[0] = row[0][1:] # remove UTF8_BOM (Python2 version)
                 if ord(row[0][0]) == 0xef and ord(row[0][1]) == 0xbb and ord(row[0][2]) == 0xbf:
@@ -1056,8 +1058,10 @@ class rx_ctl (object):
             if 'tgid_tags_file' in configs[nac]:
                 import csv
                 with open(configs[nac]['tgid_tags_file'], 'r') as csvfile:
-                    sreader = csv.reader(csvfile, delimiter='\t', quotechar='"', quoting=csv.QUOTE_ALL)
+                    sreader = csv.reader(decomment(csvfile), delimiter='\t', quotechar='"', quoting=csv.QUOTE_ALL)
                     for row in sreader:
+                        if len(row) < 2:
+                            continue
                         try:
                             if ord(row[0][0]) == 0xfeff:
                                 row[0] = row[0][1:] # remove UTF8_BOM (Python2 version)

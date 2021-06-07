@@ -249,8 +249,10 @@ class osw_receiver(object):
         import csv
         try:
             with open(tags_file, 'r') as csvfile:
-                sreader = csv.reader(csvfile, delimiter='\t', quotechar='"', quoting=csv.QUOTE_ALL)
+                sreader = csv.reader(decomment(csvfile), delimiter='\t', quotechar='"', quoting=csv.QUOTE_ALL)
                 for row in sreader:
+                    if len(row) < 2:
+                        continue
                     try:
                         if ord(row[0][0]) == 0xfeff:
                             row[0] = row[0][1:] # remove UTF8_BOM (Python2 version)
