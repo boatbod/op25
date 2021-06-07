@@ -889,6 +889,7 @@ class p25_system(object):
             if self.debug >= 5:
                 sys.stderr.write('%s [%s] new tgid=%s %s prio %d\n' % (log_ts.get(), self.sysname, tgid, self.talkgroups[tgid]['tag'], self.talkgroups[tgid]['prio']))
         self.talkgroups[tgid]['time'] = time.time()
+        self.talkgroups[tgid]['counter'] += 1
         self.talkgroups[tgid]['frequency'] = frequency
         self.talkgroups[tgid]['tdma_slot'] = tdma_slot
         if (self.talkgroups[tgid]['receiver'] is None) or (srcaddr > 0): # don't overwrite with a null srcaddr for active calls
@@ -955,15 +956,15 @@ class p25_system(object):
             return self.sourceids[srcaddr]['tag']
 
     def dump_tgids(self):
-        sys.stderr.write("Known tgids: { ")
+        sys.stderr.write("Known talkgroup ids: {\n")
         for tgid in sorted(self.talkgroups.keys()):
-            sys.stderr.write("%d " % tgid);
+            sys.stderr.write('%d\t"%s"\t%d\t#%d\n' % (tgid, self.talkgroups[tgid]['tag'], self.talkgroups[tgid]['prio'], self.talkgroups[tgid]['counter']));
         sys.stderr.write("}\n") 
 
     def dump_rids(self):
-        sys.stderr.write("Known rids: { ")
+        sys.stderr.write("Known radio ids: {\n")
         for rid in sorted(self.sourceids.keys()):
-            sys.stderr.write("%d " % rid);
+            sys.stderr.write('%d\t"%s"\t#%d\n' % (rid, self.sourceids[rid]['tag'], self.sourceids[rid]['counter']));
         sys.stderr.write("}\n") 
 
     def to_json(self):  # ugly but required for compatibility with P25 trunking and terminal modules
