@@ -1,6 +1,6 @@
 
 // Copyright 2017, 2018 Max H. Parke KA1RBI
-// Copyright 2018, 2019, 2020 gnorbury@bondcar.com
+// Copyright 2018, 2019, 2020, 2021 gnorbury@bondcar.com
 // 
 // This file is part of OP25
 // 
@@ -40,6 +40,7 @@ var c_ppm = null;
 var c_system = null;
 var c_tag = null;
 var c_stream_url = null;
+var c_srctag = "";
 var c_srcaddr = 0;
 var c_grpaddr = 0;
 var c_encrypted = 0;
@@ -276,6 +277,7 @@ function channel_update(d) {
             current_tgid = d[c_id]['tgid'];
             c_tag = d[c_id]['tag'];
             c_srcaddr = d[c_id]['srcaddr'];
+            c_srctag = d[c_id]['srctag'];
             c_stream_url = d[c_id]['stream_url'];
             s2_c.style['display'] = "";
             s2_d.style['display'] = "";
@@ -293,6 +295,7 @@ function channel_update(d) {
             current_tgid = 0;
             c_tag = "";
             c_srcaddr = 0;
+            c_srctag = "";
             c_stream_url = "";
         }
         channel_status();
@@ -343,7 +346,10 @@ function channel_status() {
 
     html = "";
     if ((c_srcaddr != 0) && (c_srcaddr != 0xffffff)) 
-        html += "<span class=\"value\">" + c_srcaddr + "</span>";
+        if (c_srctag != "")
+            html += "<span class=\"value\">" + c_srctag + "</span>";
+        else
+            html += "<span class=\"value\">" + c_srcaddr + "</span>";
     s2_src.innerHTML = html;
 }
 

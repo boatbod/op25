@@ -432,11 +432,18 @@ class curses_terminal(threading.Thread):
             self.stdscr.refresh()
             if 'srcaddr' in msg[c_id]:
                 srcaddr = msg[c_id]['srcaddr']
+                if 'srctag' in msg[c_id]:
+                    srctag = msg[c_id]['srctag']
+                else:
+                    srctag = ""
                 if srcaddr == 0xffffffff:
                     srcaddr = 0
                 if self.current_srcaddr != srcaddr:
                     self.status1.erase()
-                    if srcaddr != 0:
+                    if srctag != "":
+                        s = srctag[:14]
+                        self.status1.addstr(0, (14-len(s)), s)
+                    elif srcaddr != 0:
                         s = '%d' % (srcaddr)
                         s = s[:14]
                         self.status1.addstr(0, (14-len(s)), s)
