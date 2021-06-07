@@ -91,5 +91,8 @@ def crc16(dat,len):    # slow version
     crc = crc ^ 0xffff
     return crc
 
-
+def decomment(csvfile):
+    for row in csvfile:
+        raw = row.split('#')[0].strip()
+        if raw: yield row
 
