@@ -79,6 +79,7 @@ def add_default_rid(srcids, rid):
         srcids[rid]['rid'] = rid
         srcids[rid]['tag'] = ""
         srcids[rid]['time'] = 0
+        srcids[rid]['tgs'] = {}
 
 def get_slot(slot):
     if slot is not None:
@@ -969,7 +970,7 @@ class p25_system(object):
     def dump_rids(self):
         sys.stderr.write("Known radio ids: {\n")
         for rid in sorted(self.sourceids.keys()):
-            sys.stderr.write('%d\t"%s"\t#%d\n' % (rid, self.sourceids[rid]['tag'], self.sourceids[rid]['counter']));
+            sys.stderr.write('%d\t"%s"\t# tgids %s\n' % (rid, self.sourceids[rid]['tag'], self.sourceids[rid]['tgs']));
         sys.stderr.write("}\n") 
 
     def to_json(self):  # ugly but required for compatibility with P25 trunking and terminal modules
@@ -1207,6 +1208,10 @@ class p25_receiver(object):
                 add_default_rid(self.system.sourceids, srcaddr)
                 self.system.sourceids[srcaddr]['counter'] += 1
                 self.system.sourceids[srcaddr]['time'] = curr_time
+                if self.current_tgid not in self.system.sourceids[srcaddr]['tgs']:
+                    self.system.sourceids[srcaddr]['tgs'][self.current_tgid] = 1;
+                else:
+                    self.system.sourceids[srcaddr]['tgs'][self.current_tgid] += 1;
 
             if self.crypt_behavior > 1:
                 if self.talkgroups[self.current_tgid]['encrypted'] == 1:
