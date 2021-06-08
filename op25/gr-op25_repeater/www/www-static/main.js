@@ -255,7 +255,8 @@ function channel_update(d) {
     var s2_c = document.getElementById("s2_ch_lbl");
     var s2_d = document.getElementById("s2_ch_txt");
     var s2_e = document.getElementById("s2_ch_dn");
-    var s2_f = document.getElementById("s2_ch_up");
+    var s2_f = document.getElementById("s2_ch_dmp");
+    var s2_g = document.getElementById("s2_ch_up");
 
     if (d['channels'] != undefined) {
         channel_list = d['channels'];    
@@ -283,12 +284,14 @@ function channel_update(d) {
             s2_d.style['display'] = "";
             s2_e.style['display'] = "";
             s2_f.style['display'] = "";
+            s2_g.style['display'] = "";
         }
         else {
             s2_c.style['display'] = "none";
             s2_d.style['display'] = "none";
             s2_e.style['display'] = "none";
             s2_f.style['display'] = "none";
+            s2_g.style['display'] = "none";
             c_name = "";
             c_freq = 0.0;
             c_system = "";
@@ -565,6 +568,10 @@ function f_chan_button(command) {
     else if (channel_index >= channel_list.length) {
         channel_index = 0;
     }
+}
+
+function f_dump_button(command) {
+    send_command('dump_tgids', 0, Number(channel_list[channel_index]));
 }
 
 function f_tune_button(command) {
