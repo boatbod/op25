@@ -898,8 +898,11 @@ class p25_system(object):
         self.talkgroups[tgid]['counter'] += 1
         self.talkgroups[tgid]['frequency'] = frequency
         self.talkgroups[tgid]['tdma_slot'] = tdma_slot
-        if (self.talkgroups[tgid]['receiver'] is None) or (srcaddr > 0): # don't overwrite with a null srcaddr for active calls
-            self.talkgroups[tgid]['srcaddr']
+        if (self.talkgroups[tgid]['receiver'] is not None):
+            if (srcaddr > 0):
+                self.talkgroups[tgid]['srcaddr'] = srcaddr      # don't overwrite with null srcaddr for active calls
+        else:
+            self.talkgroups[tgid]['srcaddr'] = srcaddr
 
     def expire_talkgroups(self, curr_time):
         if curr_time < self.last_expiry_check + EXPIRY_TIMER:
