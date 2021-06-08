@@ -247,7 +247,7 @@ div.adjacent {
 .s2_cell_d {
 	display: table-column;
 	float: left;
-	width: 43%
+	width: 39%
 }
 
 .s2_cell_e {
@@ -257,6 +257,12 @@ div.adjacent {
 }
 
 .s2_cell_f {
+	display: table-column;
+	float: left;
+	width: 4%
+}
+
+.s2_cell_g {
 	display: table-column;
 	float: left;
 	width: 4%
