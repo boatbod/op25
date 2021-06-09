@@ -992,13 +992,13 @@ class p25_system(object):
             return self.sourceids[srcaddr]['tag']
 
     def dump_tgids(self):
-        sys.stderr.write("Known talkgroup ids: {\n")
+        sys.stderr.write("%s [%s] Known talkgroup ids: {\n" % (log_ts.get(), self.sysname))
         for tgid in sorted(self.talkgroups.keys()):
             sys.stderr.write('%d\t"%s"\t%d\t#%d\n' % (tgid, self.talkgroups[tgid]['tag'], self.talkgroups[tgid]['prio'], self.talkgroups[tgid]['counter']));
         sys.stderr.write("}\n") 
 
     def dump_rids(self):
-        sys.stderr.write("Known radio ids: {\n")
+        sys.stderr.write("%s [%s] Known radio ids: {\n" % (log_ts.get(), self.sysname))
         for rid in sorted(self.sourceids.keys()):
             sys.stderr.write('%d\t"%s"\t# tgids %s\n' % (rid, self.sourceids[rid]['tag'], self.sourceids[rid]['tgs']));
         sys.stderr.write("}\n") 
