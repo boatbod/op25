@@ -457,6 +457,18 @@ class trunked_system (object):
                     updated += 1
                 if self.debug > 10:
                     sys.stderr.write('%s mbt02 voice regroup grant ch1 %x ch2 %x addr 0x%x\n' %(log_ts.get(), ch1, ch2, ga))
+        elif opcode == 0x28:  # grp_aff_resp
+            ta    = src
+            mfrid = (header >> 56) & 0xff
+            wacn  = ((header << 4) & 0xffff0) + ((mbt_data >> 188) & 0xf) 
+            syid  = (mbt_data >> 176) & 0xfff
+            gid   = (mbt_data >> 160) & 0xffff
+            aga   = (mbt_data >> 144) & 0xffff
+            ga    = (mbt_data >> 128) & 0xffff
+            lg    = (mbt_data >> 127) & 0x1
+            gav   = (mbt_data >> 120) & 0x3
+            if self.debug > 10:
+                sys.stderr.write('%s mbt28 grp_aff_resp: mfrid: 0x%x, wacn: 0x%x, syid: 0x%x, lg: %d, gav: %d, aga: %d, ga: %d, ta: %d\n\n' %(log_ts.get(), mfrid, wacn, syid, lg, gav, aga, ga, ta))
         elif opcode == 0x3c:  # adjacent status
             syid = (header >> 48) & 0xfff
             rfid = (header >> 24) & 0xff
@@ -627,6 +639,21 @@ class trunked_system (object):
                 self.secondary = sorted_freqs
             if self.debug > 10:
                 sys.stderr.write('%s tsbk29 secondary cc exp: rfid %x stid %d ch1 %x(%s) ch2 %x(%s)\n' %(log_ts.get(), rfid, stid, ch1, self.channel_id_to_string(ch1), ch2, self.channel_id_to_string(ch2)))
+        elif opcode == 0x2c:   # u_reg_resp
+            mfrid  = (tsbk >> 80) & 0xff
+            rv     = (tsbk >> 76) & 0x3
+            syid   = (tsbk >> 64) & 0xffff
+            sid   = (tsbk >> 40) & 0xffffff
+            sa     = (tsbk >> 16) & 0xffffff
+            if self.debug > 10:
+                sys.stderr.write('%s tsbk2c u_reg_resp: mfrid: 0x%x, rv: %d, syid: 0x%x, sid: %d, sa: %d\n' % (log_ts.get(), mfrid, rv, syid, sid, sa))
+        elif opcode == 0x2f:   # u_de_reg_ack
+            mfrid  = (tsbk >> 80) & 0xff
+            wacn   = (tsbk >> 52) & 0xfffff
+            syid   = (tsbk >> 40) & 0xffff
+            sid    = (tsbk >> 16) & 0xffffff
+            if self.debug > 10:
+                sys.stderr.write('%s tsbk2f u_de_reg_ack: mfrid: 0x%x, wacn: 0x%x, syid: 0x%x, sid: %d\n' % (log_ts.get(), mfrid, wacn, syid, sid))
         elif opcode == 0x30:
             mfrid  = (tsbk >> 80) & 0xff
             if mfrid == 0xA4:  # GRG_EXENC_CMD
