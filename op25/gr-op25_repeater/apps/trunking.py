@@ -909,9 +909,6 @@ class rx_ctl (object):
         self.meta_q.insert_tail(msg)
 
     def post_init(self):
-        #for rx_id in self.receivers:
-        #    self.receivers[rx_id].post_init()
-
         self.nacs = list(self.configs.keys())
         self.current_nac = self.find_next_tsys()
         self.current_state = self.states.CC
@@ -922,7 +919,7 @@ class rx_ctl (object):
             for worker in self.logfile_workers:
                 worker['demod'].connect_chain('fsk4')
 
-        if self.current_nac is not None:
+        if self.current_nac is None:
             self.nac_set({'tuner': 0,'nac': 0})
         else:
             self.nac_set({'tuner': 0,'nac': self.current_nac})
@@ -1192,6 +1189,19 @@ class rx_ctl (object):
 
         updated = 0
         curr_time = time.time()
+
+        if m_type == -2:    # Request from gui
+            cmd = msg.to_string()
+            if type(cmd) is not str and isinstance(cmd, bytes):
+                cmd = cmd.decode()
+            if self.debug > 10:
+                sys.stderr.write('process_qmsg: command: %s\n' % cmd)
+            self.update_state(cmd, curr_time, int(msg.arg1()))
+            return
+
+        if self.current_nac is None:
+            return          # Trunking not yet enabled so discard anything further
+
         if m_type == -3:    # P25 call signalling data
             if self.debug > 10:
                 sys.stderr.write("process_qmsg: P25 info: %s\n" % msg.to_string())
@@ -1208,16 +1218,7 @@ class rx_ctl (object):
                         self.update_state('skip', curr_time, self.current_tgid)
                 else:
                     self.current_encrypted = js['encrypted']
-
             return 
-        elif m_type == -2:  # request from gui
-            cmd = msg.to_string()
-            if type(cmd) is not str and isinstance(cmd, bytes):
-                cmd = cmd.decode()
-            if self.debug > 10:
-                sys.stderr.write('process_qmsg: command: %s\n' % cmd)
-            self.update_state(cmd, curr_time, int(msg.arg1()))
-            return
         elif m_type == -1:  # timeout
             if self.debug > 10:
                 sys.stderr.write('%s process_data_unit timeout\n' % log_ts.get())
