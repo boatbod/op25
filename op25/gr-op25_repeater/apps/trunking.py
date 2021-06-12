@@ -922,7 +922,10 @@ class rx_ctl (object):
             for worker in self.logfile_workers:
                 worker['demod'].connect_chain('fsk4')
 
-        self.nac_set({'tuner': 0,'nac': self.current_nac})
+        if self.current_nac is not None:
+            self.nac_set({'tuner': 0,'nac': 0})
+        else:
+            self.nac_set({'tuner': 0,'nac': self.current_nac})
         self.set_frequency({
             'freq':   tsys.trunk_cc,
             'tgid':   None,
