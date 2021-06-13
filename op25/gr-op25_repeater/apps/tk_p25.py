@@ -208,6 +208,7 @@ class rx_ctl(object):
         for system in self.systems:
             self.systems[system]['system'].dump_tgids()
             self.systems[system]['system'].dump_rids()
+            self.systems[system]['system'].sourceid_history.dump()
 
     def get_chan_status(self):
         d = {'json_type': 'channel_update'}
@@ -238,6 +239,7 @@ class p25_system(object):
         self.voice_frequencies = {}
         self.talkgroups = {}
         self.sourceids = {}
+        self.sourceid_history = rid_history(self.sourceids, 10)
         self.patches = {}
         self.blacklist = {}
         self.whitelist = None
@@ -1039,6 +1041,37 @@ class p25_system(object):
         return json.dumps(d)
 
 #################
+# Radio Id history class
+class rid_history(object):
+    def __init__(self, rids, maxlen = 5):
+        self.rid_history = collections.deque((), maxlen)    # deque object self-trims when size would exceed maxlen elements
+        self.rids = rids
+
+        while len(self.rid_history) < self.rid_history.maxlen:
+            self.rid_history.appendleft({"rid":None, "tgid":None, "ts":0.0})
+
+    def record(self, rid, tgid, ts = time.time()):
+        if rid is None:
+            return
+
+        if (self.rid_history[0]['rid'] == rid) and (self.rid_history[0]['tgid'] == tgid):
+            self.rid_history[0]['ts'] = ts
+        else:
+            self.rid_history.appendleft({"rid": rid, "tgid": tgid, "ts": ts})
+
+    def dump(self):
+        sys.stderr.write("Last %d active radio ids {\n" % self.rid_history.maxlen)
+        for rid_entry in reversed(self.rid_history):
+            if rid_entry['rid'] is None:
+                continue
+            if rid_entry['rid'] in self.rids:
+                rid_tag = self.rids[rid_entry['rid']]['tag']
+            else:
+                rid_tag = ""
+            sys.stderr.write("@ %s rid(%s), rtag(%s), tg(%s)\n" % (log_ts.get(rid_entry['ts']), rid_entry['rid'], rid_tag.center(14)[:14], rid_entry['tgid']))
+        sys.stderr.write("}\n")
+
+#################
 # P25 receiver class
 class p25_receiver(object):
     def __init__(self, debug, msgq_id, frequency_set, nac_set, slot_set, system, config, meta_q = None, freq = 0):
@@ -1242,6 +1275,7 @@ class p25_receiver(object):
                     self.system.sourceids[srcaddr]['tgs'][self.current_tgid] = 1;
                 else:
                     self.system.sourceids[srcaddr]['tgs'][self.current_tgid] += 1;
+                self.system.sourceid_history.record(srcaddr, self.current_tgid, curr_time)
 
             if self.crypt_behavior > 1:
                 if self.talkgroups[self.current_tgid]['encrypted'] == 1:
