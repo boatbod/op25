@@ -1425,11 +1425,11 @@ class p25_receiver(object):
 
         if self.current_tgid is None:
             if self.debug > 0:
-                sys.stderr.write("%s [%d] voice update:  tg(%d), freq(%f), slot(%s), prio(%d)\n" % (log_ts.get(), self.msgq_id, tgid, (freq/1e6), get_slot(slot), self.talkgroups[tgid]['prio']))
+                sys.stderr.write("%s [%d] voice update:  tg(%d), rid(%d), freq(%f), slot(%s), prio(%d)\n" % (log_ts.get(), self.msgq_id, tgid, self.talkgroups[tgid]['srcaddr'], (freq/1e6), get_slot(slot), self.talkgroups[tgid]['prio']))
             self.tune_voice(freq, tgid, slot)
         else:
             if self.debug > 0:
-                sys.stderr.write("%s [%d] voice preempt: tg(%d), freq(%f), slot(%s), prio(%d)\n" % (log_ts.get(), self.msgq_id, tgid, (freq/1e6), get_slot(slot), self.talkgroups[tgid]['prio']))
+                sys.stderr.write("%s [%d] voice preempt: tg(%d), rid(%d), freq(%f), slot(%s), prio(%d)\n" % (log_ts.get(), self.msgq_id, tgid, self.talkgroups[tgid]['srcaddr'], (freq/1e6), get_slot(slot), self.talkgroups[tgid]['prio']))
             self.expire_talkgroup(update_meta=False, reason="preempt")
             self.tune_voice(freq, tgid, slot)
 

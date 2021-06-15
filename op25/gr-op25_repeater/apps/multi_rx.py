@@ -861,7 +861,7 @@ class du_queue_watcher(threading.Thread):
                     self.callback(msg)
                 else:
                     self.keep_running = False
-        except:
+        except KeyboardInterrupt:
             self.keep_running = False
 
     def kill(self):
