@@ -174,7 +174,6 @@ int p25p2_tdma::process_mac_pdu(const uint8_t byte_buf[], const unsigned int len
 
                 case 6: // MAC_HANGTIME
                         handle_mac_hangtime(byte_buf, len, rs_errs);
-                        op25audio.send_audio_flag(op25_audio::DRAIN);
                         break;
         }
 	// maps sacch opcodes into phase I duid values 
