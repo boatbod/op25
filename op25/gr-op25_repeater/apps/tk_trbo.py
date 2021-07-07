@@ -24,6 +24,7 @@ import sys
 import ctypes
 import time
 import json
+import traceback
 from helper_funcs import *
 
 CC_HUNT_TIMEOUTS = 3   # number of sync timeouts to wait until control channel hunt
@@ -174,8 +175,13 @@ class dmr_receiver:
         # log received message
         if self.debug >= 10:
             d_buf = "0x"
-            for byte in m_buf:
-                d_buf += format(get_ordinals(byte),"02x")
+            try:
+                for byte in m_buf:
+                    d_buf += format(get_ordinals(byte),"02x")
+            except (TypeError) as ex:
+                sys.stderr.write("type(byte)=%s, type(m_buf)=%s\n" % (type(byte), type(m_buf)))
+                sys.exit(traceback.format_exc())
+
             sys.stderr.write("%f [%d] DMR PDU: lcn(%d), state(%d), type(%d), slot(%d), data(%s)\n" % (time.time(), self.msgq_id, self.chan_list[self.current_chan], self.current_state, m_type, m_slot, d_buf))
 
         if m_type == 0:   # CACH SLC
