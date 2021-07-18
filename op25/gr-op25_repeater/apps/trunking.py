@@ -1054,6 +1054,10 @@ class rx_ctl (object):
             return
         if tsys.ns_syid < 0:
             return
+
+        if self.debug >= 1:
+            sys.stderr.write("%s Initialize Trunking for NAC 0x%x\n" % (log_ts.get(), nac))
+            
         if not sysname:
             sysname = 'NAC 0x%x' % nac
         if not cclist:
@@ -1199,9 +1203,6 @@ class rx_ctl (object):
             self.update_state(cmd, curr_time, int(msg.arg1()))
             return
 
-        if self.current_nac is None:
-            return          # Trunking not yet enabled so discard anything further
-
         if m_type == -3:    # P25 call signalling data
             if self.debug > 10:
                 sys.stderr.write("process_qmsg: P25 info: %s\n" % msg.to_string())
@@ -1220,6 +1221,8 @@ class rx_ctl (object):
                     self.current_encrypted = js['encrypted']
             return 
         elif m_type == -1:  # timeout
+            if self.current_nac is None: # trunking not started
+                return
             if self.debug > 10:
                 sys.stderr.write('%s process_data_unit timeout\n' % log_ts.get())
             self.update_state('timeout', curr_time)
@@ -1280,6 +1283,9 @@ class rx_ctl (object):
             if self.debug > 10:
                 sys.stderr.write('%s type %d state %d len %d/%d opcode %x [%0x/%0x]\n' %(log_ts.get(), m_type, self.current_state, len(s1), len(s2), opcode, header,mbt_data))
             updated += self.trunked_systems[nac].decode_mbt_data(opcode, src, header << 16, mbt_data << 32)
+
+        if self.current_nac is None:
+            return          # Trunking not yet enabled so discard anything further
 
         if nac != self.current_nac:
             if self.debug > 10: # this is occasionally expected if cycling between different tsys
