@@ -84,7 +84,7 @@ class dmr_receiver:
 
     def process_grant(self, m_buf):
             src_addr = get_ordinals(m_buf[2:5])
-            grp_appr = get_ordinals(m_buf[5:8])
+            grp_addr = get_ordinals(m_buf[5:8])
             lcn      = get_ordinals(m_buf[8]) >> 4
             slot     = (get_ordinals(m_buf[8]) >> 3) & 0x1
             chan, freq = self.find_freq(lcn)
@@ -175,13 +175,8 @@ class dmr_receiver:
         # log received message
         if self.debug >= 10:
             d_buf = "0x"
-            try:
-                for byte in m_buf:
-                    d_buf += format(get_ordinals(byte),"02x")
-            except (TypeError) as ex:
-                sys.stderr.write("type(byte)=%s, type(m_buf)=%s\n" % (type(byte), type(m_buf)))
-                sys.exit(traceback.format_exc())
-
+            for byte in m_buf:
+                d_buf += format(get_ordinals(byte),"02x")
             sys.stderr.write("%f [%d] DMR PDU: lcn(%d), state(%d), type(%d), slot(%d), data(%s)\n" % (time.time(), self.msgq_id, self.chan_list[self.current_chan], self.current_state, m_type, m_slot, d_buf))
 
         if m_type == 0:   # CACH SLC
