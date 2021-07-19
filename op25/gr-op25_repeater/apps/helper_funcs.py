@@ -33,10 +33,12 @@ def utf_ascii(ustr):
 
 def get_ordinals(s):
     t = 0
-    if type(s) is not str and isinstance(s, bytes):
+    if type(s) is int:                                  # integer
+        return s
+    elif type(s) is not str and isinstance(s, bytes):   # byte list
         for c in s:
             t = (t << 8) + c
-    else:
+    else:                                               # string list
         for c in s:
             t = (t << 8) + ord(c)
     return t
