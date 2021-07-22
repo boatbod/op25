@@ -665,7 +665,9 @@ int p25p2_tdma::handle_packet(const uint8_t dibits[])
 	const uint8_t* burstp = &dibits[10];
 	uint8_t xored_burst[BURST_SIZE - 10];
 	int burst_type = duid.duid_lookup(duid.extract_duid(burstp));
-	if (which_slot[sync.tdma_slotid()] != d_slotid) // active slot?
+	if ((burst_type != 6) &&
+		(burst_type != 13) &&
+		(which_slot[sync.tdma_slotid()] != d_slotid)) // only permit control channel or active slot
 		return -1;
 	for (int i=0; i<BURST_SIZE - 10; i++) {
 		xored_burst[i] = burstp[i] ^ tdma_xormask[sync.tdma_slotid() * BURST_SIZE + i];
@@ -689,9 +691,14 @@ int p25p2_tdma::handle_packet(const uint8_t dibits[])
 		return -1;
 	} else if (burst_type == 3) {                   // scrambled sacch
 		rc = handle_acch_frame(xored_burst, 0);
+	} else if (burst_type == 4) {                   // scrambled lcch
+		// rc = handle_acch_frame(xored_burst, 0);		// only used for IECI (not supported)
+		return -1;
 	} else if (burst_type == 9) {                   // scrambled facch
 		rc = handle_acch_frame(xored_burst, 1);
 	} else if (burst_type == 12) {                  // unscrambled sacch
+		rc = handle_acch_frame(burstp, 0);
+	} else if (burst_type == 13) {                  // unscrambled lcch (same as unscrambled sacch)
 		rc = handle_acch_frame(burstp, 0);
 	} else if (burst_type == 15) {                  // unscrambled facch
 		rc = handle_acch_frame(burstp, 1);
