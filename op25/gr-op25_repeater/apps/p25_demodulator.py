@@ -244,7 +244,7 @@ class p25_demod_fb(p25_demod_base):
         # assumes lock held or init
         self.disconnect_float(sink)
         self.connect(self.fsk4_demod, sink)
-        self.float_sink = [self.fsk4_demod, sink]
+        self.float_sink[sink] = self.fsk4_demod
 
 class p25_demod_cb(p25_demod_base):
 
