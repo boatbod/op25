@@ -48,8 +48,8 @@ public:
 	uint32_t packets;
 	~p25p2_tdma();	// destructor
 	void set_xormask(const char*p);
-	void set_debug(int debug);
-	void set_nac(int nac);
+	inline void set_nac(int nac) { d_nac = nac; }
+	inline void set_debug(int debug) { d_debug = debug; }
 	bool rx_sym(uint8_t sym);
 	int handle_frame(void) ;
 private:
@@ -92,9 +92,10 @@ private:
 
 	p25p2_framer p2framer;
 
-	int handle_acch_frame(const uint8_t dibits[], bool fast) ;
+	int handle_acch_frame(const uint8_t dibits[], bool fast, bool is_lcch) ;
 	void handle_voice_frame(const uint8_t dibits[]) ;
 	int process_mac_pdu(const uint8_t byte_buf[], const unsigned int len, const int rs_errs) ;
+	void handle_mac_signal(const uint8_t byte_buf[], const unsigned int len, const int rs_errs) ;
 	void handle_mac_ptt(const uint8_t byte_buf[], const unsigned int len, const int rs_errs) ;
 	void handle_mac_end_ptt(const uint8_t byte_buf[], const unsigned int len, const int rs_errs) ;
 	void handle_mac_idle(const uint8_t byte_buf[], const unsigned int len, const int rs_errs) ;

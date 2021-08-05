@@ -222,6 +222,7 @@ class p25_demod_fb(p25_demod_base):
         @type input_rate: int
         """
 
+        sys.stderr.write("p25_demod_fb: input_rate=%d, symbol_rate=%d\n" % (input_rate, symbol_rate))
         gr.hier_block2.__init__(self, "p25_demod_fb",
                                 gr.io_signature(1, 1, gr.sizeof_float), # Input signature
                                 gr.io_signature(1, 1, gr.sizeof_char))  # Output signature
@@ -245,6 +246,22 @@ class p25_demod_fb(p25_demod_base):
         self.disconnect_float(sink)
         self.connect(self.fsk4_demod, sink)
         self.float_sink[sink] = self.fsk4_demod
+
+    def connect_complex(self, src, sink):
+        # stub to catch unsupported plot types
+        return
+
+    def disconnect_complex(self, sink):
+        # stub to catch unsupported plot types
+        return
+
+    def connect_fm_demod(self):
+        # stub to catch unsupported plot types
+        return
+
+    def disconnect_fm_demod(self):
+        # stub to catch unsupported plot types
+        return
 
 class p25_demod_cb(p25_demod_base):
 

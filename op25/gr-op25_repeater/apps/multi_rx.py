@@ -63,6 +63,7 @@ import p25_demodulator
 import p25_decoder
 import op25_nbfm
 import op25_iqsrc
+import op25_wavsrc
 from log_ts import log_ts
 
 from gr_gnuplot import constellation_sink_c
@@ -98,10 +99,34 @@ class device(object):
         speeds = [250000, 1000000, 1024000, 1800000, 1920000, 2000000, 2048000, 2400000, 2560000]
 
         self.name = config['name']
+        self.args = config['args']
         self.tunable = bool(from_dict(config, 'tunable', False))
 
         sys.stderr.write('device: %s\n' % config)
-        if config['args'] != 'iqsrc':
+        if config['args'] == 'iqsrc':
+            self.src = op25_iqsrc.op25_iqsrc_c(str(config['name']), config)
+            self.ppm = float(from_dict(config, 'ppm', "0.0"))
+            self.tunable = False
+            if self.src.is_dsd():
+                self.frequency = self.src.get_center_freq()
+                self.sample_rate = self.src.get_sample_rate()
+                self.offset = 600000
+            else:
+                self.frequency = int(from_dict(config, 'frequency', 800000000))
+                self.sample_rate = config['rate']
+                self.offset = int(from_dict(config, 'offset', 0))
+            self.fractional_corr = int((int(round(self.ppm)) - self.ppm) * (self.frequency/1e6))
+
+        elif config['args'] == 'wavsrc':
+            self.src = op25_wavsrc.op25_wavsrc_f(str(config['name']), config)
+            self.sample_rate = self.src.get_sample_rate()
+            self.ppm = float(from_dict(config, 'ppm', "0.0"))
+            self.frequency = int(from_dict(config, 'frequency', 800000000))
+            self.offset = 0
+            self.fractional_corr = 0
+            self.tunable = False
+
+        else:
             if config['args'].startswith('rtl') and config['rate'] not in speeds:
                 sys.stderr.write('WARNING: requested sample rate %d for device %s may not\n' % (config['rate'], config['name']))
                 sys.stderr.write("be optimal.  You may want to use one of the following rates\n")
@@ -133,20 +158,6 @@ class device(object):
             self.frequency = int(from_dict(config, 'frequency', 800000000))
             self.fractional_corr = int((int(round(self.ppm)) - self.ppm) * (self.frequency/1e6))
             self.src.set_center_freq(self.frequency + self.offset)
-        else:
-            self.src = op25_iqsrc.op25_iqsrc_c(str(config['name']), config)
-            self.ppm = float(from_dict(config, 'ppm', "0.0"))
-            self.tunable = False
-            if self.src.is_dsd():
-                self.frequency = self.src.get_center_freq()
-                self.sample_rate = self.src.get_sample_rate()
-                self.offset = 600000
-            else:
-                self.frequency = int(from_dict(config, 'frequency', 800000000))
-                self.sample_rate = config['rate']
-                self.offset = int(from_dict(config, 'offset', 0))
-            self.fractional_corr = int((int(round(self.ppm)) - self.ppm) * (self.frequency/1e6))
-
 
     def get_ppm(self):
         return self.ppm
@@ -179,7 +190,13 @@ class channel(object):
         if 'symbol_rate' in list(config.keys()):
             self.symbol_rate = config['symbol_rate']
         self.config = config
-        if config['demod_type'] == "fsk": # Motorola 3600bps
+        if dev.args == 'wavsrc':
+            self.demod = p25_demodulator.p25_demod_fb(
+                             input_rate=dev.sample_rate,
+                             filter_type = config['filter_type'],
+                             excess_bw=config['excess_bw'],
+                             symbol_rate = self.symbol_rate)
+        elif config['demod_type'] == "fsk": # Motorola 3600bps
             filter_type = from_dict(config, 'filter_type', 'fsk2mm')
             if filter_type[:4] != 'fsk2':   # has to be 'fsk2' or derivative such as 'fsk2mm'
                 filter_type = 'fsk2mm'
@@ -192,8 +209,6 @@ class channel(object):
                              offset = dev.offset,
                              if_rate = config['if_rate'],
                              symbol_rate = self.symbol_rate)
-            self.decoder = op25_repeater.frame_assembler(str(config['destination']), verbosity, msgq_id, rx_q)
-
         else:                             # P25, DMR, NXDN and everything else
             self.demod = p25_demodulator.p25_demod_cb(
                              input_rate = dev.sample_rate,
@@ -204,7 +219,7 @@ class channel(object):
                              offset = dev.offset,
                              if_rate = config['if_rate'],
                              symbol_rate = self.symbol_rate)
-            self.decoder = op25_repeater.frame_assembler(str(config['destination']), verbosity, msgq_id, rx_q)
+        self.decoder = op25_repeater.frame_assembler(str(config['destination']), verbosity, msgq_id, rx_q)
 
         if 'key' in config and (config['key'] != ""):
             self.set_key(int(config['key'], 0))
