@@ -146,9 +146,11 @@ int p25p2_tdma::process_mac_pdu(const uint8_t byte_buf[], const unsigned int len
 	unsigned int opcode = (byte_buf[0] >> 5) & 0x7;
 	unsigned int offset = (byte_buf[0] >> 2) & 0x7;
 
+#if 0
         if (d_debug >= 10) {
                 fprintf(stderr, "%s process_mac_pdu: opcode %d len %d\n", logts.get(d_msgq_id), opcode, len);
         }
+#endif
 
         switch (opcode)
         {
@@ -184,13 +186,16 @@ int p25p2_tdma::process_mac_pdu(const uint8_t byte_buf[], const unsigned int len
 void p25p2_tdma::handle_mac_signal(const uint8_t byte_buf[], const unsigned int len, const int rs_errs) 
 {
         char nac_color[2];
-        int i, nac;
-        i = (byte_buf[19] << 4) + ((byte_buf[20] >> 4) & 0xf);
-        nac_color[0] = i >> 8;
-        nac_color[1] = i & 0xff;
-        nac = (nac_color[0]) << 8 + nac_color[1];
+        int nac;
+        nac = (byte_buf[19] << 4) + ((byte_buf[20] >> 4) & 0xf);
+        nac_color[0] = nac >> 8;
+        nac_color[1] = nac & 0xff;
         if (d_debug >= 10) {
-                fprintf(stderr, "%s MAC_SIGNAL: NAC=0x%x, rs_errs=%d\n", logts.get(d_msgq_id), nac, rs_errs);
+                char payload[60];
+                for (int i = 1; i < 19; i++) {
+                        sprintf(payload + ((i-1)*3), "%02x ", byte_buf[i]);
+                }
+                fprintf(stderr, "%s MAC_SIGNAL: NAC=0x%03x, payload=%s, rs_errs=%d\n", logts.get(d_msgq_id), nac, payload, rs_errs);
         }
         send_msg(std::string(nac_color, 2) + std::string((const char *)byte_buf, len), M_P25_TDMA_CC);
 }
