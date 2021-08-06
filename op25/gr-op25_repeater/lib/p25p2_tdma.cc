@@ -191,13 +191,16 @@ void p25p2_tdma::handle_mac_signal(const uint8_t byte_buf[], const unsigned int 
         nac_color[0] = nac >> 8;
         nac_color[1] = nac & 0xff;
         if (d_debug >= 10) {
-                char payload[60];
-                for (int i = 1; i < 19; i++) {
-                        sprintf(payload + ((i-1)*3), "%02x ", byte_buf[i]);
-                }
-                fprintf(stderr, "%s MAC_SIGNAL: NAC=0x%03x, payload=%s, rs_errs=%d\n", logts.get(d_msgq_id), nac, payload, rs_errs);
+        //        char payload[60];
+        //        for (int i = 1; i < 19; i++) {
+        //                sprintf(payload + ((i-1)*3), "%02x ", byte_buf[i]);
+        //        }
+                fprintf(stderr, "%s MAC_SIGNAL: colorcd=0x%03x, ", logts.get(d_msgq_id), nac);
         }
-        send_msg(std::string(nac_color, 2) + std::string((const char *)byte_buf, len), M_P25_TDMA_CC);
+        //send_msg(std::string(nac_color, 2) + std::string((const char *)byte_buf, len), M_P25_TDMA_CC);
+        decode_mac_msg(byte_buf, 18);
+        if (d_debug >= 10)
+                fprintf(stderr, ", rs_errs=%d\n", rs_errs);
 }
 
 void p25p2_tdma::handle_mac_ptt(const uint8_t byte_buf[], const unsigned int len, const int rs_errs) 
@@ -292,11 +295,11 @@ void p25p2_tdma::decode_mac_msg(const uint8_t byte_buf[], const unsigned int len
 
 	for (msg_ptr = 1; msg_ptr < len; )
 	{
-               	b1b2 = byte_buf[msg_ptr] >> 6;
-               	mco  = byte_buf[msg_ptr] & 0x3f;
+        b1b2 = byte_buf[msg_ptr] >> 6;
+        mco  = byte_buf[msg_ptr] & 0x3f;
 		msg_len = mac_msg_len[(b1b2 << 6) + mco];
 		if (d_debug >= 10)
-               		fprintf(stderr, "mco=%01x/%02x", b1b2, mco);
+        	fprintf(stderr, "mco=%01x/%02x", b1b2, mco);
 
 		switch(byte_buf[msg_ptr])
                 {
