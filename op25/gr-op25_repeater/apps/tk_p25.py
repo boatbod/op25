@@ -163,7 +163,7 @@ class rx_ctl(object):
 
         updated = 0
         if m_rxid in self.receivers and self.receivers[m_rxid]['rx_rcvr'] is not None:
-            if m_type == 7 or m_type == 12:                                                 # send TSBKs and MBTs messages to p25_system object
+            if m_type == 7 or m_type == 12 or m_type == -6:                                 # send TSBK, MBT, TDMA messages to p25_system object
                 updated += self.systems[self.receivers[m_rxid]['sysname']]['system'].process_qmsg(msg, curr_time)
             else:
                 updated += self.receivers[m_rxid]['rx_rcvr'].process_qmsg(msg, curr_time)   # send in-call messaging to p25_receiver objects
@@ -470,7 +470,7 @@ class p25_system(object):
         self.set_nac(nac)
 
         updated = 0
-        if m_type == 7 and self.valid_cc(m_rxid): # TSBK
+        if m_type == 7 and self.valid_cc(m_rxid):    # TSBK
             t = get_ordinals(s)
             updated += self.decode_tsbk(m_rxid, t)
 
@@ -487,6 +487,9 @@ class p25_system(object):
                 return updated
             opcode = (header >> 16) & 0x3f
             updated += self.decode_mbt(m_rxid, opcode, src, header << 16, mbt_data << 32)
+
+        elif m_type == -6 and self.valid_cc(m_rxid): # TDMA
+            updated += self.decode_tdma_msg(m_rxid, s[2:])
 
         updated += self.expire_patches()
         return updated
@@ -508,7 +511,7 @@ class p25_system(object):
                 updated += 1
             if self.debug > 10:
                 sys.stderr.write('%s [%d] mbt00 voice grant ch1 %x ch2 %x addr 0x%x\n' %(log_ts.get(), m_rxid, ch1, ch2, ga))
-        if opcode == 0x02: # grp regroup voice channel grant
+        elif opcode == 0x02: # grp regroup voice channel grant
             mfrid  = (mbt_data >> 168) & 0xff
             if mfrid == 0x90:    # MOT_GRG_CN_GRANT_EXP
                 ch1  = (mbt_data >> 80) & 0xffff
@@ -845,6 +848,19 @@ class p25_system(object):
                 sys.stderr.write('%s [%d] tsbk3c adjacent: rfid %x stid %d ch1 %x(%s)\n' %(log_ts.get(), m_rxid, rfid, stid, ch1, self.channel_id_to_string(ch1)))
                 if table in self.freq_table:
                     sys.stderr.write('%s [%d] tsbk3c : %s %s\n' % (log_ts.get(), m_rxid, self.freq_table[table]['frequency'] , self.freq_table[table]['step'] ))
+        return updated
+
+    def decode_tdma_msg(self, m_rxid, msg):
+        updated = 0
+        op = get_ordinals(msg[:1])
+        sys.stderr.write('%s [%d] TDMA MSG: op: %x\n' % (log_ts.get(), m_rxid, op))
+
+        if op == 0x01: # Group Voice Channel User Message Abbreviated
+            ga = get_ordinals(msg[2:4])
+            sa = get_ordinals(msg[4:7])
+        #TODO: a work in progress
+
+
         return updated
 
     def find_voice_freq(self, tgid=None):

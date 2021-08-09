@@ -1,5 +1,5 @@
 // P25 TDMA Decoder (C) Copyright 2013, 2014, 2021 Max H. Parke KA1RBI
-// Copyright 2017-2021 Graham J. Norbury (modularization rewrite)
+// Copyright 2017-2021 Graham J. Norbury (modularization rewrite, additional messages)
 // 
 // This file is part of OP25
 // 
@@ -75,18 +75,18 @@ static const uint8_t mac_msg_len[256] = {
 	 0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 
 	 0, 14, 15,  0,  0, 15,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 
 	 5,  7,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 
-	 9,  7,  9,  0,  9,  8,  9,  0,  0,  0,  9,  0,  0,  0,  0,  0, 
-	 0,  0,  0,  0,  9,  7,  0,  0,  0,  0,  7,  0,  0,  8, 14,  7, 
-	 9,  9,  0,  0,  9,  0,  0,  9,  0,  0,  7,  0,  0,  7,  0,  0, 
-	 0,  0,  0,  9,  9,  9,  0,  0,  9,  9,  9, 11,  9,  9,  0,  0, 
+	 9,  7,  9,  0,  9,  8,  9,  0, 10, 10,  9,  0, 10,  0,  0,  0, 
+	 0,  0,  0,  0,  9,  7,  0,  0, 10,  0,  7,  0, 10,  8, 14,  7, 
+	 9,  9,  0,  0,  9,  0,  0,  9, 10,  0,  7, 10, 10,  7,  0,  9, 
+	 9, 29,  9,  9,  9,  9, 10, 13,  9,  9,  9, 11,  9,  9,  0,  0, 
+	 8,  0,  0,  7, 11,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 
 	 0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 
+	16,  0,  0, 11, 13, 11, 11, 11, 10,  0,  0,  0,  0,  0,  0,  0, 
 	 0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 
-	 0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 
-	 0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 
-	11,  0,  0,  8, 15, 12, 15,  0,  0,  0,  0,  0,  0,  0,  0,  0, 
-	 0,  0,  0,  0,  0,  0,  9,  0,  0,  0, 11,  0,  0,  0,  0, 11, 
-	 0,  0,  0,  0,  0,  0,  0,  0,  0,  8, 11,  0,  0,  0,  0,  0, 
-	 0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 11, 13, 11,  0,  0,  0 };
+	11,  0,  0,  8, 15, 12, 15, 32, 12, 12,  0, 27, 14, 29, 29, 32, 
+	 0,  0,  0,  0,  0,  0,  9,  0, 14, 29, 11, 27, 14,  0, 40, 11, 
+	28,  0,  0, 14, 17, 14,  0,  0, 16,  8, 11,  0, 13, 19,  0,  0, 
+	 0,  0, 16, 14,  0,  0, 12,  0, 22,  0, 11, 13, 11,  0, 15,  0 };
 
 p25p2_tdma::p25p2_tdma(const op25_audio& udp, int slotid, int debug, bool do_msgq, gr::msg_queue::sptr queue, std::deque<int16_t> &qptr, bool do_audio_output, bool do_nocrypt, int msgq_id) :	// constructor
 	tdma_xormask(new uint8_t[SUPERFRAME_SIZE]),
@@ -191,14 +191,9 @@ void p25p2_tdma::handle_mac_signal(const uint8_t byte_buf[], const unsigned int 
         nac_color[0] = nac >> 8;
         nac_color[1] = nac & 0xff;
         if (d_debug >= 10) {
-        //        char payload[60];
-        //        for (int i = 1; i < 19; i++) {
-        //                sprintf(payload + ((i-1)*3), "%02x ", byte_buf[i]);
-        //        }
                 fprintf(stderr, "%s MAC_SIGNAL: colorcd=0x%03x, ", logts.get(d_msgq_id), nac);
         }
-        //send_msg(std::string(nac_color, 2) + std::string((const char *)byte_buf, len), M_P25_TDMA_CC);
-        decode_mac_msg(byte_buf, 18);
+        decode_mac_msg(byte_buf, 18, nac);
         if (d_debug >= 10)
                 fprintf(stderr, ", rs_errs=%d\n", rs_errs);
 }
@@ -284,42 +279,156 @@ void p25p2_tdma::handle_mac_hangtime(const uint8_t byte_buf[], const unsigned in
 }
 
 
-void p25p2_tdma::decode_mac_msg(const uint8_t byte_buf[], const unsigned int len) 
+void p25p2_tdma::decode_mac_msg(const uint8_t byte_buf[], const unsigned int len, const uint16_t nac) 
 {
 	std::string s;
-	std::string tsbk(12,0);
-	std::string pdu(20,0);
-	uint8_t b1b2, cfva, mco, lra, rfss, site_id, ssc, svcopts[3], msg_ptr, msg_len;
-        uint16_t chan[3], ch_t[2], ch_r[2], colorcd, grpaddr[3], sys_id;
-        uint32_t srcaddr, wacn_id;
+	std::string pdu;
+	uint8_t b1b2, mco, op, mfid, svcopts[3], msg_ptr, msg_len, len_remaining;
+    uint16_t chan[3], ch_t[2], ch_r[2], colorcd, grpaddr[3], sys_id;
+    uint32_t srcaddr, wacn_id;
 
+	colorcd = nac;
 	for (msg_ptr = 1; msg_ptr < len; )
 	{
+		len_remaining = len - msg_ptr;
         b1b2 = byte_buf[msg_ptr] >> 6;
         mco  = byte_buf[msg_ptr] & 0x3f;
-		msg_len = mac_msg_len[(b1b2 << 6) + mco];
-		if (d_debug >= 10)
-        	fprintf(stderr, "mco=%01x/%02x", b1b2, mco);
+        op   = (b1b2 << 6) + mco;
+		mfid = 0;
 
-		switch(byte_buf[msg_ptr])
-                {
-			case 0x00: // Null message
+		// Find message length using opcode handlers or lookup table
+		switch (op) {
+			case 0x00: // Null Information
+				msg_len = len_remaining;
 				break;
-			case 0x40: // Group Voice Channel Grant Abbreviated
-				svcopts[0] = (byte_buf[msg_ptr+1]     )                      ;
-				chan[0]    = (byte_buf[msg_ptr+2] << 8) + byte_buf[msg_ptr+3];
-				grpaddr[0] = (byte_buf[msg_ptr+4] << 8) + byte_buf[msg_ptr+5];
-				srcaddr    = (byte_buf[msg_ptr+6] << 16) + (byte_buf[msg_ptr+7] << 8) + byte_buf[msg_ptr+8];
-				if (d_debug >= 10)
-					fprintf(stderr, ", svcopts=0x%02x, ch=%u, grpaddr=%u, srcaddr=%u", svcopts[0], chan[0], grpaddr[0], srcaddr);
-				tsbk[0] = 0xff; tsbk[1] = 0xff;
-				tsbk[2] = 0x80;
-				tsbk[3] = 0x00;
-				tsbk[4] = svcopts[0];
-				tsbk[5] = chan[0] >> 8; tsbk[6] = chan[0] & 0xff;
-				tsbk[7] = grpaddr[0] >> 8; tsbk[8] = grpaddr[0] & 0xff;
-				tsbk[9] = srcaddr >> 16; tsbk[10] = (srcaddr >> 8) & 0xff; tsbk[11] = srcaddr & 0xff;
-				send_msg(tsbk, M_P25_DUID_TSBK);
+			case 0x08: // Null Avoid Zero Bias Message
+				msg_len = byte_buf[msg_ptr+1] & 0x3f;
+				break;
+			case 0x11: // Indirect Group Paging without Priority
+				msg_len = (((byte_buf[msg_ptr+1] & 0x3) + 1) * 2) + 2;
+				break;
+			case 0x12: // Individual Paging with Priority
+				msg_len = (((byte_buf[msg_ptr+1] & 0x3) + 1) * 3) + 2;
+				break;
+			case 0x81: // MFID90 Group Regroup Add Command
+			case 0x89: // MFID90 Group Regroup Delete Command
+				if (byte_buf[msg_ptr+1] == 0x90)
+					msg_len = byte_buf[msg_ptr+2] & 0x3f;
+				else
+					msg_len = len_remaining;
+				break;
+			case 0xb0: // MFIDA4 Group Regroup Explicit Encryption Command
+				if (byte_buf[msg_ptr+1] == 0xa4)
+					msg_len = byte_buf[msg_ptr+2] & 0x3f;
+				else
+					msg_len = len_remaining;
+				break;
+			default:   // Lookup table
+				msg_len = mac_msg_len[op];
+		}
+
+		if (d_debug >= 10) {
+			fprintf(stderr, "mco=%01x/%02x(0x%02x), len=%d", b1b2, mco, op, msg_len);
+			if (msg_ptr < len)
+				fprintf(stderr,", ");
+		}
+
+		// Generic processing
+		switch (b1b2) {
+			case 0x0: // Unique TDMA CAI message
+				if ((op == 0x00) || (op == 0x08) || (msg_len == 0)) // Discard Null messages or
+					break;                                          // those with unknown length
+				pdu.assign(msg_len+2, 0);
+				pdu[0] = colorcd >> 8; pdu[1] = colorcd & 0xff;
+				for (int i = 0; i < msg_len; i++) {
+					pdu[2 + i] = byte_buf[msg_ptr + i];
+				}
+				send_msg(pdu, M_P25_TDMA_MSG);
+				break;
+			case 0x1: // Derived from FDMA CAI abbreviated format
+				convert_abbrev_msg(byte_buf+msg_ptr, colorcd, mfid);
+				break;
+			case 0x2: // Manufacturer specific message
+				mfid = byte_buf[msg_ptr+1];
+				msg_len = byte_buf[msg_ptr+2] & 0x3f;
+				if (msg_len == 0)
+					break;
+				pdu.assign(msg_len+2, 0);
+				pdu[0] = colorcd >> 8; pdu[1] = colorcd & 0xff;
+				for (int i = 0; i < msg_len; i++) {
+					pdu[2 + i] = byte_buf[msg_ptr + i];
+				}
+				send_msg(pdu, M_P25_TDMA_MSG);
+				break;
+			case 0x3: // Derived from FDMA CAI extended or explicit format
+				if (msg_len == 0)
+					break;
+				pdu.assign(msg_len+2, 0);
+				pdu[0] = colorcd >> 8; pdu[1] = colorcd & 0xff;
+				for (int i = 0; i < msg_len; i++) {
+					pdu[2 + i] = byte_buf[msg_ptr + i];
+				}
+				send_msg(pdu, M_P25_TDMA_MSG);
+				break;
+		}
+
+		// Custom processing
+		// TODO: move this up into the Python trunking module
+		switch(op) {
+			case 0x01: // Group Voice Channel User Message Abbreviated
+				grpaddr[0] = (byte_buf[msg_ptr+2] << 8) + byte_buf[msg_ptr+3];
+				srcaddr    = (byte_buf[msg_ptr+4] << 16) + (byte_buf[msg_ptr+5] << 8) + byte_buf[msg_ptr+6];
+				s = "{\"srcaddr\" : " + std::to_string(srcaddr) + ", \"grpaddr\": " + std::to_string(grpaddr[0]) + "}";
+				send_msg(s, M_P25_JSON_DATA);
+				break;
+			case 0x05: // Group Voice Channel Grant Update Multiple
+				svcopts[0] = (byte_buf[msg_ptr+ 1]     )                       ;
+				chan[0]    = (byte_buf[msg_ptr+ 2] << 8) + byte_buf[msg_ptr+ 3];
+				grpaddr[0] = (byte_buf[msg_ptr+ 4] << 8) + byte_buf[msg_ptr+ 5];
+				svcopts[1] = (byte_buf[msg_ptr+ 6]     )                       ;
+				chan[1]    = (byte_buf[msg_ptr+ 7] << 8) + byte_buf[msg_ptr+ 8];
+				grpaddr[1] = (byte_buf[msg_ptr+ 9] << 8) + byte_buf[msg_ptr+10];
+				svcopts[2] = (byte_buf[msg_ptr+11]     )                       ;
+				chan[2]    = (byte_buf[msg_ptr+12] << 8) + byte_buf[msg_ptr+13];
+				grpaddr[2] = (byte_buf[msg_ptr+14] << 8) + byte_buf[msg_ptr+15];
+				pdu.assign(12,0);
+				pdu[0] = colorcd >> 8; pdu[1] = colorcd & 0xff;
+				pdu[2] = 0x82;
+				pdu[3] = 0x00;
+				pdu[4] = chan[0] >> 8; pdu[5] = chan[0] & 0xff;
+				pdu[6] = grpaddr[0] >> 8; pdu[7] = grpaddr[0] & 0xff;
+				pdu[8] = chan[1] >> 8; pdu[9] = chan[1] & 0xff;
+				pdu[10] = grpaddr[1] >> 8; pdu[11] = grpaddr[1] & 0xff;
+				send_msg(pdu, M_P25_DUID_TSBK);
+				pdu[4] = chan[2] >> 8; pdu[5] = chan[2] & 0xff;
+				pdu[6] = grpaddr[2] >> 8; pdu[7] = grpaddr[2] & 0xff;
+				pdu[8] = chan[2] >> 8; pdu[9] = chan[2] & 0xff;
+				pdu[10] = grpaddr[2] >> 8; pdu[11] = grpaddr[2] & 0xff;
+				send_msg(pdu, M_P25_DUID_TSBK);
+				break;
+			case 0x25: // Group Voice Channel Grant Update Multiple Explicit
+				svcopts[0] = (byte_buf[msg_ptr+ 1]     )                       ;
+				ch_t[0]    = (byte_buf[msg_ptr+ 2] << 8) + byte_buf[msg_ptr+ 3];
+				ch_r[0]    = (byte_buf[msg_ptr+ 4] << 8) + byte_buf[msg_ptr+ 5];
+				grpaddr[0] = (byte_buf[msg_ptr+ 6] << 8) + byte_buf[msg_ptr+ 7];
+				svcopts[1] = (byte_buf[msg_ptr+ 8]     )                       ;
+				ch_t[1]    = (byte_buf[msg_ptr+ 9] << 8) + byte_buf[msg_ptr+10];
+				ch_r[1]    = (byte_buf[msg_ptr+11] << 8) + byte_buf[msg_ptr+12];
+				grpaddr[1] = (byte_buf[msg_ptr+13] << 8) + byte_buf[msg_ptr+14];
+				pdu.assign(12,0);
+				pdu[0] = colorcd >> 8; pdu[1] = colorcd & 0xff;
+				pdu[2] = 0x83;
+				pdu[3] = svcopts[0];
+				pdu[4] = 0x00;
+				pdu[5] = ch_t[0] >> 8; pdu[6] = ch_t[0] & 0xff;
+				pdu[7] = ch_r[0] >> 8; pdu[8] = ch_r[0] & 0xff;
+				pdu[9] = grpaddr[0] >> 8; pdu[10] = grpaddr[0] & 0xff;
+				send_msg(pdu, M_P25_DUID_TSBK);
+				pdu[3] = svcopts[1];
+				pdu[5] = ch_t[1] >> 8; pdu[6] = ch_t[1] & 0xff;
+				pdu[7] = ch_r[1] >> 8; pdu[8] = ch_r[1] & 0xff;
+				pdu[9] = grpaddr[1] >> 8; pdu[10] = grpaddr[1] & 0xff;
+				send_msg(pdu, M_P25_DUID_TSBK);
 				break;
 			case 0xc0: // Group Voice Channel Grant Extended
 				svcopts[0] = (byte_buf[msg_ptr+1]     )                      ;
@@ -327,9 +436,8 @@ void p25p2_tdma::decode_mac_msg(const uint8_t byte_buf[], const unsigned int len
 				ch_r[0]    = (byte_buf[msg_ptr+4] << 8) + byte_buf[msg_ptr+5];
 				grpaddr[0] = (byte_buf[msg_ptr+6] << 8) + byte_buf[msg_ptr+7];
 				srcaddr    = (byte_buf[msg_ptr+8] << 16) + (byte_buf[msg_ptr+9] << 8) + byte_buf[msg_ptr+10];
-				if (d_debug >= 10)
-					fprintf(stderr, ", svcopts=0x%02x, ch_t=%u, ch_t=%u, grpaddr=%u, srcaddr=%u", svcopts[0], ch_t[0], ch_r[0], grpaddr[0], srcaddr);
-				pdu[0] = 0xff; pdu[1] = 0xff;
+				pdu.assign(20,0);
+				pdu[0] = colorcd >> 8; pdu[1] = colorcd & 0xff;
 				pdu[2] = 0x17; // unconfirmed alternate mbt
 				pdu[3] = 0xfd; // sap = 61
 				pdu[4] = 0x00; // mfrid
@@ -345,144 +453,39 @@ void p25p2_tdma::decode_mac_msg(const uint8_t byte_buf[], const unsigned int len
 				pdu[18] = grpaddr[0] >> 8; pdu[19] = grpaddr[0] & 0xff;
 				send_msg(pdu, M_P25_DUID_PDU);
 				break;
-                        case 0x01: // Group Voice Channel User Message Abbreviated
-                                grpaddr[0] = (byte_buf[msg_ptr+2] << 8) + byte_buf[msg_ptr+3];
-                                srcaddr    = (byte_buf[msg_ptr+4] << 16) + (byte_buf[msg_ptr+5] << 8) + byte_buf[msg_ptr+6];
-                                if (d_debug >= 10)
-                              	        fprintf(stderr, ", grpaddr=%u, srcaddr=%u", grpaddr[0], srcaddr);
-                                s = "{\"srcaddr\" : " + std::to_string(srcaddr) + ", \"grpaddr\": " + std::to_string(grpaddr[0]) + "}";
-				send_msg(s, M_P25_JSON_DATA);
-                                break;
-			case 0x42: // Group Voice Channel Grant Update
-				chan[0]    = (byte_buf[msg_ptr+1] << 8) + byte_buf[msg_ptr+2];
-				grpaddr[0] = (byte_buf[msg_ptr+3] << 8) + byte_buf[msg_ptr+4];
-				chan[1]    = (byte_buf[msg_ptr+5] << 8) + byte_buf[msg_ptr+6];
-				grpaddr[1] = (byte_buf[msg_ptr+7] << 8) + byte_buf[msg_ptr+8];
-				if (d_debug >= 10)
-					fprintf(stderr, ", ch_1=%u, grpaddr1=%u, ch_2=%u, grpaddr2=%u", chan[0], grpaddr[0], chan[1], grpaddr[1]);
-				tsbk[0] = 0xff; tsbk[1] = 0xff;
-				tsbk[2] = 0x82;
-				tsbk[3] = 0x00;
-				tsbk[4] = chan[0] >> 8; tsbk[5] = chan[0] & 0xff;
-				tsbk[6] = grpaddr[0] >> 8; tsbk[7] = grpaddr[0] & 0xff;
-				tsbk[8] = chan[1] >> 8; tsbk[9] = chan[1] & 0xff;
-				tsbk[10] = grpaddr[1] >> 8; tsbk[11] = grpaddr[1] & 0xff;
-				send_msg(tsbk, M_P25_DUID_TSBK);
-				break;
 			case 0xc3: // Group Voice Channel Grant Update Explicit
 				svcopts[0] = (byte_buf[msg_ptr+1]     )                      ;
 				ch_t[0]    = (byte_buf[msg_ptr+2] << 8) + byte_buf[msg_ptr+3];
 				ch_r[0]    = (byte_buf[msg_ptr+4] << 8) + byte_buf[msg_ptr+5];
 				grpaddr[0] = (byte_buf[msg_ptr+6] << 8) + byte_buf[msg_ptr+7];
-				if (d_debug >= 10)
-					fprintf(stderr, ", svcopts=0x%02x, ch_t=%u, ch_r=%u, grpaddr=%u", svcopts[0], ch_t[0], ch_r[0], grpaddr[0]);
-				tsbk[0] = 0xff; tsbk[1] = 0xff;
-				tsbk[2] = 0x83;
-				tsbk[3] = svcopts[0];
-				tsbk[4] = 0x00;
-				tsbk[5] = ch_t[0] >> 8; tsbk[6] = ch_t[0] & 0xff;
-				tsbk[7] = ch_r[0] >> 8; tsbk[8] = ch_r[0] & 0xff;
-				tsbk[9] = grpaddr[0] >> 8; tsbk[10] = grpaddr[0] & 0xff;
-				send_msg(tsbk, M_P25_DUID_TSBK);
+				pdu.assign(12,0);
+				pdu[0] = colorcd >> 8; pdu[1] = colorcd & 0xff;
+				pdu[2] = 0x83;
+				pdu[3] = svcopts[0];
+				pdu[4] = 0x00;
+				pdu[5] = ch_t[0] >> 8; pdu[6] = ch_t[0] & 0xff;
+				pdu[7] = ch_r[0] >> 8; pdu[8] = ch_r[0] & 0xff;
+				pdu[9] = grpaddr[0] >> 8; pdu[10] = grpaddr[0] & 0xff;
+				send_msg(pdu, M_P25_DUID_TSBK);
 				break;
-			case 0x05: // Group Voice Channel Grant Update Multiple
-				svcopts[0] = (byte_buf[msg_ptr+ 1]     )                       ;
-				chan[0]    = (byte_buf[msg_ptr+ 2] << 8) + byte_buf[msg_ptr+ 3];
-				grpaddr[0] = (byte_buf[msg_ptr+ 4] << 8) + byte_buf[msg_ptr+ 5];
-				svcopts[1] = (byte_buf[msg_ptr+ 6]     )                       ;
-				chan[1]    = (byte_buf[msg_ptr+ 7] << 8) + byte_buf[msg_ptr+ 8];
-				grpaddr[1] = (byte_buf[msg_ptr+ 9] << 8) + byte_buf[msg_ptr+10];
-				svcopts[2] = (byte_buf[msg_ptr+11]     )                       ;
-				chan[2]    = (byte_buf[msg_ptr+12] << 8) + byte_buf[msg_ptr+13];
-				grpaddr[2] = (byte_buf[msg_ptr+14] << 8) + byte_buf[msg_ptr+15];
-				if (d_debug >= 10)
-					fprintf(stderr, ", svcopt1=0x%02x, ch_1=%u, grpaddr1=%u, svcopt2=0x%02x, ch_2=%u, grpaddr2=%u, svcopt3=0x%02x, ch_3=%u, grpaddr3=%u", svcopts[0], chan[0], grpaddr[0], svcopts[1], chan[1], grpaddr[1], svcopts[2], chan[2], grpaddr[2]);
-				tsbk[0] = 0xff; tsbk[1] = 0xff;
-				tsbk[2] = 0x82;
-				tsbk[3] = 0x00;
-				tsbk[4] = chan[0] >> 8; tsbk[5] = chan[0] & 0xff;
-				tsbk[6] = grpaddr[0] >> 8; tsbk[7] = grpaddr[0] & 0xff;
-				tsbk[8] = chan[1] >> 8; tsbk[9] = chan[1] & 0xff;
-				tsbk[10] = grpaddr[1] >> 8; tsbk[11] = grpaddr[1] & 0xff;
-				send_msg(tsbk, M_P25_DUID_TSBK);
-				tsbk[4] = chan[2] >> 8; tsbk[5] = chan[2] & 0xff;
-				tsbk[6] = grpaddr[2] >> 8; tsbk[7] = grpaddr[2] & 0xff;
-				tsbk[8] = chan[2] >> 8; tsbk[9] = chan[2] & 0xff;
-				tsbk[10] = grpaddr[2] >> 8; tsbk[11] = grpaddr[2] & 0xff;
-				send_msg(tsbk, M_P25_DUID_TSBK);
-				break;
-			case 0x25: // Group Voice Channel Grant Update Multiple Explicit
-				svcopts[0] = (byte_buf[msg_ptr+ 1]     )                       ;
-				ch_t[0]    = (byte_buf[msg_ptr+ 2] << 8) + byte_buf[msg_ptr+ 3];
-				ch_r[0]    = (byte_buf[msg_ptr+ 4] << 8) + byte_buf[msg_ptr+ 5];
-				grpaddr[0] = (byte_buf[msg_ptr+ 6] << 8) + byte_buf[msg_ptr+ 7];
-				svcopts[1] = (byte_buf[msg_ptr+ 8]     )                       ;
-				ch_t[1]    = (byte_buf[msg_ptr+ 9] << 8) + byte_buf[msg_ptr+10];
-				ch_r[1]    = (byte_buf[msg_ptr+11] << 8) + byte_buf[msg_ptr+12];
-				grpaddr[1] = (byte_buf[msg_ptr+13] << 8) + byte_buf[msg_ptr+14];
-				if (d_debug >= 10)
-					fprintf(stderr, ", svcopt1=0x%02x, ch_t1=%u, ch_r1=%u, grpaddr1=%u, svcopt2=0x%02x, ch_t2=%u, ch_r2=%u, grpaddr2=%u", svcopts[0], ch_t[0], ch_r[0], grpaddr[0], svcopts[1], ch_t[1], ch_r[1], grpaddr[1]);
-				tsbk[0] = 0xff; tsbk[1] = 0xff;
-				tsbk[2] = 0x83;
-				tsbk[3] = svcopts[0];
-				tsbk[4] = 0x00;
-				tsbk[5] = ch_t[0] >> 8; tsbk[6] = ch_t[0] & 0xff;
-				tsbk[7] = ch_r[0] >> 8; tsbk[8] = ch_r[0] & 0xff;
-				tsbk[9] = grpaddr[0] >> 8; tsbk[10] = grpaddr[0] & 0xff;
-				send_msg(tsbk, M_P25_DUID_TSBK);
-				tsbk[3] = svcopts[1];
-				tsbk[5] = ch_t[1] >> 8; tsbk[6] = ch_t[1] & 0xff;
-				tsbk[7] = ch_r[1] >> 8; tsbk[8] = ch_r[1] & 0xff;
-				tsbk[9] = grpaddr[1] >> 8; tsbk[10] = grpaddr[1] & 0xff;
-				send_msg(tsbk, M_P25_DUID_TSBK);
-				break;
-			case 0x7b: // Network Status Broadcast Abbreviated
-				lra     =   byte_buf[msg_ptr+1];
-				wacn_id =  (byte_buf[msg_ptr+2] << 12) + (byte_buf[msg_ptr+3] << 4) + (byte_buf[msg_ptr+4] >> 4);
-				sys_id  = ((byte_buf[msg_ptr+4] & 0x0f) << 8) + byte_buf[msg_ptr+5];
-				chan[0] =  (byte_buf[msg_ptr+6] << 8) + byte_buf[msg_ptr+7];
-				ssc     =   byte_buf[msg_ptr+8];
-				colorcd = ((byte_buf[msg_ptr+9] & 0x0f) << 8) + byte_buf[msg_ptr+10];
-				if (d_debug >= 10)
-					fprintf(stderr, ", lra=0x%02x, wacn_id=0x%05x, sys_id=0x%03x, ch=%u, ssc=0x%02x, colorcd=%03x", lra, wacn_id, sys_id, chan[0], ssc, colorcd);
-				tsbk[0] = colorcd >> 8; tsbk[1] = colorcd & 0xff;
-				tsbk[2] = 0x66;
-				tsbk[3] = 0x00;
-				for (int i = 0; i < 8; i++) {
-					tsbk[4+i] = byte_buf[msg_ptr+2+i];
-				}
-				send_msg(tsbk, M_P25_DUID_TSBK);
-				break;
-			case 0x7c: // Adjacent Status Broadcast Abbreviated
-				lra     =   byte_buf[msg_ptr+1];
-				cfva    =  (byte_buf[msg_ptr+2] >> 4);
-				sys_id  = ((byte_buf[msg_ptr+2] & 0x0f) << 8) + byte_buf[msg_ptr+3];
-				rfss    =   byte_buf[msg_ptr+4];
-				site_id =   byte_buf[msg_ptr+5];
-				chan[0] =  (byte_buf[msg_ptr+6] << 8) + byte_buf[msg_ptr+7];
-				ssc     =   byte_buf[msg_ptr+8];
-				if (d_debug >= 10)
-					fprintf(stderr, ", lra=0x%02x, cfva=0x%01x, sys_id=0x%03x, rfss=%u, site=%u, ch=%u, ssc=0x%02x", lra, cfva, sys_id, rfss, site_id, chan[0], ssc);
-				tsbk[0] = 0xff; tsbk[1] = 0xff;
-				tsbk[2] = 0x6c;
-				tsbk[3] = 0x00;
-				for (int i = 0; i < 8; i++) {
-					tsbk[4+i] = byte_buf[msg_ptr+2+i];
-				}
-				send_msg(tsbk, M_P25_DUID_TSBK);
-				break;
-			case 0xfc: // Adjacent Status Broadcast Extended
-				break;
-			case 0xfb: // Network Status Broadcast Extended
-				colorcd = ((byte_buf[msg_ptr+11] & 0x0f) << 8) + byte_buf[msg_ptr+12];
-				if (d_debug >= 10)
-					fprintf(stderr, ", colorcd=%03x", colorcd);
-				break;
-               	}
-		msg_ptr = (msg_len == 0) ? len : (msg_ptr + msg_len); // TODO: handle variable length messages
-		if ((d_debug >= 10) && (msg_ptr < len))
-			fprintf(stderr,", ");
+		}
+		msg_ptr = (msg_len == 0) ? len : (msg_ptr + msg_len);
 	}
+}
+
+void p25p2_tdma::convert_abbrev_msg(const uint8_t byte_buf[], const uint16_t nac, const uint8_t mfid) 
+{
+    if ((byte_buf[0] & 0xc0) != 0x40) // b1b2=0x1 (abbreviated form messages only)
+		return;
+
+	std::string tsbk(12,0);
+	tsbk[0] = nac >> 8; tsbk[1] = nac & 0xff;
+	tsbk[2] = 0x80 + (byte_buf[0] & 0x3f); // opcode with LB bit set
+	tsbk[3] = 0x00;                        // mfrid
+	for (int i = 4; i <= 11; i++) {
+		tsbk[i] = byte_buf[i-3];
+	}
+	send_msg(tsbk, M_P25_DUID_TSBK);
 }
 
 int p25p2_tdma::handle_acch_frame(const uint8_t dibits[], bool fast, bool is_lcch) 
@@ -532,8 +535,7 @@ int p25p2_tdma::handle_acch_frame(const uint8_t dibits[], bool fast, bool is_lcc
 		j = 9;
 		len = 270;
 		Erasures = {0,1,2,3,4,5,6,7,8,54,55,56,57,58,59,60,61,62};
-	}
-	else {
+	} else {
 		j = 5;
 		len = 312;
 		Erasures = {0,1,2,3,4,57,58,59,60,61,62};
@@ -554,8 +556,7 @@ int p25p2_tdma::handle_acch_frame(const uint8_t dibits[], bool fast, bool is_lcc
 	if (fast) {
 		j = 9;
 		len = 144;
-	}
-	else {
+	} else {
 		j = 5;
 		len = (is_lcch) ? 180 : 168;
 	}
@@ -746,8 +747,7 @@ void p25p2_tdma::handle_4V2V_ess(const uint8_t dibits[])
                 for (int i=0; i < 12; i += 3) { // ESS-B is 4 hexbits / 12 dibits
                         ESS_B[(4 * burst_id) + (i / 3)] = (uint8_t) ((dibits[i] << 4) + (dibits[i+1] << 2) + dibits[i+2]);
                 }
-        }
-        else {
+        } else {
                 int i, j;
 
                 j = 0;
