@@ -489,7 +489,7 @@ class p25_system(object):
             updated += self.decode_mbt(m_rxid, opcode, src, header << 16, mbt_data << 32)
 
         elif m_type == -6 and self.valid_cc(m_rxid): # TDMA
-            updated += self.decode_tdma_msg(m_rxid, s[2:])
+            updated += self.decode_tdma_msg(m_rxid, s[2:], curr_time)
 
         updated += self.expire_patches()
         return updated
@@ -850,14 +850,71 @@ class p25_system(object):
                     sys.stderr.write('%s [%d] tsbk3c : %s %s\n' % (log_ts.get(), m_rxid, self.freq_table[table]['frequency'] , self.freq_table[table]['step'] ))
         return updated
 
-    def decode_tdma_msg(self, m_rxid, msg):
+    def decode_tdma_msg(self, m_rxid, msg, curr_time):
         updated = 0
         op = get_ordinals(msg[:1])
         sys.stderr.write('%s [%d] TDMA MSG: op: %x\n' % (log_ts.get(), m_rxid, op))
 
-        if op == 0x01: # Group Voice Channel User Message Abbreviated
+        if op == 0x01:   # Group Voice Channel User Abbreviated
             ga = get_ordinals(msg[2:4])
             sa = get_ordinals(msg[4:7])
+            updated += self.update_talkgroup_srcaddr(curr_time, ga, sa)
+            if self.debug > 10:
+                sys.stderr.write('%s [%d] tdma01 user: ga: %d sa: %d\n' % (log_ts.get(), m_rxid, ga, sa))
+
+        elif op == 0x05: # Group Voice Channel Grant Update Multiple - Implicit
+            ch1 = get_ordinals(msg[2:4])
+            ga1 = get_ordinals(msg[4:6])
+            ch2 = get_ordinals(msg[7:9])
+            ga2 = get_ordinals(msg[9:11])
+            ch3 = get_ordinals(msg[12:14])
+            ga3 = get_ordinals(msg[14:16])
+            f1 = self.channel_id_to_frequency(ch1)
+            f2 = self.channel_id_to_frequency(ch2)
+            f3 = self.channel_id_to_frequency(ch3)
+            self.update_voice_frequency(f1, tgid=ga1, tdma_slot=self.get_tdma_slot(ch1), srcaddr=sa1)
+            self.update_voice_frequency(f2, tgid=ga2, tdma_slot=self.get_tdma_slot(ch2), srcaddr=sa2)
+            self.update_voice_frequency(f3, tgid=ga3, tdma_slot=self.get_tdma_slot(ch3), srcaddr=sa3)
+            if f1 or f2 or f3:
+                updated += 1
+            if self.debug > 10:
+                sys.stderr.write('%s [%d] tdma05 grant update: freq1: %s ga1: %d sa1: %d\n' % (log_ts.get(), m_rxid, self.channel_id_to_string(ch1), ga1, sa1))
+                sys.stderr.write('%s [%d] tdma05 grant update: freq2: %s ga2: %d sa2: %d\n' % (log_ts.get(), m_rxid, self.channel_id_to_string(ch2), ga2, sa2))
+                sys.stderr.write('%s [%d] tdma05 grant update: freq3: %s ga3: %d sa3: %d\n' % (log_ts.get(), m_rxid, self.channel_id_to_string(ch3), ga3, sa3))
+
+        elif op == 0x21: # Group Voice Channel User - Extended
+            ga   = get_ordinals(msg[2:4])
+            sa   = get_ordinals(msg[4:7])
+            suid = get_ordinals(msg[7:14])
+            updated += self.update_talkgroup_srcaddr(curr_time, ga, sa)
+            if self.debug > 10:
+                sys.stderr.write('%s [%d] tdma21 user: ga: %d sa: %d: suid: %d\n' % (log_ts.get(), m_rxid, ga, sa, suid))
+
+        elif op == 0x25: # Group Voice Channel Grant Update Multiple - Explicit
+            ch1t = get_ordinals(msg[2:4])
+            ch1r = get_ordinals(msg[4:6])
+            ga1  = get_ordinals(msg[6:8])
+            ch2t = get_ordinals(msg[9:11])
+            ch2r = get_ordinals(msg[11:13])
+            ga2  = get_ordinals(msg[13:15])
+            f1   = self.channel_id_to_frequency(ch1t)
+            f2   = self.channel_id_to_frequency(ch2t)
+            self.update_voice_frequency(f1, tgid=ga1, tdma_slot=self.get_tdma_slot(ch1t), srcaddr=sa1)
+            self.update_voice_frequency(f2, tgid=ga2, tdma_slot=self.get_tdma_slot(ch2t), srcaddr=sa2)
+            if f1 or f2:
+                updated += 1
+            if self.debug > 10:
+                sys.stderr.write('%s [%d] tdma25 grant update: f1-t: %s f1-r: %s ga1: %d sa1: %d\n' % (log_ts.get(), m_rxid, self.channel_id_to_string(ch1t), self.channel_id_to_string(ch1t), ga1, sa1))
+                sys.stderr.write('%s [%d] tdma25 grant update: f2-t: %s f2-r: %s ga2: %d sa2: %d\n' % (log_ts.get(), m_rxid, self.channel_id_to_string(ch2t), self.channel_id_to_string(ch2r), ga2, sa2))
+
+        elif op == 0x31: # MAC_Release
+            uf = (get_ordinals(msg[1:2]) >> 7) & 0x1
+            ca = (get_ordinals(msg[1:2]) >> 6) & 0x1
+            sa = get_ordinals(msg[2:5])
+            # Subscriber preemption... do we need to do anything?
+            if self.debug > 10:
+                sys.stderr.write('%s [%d] tdma31 MAC_Release: uf: %d ca: %d sa: %d\n' % (log_ts.get(), m_rxid, uf, ca, sa))
+
         #TODO: a work in progress
 
 
@@ -948,6 +1005,22 @@ class p25_system(object):
                 self.talkgroups[tgid]['srcaddr'] = srcaddr      # don't overwrite with null srcaddr for active calls
         else:
             self.talkgroups[tgid]['srcaddr'] = srcaddr
+
+    def update_talkgroup_srcaddr(self, curr_time, tgid, srcaddr):
+        if (tgid is None or tgid <= 0 or srcaddr is None or srcaddr <= 0 or
+            tgid not in self.talkgroups or self.talkgroups[tgid]['receiver'] is None):
+            return 0
+
+        self.talkgroups[tgid]['srcaddr'] = srcaddr
+        add_default_rid(self.sourceids, srcaddr)
+        self.sourceids[srcaddr]['counter'] += 1
+        self.sourceids[srcaddr]['time'] = curr_time
+        if tgid not in self.sourceids[srcaddr]['tgs']:
+            self.sourceids[srcaddr]['tgs'][tgid] = 1;
+        else:
+            self.sourceids[srcaddr]['tgs'][tgid] += 1;
+        self.sourceid_history.record(srcaddr, tgid, curr_time)
+        return 1
 
     def expire_talkgroups(self, curr_time):
         if curr_time < self.last_expiry_check + EXPIRY_TIMER:
@@ -1282,16 +1355,7 @@ class p25_receiver(object):
                 self.talkgroups[self.current_tgid]['algid'] = algid
                 self.talkgroups[self.current_tgid]['keyid'] = keyid
 
-            if srcaddr > 0:
-                self.talkgroups[self.current_tgid]['srcaddr'] = srcaddr
-                add_default_rid(self.system.sourceids, srcaddr)
-                self.system.sourceids[srcaddr]['counter'] += 1
-                self.system.sourceids[srcaddr]['time'] = curr_time
-                if self.current_tgid not in self.system.sourceids[srcaddr]['tgs']:
-                    self.system.sourceids[srcaddr]['tgs'][self.current_tgid] = 1;
-                else:
-                    self.system.sourceids[srcaddr]['tgs'][self.current_tgid] += 1;
-                self.system.sourceid_history.record(srcaddr, self.current_tgid, curr_time)
+            updated += self.system.update_talkgroup_srcaddr(curr_time, self.current_tgid, srcaddr)
 
             if self.crypt_behavior > 1:
                 if self.talkgroups[self.current_tgid]['encrypted'] == 1:
