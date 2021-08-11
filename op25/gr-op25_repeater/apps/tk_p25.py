@@ -470,11 +470,11 @@ class p25_system(object):
         self.set_nac(nac)
 
         updated = 0
-        if m_type == 7 and self.valid_cc(m_rxid):    # TSBK
+        if m_type == 7:                                     # TSBK
             t = get_ordinals(s)
             updated += self.decode_tsbk(m_rxid, t)
 
-        elif m_type == 12 and self.valid_cc(m_rxid): # MBT
+        elif m_type == 12:                                  # MBT
             s1 = s[:10]     # header without crc
             s2 = s[12:]
             header = get_ordinals(s1)
@@ -488,7 +488,7 @@ class p25_system(object):
             opcode = (header >> 16) & 0x3f
             updated += self.decode_mbt(m_rxid, opcode, src, header << 16, mbt_data << 32)
 
-        elif m_type == -6 and self.valid_cc(m_rxid): # TDMA
+        elif m_type == -6:                                  # TDMA
             updated += self.decode_tdma_msg(m_rxid, s[2:], curr_time)
 
         updated += self.expire_patches()
@@ -598,7 +598,7 @@ class p25_system(object):
                 ga3  = (tsbk >> 16) & 0xffff
                 if self.debug > 10:
                     sys.stderr.write('%s [%d] MOT_GRG_ADD_CMD(0x00): sg:%d ga1:%d ga2:%d ga3:%d\n' % (log_ts.get(), m_rxid, sg, ga1, ga2, ga3))
-                self.add_patch(sg, ga1, ga2, ga3)
+                self.add_patch(sg, [ga1, ga2, ga3])
             else:
                 opts = (tsbk >> 72) & 0xff
                 ch   = (tsbk >> 56) & 0xffff
@@ -619,7 +619,7 @@ class p25_system(object):
                 ga3  = (tsbk >> 16) & 0xffff
                 if self.debug > 10:
                     sys.stderr.write('%s [%d] MOT_GRG_DEL_CMD(0x01): sg:%d ga1:%d ga2:%d ga3:%d\n' % (log_ts.get(), m_rxid, sg, ga1, ga2, ga3))
-                self.del_patch(sg, ga1, ga2, ga3)
+                self.del_patch(sg, [ga1, ga2, ga3])
         elif opcode == 0x02:   # group voice chan grant update
             mfrid  = (tsbk >> 80) & 0xff
             if mfrid == 0x90:
@@ -735,11 +735,11 @@ class p25_system(object):
                     if grg_g == 1: # Group request
                         algid = (rta >> 16) & 0xff
                         ga    =  rta        & 0xffff
-                        self.add_patch(sg, ga, ga, ga)
+                        self.add_patch(sg, [ga])
                     else:          # Unit request (currently unhandled)
                         pass
                 else:          # Deactivate
-                    self.del_patch(sg, 0, 0, 0)
+                    self.del_patch(sg, [sg])
         elif opcode == 0x34:   # iden_up vhf uhf
             iden = (tsbk >> 76) & 0xf
             bwvu = (tsbk >> 72) & 0xf
@@ -852,15 +852,24 @@ class p25_system(object):
 
     def decode_tdma_msg(self, m_rxid, msg, curr_time):
         updated = 0
+        mfid = 0
         op = get_ordinals(msg[:1])
-        sys.stderr.write('%s [%d] TDMA MSG: op: %x\n' % (log_ts.get(), m_rxid, op))
+        b1b2 = (op >> 6) & 0x3
+        if b1b2 == 2:    # Manufacturer-specific opcode has MFID in second octet
+            mfid = get_ordinals(msg[1:2])
 
+        # GJN temporary logging
+        if mfid == 0x90:
+            sys.stderr.write('%s [%d] TDMA MSG: op: %x, mfid: %x\n' % (log_ts.get(), m_rxid, op, mfid))
+        #
+
+        # Opcode specific handlers
         if op == 0x01:   # Group Voice Channel User Abbreviated
             ga = get_ordinals(msg[2:4])
             sa = get_ordinals(msg[4:7])
-            updated += self.update_talkgroup_srcaddr(curr_time, ga, sa)
             if self.debug > 10:
-                sys.stderr.write('%s [%d] tdma01 user: ga: %d sa: %d\n' % (log_ts.get(), m_rxid, ga, sa))
+                sys.stderr.write('%s [%d] tdma01 grp_v_ch_usr: ga: %d sa: %d\n' % (log_ts.get(), m_rxid, ga, sa))
+            updated += self.update_talkgroup_srcaddr(curr_time, ga, sa)
 
         elif op == 0x05: # Group Voice Channel Grant Update Multiple - Implicit
             ch1 = get_ordinals(msg[2:4])
@@ -872,23 +881,23 @@ class p25_system(object):
             f1 = self.channel_id_to_frequency(ch1)
             f2 = self.channel_id_to_frequency(ch2)
             f3 = self.channel_id_to_frequency(ch3)
+            if self.debug > 10:
+                sys.stderr.write('%s [%d] tdma05 grp_v_ch_grant_up: f1: %s ga1: %d sa1: %d f2: %s ga2: %d sa2% %d f3: %s ga3: %d sa3: %d\n' % (log_ts.get(), m_rxid, self.channel_id_to_string(ch1), ga1, sa1,
+                   self.channel_id_to_string(ch2), ga2, sa2,
+                   self.channel_id_to_string(ch3), ga3, sa3))
             self.update_voice_frequency(f1, tgid=ga1, tdma_slot=self.get_tdma_slot(ch1), srcaddr=sa1)
             self.update_voice_frequency(f2, tgid=ga2, tdma_slot=self.get_tdma_slot(ch2), srcaddr=sa2)
             self.update_voice_frequency(f3, tgid=ga3, tdma_slot=self.get_tdma_slot(ch3), srcaddr=sa3)
             if f1 or f2 or f3:
                 updated += 1
-            if self.debug > 10:
-                sys.stderr.write('%s [%d] tdma05 grant update: freq1: %s ga1: %d sa1: %d\n' % (log_ts.get(), m_rxid, self.channel_id_to_string(ch1), ga1, sa1))
-                sys.stderr.write('%s [%d] tdma05 grant update: freq2: %s ga2: %d sa2: %d\n' % (log_ts.get(), m_rxid, self.channel_id_to_string(ch2), ga2, sa2))
-                sys.stderr.write('%s [%d] tdma05 grant update: freq3: %s ga3: %d sa3: %d\n' % (log_ts.get(), m_rxid, self.channel_id_to_string(ch3), ga3, sa3))
 
         elif op == 0x21: # Group Voice Channel User - Extended
             ga   = get_ordinals(msg[2:4])
             sa   = get_ordinals(msg[4:7])
             suid = get_ordinals(msg[7:14])
-            updated += self.update_talkgroup_srcaddr(curr_time, ga, sa)
             if self.debug > 10:
-                sys.stderr.write('%s [%d] tdma21 user: ga: %d sa: %d: suid: %d\n' % (log_ts.get(), m_rxid, ga, sa, suid))
+                sys.stderr.write('%s [%d] tdma21 grp_v_ch_usr: ga: %d sa: %d: suid: %d\n' % (log_ts.get(), m_rxid, ga, sa, suid))
+            updated += self.update_talkgroup_srcaddr(curr_time, ga, sa)
 
         elif op == 0x25: # Group Voice Channel Grant Update Multiple - Explicit
             ch1t = get_ordinals(msg[2:4])
@@ -899,21 +908,63 @@ class p25_system(object):
             ga2  = get_ordinals(msg[13:15])
             f1   = self.channel_id_to_frequency(ch1t)
             f2   = self.channel_id_to_frequency(ch2t)
+            if self.debug > 10:
+                sys.stderr.write('%s [%d] tdma25 grp_v_ch_grant_up: f1-t: %s f1-r: %s ga1: %d sa1: %d f2-t: %s f2-r: %s ga2: %d sa2: %d\n' % (log_ts.get(), m_rxid, self.channel_id_to_string(ch1t), self.channel_id_to_string(ch1t), ga1, sa1,
+                  self.channel_id_to_string(ch2t), self.channel_id_to_string(ch2r), ga2, sa2))
             self.update_voice_frequency(f1, tgid=ga1, tdma_slot=self.get_tdma_slot(ch1t), srcaddr=sa1)
             self.update_voice_frequency(f2, tgid=ga2, tdma_slot=self.get_tdma_slot(ch2t), srcaddr=sa2)
             if f1 or f2:
                 updated += 1
-            if self.debug > 10:
-                sys.stderr.write('%s [%d] tdma25 grant update: f1-t: %s f1-r: %s ga1: %d sa1: %d\n' % (log_ts.get(), m_rxid, self.channel_id_to_string(ch1t), self.channel_id_to_string(ch1t), ga1, sa1))
-                sys.stderr.write('%s [%d] tdma25 grant update: f2-t: %s f2-r: %s ga2: %d sa2: %d\n' % (log_ts.get(), m_rxid, self.channel_id_to_string(ch2t), self.channel_id_to_string(ch2r), ga2, sa2))
 
-        elif op == 0x31: # MAC_Release
+        elif op == 0x30: # Power Control Signal Quality
+            ta     = get_ordinals(msg[1:4])
+            rf_ber = get_ordinals(msg[4:5])  
+            # GJN temporary logging
+            #if self.debug > 10:
+            if self.debug >= 1:
+                sys.stderr.write('%s [%d] tdma30 pwr_ctl_sig_qual: ta: %d rf: 0x%x: ber: 0x%x\n' % (log_ts.get(), m_rxid, ta, ((rf_ber >> 4) & 0xf), (rf_ber & 0xf)))
+
+        elif op == 0x31: # MAC_Release (subscriber call pre-emption)
             uf = (get_ordinals(msg[1:2]) >> 7) & 0x1
             ca = (get_ordinals(msg[1:2]) >> 6) & 0x1
             sa = get_ordinals(msg[2:5])
-            # Subscriber preemption... do we need to do anything?
             if self.debug > 10:
                 sys.stderr.write('%s [%d] tdma31 MAC_Release: uf: %d ca: %d sa: %d\n' % (log_ts.get(), m_rxid, uf, ca, sa))
+
+        elif op == 0x80 and mfid == 0x90: # MFID90 Group Regroup Voice Channel User Abbreviated
+            sg = get_ordinals(msg[3:5])
+            sa = get_ordinals(msg[5:8])
+            if self.debug > 10:
+                sys.stderr.write('%s [%d] tdma80 mfid90 grp_regrp_v_ch_usr: sg: %d sa: %d\n' % (log_ts.get(), m_rxid, sg, sa))
+            updated += self.update_talkgroup_srcaddr(curr_time, sg, sa)
+
+        elif op == 0x81 and mfid == 0x90: # MFID90 Group Regroup Add Command
+            wg_len = (get_ordinals(msg[2:3]) & 0x3f)
+            wg_list = []
+            sg = get_ordinals(msg[3:5])
+            i = 5
+            while i < wg_len:
+                wg = get_ordinals(msg[i:i+2])
+                if wg not in wg_list:
+                    wg_list.append(wg)
+                i += 2
+            if self.debug > 10:
+                sys.stderr.write('%s [%d] tdma81 mfid90 grp_regrp_add: sg: %d wg_list: %s\n' % (log_ts.get(), m_rxid, sg, wg_list))
+            self.add_patch(sg, wg_list)
+
+        elif op == 0x89 and mfid == 0x90: # MFID90 Group Regroup Delete Command
+            wg_len = (get_ordinals(msg[2:3]) & 0x3f)
+            wg_list = []
+            sg = get_ordinals(msg[3:5])
+            i = 5
+            while i < wg_len:
+                wg = get_ordinals(msg[i:i+2])
+                if wg not in wg_list:
+                    wg_list.append(wg)
+                i += 2
+            if self.debug > 10:
+                sys.stderr.write('%s [%d] tdma89 mfid90 grp_regrp_del: sg: %d wg_list: %s\n' % (log_ts.get(), m_rxid, sg, wg_list))
+            self.del_patch(sg, wg_list)
 
         #TODO: a work in progress
 
@@ -1033,13 +1084,13 @@ class p25_system(object):
                     sys.stderr.write("%s [%s] expiring tg(%d), freq(%f), slot(%s)\n" % (log_ts.get(), self.sysname, tgid, (self.talkgroups[tgid]['frequency']/1e6), get_slot(self.talkgroups[tgid]['tdma_slot'])))
                 self.talkgroups[tgid]['receiver'].expire_talkgroup(reason="expiry")
 
-    def add_patch(self, sg, ga1, ga2, ga3):
+    def add_patch(self, sg, ga_list):
         if sg not in self.patches:
             self.patches[sg] = {}
             self.patches[sg]['ga'] = set()
             self.patches[sg]['ts'] = time.time()
 
-        for ga in [ga1, ga2, ga3]:
+        for ga in ga_list:
             if (ga != sg):
                 self.patches[sg]['ts'] = time.time() # update timestamp
                 if ga not in self.patches[sg]['ga']:
@@ -1050,17 +1101,17 @@ class p25_system(object):
         if len(self.patches[sg]['ga']) == 0:
             del self.patches[sg]
 
-    def del_patch(self, sg, ga1, ga2, ga3):
+    def del_patch(self, sg, ga_list):
         if sg not in self.patches:
             return
 
-        for ga in [ga1, ga2, ga3]:
+        for ga in ga_list:
             if ga in self.patches[sg]['ga']:
                 self.patches[sg]['ga'].discard(ga)
                 if self.debug >= 5:
                     sys.stderr.write("%s [%s] del_patch: tgid(%d) is unpatched from sg(%d)\n" % (log_ts.get(), self.sysname, ga, sg))
 
-        if ((ga1, ga2, ga3) == (0, 0, 0)) or (len(self.patches[sg]['ga']) == 0):
+        if (sg in ga_list) or (len(self.patches[sg]['ga']) == 0):
             del self.patches[sg]
             if self.debug >= 5:
                 sys.stderr.write("%s del_patch: deleting patch sg(%d)\n" % (log_ts.get(), sg))

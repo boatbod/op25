@@ -329,8 +329,6 @@ void p25p2_tdma::decode_mac_msg(const uint8_t byte_buf[], const unsigned int len
 
 		if (d_debug >= 10) {
 			fprintf(stderr, "mco=%01x/%02x(0x%02x), len=%d", b1b2, mco, op, msg_len);
-			if (msg_ptr < len)
-				fprintf(stderr,", ");
 		}
 
 		// Generic processing
@@ -470,6 +468,10 @@ void p25p2_tdma::decode_mac_msg(const uint8_t byte_buf[], const unsigned int len
 				break;
 		}
 		msg_ptr = (msg_len == 0) ? len : (msg_ptr + msg_len);
+
+		if ((d_debug >= 10) && (msg_ptr < len)) {
+			fprintf(stderr,", ");
+		}
 	}
 }
 
