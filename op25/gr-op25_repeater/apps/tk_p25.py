@@ -919,9 +919,7 @@ class p25_system(object):
         elif op == 0x30: # Power Control Signal Quality
             ta     = get_ordinals(msg[1:4])
             rf_ber = get_ordinals(msg[4:5])  
-            # GJN temporary logging
-            #if self.debug > 10:
-            if self.debug >= 1:
+            if self.debug > 10:
                 sys.stderr.write('%s [%d] tdma30 pwr_ctl_sig_qual: ta: %d rf: 0x%x: ber: 0x%x\n' % (log_ts.get(), m_rxid, ta, ((rf_ber >> 4) & 0xf), (rf_ber & 0xf)))
 
         elif op == 0x31: # MAC_Release (subscriber call pre-emption)
@@ -952,6 +950,16 @@ class p25_system(object):
                 sys.stderr.write('%s [%d] tdma81 mfid90 grp_regrp_add: sg: %d wg_list: %s\n' % (log_ts.get(), m_rxid, sg, wg_list))
             self.add_patch(sg, wg_list)
 
+        elif op == 0x83 and mfid == 0x90: # MFID90 Group Regroup Voice Channel Update
+            sg = get_ordinals(msg[3:5])
+            ch = get_ordinals(msg[5:7])
+            f = self.channel_id_to_frequency(ch)
+            if self.debug > 10:
+                sys.stderr.write('%s [%d] tdma83 grp_regrp_v_ch_up freq: %s sg: %d\n' %(log_ts.get(), m_rxid, self.channel_id_to_string(ch), sg))
+            self.update_voice_frequency(f, tgid=sg, tdma_slot=self.get_tdma_slot(ch))
+            if f:
+                updated += 1
+
         elif op == 0x89 and mfid == 0x90: # MFID90 Group Regroup Delete Command
             wg_len = (get_ordinals(msg[2:3]) & 0x3f)
             wg_list = []
@@ -965,6 +973,51 @@ class p25_system(object):
             if self.debug > 10:
                 sys.stderr.write('%s [%d] tdma89 mfid90 grp_regrp_del: sg: %d wg_list: %s\n' % (log_ts.get(), m_rxid, sg, wg_list))
             self.del_patch(sg, wg_list)
+
+        elif op == 0xa0 and mfid == 0x90: # MFID90 Group Regroup Voice Channel User Extendd
+            sg    = get_ordinals(msg[4:6])
+            sa    = get_ordinals(msg[6:9])
+            ssuid = get_ordinals(msg[9:16])
+            if self.debug > 10:
+                sys.stderr.write('%s [%d] tdmaa0 mfid90 grp_regrp_v_ch_usr: sg: %d sa: %d, ssuid: %d\n' % (log_ts.get(), m_rxid, sg, sa, ssuid))
+            updated += self.update_talkgroup_srcaddr(curr_time, sg, sa)
+
+        elif op == 0xa3 and mfid == 0x90: # MFID90 Group Regroup Channel Grant Implicit
+            ch = get_ordinals(msg[4:6])
+            sg = get_ordinals(msg[6:8])
+            sa = get_ordinals(msg[8:11])
+            f = self.channel_id_to_frequency(ch)
+            if self.debug > 10:
+                sys.stderr.write('%s [%d] tdmaa3 grp_regrp_v_ch_grant freq: %s sg: %d sa: %d\n' %(log_ts.get(), m_rxid, self.channel_id_to_string(ch), sg, sa))
+            self.update_voice_frequency(f, tgid=sg, tdma_slot=self.get_tdma_slot(ch), srcaddr=sa)
+            if f:
+                updated += 1
+
+        elif op == 0xa4 and mfid == 0x90: # MFID90 Group Regroup Channel Grant Explicit
+            ch1 = get_ordinals(msg[4:6])
+            ch2 = get_ordinals(msg[6:8])
+            sg = get_ordinals(msg[8:10])
+            sa = get_ordinals(msg[10:13])
+            f = self.channel_id_to_frequency(ch1)
+            if self.debug > 10:
+                sys.stderr.write('%s [%d] tdmaa4 grp_regrp_v_ch_grant freq-t: %s freq-r: %s sg: %d sa: %d\n' %(log_ts.get(), m_rxid, self.channel_id_to_string(ch1), self.channel_id_to_string(ch2), sg, sa))
+            self.update_voice_frequency(f, tgid=sg, tdma_slot=self.get_tdma_slot(ch1), srcaddr=sa)
+            if f:
+                updated += 1
+
+        elif op == 0xa5 and mfid == 0x90: # MFID90 Group Regroup Channel Update
+            sg1 = get_ordinals(msg[5:7])
+            sg2 = get_ordinals(msg[9:11])
+            ch1 = get_ordinals(msg[3:5])
+            ch2 = get_ordinals(msg[7:9])
+            f1 = self.channel_id_to_frequency(ch1)
+            f2 = self.channel_id_to_frequency(ch2)
+            if self.debug > 10:
+                sys.stderr.write('%s [%d] tdmaa5 grp_regrp_ch_up f1: %s sg1: %d\n' %(log_ts.get(), m_rxid, self.channel_id_to_string(ch1), sg1, self.channel_id_to_string(ch2), sg2))
+            self.update_voice_frequency(f1, tgid=sg1, tdma_slot=self.get_tdma_slot(ch1))
+            self.update_voice_frequency(f2, tgid=sg2, tdma_slot=self.get_tdma_slot(ch2))
+            if f1 or f2:
+                updated += 1
 
         #TODO: a work in progress
 
