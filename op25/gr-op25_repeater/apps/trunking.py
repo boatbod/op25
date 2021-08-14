@@ -974,38 +974,7 @@ class rx_ctl (object):
         self.trunked_systems[nac] = trunked_system(debug = self.debug, config=cfg, wildcard=nac0)
 
     def build_config_tsv(self, tsv_filename):
-        import csv
-        hdrmap = []
-        configs = {}
-        with open(tsv_filename, 'r') as csvfile:
-            sreader = csv.reader(decomment(csvfile), delimiter='\t', quotechar='"', quoting=csv.QUOTE_ALL)
-            for row in sreader:
-                if len(row) < 4:
-                    continue
-                if ord(row[0][0]) == 0xfeff:
-                    row[0] = row[0][1:] # remove UTF8_BOM (Python2 version)
-                if ord(row[0][0]) == 0xef and ord(row[0][1]) == 0xbb and ord(row[0][2]) == 0xbf:
-                    row[0] = row[0][3:] # remove UTF8_BOM (Python3 version)
-                if row[0].startswith('#'):
-                    continue 
-                if not hdrmap:
-                    # process first line of tsv file - header line
-                    for hdr in row:
-                        hdr = hdr.replace(' ', '_')
-                        hdr = hdr.lower()
-                        hdrmap.append(hdr)
-                    continue
-                fields = {}
-                if (len(row) < 4) or (len(row) > 9):
-                    sys.stderr.write("Skipping invalid row in %s: %s\n" % (tsv_filename, row))
-                    continue
-                for i in range(len(row)):
-                    if row[i]:
-                        fields[hdrmap[i]] = row[i]
-                        if hdrmap[i] != 'sysname':
-                            fields[hdrmap[i]] = fields[hdrmap[i]].lower()
-                nac = int(fields['nac'], 0)
-                configs[nac] = fields
+        configs = read_tsv_file(tsv_filename, "nac")
 
         if 0 in configs: # if NAC 0 exists, remove all other configs
             for nac in list(configs.keys()):
@@ -1234,7 +1203,8 @@ class rx_ctl (object):
                 sys.stderr.write('%s P25 sync established\n' % log_ts.get())
             return
         elif m_type < 0:
-            sys.stderr.write('unknown message type %d\n' % (m_type))
+            if self.debug > 10:
+                sys.stderr.write('unknown message type %d\n' % (m_type))
             return
         s = msg.to_string()
         # nac is always 1st two bytes

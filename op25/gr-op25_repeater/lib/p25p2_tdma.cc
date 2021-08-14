@@ -310,67 +310,38 @@ void p25p2_tdma::decode_mac_msg(const uint8_t byte_buf[], const unsigned int len
 			case 0x12: // Individual Paging with Priority
 				msg_len = (((byte_buf[msg_ptr+1] & 0x3) + 1) * 3) + 2;
 				break;
-			case 0x81: // MFID90 Group Regroup Add Command
-			case 0x89: // MFID90 Group Regroup Delete Command
-				if (byte_buf[msg_ptr+1] == 0x90)
+			default:
+				if (b1b2 == 0x2) {				// Manufacturer-specific ops have len field
+					mfid = byte_buf[msg_ptr+1];
 					msg_len = byte_buf[msg_ptr+2] & 0x3f;
-				else
-					msg_len = len_remaining;
-				break;
-			case 0xb0: // MFIDA4 Group Regroup Explicit Encryption Command
-				if (byte_buf[msg_ptr+1] == 0xa4)
-					msg_len = byte_buf[msg_ptr+2] & 0x3f;
-				else
-					msg_len = len_remaining;
-				break;
-			default:   // Lookup table
-				msg_len = mac_msg_len[op];
+				} else {
+					msg_len = mac_msg_len[op];	// Lookup table for everything else
+				}
 		}
 
 		if (d_debug >= 10) {
 			fprintf(stderr, "mco=%01x/%02x(0x%02x), len=%d", b1b2, mco, op, msg_len);
 		}
 
-		// Generic processing
-		switch (b1b2) {
-			case 0x0: // Unique TDMA CAI message
-				if ((op == 0x00) || (op == 0x08) || (msg_len == 0)) // Discard Null messages or
-					break;                                          // those with unknown length
-				pdu.assign(msg_len+2, 0);
-				pdu[0] = colorcd >> 8; pdu[1] = colorcd & 0xff;
-				for (int i = 0; i < msg_len; i++) {
-					pdu[2 + i] = byte_buf[msg_ptr + i];
-				}
-				send_msg(pdu, M_P25_TDMA_MSG);
-				break;
-			case 0x1: // Derived from FDMA CAI abbreviated format
-				convert_abbrev_msg(byte_buf+msg_ptr, colorcd, mfid);
-				break;
-			case 0x2: // Manufacturer specific message
-				mfid = byte_buf[msg_ptr+1];
-				msg_len = byte_buf[msg_ptr+2] & 0x3f;
-				if (msg_len == 0)
-					break;
-				pdu.assign(msg_len+2, 0);
-				pdu[0] = colorcd >> 8; pdu[1] = colorcd & 0xff;
-				for (int i = 0; i < msg_len; i++) {
-					pdu[2 + i] = byte_buf[msg_ptr + i];
-				}
-				send_msg(pdu, M_P25_TDMA_MSG);
-				break;
-			case 0x3: // Derived from FDMA CAI extended or explicit format
-				if (msg_len == 0)
-					break;
-				pdu.assign(msg_len+2, 0);
-				pdu[0] = colorcd >> 8; pdu[1] = colorcd & 0xff;
-				for (int i = 0; i < msg_len; i++) {
-					pdu[2 + i] = byte_buf[msg_ptr + i];
-				}
-				send_msg(pdu, M_P25_TDMA_MSG);
-				break;
+		// Generic message processing
+		if (b1b2 == 0x1) {
+			// Derived from FDMA CAI abbreviated format; convert to TSBK
+			convert_abbrev_msg(byte_buf+msg_ptr, colorcd, mfid);
+		} else if ((op != 0x00) && (op != 0x08) && (msg_len != 0)) {
+			// Unique TDMA CAI message
+			// Manufacturer specific message
+			// Derived from FDMA CAI extended or explicit format
+			pdu.assign(msg_len+2, 0);
+			pdu[0] = colorcd >> 8; pdu[1] = colorcd & 0xff;
+			for (int i = 0; i < msg_len; i++) {
+				pdu[2 + i] = byte_buf[msg_ptr + i];
+			}
+			send_msg(pdu, M_P25_TDMA_MSG);
+		} else {
+			// Discard Null, Null-Avoid-Zero-Bias, and messages with unknown length
 		}
 
-		// Custom processing
+		// Custom message processing
 		// TODO: move this up into the Python trunking module
 		switch(op) {
 			case 0x01: // Group Voice Channel User Message Abbreviated

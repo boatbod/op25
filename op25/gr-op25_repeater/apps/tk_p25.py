@@ -1468,7 +1468,8 @@ class p25_receiver(object):
         if not self.tuner_idle:
             if self.debug >= 5:
                 sys.stderr.write("%s [%d] idling receiver\n" % (log_ts.get(), self.msgq_id))
-            self.slot_set({'tuner': self.msgq_id,'slot': 4}) # disable receiver (idle)
+            if self.slot_set is not None:
+                self.slot_set({'tuner': self.msgq_id,'slot': 4}) # disable receiver (idle)
             self.tuner_idle = True
             self.current_slot = None
 
@@ -1481,7 +1482,8 @@ class p25_receiver(object):
             self.set_nac(self.system.get_nac())
 
         if self.tuner_idle:
-            self.slot_set({'tuner': self.msgq_id,'slot': 0})     # enable receiver
+            if self.slot_set is not None:
+                self.slot_set({'tuner': self.msgq_id,'slot': 0})     # enable receiver
             self.tuner_idle = False
         if self.debug >= 5:
             sys.stderr.write("%s [%d] set control channel=%f\n" % (log_ts.get(), self.msgq_id, freq/1e6))
@@ -1498,7 +1500,8 @@ class p25_receiver(object):
             return
 
         if self.tuner_idle:
-            self.slot_set({'tuner': self.msgq_id,'slot': 0})     # enable receiver
+            if self.slot_set is not None:
+                self.slot_set({'tuner': self.msgq_id,'slot': 0})     # enable receiver
             self.tuner_idle = False
         else:
             if self.debug >= 5:
