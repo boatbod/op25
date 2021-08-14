@@ -163,7 +163,7 @@ class rx_ctl(object):
 
         updated = 0
         if m_rxid in self.receivers and self.receivers[m_rxid]['rx_rcvr'] is not None:
-            if m_type == 7 or m_type == 12 or m_type == -6:                                 # send TSBK, MBT, TDMA messages to p25_system object
+            if m_type == 7 or m_type == 12 or m_type == 16:                                 # send TSBK, MBT, TDMA messages to p25_system object
                 updated += self.systems[self.receivers[m_rxid]['sysname']]['system'].process_qmsg(msg, curr_time)
             else:
                 updated += self.receivers[m_rxid]['rx_rcvr'].process_qmsg(msg, curr_time)   # send in-call messaging to p25_receiver objects
@@ -488,7 +488,7 @@ class p25_system(object):
             opcode = (header >> 16) & 0x3f
             updated += self.decode_mbt(m_rxid, opcode, src, header << 16, mbt_data << 32)
 
-        elif m_type == -6:                                  # TDMA
+        elif m_type == 16:                                  # TDMA
             updated += self.decode_tdma_msg(m_rxid, s[2:], curr_time)
 
         updated += self.expire_patches()
