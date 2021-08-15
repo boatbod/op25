@@ -200,6 +200,13 @@ void p25p2_tdma::handle_mac_signal(const uint8_t byte_buf[], const unsigned int 
 
 void p25p2_tdma::handle_mac_ptt(const uint8_t byte_buf[], const unsigned int len, const int rs_errs) 
 {
+	    std::string pdu;
+		pdu.assign(len+2, 0);
+		pdu[0] = 0xff; pdu[1] = 0xff;
+		for (int i = 0; i < len; i++) {
+			pdu[2 + i] = byte_buf[1 + i];
+		}
+		send_msg(pdu, M_P25_MAC_PTT);
         uint32_t srcaddr = (byte_buf[13] << 16) + (byte_buf[14] << 8) + byte_buf[15];
         uint16_t grpaddr = (byte_buf[16] << 8) + byte_buf[17];
 
@@ -219,18 +226,19 @@ void p25p2_tdma::handle_mac_ptt(const uint8_t byte_buf[], const unsigned int len
 			rs_errs);
         }
 
-        std::string s = "{\"srcaddr\": "    + std::to_string(srcaddr) + \
-                        ", \"grpaddr\": "   + std::to_string(grpaddr) + \
-                        ", \"encrypted\": " + std::to_string(encrypted() ? 1 : 0 ) + \
-                        ", \"algid\": "     + std::to_string(ess_algid) + \
-                        ", \"keyid\": "     + std::to_string(ess_keyid) + "}";
-        send_msg(s, M_P25_JSON_DATA);
-
         reset_vb();
 }
 
 void p25p2_tdma::handle_mac_end_ptt(const uint8_t byte_buf[], const unsigned int len, const int rs_errs) 
 {
+	    std::string pdu;
+		pdu.assign(len+2, 0);
+		pdu[0] = 0xff; pdu[1] = 0xff;
+		for (int i = 0; i < len; i++) {
+			pdu[2 + i] = byte_buf[1 + i];
+		}
+		send_msg(pdu, M_P25_MAC_END_PTT);
+
         uint16_t colorcd = ((byte_buf[1] & 0x0f) << 8) + byte_buf[2];
         uint32_t srcaddr = (byte_buf[13] << 16) + (byte_buf[14] << 8) + byte_buf[15];
         uint16_t grpaddr = (byte_buf[16] << 8) + byte_buf[17];
@@ -238,8 +246,6 @@ void p25p2_tdma::handle_mac_end_ptt(const uint8_t byte_buf[], const unsigned int
         if (d_debug >= 10)
                 fprintf(stderr, "%s MAC_END_PTT: colorcd=0x%03x, srcaddr=%u, grpaddr=%u, rs_errs=%d\n", logts.get(d_msgq_id), colorcd, srcaddr, grpaddr, rs_errs);
 
-        //std::string s = "{\"srcaddr\" : " + std::to_string(srcaddr) + ", \"grpaddr\": " + std::to_string(grpaddr) + "}";
-        //send_msg(s, M_P25_JSON_DATA);	// can cause data display issues if this message is processed after the DUID15
         op25audio.send_audio_flag(op25_audio::DRAIN);
 }
 
@@ -336,7 +342,7 @@ void p25p2_tdma::decode_mac_msg(const uint8_t byte_buf[], const unsigned int len
 			for (int i = 0; i < msg_len; i++) {
 				pdu[2 + i] = byte_buf[msg_ptr + i];
 			}
-			send_msg(pdu, M_P25_TDMA_MSG);
+			send_msg(pdu, M_P25_MAC_PDU);
 		} else {
 			// Discard Null, Null-Avoid-Zero-Bias, and messages with unknown length
 		}

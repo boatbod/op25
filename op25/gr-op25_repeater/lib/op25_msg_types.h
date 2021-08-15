@@ -43,7 +43,9 @@ static const int16_t M_P25_DUID_TSBK    =  7;
 static const int16_t M_P25_DUID_LDU2    = 10;
 static const int16_t M_P25_DUID_PDU     = 12;
 static const int16_t M_P25_DUID_TDULC   = 15;
-static const int16_t M_P25_TDMA_MSG     = 16;
+static const int16_t M_P25_MAC_PTT      = 16;
+static const int16_t M_P25_MAC_END_PTT  = 17;
+static const int16_t M_P25_MAC_PDU      = 18;
 
 // DMR Messages
 static const int16_t M_DMR_TIMEOUT      = -1;

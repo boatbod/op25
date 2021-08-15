@@ -163,7 +163,7 @@ class rx_ctl(object):
 
         updated = 0
         if m_rxid in self.receivers and self.receivers[m_rxid]['rx_rcvr'] is not None:
-            if m_type == 7 or m_type == 12 or m_type == 16:                                 # send TSBK, MBT, TDMA messages to p25_system object
+            if m_type in [7, 12, 18]:                                                       # send signaling messages to p25_system object
                 updated += self.systems[self.receivers[m_rxid]['sysname']]['system'].process_qmsg(msg, curr_time)
             else:
                 updated += self.receivers[m_rxid]['rx_rcvr'].process_qmsg(msg, curr_time)   # send in-call messaging to p25_receiver objects
@@ -488,7 +488,7 @@ class p25_system(object):
             opcode = (header >> 16) & 0x3f
             updated += self.decode_mbt(m_rxid, opcode, src, header << 16, mbt_data << 32)
 
-        elif m_type == 16:                                  # TDMA
+        elif m_type == 18:                                  # TDMA
             updated += self.decode_tdma_msg(m_rxid, s[2:], curr_time)
 
         updated += self.expire_patches()
@@ -849,6 +849,24 @@ class p25_system(object):
                 if table in self.freq_table:
                     sys.stderr.write('%s [%d] tsbk3c : %s %s\n' % (log_ts.get(), m_rxid, self.freq_table[table]['frequency'] , self.freq_table[table]['step'] ))
         return updated
+
+    def decode_tdma_ptt(self, m_rxid, msg, curr_time):
+        mi    = get_ordinals(msg[0:9])
+        algid = get_ordinals(msg[9:10])
+        keyid = get_ordinals(msg[10:12])
+        sa    = get_ordinals(msg[12:15])
+        ga    = get_ordinals(msg[15:17])
+        if self.debug > 10:
+            sys.stderr.write('%s [%d] mac_ptt: mi: %x algid: %x keyid:%x ga: %d sa: %d\n' % (log_ts.get(), m_rxid, mi, algid, keyid, ga, sa))
+        return self.update_talkgroup_srcaddr(curr_time, ga, sa)
+
+    def decode_tdma_endptt(self, m_rxid, msg, curr_time):
+        mi    = get_ordinals(msg[0:9])
+        sa    = get_ordinals(msg[12:15])
+        ga    = get_ordinals(msg[15:17])
+        if self.debug > 10:
+            sys.stderr.write('%s [%d] mac_end_ptt: ga: %d sa: %d\n' % (log_ts.get(), m_rxid, ga, sa))
+        return self.update_talkgroup_srcaddr(curr_time, ga, sa)
 
     def decode_tdma_msg(self, m_rxid, msg, curr_time):
         updated = 0
@@ -1594,7 +1612,7 @@ class p25_receiver(object):
 
             if encrypted >= 0 and algid >= 0 and keyid >= 0: # log and save encryption information
                 if self.debug >= 5 and (algid != self.talkgroups[self.current_tgid]['algid'] or keyid != self.talkgroups[self.current_tgid]['keyid']):
-                    sys.stderr.write('%s [%d] encrypt info tg=%d, algid=0x%x, keyid=0x%x\n' % (log_ts.get(), self.msgq_id, self.current_tgid, algid, keyid))
+                    sys.stderr.write('%s [%d] encrypt info: tg=%d, algid=0x%x, keyid=0x%x\n' % (log_ts.get(), self.msgq_id, self.current_tgid, algid, keyid))
                 self.talkgroups[self.current_tgid]['encrypted'] = encrypted
                 self.talkgroups[self.current_tgid]['algid'] = algid
                 self.talkgroups[self.current_tgid]['keyid'] = keyid
@@ -1614,15 +1632,47 @@ class p25_receiver(object):
         elif m_type >= 0: # Channel Signaling (m_type is duid)
             s = msg.to_string()
             nac = get_ordinals(s[:2])   # first two bytes are NAC
+            s = s[2:]
             if (nac != 0xffff) and (nac != self.system.get_nac()):
                 return updated
 
             if   m_type ==  3: # call termination, no release
-                return updated
+                pass
+
             elif m_type == 15: # call termination, with release
-                updated += 1
                 self.expire_talkgroup(reason="duid15")
-                return updated
+                updated += 1
+
+            elif m_type == 16: # MAC_PTT
+                mi    = get_ordinals(s[0:9])
+                algid = get_ordinals(s[9:10])
+                keyid = get_ordinals(s[10:12])
+                sa    = get_ordinals(s[12:15])
+                ga    = get_ordinals(s[15:17])
+                if self.debug > 10:
+                    sys.stderr.write('%s [%d] mac_ptt: mi: %x algid: %x keyid:%x ga: %d sa: %d\n' % (log_ts.get(), m_rxid, mi, algid, keyid, ga, sa))
+                updated += self.system.update_talkgroup_srcaddr(curr_time, ga, sa)
+                if algid != 0x80: # log and save encryption information
+                    if self.debug >= 5 and (algid != self.talkgroups[self.current_tgid]['algid'] or keyid != self.talkgroups[self.current_tgid]['keyid']):
+                        sys.stderr.write('%s [%d] encrypt info: tg=%d, algid=0x%x, keyid=0x%x\n' % (log_ts.get(), self.msgq_id, self.current_tgid, algid, keyid))
+                    self.talkgroups[self.current_tgid]['encrypted'] = 1
+                    self.talkgroups[self.current_tgid]['algid'] = algid
+                    self.talkgroups[self.current_tgid]['keyid'] = keyid
+                    if self.crypt_behavior > 1:
+                        updated += 1
+                        if self.debug > 1:
+                            sys.stderr.write('%s [%d] skipping encrypted tg(%d)\n' % (log_ts.get(), self.msgq_id, self.current_tgid))
+                        self.add_skiplist(self.current_tgid, curr_time + TGID_SKIP_TIME)
+
+            elif m_type == 17: # MAC_END_PTT
+                sa    = get_ordinals(s[12:15])
+                ga    = get_ordinals(s[15:17])
+                if self.debug > 10:
+                    sys.stderr.write('%s [%d] mac_end_ptt: ga: %d sa: %d\n' % (log_ts.get(), m_rxid, ga, sa))
+                self.system.update_talkgroup_srcaddr(curr_time, ga, sa)
+                self.expire_talkgroup(reason="duid15")
+                updated += 1
+
         return updated
 
     def add_skiplist(self, tgid, end_time=None):

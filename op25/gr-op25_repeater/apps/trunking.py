@@ -226,7 +226,7 @@ class trunked_system (object):
             sys.stderr.write('%s set tgid=%s, srcaddr=%s\n' % (log_ts.get(), tgid, srcaddr))
         
         if tgid not in self.talkgroups:
-            self.talkgroups[tgid] = {'counter':0}
+            self.talkgroups[tgid] = {'counter':0, 'encrypted':0}
             if self.debug >= 5:
                 sys.stderr.write('%s new tgid=%s %s prio %d\n' % (log_ts.get(), tgid, self.get_tag(tgid), self.get_prio(tgid)))
         self.talkgroups[tgid]['time'] = time.time()
@@ -238,6 +238,13 @@ class trunked_system (object):
     def update_talkgroup_srcaddr(self, curr_time, tgid, srcaddr):
         if tgid in self.talkgroups and srcaddr != 0:
             self.talkgroups[tgid]['srcaddr'] = srcaddr
+            return 1
+        else:
+            return 0
+
+    def update_talkgroup_encrypted(self, curr_time, tgid, encrypted):
+        if tgid in self.talkgroups and self.talkgroups[tgid]['encrypted'] != encrypted:
+            self.talkgroups[tgid]['encrypted'] = encrypted
             return 1
         else:
             return 0
@@ -790,6 +797,33 @@ class trunked_system (object):
                 if table in self.freq_table:
                     sys.stderr.write('%s tsbk3c : %s %s\n' % (log_ts.get(), self.freq_table[table]['frequency'] , self.freq_table[table]['step'] ))
         return updated
+
+    def decode_tdma_ptt(self, msg, curr_time):
+        updated = 0
+        mi    = get_ordinals(msg[0:9])
+        algid = get_ordinals(msg[9:10])
+        keyid = get_ordinals(msg[10:12])
+        sa    = get_ordinals(msg[12:15])
+        ga    = get_ordinals(msg[15:17])
+        if self.debug > 10:
+            sys.stderr.write('%s mac_ptt: mi: %x algid: %x keyid:%x ga: %d sa: %d\n' % (log_ts.get(), mi, algid, keyid, ga, sa))
+        updated += self.update_talkgroup_srcaddr(curr_time, ga, sa)
+        updated += self.update_talkgroup_encrypted(curr_time, ga, (algid != 0x80))
+#        if algid != 0x80 and self.crypt_behavior > 1 and self.current_tgid is not None:
+#            if self.debug > 0:
+#                sys.stderr.write('%s skipping encrypted tg(%d)\n' % (log_ts.get(), self.current_tgid))
+#                self.update_state('skip', curr_time, self.current_tgid)
+#           else:
+#                self.current_encrypted = js['encrypted']
+        return updated
+
+    def decode_tdma_endptt(self, msg, curr_time):
+        mi    = get_ordinals(msg[0:9])
+        sa    = get_ordinals(msg[12:15])
+        ga    = get_ordinals(msg[15:17])
+        if self.debug > 10:
+            sys.stderr.write('%s mac_end_ptt: ga: %d sa: %d\n' % (log_ts.get(), ga, sa))
+        return self.update_talkgroup_srcaddr(curr_time, ga, sa)
 
     def decode_tdma_msg(self, msg, curr_time):
         updated = 0
@@ -1523,7 +1557,7 @@ class rx_ctl (object):
         # nac is always 1st two bytes
         nac = get_ordinals(s[:2])
         if nac == 0xffff:
-            if (m_type != 7) and (m_type != 12) and (m_type != 16): # TDMA duid (end of call etc)
+            if m_type not in [7, 12, 16, 17, 18]: # TDMA duid (end of call etc)
                 self.update_state('tdma_duid%d' % m_type, curr_time)
                 return
             else: # voice channel derived TSBK or MBT PDU
@@ -1567,7 +1601,13 @@ class rx_ctl (object):
                 sys.stderr.write('%s type %d state %d len %d/%d opcode %x [%0x/%0x]\n' %(log_ts.get(), m_type, self.current_state, len(s1), len(s2), opcode, header,mbt_data))
             updated += self.trunked_systems[nac].decode_mbt_data(opcode, src, header << 16, mbt_data << 32)
 
-        elif m_type == 16:   # trunk: TDMA
+        elif m_type == 16:   # trunk: MAC_PTT
+            updated += self.trunked_systems[nac].decode_tdma_ptt(s, curr_time)
+
+        elif m_type == 17:   # trunk: MAC_END_PTT
+            updated += self.trunked_systems[nac].decode_tdma_endptt(s, curr_time)
+
+        elif m_type == 18:   # trunk: MAC_PDU
             updated += self.trunked_systems[nac].decode_tdma_msg(s, curr_time)
 
         if self.current_nac is None:
@@ -1762,15 +1802,16 @@ class rx_ctl (object):
                         self.current_srcaddr = tsys.talkgroups[self.current_tgid]['srcaddr']
                         self.current_grpaddr = self.current_tgid
                     new_frequency = None
-        elif command == 'duid3' or command == 'tdma_duid3': # termination, no channel release
+        elif command in ['duid3', 'tdma_duid3']: # termination, no channel release
             if self.current_state != self.states.CC:
                 self.wait_until = curr_time + self.TSYS_HOLD_TIME
                 self.tgid_hold = self.current_tgid
                 self.tgid_hold_until = max(curr_time + self.TGID_HOLD_TIME, self.tgid_hold_until)
-        elif command == 'duid15' or command == 'tdma_duid15': # termination with channel release
+        elif command in ['duid15', 'tdma_duid15', 'duid17']: # termination with channel release
             if self.current_state != self.states.CC:
                 if self.debug > 1:
                     sys.stderr.write("%s %s, tg(%d)\n" % (log_ts.get(), command, self.current_tgid))
+                tsys.talkgroups[self.current_tgid]['encrypted'] = 0
                 self.current_srcaddr = 0
                 self.current_grpaddr = 0
                 self.current_encrypted = 0
@@ -1781,13 +1822,13 @@ class rx_ctl (object):
                     self.current_tgid = None
                 new_state = self.states.CC
                 new_frequency = tsys.trunk_cc
-        elif command == 'duid0' or command == 'duid5' or command == 'duid10' or command == 'tdma_duid5':
+        elif command in ['duid0', 'duid5', 'duid10', 'tdma_duid5']:
             if self.current_state == self.states.TO_VC:
                 new_state = self.states.VC
             self.tgid_hold = self.current_tgid
             self.tgid_hold_until = max(curr_time + self.TGID_HOLD_TIME, self.tgid_hold_until)
             self.wait_until = curr_time + self.TSYS_HOLD_TIME
-        elif command == 'duid7' or command == 'duid12' or command == 'duid16': # tsbk/pdu/tdma should never arrive here...
+        elif command in ['duid7', 'duid12', 'duid16', 'duid18']: # tsbk/pdu/tdma should never arrive here...
             pass
         elif command == 'hold':
             if cmd_data > 0:

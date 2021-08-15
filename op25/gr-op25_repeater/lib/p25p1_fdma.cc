@@ -412,6 +412,7 @@ namespace gr {
             if (d_debug >= 10)
                 fprintf(stderr, "LCW: ec=%d, pb=%d, sf=%d, lco=%d", ec, pb, sf, lco);
 
+            // TODO: move up to python trunking module 
             if (pb == 0) { // only decode if unencrypted
                 if ((sf == 0) && ((lcw[1] == 0x00) || (lcw[1] == 0x01) || (lcw[1] == 0x90))) {	// sf=0, explicit MFID in standard or Motorola format
                     switch (lco) {
@@ -419,7 +420,7 @@ namespace gr {
                                        uint16_t grpaddr = (lcw[4] << 8) + lcw[5];
                                        uint32_t srcaddr = (lcw[6] << 16) + (lcw[7] << 8) + lcw[8];
                                        s = "{\"srcaddr\" : " + std::to_string(srcaddr) + ", \"grpaddr\": " + std::to_string(grpaddr) + "}";
-                                       send_msg(s, -3);
+                                       send_msg(s, M_P25_JSON_DATA);
                                        if (d_debug >= 10)
                                            fprintf(stderr, ", srcaddr=%d, grpaddr=%d", srcaddr, grpaddr);
                                        break;
@@ -442,7 +443,7 @@ namespace gr {
                                        tsbk[6] = grp_A >> 8; tsbk[7] = grp_A & 0xff;
                                        tsbk[8] = ch_B >> 8; tsbk[9] = ch_B & 0xff;
                                        tsbk[10] = grp_B >> 8; tsbk[11] = grp_B & 0xff;
-                                       send_msg(tsbk, 7);
+                                       send_msg(tsbk, M_P25_DUID_TSBK);
                                        break;
                                    }
                         case 0x04: { // Group Voice Channel Update Explicit
@@ -461,7 +462,7 @@ namespace gr {
                                        tsbk[6] = ch_T >> 8; tsbk[7] = ch_T & 0xff;
                                        tsbk[8] = ch_R >> 8; tsbk[9] = ch_R & 0xff;
                                        tsbk[10] = grpaddr >> 8; tsbk[11] = grpaddr & 0xff;
-                                       send_msg(tsbk, 7);
+                                       send_msg(tsbk, M_P25_DUID_TSBK);
                                        break;
                                    }
 
@@ -601,7 +602,7 @@ namespace gr {
                     if (d_do_audio_output) {
                         if (!d_do_nocrypt || !encrypted()) {
                             std::string encr = "{\"encrypted\": " + std::to_string(0) + ", \"algid\": " + std::to_string(ess_algid) + ", \"keyid\": " + std::to_string(ess_keyid) + "}";
-                            send_msg(encr, -3);
+                            send_msg(encr, M_P25_JSON_DATA);
                             software_decoder.decode_fullrate(u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7], E0, ET);
                             audio_samples *samples = software_decoder.audio();
                             for (int i=0; i < SND_FRAME; i++) {
@@ -621,7 +622,7 @@ namespace gr {
                             }
                         } else {
                             std::string encr = "{\"encrypted\": " + std::to_string(1) + ", \"algid\": " + std::to_string(ess_algid) + ", \"keyid\": " + std::to_string(ess_keyid) + "}";
-                            send_msg(encr, -3);
+                            send_msg(encr, M_P25_JSON_DATA);
                         }
                     }
 
