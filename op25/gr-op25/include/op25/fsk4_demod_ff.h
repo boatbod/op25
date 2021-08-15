@@ -56,6 +56,7 @@ namespace gr {
        */
       static sptr make(gr::msg_queue::sptr queue, float sample_rate_Hz, float symbol_rate_Hz, bool bfsk = false);
       virtual void reset() {}
+      virtual void set_rate(const float sample_rate_Hz, const float symbol_rate_Hz) {}
     };
 
   } // namespace op25

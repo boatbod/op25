@@ -263,6 +263,13 @@ class p25_demod_fb(p25_demod_base):
         # stub to catch unsupported plot types
         return
 
+    def set_omega(self, rate):
+        self.set_symbol_rate(rate)
+        try: # only supported by op25.fsk4_demod_ff()
+            self.fsk4_demod.set_rate(self.if_rate, self.symbol_rate)
+        except:
+            pass
+
 class p25_demod_cb(p25_demod_base):
 
     def __init__(self,
