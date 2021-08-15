@@ -186,10 +186,9 @@ class channel(object):
         self.sinks = {}
         self.tdma_state = False
         self.xor_cache = {}
-        self.symbol_rate = _def_symbol_rate
-        if 'symbol_rate' in list(config.keys()):
-            self.symbol_rate = config['symbol_rate']
         self.config = config
+        self.symbol_rate = int(from_dict(config, 'symbol_rate', _def_symbol_rate))
+        self.channel_rate = self.symbol_rate
         if dev.args == 'wavsrc':
             self.demod = p25_demodulator.p25_demod_fb(
                              input_rate=dev.sample_rate,
@@ -452,8 +451,14 @@ class channel(object):
             self.decoder.set_xormask(self.xor_cache[hash])
             rate = 6000
         else:
-            rate = self.config['symbol_rate']
+            rate = self.channel_rate
 
+        self.symbol_rate = rate
+        self.demod.set_omega(rate)
+        if 'eye' in self.sinks:
+            self.sinks['eye'][0].set_sps(self.config['if_rate'] / rate)
+
+    def set_rate(self, rate):
         self.symbol_rate = rate
         self.demod.set_omega(rate)
         if 'eye' in self.sinks:
@@ -723,6 +728,9 @@ class rx_block (gr.top_block):
 
         if 'slot' in params:
             chan.set_slot(params['slot'])
+
+        if 'rate' in params:
+            chan.set_rate(params['rate'])
 
         if 'chan' in params:
             self.trunk_rx.receivers[tuner].current_chan = params['chan']

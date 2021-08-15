@@ -244,6 +244,7 @@ class p25_system(object):
         self.blacklist = {}
         self.whitelist = None
         self.crypt_behavior = 1
+        self.cc_rate = 4800
         self.cc_list = []
         self.cc_index = -1
         self.cc_timeouts = 0
@@ -286,6 +287,10 @@ class p25_system(object):
         if 'whitelist' in self.config and self.config['whitelist'] != "":
             sys.stderr.write("%s [%s] reading system whitelist file: %s\n" % (log_ts.get(), self.sysname, self.config['whitelist']))
             self.whitelist = get_int_dict(self.config['whitelist'], self.sysname)
+
+        self.tdma_cc = bool(from_dict(self.config, 'tdma_cc', False)) 
+        if self.tdma_cc:
+            self.cc_rate = 6000
 
         self.crypt_behavior = int(from_dict(self.config, 'crypt_behavior', 1))
 
@@ -1508,6 +1513,7 @@ class p25_receiver(object):
         tune_params = {'tuner':   self.msgq_id,
                        'sigtype': "P25",
                        'freq':    freq,
+                       'rate':    self.system.cc_rate,
                        'tdma':    None}
         self.frequency_set(tune_params)
         self.tuned_frequency = freq
@@ -1539,6 +1545,7 @@ class p25_receiver(object):
                            'sigtype': "P25",
                            'freq':    get_frequency(freq),
                            'tgid':    tgid,
+                           'rate':    4800 if slot is None else 6000,
                            'tdma':    slot,
                            'tag':     self.talkgroups[tgid]['tag'],
                            'system':  self.config['trunking_sysname'],

@@ -195,10 +195,13 @@ class p25_rx_block (gr.top_block):
             self.channel_rate = 96000
 
         # setup (read-only) attributes
-        self.symbol_rate = 4800
+        if options.tdma_cc:
+            self.symbol_rate = 6000
+        else:
+            self.symbol_rate = 4800
         self.symbol_deviation = 600.0
         self.basic_rate = 24000
-        _default_speed = 4800
+        _default_speed = self.symbol_rate
         self.options = options
         #
         self.set_sps(_default_speed)
@@ -423,7 +426,7 @@ class p25_rx_block (gr.top_block):
             self.decoder.set_xormask(self.xor_cache[hash], hash)
             rate = 6000
         else:
-            rate = 4800
+            rate = self.symbol_rate
 
         self.set_sps(rate)
         if not self.options.symbols:
@@ -1052,6 +1055,7 @@ class rx_main(object):
         parser.add_option("-q", "--freq-corr", type="eng_float", default=0.0, help="frequency correction")
         parser.add_option("-d", "--fine-tune", type="eng_float", default=0.0, help="fine tuning")
         parser.add_option("-2", "--phase2-tdma", action="store_true", default=False, help="enable phase2 tdma decode")
+        parser.add_option("--tdma-cc", action="store_true", default=False, help="enable tdma control channel")
         parser.add_option("-Z", "--decim-amt", type="int", default=1, help="spectrum decimation")
         (options, args) = parser.parse_args()
         if len(args) != 0:

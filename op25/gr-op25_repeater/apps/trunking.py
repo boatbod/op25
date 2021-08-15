@@ -37,7 +37,7 @@ def get_tgid(tgid):
         return ""
 
 class trunked_system (object):
-    def __init__(self, debug=0, config=None, wildcard=False):
+    def __init__(self, debug=0, config=None, wildcard=False, rxctl=None):
         self.debug = debug
         self.wildcard_tsys = wildcard
         self.freq_table = {}
@@ -63,6 +63,7 @@ class trunked_system (object):
         self.tgid_map = {}
         self.offset = 0
         self.sysname = 0
+        self.rxctl = rxctl
 
         self.trunk_cc = 0
         self.last_trunk_cc = 0
@@ -226,7 +227,7 @@ class trunked_system (object):
             sys.stderr.write('%s set tgid=%s, srcaddr=%s\n' % (log_ts.get(), tgid, srcaddr))
         
         if tgid not in self.talkgroups:
-            self.talkgroups[tgid] = {'counter':0, 'encrypted':0}
+            self.talkgroups[tgid] = {'counter':0}
             if self.debug >= 5:
                 sys.stderr.write('%s new tgid=%s %s prio %d\n' % (log_ts.get(), tgid, self.get_tag(tgid), self.get_prio(tgid)))
         self.talkgroups[tgid]['time'] = time.time()
@@ -243,8 +244,8 @@ class trunked_system (object):
             return 0
 
     def update_talkgroup_encrypted(self, curr_time, tgid, encrypted):
-        if tgid in self.talkgroups and self.talkgroups[tgid]['encrypted'] != encrypted:
-            self.talkgroups[tgid]['encrypted'] = encrypted
+        if self.rxctl.current_encrypted != encrypted:
+            self.rxctl.current_encrypted = encrypted
             return 1
         else:
             return 0
@@ -809,12 +810,7 @@ class trunked_system (object):
             sys.stderr.write('%s mac_ptt: mi: %x algid: %x keyid:%x ga: %d sa: %d\n' % (log_ts.get(), mi, algid, keyid, ga, sa))
         updated += self.update_talkgroup_srcaddr(curr_time, ga, sa)
         updated += self.update_talkgroup_encrypted(curr_time, ga, (algid != 0x80))
-#        if algid != 0x80 and self.crypt_behavior > 1 and self.current_tgid is not None:
-#            if self.debug > 0:
-#                sys.stderr.write('%s skipping encrypted tg(%d)\n' % (log_ts.get(), self.current_tgid))
-#                self.update_state('skip', curr_time, self.current_tgid)
-#           else:
-#                self.current_encrypted = js['encrypted']
+        self.rxctl.current_encrypted = (algid != 0x80)
         return updated
 
     def decode_tdma_endptt(self, msg, curr_time):
@@ -1318,7 +1314,7 @@ class rx_ctl (object):
             cfg = self.configs[nac]
         if nac == 0:
             nac0 = True
-        self.trunked_systems[nac] = trunked_system(debug = self.debug, config=cfg, wildcard=nac0)
+        self.trunked_systems[nac] = trunked_system(debug = self.debug, config=cfg, wildcard=nac0, rxctl=self)
 
     def build_config_tsv(self, tsv_filename):
         configs = read_tsv_file(tsv_filename, "nac")
@@ -1528,13 +1524,7 @@ class rx_ctl (object):
             if ('grpaddr' in js):
                 self.current_grpaddr = js['grpaddr']
             if 'encrypted' in js:
-                if self.crypt_behavior > 1:
-                    if js['encrypted'] and self.current_tgid is not None:
-                        if self.debug > 0:
-                            sys.stderr.write('%s skipping encrypted tg(%d)\n' % (log_ts.get(), self.current_tgid))
-                        self.update_state('skip', curr_time, self.current_tgid)
-                else:
-                    self.current_encrypted = js['encrypted']
+                self.trunked_systems[self.current_nac].update_talkgroup_encrypted(curr_time, self.current_tgid, js['encrypted'])
             return 
         elif m_type == -1:  # timeout
             if self.current_nac is None: # trunking not started
@@ -1761,8 +1751,25 @@ class rx_ctl (object):
                 new_state = self.states.CC
                 new_frequency = tsys.trunk_cc
         elif command == 'update':
+            # check for expired patches
             tsys.expire_patches()
-            if self.current_state == self.states.CC:
+
+            # check for encrypted calls
+            if (self.crypt_behavior > 1) and self.current_tgid is not None and self.current_encrypted:
+                if self.debug > 1:
+                    sys.stderr.write("%s skip encrypted call: tg(%d)\n" % (log_ts.get(), self.current_tgid))
+                self.current_srcaddr = 0
+                self.current_grpaddr = 0
+                self.current_encrypted = 0
+                end_time = curr_time + self.TGID_SKIP_TIME
+                tsys.add_skiplist(self.current_tgid, end_time=end_time)
+                if self.hold_mode is False:
+                    self.current_tgid = None
+                new_state = self.states.CC
+                new_frequency = tsys.trunk_cc
+            
+            # look for new calls or call preemption
+            elif self.current_state == self.states.CC:
                 desired_tgid = None
                 if (self.tgid_hold is not None) and (self.tgid_hold_until > curr_time):
                     if self.debug > 1:
@@ -1811,7 +1818,6 @@ class rx_ctl (object):
             if self.current_state != self.states.CC:
                 if self.debug > 1:
                     sys.stderr.write("%s %s, tg(%d)\n" % (log_ts.get(), command, self.current_tgid))
-                tsys.talkgroups[self.current_tgid]['encrypted'] = 0
                 self.current_srcaddr = 0
                 self.current_grpaddr = 0
                 self.current_encrypted = 0
