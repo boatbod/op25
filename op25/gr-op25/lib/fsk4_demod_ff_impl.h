@@ -32,13 +32,13 @@ namespace gr {
     class fsk4_demod_ff_impl : public fsk4_demod_ff
     {
      private:
-      const float d_block_rate;
+      float d_block_rate;
       boost::scoped_array<float> d_history;
       size_t d_history_last;
       gr::msg_queue::sptr d_queue;
       double d_symbol_clock;
       double d_symbol_spread;
-      const float d_symbol_time;
+      float d_symbol_time;
       double fine_frequency_correction;
       double coarse_frequency_correction;
       bool d_bfsk;
@@ -57,6 +57,7 @@ namespace gr {
       fsk4_demod_ff_impl(gr::msg_queue::sptr queue, float sample_rate_Hz, float symbol_rate_Hz, bool bfsk = false);
       ~fsk4_demod_ff_impl();
       void reset();
+      void set_rate(const float sample_rate_Hz, const float symbol_rate_Hz);
 
       // Where all the action really happens
       void forecast (int noutput_items, gr_vector_int &ninput_items_required);

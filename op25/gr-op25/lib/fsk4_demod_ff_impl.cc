@@ -212,6 +212,16 @@ namespace gr {
     }
 
     /*
+     * Change rate.
+     */
+    void
+    fsk4_demod_ff_impl::set_rate(const float sample_rate_Hz, const float symbol_rate_Hz) {
+	    d_block_rate = sample_rate_Hz / symbol_rate_Hz;
+	    d_symbol_time = symbol_rate_Hz / sample_rate_Hz;
+        reset();
+    }
+
+    /*
      * Our virtual destructor.
      */
     fsk4_demod_ff_impl::~fsk4_demod_ff_impl()

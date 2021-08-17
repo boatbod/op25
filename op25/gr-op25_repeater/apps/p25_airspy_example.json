@@ -76,6 +76,7 @@
                 "blacklist": "",
                 "tgid_tags_file": "trunk-tags.tsv",
                 "rid_tags_file": "trunk-rids.tsv",
+                "tdma_cc": false,
                 "crypt_behavior": 2
             }
         ]

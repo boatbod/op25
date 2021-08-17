@@ -35,6 +35,18 @@ static const int16_t M_P25_TIMEOUT      = -1;
 static const int16_t M_P25_UI_REQ       = -2;
 static const int16_t M_P25_JSON_DATA    = -3;
 static const int16_t M_P25_SYNC_ESTAB   = -4;
+static const int16_t M_P25_RESERVED     = -5; // used in Osmocom' NXDN trunking
+static const int16_t M_P25_DUID_HDU     =  0;
+static const int16_t M_P25_DUID_TDU     =  3;
+static const int16_t M_P25_DUID_LDU1    =  5;
+static const int16_t M_P25_DUID_TSBK    =  7;
+static const int16_t M_P25_DUID_LDU2    = 10;
+static const int16_t M_P25_DUID_PDU     = 12;
+static const int16_t M_P25_DUID_TDULC   = 15;
+static const int16_t M_P25_MAC_PTT      = 16;
+static const int16_t M_P25_MAC_END_PTT  = 17;
+static const int16_t M_P25_MAC_PDU      = 18;
+static const int16_t M_P25_FDMA_LCW     = 19;
 
 // DMR Messages
 static const int16_t M_DMR_TIMEOUT      = -1;

@@ -98,3 +98,38 @@ def decomment(csvfile):
         raw = row.split('#')[0].strip()
         if raw: yield row
 
+def read_tsv_file(tsv_filename, key):
+    import csv
+    hdrmap = []
+    tsv_obj = {}
+    with open(tsv_filename, 'r') as csvfile:
+        sreader = csv.reader(decomment(csvfile), delimiter='\t', quotechar='"', quoting=csv.QUOTE_ALL)
+        for row in sreader:
+            if len(row) < 4:
+                continue
+            if ord(row[0][0]) == 0xfeff:
+                row[0] = row[0][1:] # remove UTF8_BOM (Python2 version)
+            if ord(row[0][0]) == 0xef and ord(row[0][1]) == 0xbb and ord(row[0][2]) == 0xbf:
+                row[0] = row[0][3:] # remove UTF8_BOM (Python3 version)
+            if row[0].startswith('#'):
+                continue 
+            if not hdrmap:
+                # process first line of tsv file - header line
+                for hdr in row:
+                    hdr = hdr.replace(' ', '_')
+                    hdr = hdr.lower()
+                    hdrmap.append(hdr)
+                continue
+            fields = {}
+            if (len(row) < 4) or (len(row) > 9):
+                sys.stderr.write("Skipping invalid row in %s: %s\n" % (tsv_filename, row))
+                continue
+            for i in range(len(row)):
+                if row[i]:
+                    fields[hdrmap[i]] = row[i]
+                    if hdrmap[i] != 'sysname':
+                        fields[hdrmap[i]] = fields[hdrmap[i]].lower()
+            key_val = int(fields[key], 0)
+            tsv_obj[key_val] = fields
+
+    return tsv_obj

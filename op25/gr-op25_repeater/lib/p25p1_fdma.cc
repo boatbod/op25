@@ -404,73 +404,21 @@ namespace gr {
                 j += 4;
             }
 
+            std::string pdu(11,0);
+            pdu[0] = (framer->nac >> 8) & 0xff; pdu[1] = framer->nac & 0xff;
+            for (int i = 0; i < 9; i++) {
+                pdu[2+i] = lcw[i];
+            }
+            send_msg(pdu, M_P25_FDMA_LCW);
+
             int pb =   (lcw[0] >> 7);
             int sf =  ((lcw[0] & 0x40) >> 6);
             int lco =   lcw[0] & 0x3f;
             std::string s = "";
 
-            if (d_debug >= 10)
-                fprintf(stderr, "LCW: ec=%d, pb=%d, sf=%d, lco=%d", ec, pb, sf, lco);
-
-            if (pb == 0) { // only decode if unencrypted
-                if ((sf == 0) && ((lcw[1] == 0x00) || (lcw[1] == 0x01) || (lcw[1] == 0x90))) {	// sf=0, explicit MFID in standard or Motorola format
-                    switch (lco) {
-                        case 0x00: { // Group Voice Channel User
-                                       uint16_t grpaddr = (lcw[4] << 8) + lcw[5];
-                                       uint32_t srcaddr = (lcw[6] << 16) + (lcw[7] << 8) + lcw[8];
-                                       s = "{\"srcaddr\" : " + std::to_string(srcaddr) + ", \"grpaddr\": " + std::to_string(grpaddr) + "}";
-                                       send_msg(s, -3);
-                                       if (d_debug >= 10)
-                                           fprintf(stderr, ", srcaddr=%d, grpaddr=%d", srcaddr, grpaddr);
-                                       break;
-                                   }
-                    }
-                } else if (sf == 1) {						// sf=1, implicit MFID
-                    switch (lco) {
-                        case 0x02: { // Group Voice Channel Update
-                                       std::string tsbk(12,0);
-                                       uint16_t ch_A  = (lcw[1] << 8) + lcw[2];
-                                       uint16_t grp_A = (lcw[3] << 8) + lcw[4];
-                                       uint16_t ch_B  = (lcw[5] << 8) + lcw[6];
-                                       uint16_t grp_B = (lcw[7] << 8) + lcw[8];
-                                       if (d_debug >= 10)
-                                           fprintf(stderr, ", ch_A=%d, grp_A=%d, ch_B=%d, grp_B=%d", ch_A, grp_A, ch_B, grp_B);
-                                       tsbk[0] = 0xff; tsbk[1] = 0xff;
-                                       tsbk[2] = 0x82;
-                                       tsbk[3] = 0x00;
-                                       tsbk[4] = ch_A >> 8; tsbk[5] = ch_A & 0xff;
-                                       tsbk[6] = grp_A >> 8; tsbk[7] = grp_A & 0xff;
-                                       tsbk[8] = ch_B >> 8; tsbk[9] = ch_B & 0xff;
-                                       tsbk[10] = grp_B >> 8; tsbk[11] = grp_B & 0xff;
-                                       send_msg(tsbk, 7);
-                                       break;
-                                   }
-                        case 0x04: { // Group Voice Channel Update Explicit
-                                       std::string tsbk(12,0);
-                                       uint8_t  svcopts = (lcw[2]     )         ;
-                                       uint16_t grpaddr = (lcw[3] << 8) + lcw[4];
-                                       uint16_t ch_T    = (lcw[5] << 8) + lcw[6];
-                                       uint16_t ch_R    = (lcw[7] << 8) + lcw[8];
-                                       if (d_debug >= 10)
-                                           fprintf(stderr, ", svcopts=0x%02x, grpaddr=%d, ch_T=%d, ch_R=%d", svcopts, grpaddr, ch_T, ch_R);
-                                       tsbk[0] = 0xff; tsbk[1] = 0xff;
-                                       tsbk[2] = 0x83;
-                                       tsbk[3] = 0x00;
-                                       tsbk[4] = svcopts;
-                                       tsbk[5] = 0x00;
-                                       tsbk[6] = ch_T >> 8; tsbk[7] = ch_T & 0xff;
-                                       tsbk[8] = ch_R >> 8; tsbk[9] = ch_R & 0xff;
-                                       tsbk[10] = grpaddr >> 8; tsbk[11] = grpaddr & 0xff;
-                                       send_msg(tsbk, 7);
-                                       break;
-                                   }
-
-                    }
-                }
-            }
             if (d_debug >= 10) {
-                fprintf(stderr, " : %02x %02x %02x %02x %02x %02x %02x %02x %02x",
-                        lcw[0], lcw[1], lcw[2], lcw[3], lcw[4], lcw[5], lcw[6], lcw[7], lcw[8]);
+                fprintf(stderr, "LCW: ec=%d, pb=%d, sf=%d, lco=%d : %02x %02x %02x %02x %02x %02x %02x %02x %02x",
+                        ec, pb, sf, lco, lcw[0], lcw[1], lcw[2], lcw[3], lcw[4], lcw[5], lcw[6], lcw[7], lcw[8]);
             }
         }
 
@@ -601,7 +549,7 @@ namespace gr {
                     if (d_do_audio_output) {
                         if (!d_do_nocrypt || !encrypted()) {
                             std::string encr = "{\"encrypted\": " + std::to_string(0) + ", \"algid\": " + std::to_string(ess_algid) + ", \"keyid\": " + std::to_string(ess_keyid) + "}";
-                            send_msg(encr, -3);
+                            send_msg(encr, M_P25_JSON_DATA);
                             software_decoder.decode_fullrate(u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7], E0, ET);
                             audio_samples *samples = software_decoder.audio();
                             for (int i=0; i < SND_FRAME; i++) {
@@ -621,7 +569,7 @@ namespace gr {
                             }
                         } else {
                             std::string encr = "{\"encrypted\": " + std::to_string(1) + ", \"algid\": " + std::to_string(ess_algid) + ", \"keyid\": " + std::to_string(ess_keyid) + "}";
-                            send_msg(encr, -3);
+                            send_msg(encr, M_P25_JSON_DATA);
                         }
                     }
 
