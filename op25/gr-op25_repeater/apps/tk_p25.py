@@ -1,6 +1,6 @@
 # Smartnet trunking module
 #
-# Copyright 2020 Graham J. Norbury - gnorbury@bondcar.com
+# Copyright 2020, 2021 Graham J. Norbury - gnorbury@bondcar.com
 # 
 # This file is part of OP25
 # 
@@ -529,7 +529,7 @@ class p25_system(object):
                     updated += 1
                 if self.debug > 10:
                     sys.stderr.write('%s [%d] mbt(02) mfid90_grg_cn_grant_exp: ch1: %x ch2: %x sg: %d\n' % (log_ts.get(), m_rxid, ch1, ch2, ga))
-        elif opcode == 0x28:  # grp_aff_resp
+        elif opcode == 0x28:  # grp_aff_rsp
             ta    = src
             mfrid = (header >> 56) & 0xff
             wacn  = ((header << 4) & 0xffff0) + ((mbt_data >> 188) & 0xf) 
@@ -540,7 +540,7 @@ class p25_system(object):
             lg    = (mbt_data >> 127) & 0x1
             gav   = (mbt_data >> 120) & 0x3
             if self.debug > 10:
-                sys.stderr.write('%s [%d] mbt(28) grp_aff_resp: mfrid: 0x%x wacn: 0x%x syid: 0x%x lg: %d gav: %d aga: %d ga: %d ta: %d\n\n' %(log_ts.get(), m_rxid, mfrid, wacn, syid, lg, gav, aga, ga, ta))
+                sys.stderr.write('%s [%d] mbt(28) grp_aff_rsp: mfrid: 0x%x wacn: 0x%x syid: 0x%x lg: %d gav: %d aga: %d ga: %d ta: %d\n\n' %(log_ts.get(), m_rxid, mfrid, wacn, syid, lg, gav, aga, ga, ta))
         elif opcode == 0x3c:  # adjacent status
             syid = (header >> 48) & 0xfff
             rfid = (header >> 24) & 0xff
@@ -553,7 +553,7 @@ class p25_system(object):
                 self.adjacent[f1] = 'rfid: %d stid:%d uplink:%f' % (rfid, stid, f2 / 1000000.0)
                 self.adjacent_data[f1] = {'rfid': rfid, 'stid':stid, 'uplink': f2, 'table': None}
             if self.debug > 10:
-                sys.stderr.write('%s [%d] mbt(3c) adj_stat: syid: %x rfid: %x stid: %x ch1: %x ch2: %x f1: %s f2: %s\n' % (log_ts.get(), m_rxid, syid, rfid, stid, ch1, ch2, self.channel_id_to_string(ch1), self.channel_id_to_string(ch2)))
+                sys.stderr.write('%s [%d] mbt(3c) adj_sts_bcst: syid: %x rfid: %x stid: %x ch1: %x ch2: %x f1: %s f2: %s\n' % (log_ts.get(), m_rxid, syid, rfid, stid, ch1, ch2, self.channel_id_to_string(ch1), self.channel_id_to_string(ch2)))
         elif opcode == 0x3b:  # network status
             syid = (header >> 48) & 0xfff
             wacn = (mbt_data >> 76) & 0xfffff
@@ -567,7 +567,7 @@ class p25_system(object):
                 self.ns_chan = f1
                 self.ns_valid = True
             if self.debug > 10:
-                sys.stderr.write('%s [%d] mbt(3b) net_stat: sys: %x wacn: %x ch1: %s ch2: %s\n' %(log_ts.get(), m_rxid, syid, wacn, self.channel_id_to_string(ch1), self.channel_id_to_string(ch2)))
+                sys.stderr.write('%s [%d] mbt(3b) net_sts_bcst: sys: %x wacn: %x ch1: %s ch2: %s\n' %(log_ts.get(), m_rxid, syid, wacn, self.channel_id_to_string(ch1), self.channel_id_to_string(ch2)))
         elif opcode == 0x3a:  # rfss status
             syid = (header >> 48) & 0xfff
             rfid = (mbt_data >> 88) & 0xff
@@ -583,7 +583,7 @@ class p25_system(object):
                 self.rfss_chan = f1
                 self.rfss_txchan = f2
             if self.debug > 10:
-                sys.stderr.write('%s [%d] mbt(3a) rfss_stat: sys: %x rfid: %x stid: %x ch1: %s ch2: %s\n' %(log_ts.get(), m_rxid, syid, rfid, stid, self.channel_id_to_string(ch1), self.channel_id_to_string(ch2)))
+                sys.stderr.write('%s [%d] mbt(3a) rfss_sts_bcst: sys: %x rfid: %x stid: %x ch1: %s ch2: %s\n' %(log_ts.get(), m_rxid, syid, rfid, stid, self.channel_id_to_string(ch1), self.channel_id_to_string(ch2)))
         else:
             if self.debug > 10:
                 sys.stderr.write('%s [%d] mbt(%02x) unhandled: %x\n' %(log_ts.get(), m_rxid, opcode, mbt_data))
@@ -688,7 +688,7 @@ class p25_system(object):
             ch2  = (tsbk >> 32) & 0xffff
             if self.debug > 10:
                 sys.stderr.write('%s [%d] tsbk(16) sndcp_data_ch: ch1: %x ch2: %x\n' % (log_ts.get(), m_rxid, ch1, ch2))
-        elif opcode == 0x28:   # grp_aff_resp
+        elif opcode == 0x28:   # grp_aff_rsp
             mfrid  = (tsbk >> 80) & 0xff
             lg     = (tsbk >> 79) & 0x01
             gav    = (tsbk >> 72) & 0x03
@@ -696,7 +696,7 @@ class p25_system(object):
             ga     = (tsbk >> 40) & 0xffff
             ta     = (tsbk >> 16) & 0xffffff
             if self.debug > 10:
-                sys.stderr.write('%s [%d] tsbk(28) grp_aff_resp: mfid: 0x%x gav: %d aga: %d ga: %d ta: %d\n' % (log_ts.get(), m_rxid, mfrid, gav, aga, ga, ta))
+                sys.stderr.write('%s [%d] tsbk(28) grp_aff_rsp: mfid: 0x%x gav: %d aga: %d ga: %d ta: %d\n' % (log_ts.get(), m_rxid, mfrid, gav, aga, ga, ta))
         elif opcode == 0x29:   # secondary cc explicit form
             mfrid = (tsbk >> 80) & 0xff
             rfid  = (tsbk >> 72) & 0xff
@@ -709,15 +709,15 @@ class p25_system(object):
                 sorted_freqs = collections.OrderedDict(sorted(self.secondary.items()))
                 self.secondary = sorted_freqs
             if self.debug > 10:
-                sys.stderr.write('%s [%d] tsbk(29) secondary_cc_exp: rfid: %x stid: %d ch1: %x(%s) ch2: %x(%s)\n' %(log_ts.get(), m_rxid, rfid, stid, ch1, self.channel_id_to_string(ch1), ch2, self.channel_id_to_string(ch2)))
-        elif opcode == 0x2c:   # u_reg_resp
+                sys.stderr.write('%s [%d] tsbk(29) sccb_exp: rfid: %x stid: %d ch1: %x(%s) ch2: %x(%s)\n' %(log_ts.get(), m_rxid, rfid, stid, ch1, self.channel_id_to_string(ch1), ch2, self.channel_id_to_string(ch2)))
+        elif opcode == 0x2c:   # u_reg_rsp
             mfrid  = (tsbk >> 80) & 0xff
             rv     = (tsbk >> 76) & 0x3
             syid   = (tsbk >> 64) & 0xffff
             sid   = (tsbk >> 40) & 0xffffff
             sa     = (tsbk >> 16) & 0xffffff
             if self.debug > 10:
-                sys.stderr.write('%s [%d] tsbk(2c) u_reg_resp: mfid: 0x%x rv: %d syid: 0x%x sid: %d sa: %d\n' % (log_ts.get(), m_rxid, mfrid, rv, syid, sid, sa))
+                sys.stderr.write('%s [%d] tsbk(2c) u_reg_rsp: mfid: 0x%x rv: %d syid: 0x%x sid: %d sa: %d\n' % (log_ts.get(), m_rxid, mfrid, rv, syid, sid, sa))
         elif opcode == 0x2f:   # u_de_reg_ack
             mfrid  = (tsbk >> 80) & 0xff
             wacn   = (tsbk >> 52) & 0xfffff
@@ -762,7 +762,7 @@ class p25_system(object):
             self.freq_table[iden]['step'] = spac * 125
             self.freq_table[iden]['frequency'] = freq * 5
             if self.debug > 10:
-                sys.stderr.write('%s [%d] tsbk(34) iden_up_vhf_uhf: id: %d toff: %f spac: %f freq: %f [%s]\n' % (log_ts.get(), m_rxid, iden, toff * spac * 0.125 * 1e-3, spac * 0.125, freq * 0.000005, txt[toff_sign]))
+                sys.stderr.write('%s [%d] tsbk(34) iden_up_vu: id: %d toff: %f spac: %f freq: %f [%s]\n' % (log_ts.get(), m_rxid, iden, toff * spac * 0.125 * 1e-3, spac * 0.125, freq * 0.000005, txt[toff_sign]))
         elif opcode == 0x33:   # iden_up_tdma
             mfrid  = (tsbk >> 80) & 0xff
             if mfrid == 0:
@@ -813,7 +813,7 @@ class p25_system(object):
                 self.rfss_chan = f1
                 self.rfss_txchan = f1 + self.freq_table[chan >> 12]['offset']
             if self.debug > 10:
-                sys.stderr.write('%s [%d] tsbk(3a) rfss_stat: syid: %x rfid: %x stid: %d ch1: %x(%s)\n' %(log_ts.get(), m_rxid, syid, rfid, stid, chan, self.channel_id_to_string(chan)))
+                sys.stderr.write('%s [%d] tsbk(3a) rfss_sts_bcst: syid: %x rfid: %x stid: %d ch1: %x(%s)\n' %(log_ts.get(), m_rxid, syid, rfid, stid, chan, self.channel_id_to_string(chan)))
         elif opcode == 0x39:   # secondary cc
             mfrid = (tsbk >> 80) & 0xff
             rfid  = (tsbk >> 72) & 0xff
@@ -828,7 +828,7 @@ class p25_system(object):
                 sorted_freqs = collections.OrderedDict(sorted(self.secondary.items()))
                 self.secondary = sorted_freqs
             if self.debug > 10:
-                sys.stderr.write('%s [%d] tsbk(39) secondary_cc: rfid: %x stid: %d ch1: %x(%s) ch2: %x(%s)\n' %(log_ts.get(), m_rxid, rfid, stid, ch1, self.channel_id_to_string(ch1), ch2, self.channel_id_to_string(ch2)))
+                sys.stderr.write('%s [%d] tsbk(39) sccb: rfid: %x stid: %d ch1: %x(%s) ch2: %x(%s)\n' %(log_ts.get(), m_rxid, rfid, stid, ch1, self.channel_id_to_string(ch1), ch2, self.channel_id_to_string(ch2)))
         elif opcode == 0x3b:   # network status
             wacn = (tsbk >> 52) & 0xfffff
             syid = (tsbk >> 40) & 0xfff
@@ -840,7 +840,7 @@ class p25_system(object):
                 self.ns_chan = f1
                 self.ns_valid = True
             if self.debug > 10:
-                sys.stderr.write('%s [%d] tsbk(3b) net_stat: wacn: %x syid: %x ch1: %x(%s)\n' %(log_ts.get(), m_rxid, wacn, syid, ch1, self.channel_id_to_string(ch1)))
+                sys.stderr.write('%s [%d] tsbk(3b) net_sts_bcst: wacn: %x syid: %x ch1: %x(%s)\n' %(log_ts.get(), m_rxid, wacn, syid, ch1, self.channel_id_to_string(ch1)))
         elif opcode == 0x3c:   # adjacent status
             rfid = (tsbk >> 48) & 0xff
             stid = (tsbk >> 40) & 0xff
@@ -851,9 +851,9 @@ class p25_system(object):
                 self.adjacent[f1] = 'rfid: %d stid:%d uplink:%f tbl:%d' % (rfid, stid, (f1 + self.freq_table[table]['offset']) / 1000000.0, table)
                 self.adjacent_data[f1] = {'rfid': rfid, 'stid':stid, 'uplink': f1 + self.freq_table[table]['offset'], 'table': table}
             if self.debug > 10:
-                sys.stderr.write('%s [%d] tsbk(3c) adj_stat: rfid: %x stid: %d ch1: %x(%s)\n' %(log_ts.get(), m_rxid, rfid, stid, ch1, self.channel_id_to_string(ch1)))
+                sys.stderr.write('%s [%d] tsbk(3c) adj_sts_bcst: rfid: %x stid: %d ch1: %x(%s)\n' %(log_ts.get(), m_rxid, rfid, stid, ch1, self.channel_id_to_string(ch1)))
                 if table in self.freq_table:
-                    sys.stderr.write('%s [%d] tsbk(3c) %s %s\n' % (log_ts.get(), m_rxid, self.freq_table[table]['frequency'] , self.freq_table[table]['step'] ))
+                    sys.stderr.write('%s [%d] tsbk(3c) adj_sts_bcst: base freq: %s step: %s\n' % (log_ts.get(), m_rxid, self.freq_table[table]['frequency'] , self.freq_table[table]['step'] ))
         else:
             if self.debug > 10:
                 sys.stderr.write('%s [%d] tsbk(%02x) unhandled: 0x%024x\n' % (log_ts.get(), m_rxid, opcode, tsbk))
@@ -1084,7 +1084,7 @@ class p25_system(object):
             ch_r = get_ordinals(msg[5:7])
             f    = self.channel_id_to_frequency(ch_t)
             if self.debug > 10:
-                sys.stderr.write('%s [%d] tdma(e9) secondary_cc: rfid: %x stid: %x freq-t: %s freq-r: %s\n' % (log_ts.get(), m_rxid, rfid, stid, self.channel_id_to_string(ch_t), self.channel_id_to_string(ch_r)))
+                sys.stderr.write('%s [%d] tdma(e9) sccb: rfid: %x stid: %x freq-t: %s freq-r: %s\n' % (log_ts.get(), m_rxid, rfid, stid, self.channel_id_to_string(ch_t), self.channel_id_to_string(ch_r)))
             if f:
                 self.secondary[ f ] = 1
                 sorted_freqs = collections.OrderedDict(sorted(self.secondary.items()))
@@ -1120,7 +1120,7 @@ class p25_system(object):
                 self.rfss_chan = f
                 self.rfss_txchan = f + self.freq_table[ch_t >> 12]['offset']
             if self.debug > 10:
-                sys.stderr.write('%s [%d] tdma(fa) rfss_stat: syid: %x rfid: %x stid: %x ch %x(%s)\n' % (log_ts.get(), m_rxid, syid, rfid, stid, ch_t, self.channel_id_to_string(ch_t)))
+                sys.stderr.write('%s [%d] tdma(fa) rfss_sts_bcst: syid: %x rfid: %x stid: %x ch %x(%s)\n' % (log_ts.get(), m_rxid, syid, rfid, stid, ch_t, self.channel_id_to_string(ch_t)))
         elif op == 0xfb: # Network Status Broadcast Explicit
             wacn = (get_ordinals(msg[2,5]) >> 4) & 0xfffff
             syid =  get_ordinals(msg[4:6]) & 0xfff
@@ -1133,7 +1133,7 @@ class p25_system(object):
                 self.ns_chan = f
                 self.ns_valid = True
             if self.debug > 10:
-                sys.stderr.write('%s [%d] tdma(fb) net_stat: wacn: %x syid: %x ch %x(%s)\n' % (log_ts.get(), m_rxid, wacn, syid, ch_t, self.channel_id_to_string(ch_t)))
+                sys.stderr.write('%s [%d] tdma(fb) net_sts_bcst: wacn: %x syid: %x ch %x(%s)\n' % (log_ts.get(), m_rxid, wacn, syid, ch_t, self.channel_id_to_string(ch_t)))
         elif op == 0xfc: # Adjacent Status Broadcast Explicit
             syid  = get_ordinals(msg[2:4]) & 0xfff
             rfid  = get_ordinals(msg[4:5])
@@ -1146,9 +1146,9 @@ class p25_system(object):
                 self.adjacent[f] = 'rfid: %d stid:%d uplink:%f tbl:%d' % (rfid, stid, (f + self.freq_table[table]['offset']) / 1000000.0, table)
                 self.adjacent_data[f] = {'rfid': rfid, 'stid':stid, 'uplink': f + self.freq_table[table]['offset'], 'table': table}
             if self.debug > 10:
-                sys.stderr.write('%s [%d] tdma(fc) adj_stat: syid: %x rfid: %x stid: %x ch %x(%s)\n' % (log_ts.get(), m_rxid, syid, rfid, stid, ch_t, self.channel_id_to_string(ch_t)))
+                sys.stderr.write('%s [%d] tdma(fc) adj_sts_bcst: syid: %x rfid: %x stid: %x ch %x(%s)\n' % (log_ts.get(), m_rxid, syid, rfid, stid, ch_t, self.channel_id_to_string(ch_t)))
                 if table in self.freq_table:
-                    sys.stderr.write('%s [%d] tdma(fc) adj_stat: %s %s\n' % (log_ts.get(), m_rxid, self.freq_table[table]['frequency'] , self.freq_table[table]['step'] ))
+                    sys.stderr.write('%s [%d] tdma(fc) adj_sts_bcst: base freq: %s step: %s\n' % (log_ts.get(), m_rxid, self.freq_table[table]['frequency'] , self.freq_table[table]['step'] ))
         elif op == 0xfe: # Adjacent Status Broadcast Extended Explicit
             syid  = get_ordinals(msg[2:4]) & 0xfff
             rfid  = get_ordinals(msg[4:5])
@@ -1162,9 +1162,9 @@ class p25_system(object):
                 self.adjacent[f] = 'rfid: %d stid:%d uplink:%f tbl:%d' % (rfid, stid, (f + self.freq_table[table]['offset']) / 1000000.0, table)
                 self.adjacent_data[f] = {'rfid': rfid, 'stid':stid, 'uplink': f + self.freq_table[table]['offset'], 'table': table}
             if self.debug > 10:
-                sys.stderr.write('%s [%d] tdma(fe) adj_stat: wacn: %x syid: %x rfid: %x stid: %x ch %x(%s)\n' % (log_ts.get(), m_rxid, wacn, syid, rfid, stid, ch_t, self.channel_id_to_string(ch_t)))
+                sys.stderr.write('%s [%d] tdma(fe) adj_sts_bcst: wacn: %x syid: %x rfid: %x stid: %x ch %x(%s)\n' % (log_ts.get(), m_rxid, wacn, syid, rfid, stid, ch_t, self.channel_id_to_string(ch_t)))
                 if table in self.freq_table:
-                    sys.stderr.write('%s [%d] tdma(fe) adj_stat: %s %s\n' % (log_ts.get(), m_rxid, self.freq_table[table]['frequency'] , self.freq_table[table]['step'] ))
+                    sys.stderr.write('%s [%d] tdma(fe) adj_sts_bcst: base freq: %s step: %s\n' % (log_ts.get(), m_rxid, self.freq_table[table]['frequency'] , self.freq_table[table]['step'] ))
         else:
             if self.debug > 10:
                 m_data = get_ordinals(msg[1:])
