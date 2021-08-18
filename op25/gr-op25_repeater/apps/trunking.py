@@ -800,6 +800,8 @@ class trunked_system (object):
 
     def decode_tdma_ptt(self, msg, curr_time):
         updated = 0
+        self.last_tsbk = time.time()
+        self.stats['tsbks'] += 1
         mi    = get_ordinals(msg[0:9])
         algid = get_ordinals(msg[9:10])
         keyid = get_ordinals(msg[10:12])
@@ -813,6 +815,8 @@ class trunked_system (object):
         return updated
 
     def decode_tdma_endptt(self, msg, curr_time):
+        self.last_tsbk = time.time()
+        self.stats['tsbks'] += 1
         mi    = get_ordinals(msg[0:9])
         sa    = get_ordinals(msg[12:15])
         ga    = get_ordinals(msg[15:17])
@@ -822,6 +826,9 @@ class trunked_system (object):
 
     def decode_tdma_msg(self, msg, curr_time):
         updated = 0
+        self.cc_timeouts = 0
+        self.last_tsbk = time.time()
+        self.stats['tsbks'] += 1
         mfid = 0
         op = get_ordinals(msg[:1])
         b1b2 = (op >> 6) & 0x3
@@ -1109,6 +1116,8 @@ class trunked_system (object):
 
     def decode_fdma_lcw(self, msg, curr_time):
         updated = 0
+        self.last_tsbk = time.time()
+        self.stats['tsbks'] += 1
         pb_sf_lco = get_ordinals(msg[0:1])
 
         if (pb_sf_lco & 0x80): # encrypted format not supported

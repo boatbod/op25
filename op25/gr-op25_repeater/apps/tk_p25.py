@@ -860,6 +860,8 @@ class p25_system(object):
         return updated
 
     def decode_tdma_ptt(self, m_rxid, msg, curr_time):
+        self.last_tsbk = time.time()
+        self.stats['tsbk_count'] += 1
         mi    = get_ordinals(msg[0:9])
         algid = get_ordinals(msg[9:10])
         keyid = get_ordinals(msg[10:12])
@@ -870,6 +872,8 @@ class p25_system(object):
         return self.update_talkgroup_srcaddr(curr_time, ga, sa)
 
     def decode_tdma_endptt(self, m_rxid, msg, curr_time):
+        self.last_tsbk = time.time()
+        self.stats['tsbk_count'] += 1
         mi    = get_ordinals(msg[0:9])
         sa    = get_ordinals(msg[12:15])
         ga    = get_ordinals(msg[15:17])
@@ -879,6 +883,9 @@ class p25_system(object):
 
     def decode_tdma_msg(self, m_rxid, msg, curr_time):
         updated = 0
+        self.cc_timeouts = 0
+        self.last_tsbk = time.time()
+        self.stats['tsbk_count'] += 1
         mfid = 0
         op = get_ordinals(msg[:1])
         b1b2 = (op >> 6) & 0x3
@@ -1166,6 +1173,8 @@ class p25_system(object):
 
     def decode_fdma_lcw(self, m_rxid, msg, curr_time):
         updated = 0
+        self.last_tsbk = time.time()
+        self.stats['tsbk_count'] += 1
         pb_sf_lco = get_ordinals(msg[0:1])
 
         if (pb_sf_lco & 0x80): # encrypted format not supported
