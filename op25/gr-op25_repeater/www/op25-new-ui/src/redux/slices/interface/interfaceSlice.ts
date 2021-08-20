@@ -10,6 +10,7 @@ const initialState: InterfaceState = {
   activeSourceAddress: undefined,
   isMenuDrawerOpen: true,
   isMobileMenuDrawerOpen: false,
+  isPreferencesDrawerOpen: false,
 };
 
 export const interfaceSlice = createSlice({
@@ -32,6 +33,12 @@ export const interfaceSlice = createSlice({
     setMobileMenuDrawerOpen: (state, action: PayloadAction<boolean>) => {
       state.isMobileMenuDrawerOpen = action.payload;
     },
+    togglePreferencesDrawerOpen: (state) => {
+      state.isPreferencesDrawerOpen = !state.isPreferencesDrawerOpen;
+    },
+    setPreferencesDrawerOpen: (state, action: PayloadAction<boolean>) => {
+      state.isPreferencesDrawerOpen = action.payload;
+    },
   },
 });
 
@@ -41,6 +48,8 @@ export const {
   setMenuDrawerOpen,
   toggleMobileMenuDrawerOpen,
   setMobileMenuDrawerOpen,
+  togglePreferencesDrawerOpen,
+  setPreferencesDrawerOpen,
 } = interfaceSlice.actions;
 
 export const selectActiveCall = (state: RootState): ActiveCall => ({
@@ -55,5 +64,8 @@ export const isMenuDrawerOpen = (state: RootState): boolean =>
 
 export const isMobileMenuDrawerOpen = (state: RootState): boolean =>
   state.interface.isMobileMenuDrawerOpen;
+
+export const isPreferencesOpen = (state: RootState): boolean =>
+  state.interface.isPreferencesDrawerOpen;
 
 export default interfaceSlice.reducer;
