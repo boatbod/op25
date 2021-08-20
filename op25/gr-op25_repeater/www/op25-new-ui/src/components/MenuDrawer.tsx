@@ -29,16 +29,12 @@ import {
   PieChart as PieChartIcon,
   InfoRounded as InfoRoundedIcon,
 } from "@material-ui/icons";
+import { selectIsDarkMode } from "../redux/slices/preferences/preferencesSlice";
 
 const drawerWidth = 240;
 
 const useStyles = makeStyles((theme: Theme) =>
   createStyles({
-    appBar: {
-      [theme.breakpoints.up("sm")]: {
-        width: `${drawerWidth}px`,
-      },
-    },
     drawer: {
       [theme.breakpoints.up("sm")]: {
         width: drawerWidth,
@@ -55,17 +51,17 @@ const useStyles = makeStyles((theme: Theme) =>
 );
 
 const MenuDrawerContent = () => {
-  const classes = useStyles();
+  const isDarkMode = useAppSelector(selectIsDarkMode);
+
   return (
     <div>
       <AppBar
         position="relative"
-        className={classes.appBar}
-        color="transparent"
+        color={isDarkMode ? "transparent" : "primary"}
       >
         <Toolbar>
           <Typography variant="h6" noWrap>
-            OP25 (BoatBod)
+            OP25 (Boatbod)
           </Typography>
         </Toolbar>
       </AppBar>
@@ -104,7 +100,7 @@ const MenuDrawer = () => {
   const dispatch = useAppDispatch();
   const isOpen = useAppSelector(isMenuDrawerOpen);
   const mobileOpen = useAppSelector(isMobileMenuDrawerOpen);
-  const classes = useStyles({ isOpen });
+  const classes = useStyles();
   const theme = useTheme();
 
   return (

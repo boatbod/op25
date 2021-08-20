@@ -3,6 +3,7 @@ import {
   isMenuDrawerOpen,
   toggleMenuDrawerOpen,
   toggleMobileMenuDrawerOpen,
+  togglePreferencesDrawerOpen,
 } from "../redux/slices/interface/interfaceSlice";
 
 import {
@@ -89,7 +90,13 @@ const AppBarWithToolbar = () => {
         <MenuItem button>GoTo</MenuItem>
         <MenuItem button>LockOut</MenuItem> */}
         <div className={classes.grow} />
-        <IconButton color="inherit" aria-label="preferences" onClick={() => {}}>
+        <IconButton
+          color="inherit"
+          aria-label="preferences"
+          onClick={() => {
+            dispatch(togglePreferencesDrawerOpen());
+          }}
+        >
           <SettingsIcon />
         </IconButton>
       </Toolbar>

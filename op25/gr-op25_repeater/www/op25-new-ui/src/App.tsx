@@ -1,14 +1,14 @@
 //import { useAppDispatch } from "./redux/app/hooks";
 //import { toogleDarkMode } from "./redux/slices/preferences/preferencesSlice";
 
-import TopMenuBar from "./components/TopMenuBar";
+import TopMenuBarAndDrawers from "./components/TopMenuBarAndDrawers";
 
 function App() {
   // const dispatch = useAppDispatch();
 
   return (
     <>
-      <TopMenuBar />
+      <TopMenuBarAndDrawers />
     </>
   );
 }

@@ -5,4 +5,5 @@ export interface InterfaceState {
   activeSourceAddress?: number;
   isMenuDrawerOpen: boolean;
   isMobileMenuDrawerOpen: boolean;
+  isPreferencesDrawerOpen: boolean;
 }
