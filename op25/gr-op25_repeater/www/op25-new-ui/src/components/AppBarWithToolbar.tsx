@@ -14,6 +14,7 @@ import {
   // MenuItem,
   Theme,
   Toolbar,
+  Tooltip,
 } from "@material-ui/core";
 
 import { Menu as MenuIcon, Settings as SettingsIcon } from "@material-ui/icons";
@@ -90,15 +91,17 @@ const AppBarWithToolbar = () => {
         <MenuItem button>GoTo</MenuItem>
         <MenuItem button>LockOut</MenuItem> */}
         <div className={classes.grow} />
-        <IconButton
-          color="inherit"
-          aria-label="preferences"
-          onClick={() => {
-            dispatch(togglePreferencesDrawerOpen());
-          }}
-        >
-          <SettingsIcon />
-        </IconButton>
+        <Tooltip title="Preferences" aria-label="preferences">
+          <IconButton
+            color="inherit"
+            aria-label="preferences"
+            onClick={() => {
+              dispatch(togglePreferencesDrawerOpen());
+            }}
+          >
+            <SettingsIcon />
+          </IconButton>
+        </Tooltip>
       </Toolbar>
     </AppBar>
   );
