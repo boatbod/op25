@@ -79,6 +79,7 @@ import lfsr
 os.environ['IMBE'] = 'soft'
 
 _def_symbol_rate = 4800
+_def_capture_file = "capture.bin"
 
 # Helper functions
 #
@@ -265,6 +266,21 @@ class channel(object):
             self.decoder.set_debug(dbglvl)
         if self.nbfm is not None:
             self.nbfm.set_debug(dbglvl)
+
+    def toggle_capture(self):
+        if self.raw_sink is None:   # turn on raw symbol capture
+            sink_file = str(from_dict(self.config, "raw_output", "ch"+str(self.msgq_id)+"-"+_def_capture_file))
+            sys.stderr.write("%s Saving raw symbols to file: %s\n" % (log_ts.get(), sink_file))
+            self.tb.lock()
+            self.raw_sink = blocks.file_sink(gr.sizeof_char, sink_file)
+            self.tb.connect(self.demod, self.raw_sink)
+            self.tb.unlock()
+        else:                       # turn off raw symbol capture
+            sys.stderr.write("%s Ending raw symbol capture\n" % log_ts.get())
+            self.tb.lock()
+            self.tb.disconnect(self.demod, self.raw_sink)
+            self.tb.unlock()
+            self.raw_sink = None
 
     def set_plot_destination(self, plot): # only required for http terminal
         if plot is None or plot not in self.sinks or self.tb.terminal_type is None:
@@ -806,6 +822,12 @@ class rx_block (gr.top_block):
                 return False
         elif s == 'dump_tgids':
             self.trunk_rx.dump_tgids()
+        elif s == 'capture':
+            if not self.get_interactive():
+                sys.stderr.write("%s Cannot start capture for non-realtime (replay) sessions\n" % log_ts.get())
+                return
+            msgq_id = int(msg.arg2())
+            self.find_channel(msgq_id).toggle_capture()
         elif s == 'watchdog':
             if self.ui_last_update > 0 and (time.time() > (self.ui_last_update + self.ui_timeout)):
                 self.ui_last_update = 0
@@ -823,6 +845,7 @@ class rx_block (gr.top_block):
         params = json.loads(self.trunk_rx.get_chan_status())   # extract data from all channels
         for rx_id in params['channels']:                       # iterate and convert stream name to url
             params[rx_id]['ppm'] = self.find_channel(int(rx_id)).device.get_ppm()
+            params[rx_id]['capture'] = False if self.find_channel(int(rx_id)).raw_sink is None else True
             s_name = params[rx_id]['stream']
             if s_name not in self.meta_streams:
                 continue
