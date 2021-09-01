@@ -26,6 +26,7 @@ var counter1 = 0;
 var error_val = null;
 var fine_tune = null;
 var current_tgid = null;
+var capture_active = false;
 var send_busy = 0;
 var send_qfull = 0;
 var send_queue = [];
@@ -257,6 +258,7 @@ function channel_update(d) {
     var s2_e = document.getElementById("s2_ch_dn");
     var s2_f = document.getElementById("s2_ch_dmp");
     var s2_g = document.getElementById("s2_ch_up");
+    var s2_h = document.getElementById("s2_ch_cap");
 
     if (d['channels'] != undefined) {
         channel_list = d['channels'];    
@@ -280,11 +282,13 @@ function channel_update(d) {
             c_srcaddr = d[c_id]['srcaddr'];
             c_srctag = d[c_id]['srctag'];
             c_stream_url = d[c_id]['stream_url'];
+            capture_active = d[c_id]['capture'];
             s2_c.style['display'] = "";
             s2_d.style['display'] = "";
             s2_e.style['display'] = "";
             s2_f.style['display'] = "";
             s2_g.style['display'] = "";
+            s2_h.style['display'] = "";
         }
         else {
             s2_c.style['display'] = "none";
@@ -292,6 +296,7 @@ function channel_update(d) {
             s2_e.style['display'] = "none";
             s2_f.style['display'] = "none";
             s2_g.style['display'] = "none";
+            s2_h.style['display'] = "none";
             c_name = "";
             c_freq = 0.0;
             c_system = "";
@@ -312,6 +317,7 @@ function channel_status() {
     var s2_grp = document.getElementById("s2_grp");
     var s2_src = document.getElementById("s2_src");
     var s2_ch_txt = document.getElementById("s2_ch_txt");
+    var s2_cap = document.getElementById("cap_bn");
 
     html = "";
     if (c_stream_url != "") {
@@ -354,6 +360,11 @@ function channel_status() {
         else
             html += "<span class=\"value\">" + c_srcaddr + "</span>";
     s2_src.innerHTML = html;
+
+    if (capture_active)
+        s2_cap.value = "stop capture";
+    else
+        s2_cap.value = "start capture";
 }
 
 // adjacent sites table
@@ -572,6 +583,10 @@ function f_chan_button(command) {
 
 function f_dump_button(command) {
     send_command('dump_tgids', 0, Number(channel_list[channel_index]));
+}
+
+function f_cap_button(command) {
+    send_command('capture', 0, Number(channel_list[channel_index]));
 }
 
 function f_tune_button(command) {

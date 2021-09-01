@@ -90,6 +90,22 @@ hr {
 	background: linear-gradient(#669999, #82B0B0);
 }
 
+.cap-button {
+	/* background-color: #669999; */
+	border-color: black;
+	color: white;
+	padding: 0px 10px;
+	text-decoration: none;
+	margin: 0px 0px;
+	cursor: pointer;
+	width: 88px;
+	font-size: 9px;
+	font-weight: bold;
+	box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2), 0 3px 10px 0 rgba(0,0,0,0.19);
+	background: #669999; /* For browsers that do not support gradients */
+	background: linear-gradient(#669999, #82B0B0);
+}
+
 /* flex container for top buttons */
 
 /*
@@ -238,6 +254,12 @@ div.adjacent {
 	width: 23%
 }
 
+.s2_cell_b2 {
+	display: table-column;
+	float: left;
+	width: 72%
+}
+
 .s2_cell_c {
 	display: table-column;
 	float: left;
@@ -266,6 +288,12 @@ div.adjacent {
 	display: table-column;
 	float: left;
 	width: 4%
+}
+
+.s2_cell_h {
+	display: table-column;
+	float: left;
+	width: 12%
 }
 
 .s3 {
