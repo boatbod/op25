@@ -1559,7 +1559,7 @@ class rx_ctl (object):
                 self.current_srcaddr = js['srcaddr']
             if ('grpaddr' in js):
                 self.current_grpaddr = js['grpaddr']
-            if 'encrypted' in js:
+            if 'encrypted' in js and self.current_nac is not None and self.current_nac in self.trunked_systems:
                 self.trunked_systems[self.current_nac].update_talkgroup_encrypted(curr_time, self.current_tgid, js['encrypted'])
             return 
         elif m_type == -1:  # timeout
