@@ -159,6 +159,7 @@ class device(object):
             self.frequency = int(from_dict(config, 'frequency', 800000000))
             self.fractional_corr = int((int(round(self.ppm)) - self.ppm) * (self.frequency/1e6))
             self.src.set_center_freq(self.frequency + self.offset)
+            self.usable_bw = float(from_dict(config, 'usable_bw_pct', 1.0))
 
     def get_ppm(self):
         return self.ppm
@@ -204,7 +205,8 @@ class channel(object):
                              input_rate = dev.sample_rate,
                              demod_type = 'fsk4',
                              filter_type = filter_type,
-                             excess_bw = config['excess_bw'],
+                             usable_bw = self.device.usable_bw,
+                             excess_bw = float(from_dict(config, 'excess_bw', 0.2)),
                              relative_freq = (dev.frequency + dev.offset + dev.fractional_corr) - self.frequency,
                              offset = dev.offset,
                              if_rate = config['if_rate'],
@@ -214,7 +216,8 @@ class channel(object):
                              input_rate = dev.sample_rate,
                              demod_type = config['demod_type'],
                              filter_type = config['filter_type'],
-                             excess_bw = config['excess_bw'],
+                             usable_bw = self.device.usable_bw,
+                             excess_bw = float(from_dict(config, 'excess_bw', 0.2)),
                              relative_freq = (dev.frequency + dev.offset + dev.fractional_corr) - self.frequency,
                              offset = dev.offset,
                              if_rate = config['if_rate'],
