@@ -62,6 +62,7 @@
             "offset": 0,
             "ppm": 0.30,
             "rate": 6000000,
+            "usable_bw_pct": 0.95,
             "tunable": false
         }
     ],

@@ -42,6 +42,7 @@
             "offset": 0,
             "ppm": 0.0,
             "rate": 1000000,
+            "usable_bw_pct": 0.85,
             "tunable": true
         },
         {
@@ -52,6 +53,7 @@
             "offset": 0,
             "ppm": 0.0,
             "rate": 1000000,
+            "usable_bw_pct": 0.85,
             "tunable": true
         }
     ],

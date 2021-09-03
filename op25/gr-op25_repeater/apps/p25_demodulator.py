@@ -227,7 +227,7 @@ class p25_demod_fb(p25_demod_base):
                                 gr.io_signature(1, 1, gr.sizeof_float), # Input signature
                                 gr.io_signature(1, 1, gr.sizeof_char))  # Output signature
 
-        p25_demod_base.__init__(self, if_rate=input_rate, symbol_rate=symbol_rate, filter_type=filter_type)
+        p25_demod_base.__init__(self, if_rate=input_rate, symbol_rate=symbol_rate, filter_type=filter_type, excess_bw = excess_bw)
 
         self.input_rate = input_rate
         self.float_sink = {}
@@ -276,6 +276,7 @@ class p25_demod_cb(p25_demod_base):
                  input_rate     = None,
                  demod_type     = 'cqpsk',
                  filter_type    = None,
+                 usable_bw      = 1.0,
                  excess_bw      = _def_excess_bw,
                  relative_freq  = 0,
                  offset         = 0,
@@ -294,8 +295,9 @@ class p25_demod_cb(p25_demod_base):
         gr.hier_block2.__init__(self, "p25_demod_cb",
                                 gr.io_signature(1, 1, gr.sizeof_gr_complex),  # Input signature
                                 gr.io_signature(1, 1, gr.sizeof_char))        # Output signature
-        p25_demod_base.__init__(self, if_rate=if_rate, symbol_rate=symbol_rate, filter_type=filter_type)
+        p25_demod_base.__init__(self, if_rate=if_rate, symbol_rate=symbol_rate, filter_type=filter_type, excess_bw = excess_bw)
 
+        self.usable_bw = usable_bw
         self.input_rate = input_rate
         self.if_rate = if_rate
         self.symbol_rate = symbol_rate
@@ -417,7 +419,7 @@ class p25_demod_cb(p25_demod_base):
             self.fsk4_demod.reset()
 
     def set_relative_frequency(self, freq):
-        if abs(freq) > ((self.input_rate / 2) - (self.if1 / 2)):
+        if abs(freq) > (((self.input_rate * self.usable_bw) / 2) - (self.if1 / 2)):
             return False
         if freq == self.lo_freq:
             return True
