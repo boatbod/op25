@@ -1,13 +1,8 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { RootState } from "../../app/store";
-import { ActiveCall } from "../../../models/ActiveCall";
 import { InterfaceState } from "../../../models/InterfaceState";
 
 const initialState: InterfaceState = {
-  activeFrequency: undefined,
-  activeTalkgroup: undefined,
-  activeGroupAddress: undefined,
-  activeSourceAddress: undefined,
   isMenuDrawerOpen: true,
   isMobileMenuDrawerOpen: false,
   isPreferencesDrawerOpen: false,
@@ -17,10 +12,6 @@ export const interfaceSlice = createSlice({
   name: "interface",
   initialState,
   reducers: {
-    gotoTalkgroup: (state, action: PayloadAction<number>) => {
-      // TODO: Change to async thunk and call API.
-      state.activeTalkgroup = action.payload.toString(10);
-    },
     toggleMenuDrawerOpen: (state) => {
       state.isMenuDrawerOpen = !state.isMenuDrawerOpen;
     },
@@ -34,6 +25,7 @@ export const interfaceSlice = createSlice({
       state.isMobileMenuDrawerOpen = action.payload;
     },
     togglePreferencesDrawerOpen: (state) => {
+      debugger;
       state.isPreferencesDrawerOpen = !state.isPreferencesDrawerOpen;
     },
     setPreferencesDrawerOpen: (state, action: PayloadAction<boolean>) => {
@@ -43,7 +35,6 @@ export const interfaceSlice = createSlice({
 });
 
 export const {
-  gotoTalkgroup,
   toggleMenuDrawerOpen,
   setMenuDrawerOpen,
   toggleMobileMenuDrawerOpen,
@@ -51,13 +42,6 @@ export const {
   togglePreferencesDrawerOpen,
   setPreferencesDrawerOpen,
 } = interfaceSlice.actions;
-
-export const selectActiveCall = (state: RootState): ActiveCall => ({
-  activeFrequency: state.interface.activeFrequency,
-  activeTalkgroup: state.interface.activeTalkgroup,
-  activeGroupAddress: state.interface.activeGroupAddress,
-  activeSourceAddress: state.interface.activeSourceAddress,
-});
 
 export const isMenuDrawerOpen = (state: RootState): boolean =>
   state.interface.isMenuDrawerOpen;

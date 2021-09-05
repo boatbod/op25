@@ -103,7 +103,7 @@ const PreferencesDrawer = () => {
         <Divider />
         <Grid className={classes.gridSpace} container spacing={0}>
           <Grid item xs={12}>
-            <Grid container justify="flex-end">
+            <Grid container justifyContent="flex-end">
               <IconButton
                 onClick={() => {
                   dispatch(setPreferencesDrawerOpen(false));

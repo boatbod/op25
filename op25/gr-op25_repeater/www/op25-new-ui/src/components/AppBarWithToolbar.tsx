@@ -9,15 +9,18 @@ import {
 import {
   AppBar,
   createStyles,
+  Hidden,
   IconButton,
   makeStyles,
   // MenuItem,
   Theme,
   Toolbar,
   Tooltip,
+  Typography,
 } from "@material-ui/core";
 
 import { Menu as MenuIcon, Settings as SettingsIcon } from "@material-ui/icons";
+import { selectAllState } from "redux/slices/op25/op25Slice";
 
 interface useStylesProps {
   isOpen: boolean;
@@ -39,15 +42,9 @@ const useStyles = makeStyles((theme: Theme) =>
     },
     menuButton: {
       marginRight: theme.spacing(2),
-      [theme.breakpoints.down("md")]: {
-        display: "none",
-      },
     },
     mobileMenuButton: {
       marginRight: theme.spacing(2),
-      [theme.breakpoints.up("sm")]: {
-        display: "none",
-      },
     },
     content: {
       flexGrow: 1,
@@ -58,38 +55,53 @@ const useStyles = makeStyles((theme: Theme) =>
 
 const AppBarWithToolbar = () => {
   const dispatch = useAppDispatch();
+  const currentState = useAppSelector(selectAllState);
   const isOpen = useAppSelector(isMenuDrawerOpen);
   const classes = useStyles({ isOpen });
 
   return (
-    <AppBar position="fixed" className={classes.appBar}>
+    <AppBar position="sticky" className={classes.appBar}>
       <Toolbar>
-        <IconButton
-          color="inherit"
-          aria-label="open drawer"
-          edge="start"
-          onClick={() => {
-            dispatch(toggleMobileMenuDrawerOpen());
-          }}
-          className={classes.mobileMenuButton}
-        >
-          <MenuIcon />
-        </IconButton>
-        <IconButton
-          color="inherit"
-          aria-label="open drawer"
-          edge="start"
-          onClick={() => {
-            dispatch(toggleMenuDrawerOpen());
-          }}
-          className={classes.menuButton}
-        >
-          <MenuIcon />
-        </IconButton>
+        <Hidden smUp>
+          <IconButton
+            color="inherit"
+            aria-label="open drawer"
+            edge="start"
+            onClick={() => {
+              dispatch(toggleMobileMenuDrawerOpen());
+            }}
+            className={classes.mobileMenuButton}
+          >
+            <MenuIcon />
+          </IconButton>
+        </Hidden>
+        <Hidden xsDown>
+          <IconButton
+            color="inherit"
+            aria-label="open drawer"
+            edge="start"
+            onClick={() => {
+              dispatch(toggleMenuDrawerOpen());
+            }}
+            className={classes.menuButton}
+          >
+            <MenuIcon />
+          </IconButton>
+        </Hidden>
         {/* <MenuItem button>Skip</MenuItem>
         <MenuItem button>Hold</MenuItem>
         <MenuItem button>GoTo</MenuItem>
         <MenuItem button>LockOut</MenuItem> */}
+        <Typography>
+          Current:{" "}
+          {currentState.channel_sourceAddress &&
+          currentState.current_talkgroupId
+            ? currentState.channel_sourceAddress +
+              " on " +
+              currentState.current_talkgroupId
+            : ""}{" "}
+          ** {currentState.channel_tag}
+        </Typography>
         <div className={classes.grow} />
         <Tooltip title="Preferences" aria-label="preferences">
           <IconButton
