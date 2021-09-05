@@ -1,6 +1,8 @@
 import { useEffect } from "react";
 import TopMenuBarAndDrawers from "./components/TopMenuBarAndDrawers";
 import { useAppDispatch, useAppSelector } from "redux/app/hooks";
+import { isMenuDrawerOpen } from "redux/slices/interface/interfaceSlice";
+import MainUi from "pages/ReceiverUi";
 import {
   selectAllState,
   addToSendQueue,
@@ -8,9 +10,8 @@ import {
 } from "redux/slices/op25/op25Slice";
 
 import { createStyles, makeStyles, Theme } from "@material-ui/core";
-import { isMenuDrawerOpen } from "redux/slices/interface/interfaceSlice";
-import { frequencyToString, ppmToString } from "lib/op25";
-import MainHUD from "components/MainHUD";
+import { selectShowChannelInTitle } from "redux/slices/preferences/preferencesSlice";
+
 interface useStylesProps {
   isOpen: boolean;
 }
@@ -40,6 +41,7 @@ const App = () => {
   const dispatch = useAppDispatch();
   const state = useAppSelector(selectAllState);
   const isOpen = useAppSelector(isMenuDrawerOpen);
+  const showChannelInTitle = useAppSelector(selectShowChannelInTitle);
   const classes = useStyles({ isOpen });
 
   useEffect(() => {
@@ -67,30 +69,23 @@ const App = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    if (showChannelInTitle) {
+      document.title = `${
+        (state.channel_tag
+          ? state.channel_tag
+          : state.current_talkgroupId?.toString()) + " - "
+      }OP25 (Boatbod) Web Interface`;
+    } else {
+      document.title = "OP25 (Boatbod) Web Interface";
+    }
+  }, [showChannelInTitle, state.current_talkgroupId, state.channel_tag]);
+
   return (
     <>
       <TopMenuBarAndDrawers />
       <div className={classes.content}>
-        <MainHUD />
-        <div className={classes.tempDebugContent}>
-          channel_frequency:{" "}
-          {state.channel_frequency &&
-            frequencyToString(state.channel_frequency)}
-        </div>
-        <div>channel_index: {state.channel_index}</div>
-        <div>channel_list: {state.channel_list}</div>
-        <div>channel_name: {state.channel_name}</div>
-        <div>
-          channel_ppm: {state.channel_ppm && ppmToString(state.channel_ppm)}
-        </div>
-        <div>channel_sourceAddress: {state.channel_sourceAddress}</div>
-        <div>channel_sourceTag: {state.channel_sourceTag}</div>
-        <div>channel_streamURL: {state.channel_streamURL}</div>
-        <div>channel_system: {state.channel_system}</div>
-        <div>channel_tag: {state.channel_tag}</div>
-        <div>current_talkgroupId: {state.current_talkgroupId}</div>
-        <div>stepSizeLarge: {state.stepSizeLarge}</div>
-        <div>stepSizeSmall: {state.stepSizeSmall}</div>
+        <MainUi />
       </div>
     </>
   );

@@ -5,7 +5,9 @@ import {
 } from "../redux/slices/interface/interfaceSlice";
 import {
   selectIsDarkMode,
+  selectShowChannelInTitle,
   setDarkMode,
+  setShowChannelInTitle,
 } from "../redux/slices/preferences/preferencesSlice";
 
 import {
@@ -29,7 +31,7 @@ import { Close as CloseIcon } from "@material-ui/icons";
 
 import { blue } from "@material-ui/core/colors";
 
-const drawerWidth = 260;
+const drawerWidth = 300;
 
 interface StylesProps {
   isDarkMode: boolean;
@@ -58,8 +60,10 @@ const useStyles = makeStyles((theme: Theme) =>
       color: (props: StylesProps) =>
         props.isDarkMode ? theme.palette.common.white : blue[800],
     },
-    // necessary for content to be below app bar
-    toolbar: theme.mixins.toolbar,
+    checkboxMaxWidth: {
+      width: 180,
+    },
+    toolbar: theme.mixins.toolbar, // necessary for content to be below app bar
   })
 );
 
@@ -70,6 +74,7 @@ const PreferencesDrawer = () => {
   const dispatch = useAppDispatch();
   const isOpen = useAppSelector(isPreferencesOpen);
   const isDarkMode = useAppSelector(selectIsDarkMode);
+  const isShowChannelInTitle = useAppSelector(selectShowChannelInTitle);
   const classes = useStyles({ isDarkMode });
   const theme = useTheme();
 
@@ -131,6 +136,19 @@ const PreferencesDrawer = () => {
                   />
                 }
                 label="Dark Mode"
+              />
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={isShowChannelInTitle}
+                    onChange={(e) => {
+                      dispatch(setShowChannelInTitle(e.target.checked));
+                    }}
+                    name="showChannelInTitleEnabled"
+                  />
+                }
+                label={`Show Channel In Browser Title`}
+                className={classes.checkboxMaxWidth}
               />
             </FormGroup>
           </Grid>
