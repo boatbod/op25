@@ -2,7 +2,7 @@ import { createAsyncThunk, createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { RootState } from "redux/app/store";
 import { OP25QueueItem } from "types/OP25";
 import { OP25State } from "types/OP25State";
-import axios from "lib/axios";
+import axios from "utils/axios";
 import { channel_update } from "lib/op25";
 
 const SEND_QLIMIT = 5;
