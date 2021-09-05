@@ -10,6 +10,7 @@ import {
 import { createStyles, makeStyles, Theme } from "@material-ui/core";
 import { isMenuDrawerOpen } from "redux/slices/interface/interfaceSlice";
 import { frequencyToString, ppmToString } from "lib/op25";
+import MainHUD from "components/MainHUD";
 interface useStylesProps {
   isOpen: boolean;
 }
@@ -22,10 +23,15 @@ const useStyles = makeStyles((theme: Theme) =>
       marginTop: 20,
       [theme.breakpoints.down("xs")]: {
         marginLeft: 20,
+        marginRight: 20,
       },
       [theme.breakpoints.up("sm")]: {
         marginLeft: (props: useStylesProps) => props.isOpen && drawerWidth + 25,
+        marginRight: 25,
       },
+    },
+    tempDebugContent: {
+      marginTop: 50,
     },
   })
 );
@@ -65,7 +71,8 @@ const App = () => {
     <>
       <TopMenuBarAndDrawers />
       <div className={classes.content}>
-        <div>
+        <MainHUD />
+        <div className={classes.tempDebugContent}>
           channel_frequency:{" "}
           {state.channel_frequency &&
             frequencyToString(state.channel_frequency)}
