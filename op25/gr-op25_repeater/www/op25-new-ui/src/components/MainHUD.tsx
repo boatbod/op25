@@ -28,6 +28,7 @@ const useStyles = makeStyles((theme: Theme) =>
       minWidth: 275,
     },
     currentchannel: {
+      marginLeft: 15,
       marginBottom: 20,
     },
     grid: {
