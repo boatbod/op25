@@ -60,6 +60,7 @@ void rx_sync::cbuf_insert(const uint8_t c) {
 
 void rx_sync::reset_timer(void) {
 	sync_timer.reset();
+	p25fdma.reset_timer();
 }
 
 void rx_sync::sync_reset(void) {
