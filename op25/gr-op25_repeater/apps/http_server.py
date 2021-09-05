@@ -118,6 +118,10 @@ def http_request(environ, start_response):
         postdata = environ['wsgi.input'].read()
         status, content_type, output = post_req(
             environ, start_response, postdata)
+    elif environ['REQUEST_METHOD'] == 'OPTIONS':
+        status = '200 OK'
+        content_type = 'text/plain'
+        output = status
     else:
         status = '200 OK'
         content_type = 'text/plain'
@@ -126,7 +130,9 @@ def http_request(environ, start_response):
                          environ['PATH_INFO'])
 
     response_headers = [('Content-type', content_type),
-                        ('Content-Length', str(len(output)))]
+                        ('Content-Length', str(len(output))),
+                        ('Access-Control-Allow-Origin', '*'),
+                        ('Access-Control-Allow-Headers', '*')]
     start_response(status, response_headers)
 
     if sys.version[0] > '2':
