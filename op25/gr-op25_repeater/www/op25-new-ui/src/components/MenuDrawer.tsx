@@ -132,7 +132,6 @@ const MenuDrawer = () => {
           classes={{
             paper: classes.drawerPaper,
           }}
-          container={container}
           variant="persistent"
           anchor={theme.direction === "rtl" ? "right" : "left"}
           open={isOpen}
