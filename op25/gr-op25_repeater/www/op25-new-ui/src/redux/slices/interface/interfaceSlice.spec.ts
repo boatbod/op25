@@ -1,4 +1,4 @@
-import { InterfaceState } from "../../../models/InterfaceState";
+import { InterfaceState } from "../../../types/InterfaceState";
 import interfaceReducer, { gotoTalkgroup } from "./interfaceSlice";
 
 describe("counter reducer", () => {
