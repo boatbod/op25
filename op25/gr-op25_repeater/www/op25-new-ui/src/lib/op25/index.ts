@@ -82,7 +82,7 @@
 // }
 
 import { Draft } from "@reduxjs/toolkit";
-import { OP25State } from "models/OP25State";
+import { OP25State } from "types/OP25State";
 
 export const frequencyToString = (frequency: number) => {
   return (frequency / 1000000.0).toFixed(6);
