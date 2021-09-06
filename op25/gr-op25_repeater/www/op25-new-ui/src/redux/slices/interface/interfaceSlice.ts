@@ -25,7 +25,6 @@ export const interfaceSlice = createSlice({
       state.isMobileMenuDrawerOpen = action.payload;
     },
     togglePreferencesDrawerOpen: (state) => {
-      debugger;
       state.isPreferencesDrawerOpen = !state.isPreferencesDrawerOpen;
     },
     setPreferencesDrawerOpen: (state, action: PayloadAction<boolean>) => {

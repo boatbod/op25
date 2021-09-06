@@ -1,4 +1,6 @@
 import { useAppDispatch, useAppSelector } from "../redux/app/hooks";
+import MenuDrawer from "./MenuDrawer";
+import PreferencesDrawer from "./PreferencesDrawer";
 import {
   isMenuDrawerOpen,
   toggleMenuDrawerOpen,
@@ -32,16 +34,9 @@ const useStyles = makeStyles((theme: Theme) =>
     },
     appBar: {
       [theme.breakpoints.up("sm")]: {
-        width: (props: useStylesProps) =>
-          props.isOpen && `calc(100% - ${drawerWidth}px)`,
-        marginLeft: (props: useStylesProps) => props.isOpen && drawerWidth,
+        width: (props: useStylesProps) => (props.isOpen ? `calc(100%)` : ""),
+        paddingLeft: (props: useStylesProps) => props.isOpen && drawerWidth,
       },
-    },
-    menuButton: {
-      marginRight: theme.spacing(2),
-    },
-    mobileMenuButton: {
-      marginRight: theme.spacing(2),
     },
     content: {
       flexGrow: 1,
@@ -56,7 +51,8 @@ const AppBarWithToolbar = () => {
   const classes = useStyles({ isOpen });
 
   return (
-    <AppBar position="sticky" className={classes.appBar}>
+    <AppBar position="fixed" className={classes.appBar}>
+      <MenuDrawer />
       <Toolbar>
         <Hidden smUp>
           <IconButton
@@ -66,7 +62,6 @@ const AppBarWithToolbar = () => {
             onClick={() => {
               dispatch(toggleMobileMenuDrawerOpen());
             }}
-            className={classes.mobileMenuButton}
           >
             <MenuIcon />
           </IconButton>
@@ -79,15 +74,10 @@ const AppBarWithToolbar = () => {
             onClick={() => {
               dispatch(toggleMenuDrawerOpen());
             }}
-            className={classes.menuButton}
           >
             <MenuIcon />
           </IconButton>
         </Hidden>
-        {/* <MenuItem button>Skip</MenuItem>
-        <MenuItem button>Hold</MenuItem>
-        <MenuItem button>GoTo</MenuItem>
-        <MenuItem button>LockOut</MenuItem> */}
         <div className={classes.grow} />
         <Tooltip title="Preferences" aria-label="preferences">
           <IconButton
@@ -101,6 +91,7 @@ const AppBarWithToolbar = () => {
           </IconButton>
         </Tooltip>
       </Toolbar>
+      <PreferencesDrawer />
     </AppBar>
   );
 };

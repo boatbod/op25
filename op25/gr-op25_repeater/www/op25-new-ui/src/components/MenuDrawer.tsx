@@ -28,6 +28,8 @@ import {
   Home as HomeIcon,
   PieChart as PieChartIcon,
   InfoRounded as InfoRoundedIcon,
+  Build as BuildIcon,
+  History as HistoryIcon,
 } from "@material-ui/icons";
 import { selectIsDarkMode } from "../redux/slices/preferences/preferencesSlice";
 
@@ -72,6 +74,18 @@ const MenuDrawerContent = () => {
             <HomeIcon />
           </ListItemIcon>
           <ListItemText>Receiver</ListItemText>
+        </ListItem>
+        <ListItem button>
+          <ListItemIcon>
+            <HistoryIcon />
+          </ListItemIcon>
+          <ListItemText>History</ListItemText>
+        </ListItem>
+        <ListItem button>
+          <ListItemIcon>
+            <BuildIcon />
+          </ListItemIcon>
+          <ListItemText>Config</ListItemText>
         </ListItem>
         <ListItem button>
           <ListItemIcon>

@@ -1,26 +1,20 @@
 import { createAsyncThunk, createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { RootState } from "redux/app/store";
-import { OP25QueueItem } from "types/OP25";
+import {
+  OP25QueueItem,
+  OP25TypeChannelUpdate,
+  OP25TypeTerminalConfig,
+} from "types/OP25";
 import { OP25State } from "types/OP25State";
 import axios from "utils/axios";
-import { channel_update } from "lib/op25";
+import { channel_update, terminal_config } from "lib/op25";
+import { Channel, Channels } from "types/Channel";
 
 const SEND_QLIMIT = 5;
 
 const initialState: OP25State = {
-  current_talkgroupId: undefined,
-  channel_system: undefined,
-  channel_name: undefined,
-  channel_frequency: undefined,
-  channel_ppm: undefined,
-  channel_tag: undefined,
-  channel_sourceAddress: undefined,
-  channel_sourceTag: undefined,
-  channel_streamURL: undefined,
-  stepSizeSmall: 100,
-  stepSizeLarge: 1200,
-  channel_list: [],
-  channel_index: 0,
+  channels: [],
+  terminalConfig: undefined,
   send_queue: [],
 };
 
@@ -89,27 +83,25 @@ export const op25Slice = createSlice({
 
             switch (d.json_type) {
               case "trunk_update":
-                //console.log("type hit", d.json_type);
+                //console.log("trunk_update", d);
                 // trunk_update(d);
                 continue;
               case "change_freq":
-                //console.log("type hit", d.json_type);
+                console.log("***** change_freq *****", d);
                 // change_freq(d);
                 continue;
               case "channel_update":
-                // console.log("channel_update", d);
-                channel_update(d, state);
+                channel_update(d as OP25TypeChannelUpdate, state);
                 continue;
               case "rx_update":
-                //console.log("rx_update", d);
+                // console.log("***** rx_update *****", d); // Plot Updates
                 // rx_update(d);
                 continue;
               case "terminal_config":
-                console.log("terminal_config", d);
-                //term_config(d);
+                terminal_config(d as OP25TypeTerminalConfig, state);
                 continue;
               default:
-                console.log("unknown type", d.json_type);
+                console.log("unknown server data type", d.json_type);
                 continue;
             }
           }
@@ -125,10 +117,19 @@ export const op25Slice = createSlice({
 export const { pushToSendQueue, unshiftOnSendQueue, emptySendQueue } =
   op25Slice.actions;
 
-export const selectAllState = (state: RootState): OP25State => state.op25;
+export const selectChannels = (state: RootState): Channels =>
+  state.op25.channels;
 
-export const selectCurrentTalkgroupId = (
+export const selectChannel =
+  (channelId: number) =>
+  (state: RootState): Channel | undefined =>
+    state.op25.channels.find((channel) => channel.id === channelId);
+
+export const selectStepSizes = (
   state: RootState
-): number | undefined => state.op25.current_talkgroupId;
+): { stepSizeSmall: number; stepSizeLarge: number } => ({
+  stepSizeSmall: state.op25.terminalConfig?.tuningStepSizeSmall || 100,
+  stepSizeLarge: state.op25.terminalConfig?.tuningStepSizeLarge || 1200,
+});
 
 export default op25Slice.reducer;

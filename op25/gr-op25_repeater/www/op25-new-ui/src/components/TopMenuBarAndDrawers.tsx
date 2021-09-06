@@ -1,8 +1,6 @@
-import MenuDrawer from "./MenuDrawer";
 import AppBarWithToolbar from "./AppBarWithToolbar";
 
 import { createStyles, makeStyles } from "@material-ui/core";
-import PreferencesDrawer from "./PreferencesDrawer";
 
 const useStyles = makeStyles(() =>
   createStyles({
@@ -18,8 +16,6 @@ const TopMenuBarAndDrawers = () => {
   return (
     <div className={classes.root}>
       <AppBarWithToolbar />
-      <MenuDrawer />
-      <PreferencesDrawer />
     </div>
   );
 };
