@@ -1,9 +1,10 @@
 import { createAsyncThunk, createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { RootState } from "redux/app/store";
 import {
-  OP25QueueItem,
+  OP25SendQueueItem,
   OP25TypeChannelUpdate,
   OP25TypeTerminalConfig,
+  OP25Updates,
 } from "types/OP25";
 import { OP25State } from "types/OP25State";
 import axios from "utils/axios";
@@ -24,7 +25,7 @@ export const sendQueue = createAsyncThunk(
     const state = (getState() as any).op25 as OP25State;
 
     try {
-      const queue: OP25QueueItem[] = [...state.send_queue];
+      const queue: OP25SendQueueItem[] = [...state.send_queue];
       dispatch(emptySendQueue());
       const response = await axios().post("/", queue);
       if (response.status !== 200) {
@@ -44,7 +45,7 @@ export const sendQueue = createAsyncThunk(
 
 export const addToSendQueue = createAsyncThunk(
   "op25/addToSendQueue",
-  async (send_command: OP25QueueItem, { getState, dispatch }) => {
+  async (send_command: OP25SendQueueItem, { getState, dispatch }) => {
     const state = (getState() as any).op25 as OP25State;
 
     if (state.send_queue.length >= SEND_QLIMIT) {
@@ -59,7 +60,7 @@ export const op25Slice = createSlice({
   name: "op25",
   initialState,
   reducers: {
-    pushToSendQueue: (state, action: PayloadAction<OP25QueueItem>) => {
+    pushToSendQueue: (state, action: PayloadAction<OP25SendQueueItem>) => {
       state.send_queue.push(action.payload);
     },
     unshiftOnSendQueue: (state, action: PayloadAction<any | undefined>) => {
@@ -72,39 +73,39 @@ export const op25Slice = createSlice({
   extraReducers: (builder) => {
     builder
       .addCase(sendQueue.fulfilled, (state, action: any) => {
-        const data = action.payload;
+        const data: OP25Updates = action.payload;
+        console.log("data", data);
         try {
-          for (var i = 0; i < data.length; i++) {
-            const d = data[i];
-            if (!d.json_type) {
-              console.log("no json_type", d);
-              continue;
+          data.forEach((update) => {
+            if (!update.json_type) {
+              console.log("no json_type", update);
+              return;
             }
 
-            switch (d.json_type) {
+            switch (update.json_type) {
               case "trunk_update":
-                //console.log("trunk_update", d);
-                // trunk_update(d);
-                continue;
+                //console.log("trunk_update", update);
+                // trunk_update(update);
+                return;
               case "change_freq":
-                console.log("***** change_freq *****", d);
-                // change_freq(d);
-                continue;
+                //console.log("***** change_freq *****", update);
+                // change_freq(update);
+                return;
               case "channel_update":
-                channel_update(d as OP25TypeChannelUpdate, state);
-                continue;
+                channel_update(update as OP25TypeChannelUpdate, state);
+                return;
               case "rx_update":
-                // console.log("***** rx_update *****", d); // Plot Updates
-                // rx_update(d);
-                continue;
+                // console.log("***** rx_update *****", update); // Plot Updates
+                // rx_update(update);
+                return;
               case "terminal_config":
-                terminal_config(d as OP25TypeTerminalConfig, state);
-                continue;
+                terminal_config(update as OP25TypeTerminalConfig, state);
+                return;
               default:
-                console.log("unknown server data type", d.json_type);
-                continue;
+                console.log("unknown server data type", update.json_type);
+                return;
             }
-          }
+          });
         } catch (err) {
           // TODO: Show the user SOMETHING!
           console.log("Error parsing response: ", err);
