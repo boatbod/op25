@@ -344,6 +344,10 @@ function channel_status() {
             html += "<span class=\"label\">[ENCRYPTED]</span>";
         }
     }
+    else
+    {
+        html += "<span class=\"value\">&nbsp;</span>";
+    }
     s2_tg.innerHTML = html;
 
     html = "";
