@@ -22,6 +22,10 @@ import {
   FiChevronRight as ArrowRightIcon,
 } from "react-icons/fi";
 
+type MainHUDProps = {
+  className?: string | undefined;
+};
+
 const useStyles = makeStyles((theme: Theme) =>
   createStyles({
     root: {
@@ -64,7 +68,7 @@ const useStyles = makeStyles((theme: Theme) =>
   })
 );
 
-const MainHUD = () => {
+const MainHUD = ({ className }: MainHUDProps) => {
   const classes = useStyles();
   const state = useAppSelector(selectAllState);
 
@@ -124,7 +128,10 @@ const MainHUD = () => {
   ];
 
   return (
-    <Card className={classes.root} variant="outlined">
+    <Card
+      className={`${classes.root}${className && ` ${className}`}`}
+      variant="outlined"
+    >
       <CardContent>
         <Typography
           className={classes.currentchannel}

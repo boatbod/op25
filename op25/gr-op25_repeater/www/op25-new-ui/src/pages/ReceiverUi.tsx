@@ -6,8 +6,6 @@ import { selectAllState } from "redux/slices/op25/op25Slice";
 
 import { createStyles, makeStyles, Theme } from "@material-ui/core";
 
-import { GiRadioTower as RadioTowerIcon } from "react-icons/all";
-
 const useStyles = makeStyles((theme: Theme) =>
   createStyles({
     tempDebugContent: {
@@ -24,9 +22,6 @@ const MainUi = () => {
   return (
     <>
       <MainHUD />
-      <div>
-        <RadioTowerIcon />
-      </div>
       <div className={classes.tempDebugContent}>
         channel_frequency:{" "}
         {state.channel_frequency && frequencyToString(state.channel_frequency)}
