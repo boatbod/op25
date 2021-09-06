@@ -1,10 +1,21 @@
-export interface OP25QueueItem {
+export interface OP25SendQueueItem {
   command: string;
   arg1: number;
   arg2: number;
 }
 
-export type OP25UpdateTypes = "channel_update" | "terminal_config";
+export type OP25UpdateTypes =
+  | "channel_update"
+  | "terminal_config"
+  | "trunk_update"
+  | "change_freq"
+  | "rx_update";
+
+export interface OP25Update {
+  json_type: OP25UpdateTypes;
+}
+
+export type OP25Updates = OP25Update[];
 
 // channel_update
 
@@ -37,7 +48,8 @@ export interface OP25TypeChannelUpdate {
 
 // terminal_config
 
-export interface OP25TerminalConfigData {
+export interface OP25TypeTerminalConfig {
+  json_type: "terminal_config";
   module: string;
   terminal_type: string;
   curses_plot_interval: number;
@@ -45,8 +57,4 @@ export interface OP25TerminalConfigData {
   http_plot_directory: string;
   tuning_step_large: number;
   tuning_step_small: number;
-}
-
-export interface OP25TypeTerminalConfig extends OP25TerminalConfigData {
-  json_type: "terminal_config";
 }
