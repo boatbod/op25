@@ -1,5 +1,3 @@
-import { TerminalConfig } from "./TerminalConfig";
-
 export interface OP25QueueItem {
   command: string;
   arg1: number;
