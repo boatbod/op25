@@ -81,8 +81,54 @@
 //   }
 // }
 
+// function rx_update(d) {
+//   plotfiles = [];
+//   if ((d["files"] != undefined) && (d["files"].length > 0)) {
+//       for (var i=0; i < d["files"].length; i++) {
+//           if (channel_list.length > 0) {
+//               expr = new RegExp("plot\-" + channel_list[channel_index] + "\-");
+//           }
+//           else {
+//               expr = new RegExp("plot\-0\-");
+//           }
+
+//           if (expr.test(d["files"][i])) {
+//               plotfiles.push(d["files"][i]);
+//           }
+//       }
+
+//       for (var i=0; i < 5; i++) {
+//           var img = document.getElementById("img" + i);
+//           if (i < plotfiles.length) {
+//               if (img['src'] != plotfiles[i]) {
+//                   img['src'] = plotfiles[i];
+//                   img.style["display"] = "";
+//               }
+//           }
+//           else {
+//               img.style["display"] = "none";
+//           }
+//       }
+//   }
+//   else {
+//       var img = document.getElementById("img0");
+//       img.style["display"] = "none";
+//   }
+//   if (d["error"] != undefined)
+//       error_val = d["error"];
+//   if (d["fine_tune"] != undefined)
+//       fine_tune = d["fine_tune"];
+// }
+
 import { Draft } from "@reduxjs/toolkit";
+import { Channels } from "types/Channel";
+import {
+  OP25ChannelUpdateChannelData,
+  OP25TypeChannelUpdate,
+  OP25TypeTerminalConfig,
+} from "types/OP25";
 import { OP25State } from "types/OP25State";
+import { TerminalConfig } from "types/TerminalConfig";
 
 export const frequencyToString = (frequency: number) => {
   return (frequency / 1000000.0).toFixed(6);
@@ -92,44 +138,52 @@ export const ppmToString = (ppm: number) => {
   return ppm.toFixed(3);
 };
 
-export const channel_update = (d: any, state: Draft<OP25State>) => {
-  //   var s2_c = document.getElementById("s2_ch_lbl");
-  //   var s2_d = document.getElementById("s2_ch_txt");
-  //   var s2_e = document.getElementById("s2_ch_dn");
-  //   var s2_f = document.getElementById("s2_ch_dmp");
-  //   var s2_g = document.getElementById("s2_ch_up");
+export const channel_update = (
+  data: OP25TypeChannelUpdate,
+  state: Draft<OP25State>
+) => {
+  if (data.json_type === "channel_update" && data.channels) {
+    let channels: Channels = [];
 
-  if (d["channels"] !== undefined) {
-    state.channel_list = d["channels"];
-
-    if (state.channel_list.length > 0) {
-      const c_id = state.channel_list[state.channel_index];
-      state.channel_system = d[c_id]["system"];
-      state.channel_name = "[" + c_id + "]";
-
-      if (d[c_id]["name"] !== undefined && d[c_id]["name"] !== "") {
-        state.channel_name += " " + d[c_id]["name"];
-      } else {
-        state.channel_name += " " + state.channel_system;
-      }
-
-      state.channel_frequency = d[c_id]["freq"];
-      state.channel_ppm = d[c_id]["ppm"];
-      state.current_talkgroupId = d[c_id]["tgid"];
-      state.channel_tag = d[c_id]["tag"];
-      state.channel_sourceAddress = d[c_id]["srcaddr"];
-      state.channel_sourceTag = d[c_id]["srctag"];
-      state.channel_streamURL = d[c_id]["stream_url"];
-    } else {
-      state.channel_name = "";
-      state.channel_frequency = undefined;
-      state.channel_system = "";
-      state.current_talkgroupId = 0;
-      state.channel_tag = "";
-      state.channel_sourceAddress = 0;
-      state.channel_sourceTag = "";
-      state.channel_streamURL = "";
+    for (const channel in data.channels) {
+      const channelData = data[channel] as OP25ChannelUpdateChannelData;
+      channels.push({
+        id: Number.parseInt(channel),
+        encrypted: channelData.encrypted === 1,
+        frequency: channelData.freq,
+        mode: channelData.mode,
+        name: channelData.name,
+        sourceAddress: channelData.srcaddr,
+        sourceTag: channelData.srctag,
+        stream: channelData.stream,
+        msgqid: channelData.msgqid,
+        ppm: channelData.ppm,
+        systemName: channelData.system,
+        tdma: channelData.tdma,
+        tgID: channelData.tgid,
+        tgTag: channelData.tag,
+      });
     }
-    //channel_status();
+
+    state.channels = channels;
+  }
+};
+
+export const terminal_config = (
+  data: OP25TypeTerminalConfig,
+  state: Draft<OP25State>
+) => {
+  if (data.json_type === "terminal_config") {
+    const config: TerminalConfig = {
+      module: data.module,
+      terminalType: data.terminal_type,
+      cursesPlotInterval: data.curses_plot_interval,
+      httpPlotInterval: data.http_plot_interval,
+      httpPlotDirectory: data.http_plot_directory,
+      tuningStepSizeLarge: data.tuning_step_large,
+      tuningStepSizeSmall: data.tuning_step_small,
+    };
+
+    state.terminalConfig = config;
   }
 };
