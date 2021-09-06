@@ -72,7 +72,7 @@ const useStyles = makeStyles((theme: Theme) =>
       overflow: "auto",
     },
     grid: {
-      height: 175,
+      height: 210,
     },
     gridRoot: {
       fontSize: 12,
@@ -170,7 +170,30 @@ const ChannelDisplay = ({ className, channelId }: ChannelDisplayProps) => {
           ? frequencyToString(channel.frequency)
           : "-",
     },
+    {
+      id: 4,
+      stateName: "Encrypted:",
+      stateValue: channel ? (channel.encrypted ? "Yes" : "No") : "-",
+      description:
+        "Shows as yes if this channel is encrpyted (false positives do occur)",
+    },
   ];
+
+  const getCardHeaderText = (): string => {
+    if (channel) {
+      if (channel.name && channel.systemName) {
+        return `${channel.name} / ${channel.systemName}`;
+      } else if (channel.name) {
+        return channel.name;
+      } else if (channel.systemName) {
+        return channel.systemName;
+      } else {
+        return "-";
+      }
+    } else {
+      return "-";
+    }
+  };
 
   return (
     <Card
@@ -180,7 +203,7 @@ const ChannelDisplay = ({ className, channelId }: ChannelDisplayProps) => {
       variant="outlined"
     >
       <CardHeader
-        title={channel?.name}
+        title={getCardHeaderText()}
         className={classes.cardHeader}
         titleTypographyProps={{ variant: "subtitle2" }}
       />
