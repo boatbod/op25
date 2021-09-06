@@ -478,10 +478,15 @@ void p25p2_tdma::handle_voice_frame(const uint8_t dibits[])
 	// Deinterleave and figure out frame type:
 	errs = vf.process_vcw(&errs_mp, dibits, b, u);
 	if (d_debug >= 9) {
+		char log_str[40];
 		packed_codeword p_cw;
 		vf.pack_cw(p_cw, u);
-		fprintf(stderr, "%s AMBE %02x %02x %02x %02x %02x %02x %02x errs %lu err_rate %f\n", logts.get(d_msgq_id),
-			       	p_cw[0], p_cw[1], p_cw[2], p_cw[3], p_cw[4], p_cw[5], p_cw[6], errs, errs_mp.ER);
+		strcpy(log_str, logts.get(d_msgq_id)); // param eval order not guaranteed; force timestamp computation first
+		fprintf(stderr, "%s AMBE %02x %02x %02x %02x %02x %02x %02x errs %lu err_rate %f, dt %f\n",
+			    log_str,
+			    p_cw[0], p_cw[1], p_cw[2], p_cw[3], p_cw[4], p_cw[5], p_cw[6], errs, errs_mp.ER,
+				logts.get_tdiff());            // dt is time in seconds since last AMBE frame processed
+		logts.mark_ts();
 	}
 	rc = mbe_dequantizeAmbeTone(&tone_mp, &errs_mp, u);
 	if (rc >= 0) {					// Tone Frame

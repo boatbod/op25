@@ -85,6 +85,7 @@ class curses_terminal(threading.Thread):
         self.current_encrypted = 0
         self.current_msgqid = '0'
         self.channel_list = []
+        self.capture_active = False
         self.maxx = 0
         self.maxy = 0
         self.sock = sock
@@ -156,7 +157,10 @@ class curses_terminal(threading.Thread):
             pass
 
     def title_help(self):
-        title_str = "OP25"
+        if self.capture_active:
+            title_str = "OP25 (symbol capture)"
+        else:
+            title_str = "OP25"
         help_str = "(f)req (h)old (s)kip (l)ock (W)list (B)list (q)uit (1-6)plot (,.<>)tune"
         self.title_bar.erase()
         self.help_bar.erase()
@@ -181,11 +185,12 @@ class curses_terminal(threading.Thread):
         if curses.is_term_resized(self.maxy, self.maxx) is True:
             self.resize_curses()
 
+        _ORD_C = ord('c')
         _ORD_S = ord('s')
         _ORD_L = ord('l')
         _ORD_H = ord('h')
         _ORD_R = ord('R')
-        COMMANDS = {_ORD_S: 'skip', _ORD_L: 'lockout', _ORD_H: 'hold', _ORD_R: 'reload'}
+        COMMANDS = {_ORD_S: 'skip', _ORD_L: 'lockout', _ORD_H: 'hold', _ORD_R: 'reload', _ORD_C: 'capture'}
         c = self.stdscr.getch()
         if c == ord('u') or self.do_auto_update():
             self.send_command('update', 0, int(self.current_msgqid))
@@ -405,6 +410,10 @@ class curses_terminal(threading.Thread):
             s += 'Frequency %f' % (msg[c_id]['freq'] / 1000000.0)
             if msg[c_id]['ppm'] is not None:
                 s += '(%.3f)' % (msg[c_id]['ppm'])
+            if msg[c_id]['capture'] is not None:
+                if msg[c_id]['capture'] != self.capture_active:
+                    self.capture_active = msg[c_id]['capture']
+                    self.title_help()
             if msg[c_id]['tgid'] is not None:
                 s += ' Talkgroup ID %s' % (int(msg[c_id]['tgid']))
                 if 'tdma' in msg[c_id] and msg[c_id]['tdma'] is not None:

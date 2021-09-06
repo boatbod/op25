@@ -419,6 +419,8 @@ class p25_system(object):
 
         if (self.cc_msgq_id is None) or (msgq_id == self.cc_msgq_id):
             self.cc_msgq_id = msgq_id
+            if self.debug > 10:
+                sys.stderr.write("%s [%s] Assigning control channel to receiver[%d]\n" % (log_ts.get(), self.sysname, msgq_id))
 
             assert self.cc_list[self.cc_index]
             return self.cc_list[self.cc_index]
@@ -437,6 +439,9 @@ class p25_system(object):
 
         if self.cc_msgq_id == msgq_id:
             self.cc_msgq_id = None
+            if self.debug > 10:
+                sys.stderr.write("%s [%s] Releasing control channel from receiver[%d]\n" % (log_ts.get(), self.sysname, msgq_id))
+
 
     def has_cc(self, msgq_id):
         if msgq_id is None or msgq_id != self.cc_msgq_id:

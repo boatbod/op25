@@ -942,6 +942,8 @@ class p25_rx_block (gr.top_block):
         elif s == 'add_default_config':
             nac = msg.arg1()
             self.trunk_rx.add_default_config(int(nac))
+        elif s == 'capture':
+            pass
         elif s == 'watchdog':
             if self.ui_last_update > 0 and (time.time() > (self.ui_last_update + self.ui_timeout)):
                 self.ui_last_update = 0

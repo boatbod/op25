@@ -394,7 +394,6 @@ class socket_audio(object):
                     self.pcm = None
                     sys.stderr.write("unable to load PulseAudio library\n%s\n" % e)
                     pcm_device = "default"
-
             if self.pcm is None:
                 try:
                     self.pcm = alsasound()  # if PulseAudio not available, try to use ALSA
