@@ -49,10 +49,10 @@ const App = () => {
 
   useEffect(() => {
     dispatch(addToSendQueue({ command: "get_config", arg1: 0, arg2: 0 }));
+
     const updateTimer = setInterval(async () => {
       if (channels.length === 0) {
         await dispatch(addToSendQueue({ command: "update", arg1: 0, arg2: 0 }));
-        dispatch(sendQueue());
       } else {
         channels.forEach(async (channel) => {
           await dispatch(
@@ -63,12 +63,16 @@ const App = () => {
             })
           );
         });
-        dispatch(sendQueue());
       }
+    }, 1000);
+
+    const sendQueueTimer = setInterval(async () => {
+      await dispatch(sendQueue());
     }, 1000);
 
     return () => {
       clearInterval(updateTimer);
+      clearInterval(sendQueueTimer);
     };
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
