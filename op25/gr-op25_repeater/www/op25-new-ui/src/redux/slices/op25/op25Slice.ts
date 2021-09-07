@@ -73,42 +73,43 @@ export const op25Slice = createSlice({
   extraReducers: (builder) => {
     builder
       .addCase(sendQueue.fulfilled, (state, action: any) => {
-        const data: OP25Updates = action.payload;
-        console.log("data", data);
-        try {
-          data.forEach((update) => {
-            if (!update.json_type) {
-              console.log("no json_type", update);
-              return;
-            }
+        if (action.payload) {
+          const data: OP25Updates = action.payload;
+          try {
+            data.forEach((update) => {
+              if (!update.json_type) {
+                console.log("no json_type", update);
+                return;
+              }
 
-            switch (update.json_type) {
-              case "trunk_update":
-                //console.log("trunk_update", update);
-                // trunk_update(update);
-                return;
-              case "change_freq":
-                //console.log("***** change_freq *****", update);
-                // change_freq(update);
-                return;
-              case "channel_update":
-                channel_update(update as OP25TypeChannelUpdate, state);
-                return;
-              case "rx_update":
-                // console.log("***** rx_update *****", update); // Plot Updates
-                // rx_update(update);
-                return;
-              case "terminal_config":
-                terminal_config(update as OP25TypeTerminalConfig, state);
-                return;
-              default:
-                console.log("unknown server data type", update.json_type);
-                return;
-            }
-          });
-        } catch (err) {
-          // TODO: Show the user SOMETHING!
-          console.log("Error parsing response: ", err);
+              switch (update.json_type) {
+                case "trunk_update":
+                  //console.log("trunk_update", update);
+                  // trunk_update(update);
+                  return;
+                case "change_freq":
+                  //console.log("***** change_freq *****", update);
+                  // change_freq(update);
+                  return;
+                case "channel_update":
+                  channel_update(update as OP25TypeChannelUpdate, state);
+                  return;
+                case "rx_update":
+                  // console.log("***** rx_update *****", update); // Plot Updates
+                  // rx_update(update);
+                  return;
+                case "terminal_config":
+                  terminal_config(update as OP25TypeTerminalConfig, state);
+                  return;
+                default:
+                  console.log("unknown server data type", update.json_type);
+                  return;
+              }
+            });
+          } catch (err) {
+            // TODO: Show the user SOMETHING!
+            console.log("Error parsing response: ", err);
+          }
         }
       })
       .addCase(addToSendQueue.fulfilled, (_, action) => {});
