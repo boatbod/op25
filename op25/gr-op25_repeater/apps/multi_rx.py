@@ -501,6 +501,7 @@ class rx_block (gr.top_block):
     # Initialize the receiver
     #
     def __init__(self, verbosity, config):
+        self.config = config
         self.verbosity = verbosity
         self.devices = []
         self.channels = []
@@ -814,15 +815,22 @@ class rx_block (gr.top_block):
         elif s == 'set_debug':
             dbglvl = int(msg.arg1())
             self.set_debug(dbglvl)
-        elif s == 'get_config':
+        elif s == 'get_terminal_config':
             if self.terminal is not None and self.terminal_config is not None:
                 self.terminal_config['json_type'] = "terminal_config"
                 js = json.dumps(self.terminal_config)
                 msg = gr.message().make_from_string(js, -4, 0, 0)
-                self.ui_in_q.insert_tail(msg)   # send configuration back to UI
-                pass
+                self.ui_in_q.insert_tail(msg)
             else:
                 return False
+        elif s == 'get_full_config':
+            cfg = self.config
+            cfg['json_type'] = "full_config"
+            js = json.dumps(cfg)
+            msg = gr.message().make_from_string(js, -4, 0, 0)
+            self.ui_in_q.insert_tail(msg)
+        elif s == 'set_full_config':
+            pass
         elif s == 'dump_tgids':
             self.trunk_rx.dump_tgids()
         elif s == 'capture':

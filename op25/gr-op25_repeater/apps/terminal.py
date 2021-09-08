@@ -91,7 +91,7 @@ class curses_terminal(threading.Thread):
         self.sock = sock
         self.sm_step = 100
         self.lg_step = 1200
-        self.send_command('get_config', 0, 0)
+        self.send_command('get_terminal_config', 0, 0)
         self.start()
 
     def get_terminal_type(self):
