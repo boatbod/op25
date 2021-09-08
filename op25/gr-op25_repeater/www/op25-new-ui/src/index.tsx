@@ -6,10 +6,15 @@ import { Provider } from "react-redux";
 import { CssBaseline } from "@material-ui/core";
 import "@fontsource/roboto";
 import Theme from "./Theme";
+import { OP25 } from "lib/op25";
+
+const appStore = store;
+
+OP25.getInstance().setStore(appStore);
 
 ReactDOM.render(
   <React.StrictMode>
-    <Provider store={store}>
+    <Provider store={appStore}>
       <Theme>
         <CssBaseline />
         <App />

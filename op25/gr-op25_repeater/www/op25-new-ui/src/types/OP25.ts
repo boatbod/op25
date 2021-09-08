@@ -9,7 +9,8 @@ export type OP25UpdateTypes =
   | "terminal_config"
   | "trunk_update"
   | "change_freq"
-  | "rx_update";
+  | "rx_update"
+  | "full_config";
 
 export interface OP25Update {
   json_type: OP25UpdateTypes;
