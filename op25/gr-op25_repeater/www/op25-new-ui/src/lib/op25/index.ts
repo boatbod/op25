@@ -121,6 +121,8 @@
 // }
 
 import { Draft } from "@reduxjs/toolkit";
+import { StoreType } from "redux/app/store";
+import { addToSendQueue } from "redux/slices/op25/op25Slice";
 import { Channels } from "types/Channel";
 import {
   OP25ChannelUpdateChannelData,
@@ -187,3 +189,110 @@ export const terminal_config = (
     state.terminalConfig = config;
   }
 };
+
+export class OP25 {
+  private static instance: OP25;
+
+  private _store: StoreType | null;
+
+  static getInstance() {
+    if (!OP25.instance) {
+      OP25.instance = new OP25();
+    }
+
+    return OP25.instance;
+  }
+
+  constructor() {
+    this._store = null;
+  }
+
+  setStore(store: StoreType): void {
+    this._store = store;
+  }
+
+  async sendGetSimpleConfig(): Promise<void> {
+    if (!this._store) {
+      return;
+    }
+
+    await this._store.dispatch(
+      addToSendQueue({ command: "get_config", arg1: 0, arg2: 0 })
+    );
+  }
+
+  async sendGetFullConfig(): Promise<void> {
+    if (!this._store) {
+      return;
+    }
+
+    await this._store.dispatch(
+      addToSendQueue({ command: "get_full_config", arg1: 0, arg2: 0 })
+    );
+  }
+
+  async sendUpdateChannels(): Promise<void> {
+    if (!this._store) {
+      return;
+    }
+    const state = this._store.getState();
+
+    const { channels } = state.op25;
+
+    if (channels.length === 0) {
+      await this._store?.dispatch(
+        addToSendQueue({ command: "update", arg1: 0, arg2: 0 })
+      );
+    } else {
+      channels.forEach(async (channel) => {
+        await this._store?.dispatch(
+          addToSendQueue({
+            command: "update",
+            arg1: 0,
+            arg2: channel.id,
+          })
+        );
+      });
+    }
+  }
+
+  async sendHoldOnChannel(
+    channelId: number,
+    talkgroupId: number
+  ): Promise<void> {
+    await this._store?.dispatch(
+      addToSendQueue({ command: "hold", arg1: talkgroupId, arg2: channelId })
+    );
+  }
+
+  async sendUnHoldOnChannel(channelId: number): Promise<void> {
+    await this._store?.dispatch(
+      addToSendQueue({ command: "hold", arg1: 0, arg2: channelId })
+    );
+  }
+
+  async sendSkipOnChannel(channelId: number): Promise<void> {
+    await this._store?.dispatch(
+      addToSendQueue({ command: "skip", arg1: 0, arg2: channelId })
+    );
+  }
+
+  async sendReloadOnChannel(channelId: number): Promise<void> {
+    await this._store?.dispatch(
+      addToSendQueue({ command: "reload", arg1: 0, arg2: channelId })
+    );
+  }
+
+  async sendSetDebugOnChannel(
+    channelId: number,
+    debugLevel: number
+  ): Promise<void> {
+    await this._store?.dispatch(
+      addToSendQueue({
+        command: "set_debug",
+        arg1: debugLevel,
+        arg2: channelId,
+      })
+    );
+  }
+}

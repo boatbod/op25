@@ -16,7 +16,7 @@ const SEND_QLIMIT = 5;
 const initialState: OP25State = {
   channels: [],
   terminalConfig: undefined,
-  send_queue: [],
+  send_queue: [{ command: "get_config", arg1: 0, arg2: 0 }],
 };
 
 export const sendQueue = createAsyncThunk(
@@ -27,6 +27,7 @@ export const sendQueue = createAsyncThunk(
     try {
       const queue: OP25SendQueueItem[] = [...state.send_queue];
       dispatch(emptySendQueue());
+
       const response = await axios().post("/", queue);
       if (response.status !== 200) {
         // TODO: Show the user SOMETHING!
@@ -49,7 +50,7 @@ export const addToSendQueue = createAsyncThunk(
     const state = (getState() as any).op25 as OP25State;
 
     if (state.send_queue.length >= SEND_QLIMIT) {
-      dispatch(unshiftOnSendQueue(undefined));
+      dispatch(unshiftOnSendQueue());
     }
 
     dispatch(pushToSendQueue(send_command));
@@ -63,8 +64,8 @@ export const op25Slice = createSlice({
     pushToSendQueue: (state, action: PayloadAction<OP25SendQueueItem>) => {
       state.send_queue.push(action.payload);
     },
-    unshiftOnSendQueue: (state, action: PayloadAction<any | undefined>) => {
-      state.send_queue.unshift(action.payload);
+    unshiftOnSendQueue: (state) => {
+      state.send_queue.unshift();
     },
     emptySendQueue: (state) => {
       state.send_queue = [];
@@ -100,6 +101,9 @@ export const op25Slice = createSlice({
                   return;
                 case "terminal_config":
                   terminal_config(update as OP25TypeTerminalConfig, state);
+                  return;
+                case "full_config":
+                  console.log("full_config", update);
                   return;
                 default:
                   console.log("unknown server data type", update.json_type);

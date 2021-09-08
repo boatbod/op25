@@ -1,7 +1,7 @@
 import { createStyles, makeStyles } from "@material-ui/core/styles";
 import { useAppSelector } from "redux/app/hooks";
 import { selectChannel, selectStepSizes } from "redux/slices/op25/op25Slice";
-import { frequencyToString } from "lib/op25";
+import { frequencyToString, OP25 } from "lib/op25";
 import { DataGrid, GridColDef, GridRenderCellParams } from "@mui/x-data-grid";
 
 import {
@@ -106,6 +106,7 @@ const useStyles = makeStyles((theme: Theme) =>
 );
 
 const ChannelDisplay = ({ className, channelId }: ChannelDisplayProps) => {
+  const op25 = OP25.getInstance();
   const channel = useAppSelector(selectChannel(channelId));
   const isDarkMode = useAppSelector(selectIsDarkMode);
   const classes = useStyles({
@@ -240,6 +241,14 @@ const ChannelDisplay = ({ className, channelId }: ChannelDisplayProps) => {
             <Grid container direction="row" justifyContent="center">
               <Button size="small">Skip</Button>
               <Button size="small">Hold</Button>
+              <Button
+                size="small"
+                onClick={() => {
+                  channel && op25.sendReloadOnChannel(channel.id);
+                }}
+              >
+                Reload
+              </Button>
               <Button size="small">GOTO</Button>
               <Tooltip title="Blacklist" placement="top" enterDelay={500}>
                 <Button size="small">B/List</Button>
