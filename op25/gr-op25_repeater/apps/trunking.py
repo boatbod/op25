@@ -1153,7 +1153,7 @@ class trunked_system (object):
         elif pb_sf_lco == 0x4f:   # Call Termination/Cancellation (included with DUID15/ETDU)
             sa   = get_ordinals(msg[6:9])
             if self.debug > 10:
-                sys.stderr.write('%s lco(0f) call_term_rel: sa: %d\n' % (log_ts.get(), m_rxid, sa))
+                sys.stderr.write('%s lco(0f) call_term_rel: sa: %d\n' % (log_ts.get(), sa))
         else:
             if self.debug > 10:
                 lcw_data = get_ordinals(msg[1:])
