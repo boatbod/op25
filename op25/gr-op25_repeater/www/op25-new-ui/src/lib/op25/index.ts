@@ -277,6 +277,28 @@ export class OP25 {
     );
   }
 
+  async sendBlacklistOnChannel(
+    channelId: number,
+    talkgroupId: number
+  ): Promise<void> {
+    await this._store?.dispatch(
+      addToSendQueue({ command: "lockout", arg1: talkgroupId, arg2: channelId })
+    );
+  }
+
+  async sendWhitelistOnChannel(
+    channelId: number,
+    talkgroupId: number
+  ): Promise<void> {
+    await this._store?.dispatch(
+      addToSendQueue({
+        command: "whitelist",
+        arg1: talkgroupId,
+        arg2: channelId,
+      })
+    );
+  }
+
   async sendReloadOnChannel(channelId: number): Promise<void> {
     await this._store?.dispatch(
       addToSendQueue({ command: "reload", arg1: 0, arg2: channelId })

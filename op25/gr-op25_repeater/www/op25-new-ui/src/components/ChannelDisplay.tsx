@@ -196,11 +196,69 @@ const ChannelDisplay = ({ className, channelId }: ChannelDisplayProps) => {
     }
   };
 
+  // TODO: Create better prompt.
   const onGoToTalkgroup = async () => {
     if (channel) {
-      const talkgroupId = prompt("What Talkgroup ID?");
+      const talkgroupId = prompt("Hold on what talkgroup ID?");
       if (talkgroupId) {
         await op25.sendHoldOnChannel(channel.id, Number.parseInt(talkgroupId));
+      }
+    }
+  };
+
+  const onHoldTalkgroup = async () => {
+    if (channel && channel.tgID) {
+      await op25.sendHoldOnChannel(channel.id, channel.tgID);
+    }
+  };
+
+  const onReloadChannel = async () => {
+    if (channel) {
+      await op25.sendReloadOnChannel(channel.id);
+    }
+  };
+
+  // TODO: Create better prompt.
+  const onBlacklistTalkgroup = async () => {
+    if (channel) {
+      const talkgroupId = prompt(
+        "Blacklist what talkgroup ID?",
+        channel.tgID?.toString()
+      );
+      if (talkgroupId) {
+        await op25.sendBlacklistOnChannel(
+          channel.id,
+          Number.parseInt(talkgroupId)
+        );
+      }
+    }
+  };
+
+  // TODO: Create better prompt.
+  const onWhitelistTalkgroup = async () => {
+    if (channel) {
+      const talkgroupId = prompt(
+        "Whitelist what talkgroup ID?",
+        channel.tgID?.toString()
+      );
+      if (talkgroupId) {
+        await op25.sendWhitelistOnChannel(
+          channel.id,
+          Number.parseInt(talkgroupId)
+        );
+      }
+    }
+  };
+
+  // TODO: Create better prompt.
+  const onLogVerboseChange = async () => {
+    if (channel) {
+      const verboseLevel = prompt("What log verbose level?");
+      if (verboseLevel) {
+        await op25.sendSetDebugOnChannel(
+          channel.id,
+          Number.parseInt(verboseLevel)
+        );
       }
     }
   };
@@ -257,25 +315,37 @@ const ChannelDisplay = ({ className, channelId }: ChannelDisplayProps) => {
               <Button size="small" onClick={onSkipTalkgroup}>
                 Skip
               </Button>
-              <Button size="small">Hold</Button>
-              <Button
-                size="small"
-                onClick={(e) => {
-                  channel && op25.sendReloadOnChannel(channel.id);
-                }}
-              >
+              <Button size="small" onClick={onHoldTalkgroup}>
+                Hold
+              </Button>
+              <Button size="small" onClick={onReloadChannel}>
                 Reload
               </Button>
               <Button size="small" onClick={onGoToTalkgroup}>
                 GOTO
               </Button>
-              <Tooltip title="Blacklist" placement="top" enterDelay={500}>
+              <Tooltip
+                title="Blacklist"
+                placement="top"
+                enterDelay={500}
+                onClick={onBlacklistTalkgroup}
+              >
                 <Button size="small">B/List</Button>
               </Tooltip>
-              <Tooltip title="Whitelist" placement="top" enterDelay={500}>
+              <Tooltip
+                title="Whitelist"
+                placement="top"
+                enterDelay={500}
+                onClick={onWhitelistTalkgroup}
+              >
                 <Button size="small">W/List</Button>
               </Tooltip>
-              <Tooltip title="Log Verbosity" placement="top" enterDelay={500}>
+              <Tooltip
+                title="Log Verbosity"
+                placement="top"
+                enterDelay={500}
+                onClick={onLogVerboseChange}
+              >
                 <Button size="small">Log/V</Button>
               </Tooltip>
             </Grid>
@@ -302,6 +372,9 @@ const ChannelDisplay = ({ className, channelId }: ChannelDisplayProps) => {
                   <DoubleArrowsRightIcon />
                 </IconButton>
               </Tooltip>
+              <Button size="small" onClick={onGoToTalkgroup}>
+                View Plot
+              </Button>
             </Grid>
           </Grid>
         </Grid>
