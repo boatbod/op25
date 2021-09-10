@@ -196,6 +196,21 @@ const ChannelDisplay = ({ className, channelId }: ChannelDisplayProps) => {
     }
   };
 
+  const onGoToTalkgroup = async () => {
+    if (channel) {
+      const talkgroupId = prompt("What Talkgroup ID?");
+      if (talkgroupId) {
+        await op25.sendHoldOnChannel(channel.id, Number.parseInt(talkgroupId));
+      }
+    }
+  };
+
+  const onSkipTalkgroup = async () => {
+    if (channel) {
+      await op25.sendSkipOnChannel(channel.id);
+    }
+  };
+
   return (
     <Card
       className={`${classes.root}${
@@ -239,17 +254,21 @@ const ChannelDisplay = ({ className, channelId }: ChannelDisplayProps) => {
         <Grid container direction="column" spacing={2}>
           <Grid item>
             <Grid container direction="row" justifyContent="center">
-              <Button size="small">Skip</Button>
+              <Button size="small" onClick={onSkipTalkgroup}>
+                Skip
+              </Button>
               <Button size="small">Hold</Button>
               <Button
                 size="small"
-                onClick={() => {
+                onClick={(e) => {
                   channel && op25.sendReloadOnChannel(channel.id);
                 }}
               >
                 Reload
               </Button>
-              <Button size="small">GOTO</Button>
+              <Button size="small" onClick={onGoToTalkgroup}>
+                GOTO
+              </Button>
               <Tooltip title="Blacklist" placement="top" enterDelay={500}>
                 <Button size="small">B/List</Button>
               </Tooltip>
