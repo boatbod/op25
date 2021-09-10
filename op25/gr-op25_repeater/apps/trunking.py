@@ -853,12 +853,10 @@ class trunked_system (object):
             f2 = self.channel_id_to_frequency(ch2)
             f3 = self.channel_id_to_frequency(ch3)
             if self.debug > 10:
-                sys.stderr.write('%s tdma(05) grp_v_ch_grant_updt: f1: %s ga1: %d sa1: %d f2: %s ga2: %d sa2% %d f3: %s ga3: %d sa3: %d\n' % (log_ts.get(), self.channel_id_to_string(ch1), ga1, sa1,
-                   self.channel_id_to_string(ch2), ga2, sa2,
-                   self.channel_id_to_string(ch3), ga3, sa3))
-            self.update_voice_frequency(f1, tgid=ga1, tdma_slot=self.get_tdma_slot(ch1), srcaddr=sa1)
-            self.update_voice_frequency(f2, tgid=ga2, tdma_slot=self.get_tdma_slot(ch2), srcaddr=sa2)
-            self.update_voice_frequency(f3, tgid=ga3, tdma_slot=self.get_tdma_slot(ch3), srcaddr=sa3)
+                sys.stderr.write('%s tdma(05) grp_v_ch_grant_updt: f1: %s ga1: %d f2: %s ga2: %d f3: %s ga3: %d\n' % (log_ts.get(), self.channel_id_to_string(ch1), ga1, self.channel_id_to_string(ch2), ga2, self.channel_id_to_string(ch3), ga3))
+            self.update_voice_frequency(f1, tgid=ga1, tdma_slot=self.get_tdma_slot(ch1))
+            self.update_voice_frequency(f2, tgid=ga2, tdma_slot=self.get_tdma_slot(ch2))
+            self.update_voice_frequency(f3, tgid=ga3, tdma_slot=self.get_tdma_slot(ch3))
             if f1 or f2 or f3:
                 updated += 1
         elif op == 0x21: # Group Voice Channel User - Extended
@@ -878,10 +876,9 @@ class trunked_system (object):
             f1   = self.channel_id_to_frequency(ch1t)
             f2   = self.channel_id_to_frequency(ch2t)
             if self.debug > 10:
-                sys.stderr.write('%s tdma(25) grp_v_ch_grant_updt: f1-t: %s f1-r: %s ga1: %d sa1: %d f2-t: %s f2-r: %s ga2: %d sa2: %d\n' % (log_ts.get(), self.channel_id_to_string(ch1t), self.channel_id_to_string(ch1r), ga1, sa1,
-                         self.channel_id_to_string(ch2t), self.channel_id_to_string(ch2r), ga2, sa2))
-            self.update_voice_frequency(f1, tgid=ga1, tdma_slot=self.get_tdma_slot(ch1t), srcaddr=sa1)
-            self.update_voice_frequency(f2, tgid=ga2, tdma_slot=self.get_tdma_slot(ch2t), srcaddr=sa2)
+                sys.stderr.write('%s tdma(25) grp_v_ch_grant_updt: f1-t: %s f1-r: %s ga1: %d f2-t: %s f2-r: %s ga2: %d\n' % (log_ts.get(), self.channel_id_to_string(ch1t), self.channel_id_to_string(ch1r), ga1, self.channel_id_to_string(ch2t), self.channel_id_to_string(ch2r), ga2))
+            self.update_voice_frequency(f1, tgid=ga1, tdma_slot=self.get_tdma_slot(ch1t))
+            self.update_voice_frequency(f2, tgid=ga2, tdma_slot=self.get_tdma_slot(ch2t))
             if f1 or f2:
                 updated += 1
         elif op == 0x30: # Power Control Signal Quality
@@ -1156,7 +1153,7 @@ class trunked_system (object):
         elif pb_sf_lco == 0x4f:   # Call Termination/Cancellation (included with DUID15/ETDU)
             sa   = get_ordinals(msg[6:9])
             if self.debug > 10:
-                sys.stderr.write('%s lco(0f) call_term_rel: sa: %d\n' % (log_ts.get(), m_rxid, sa))
+                sys.stderr.write('%s lco(0f) call_term_rel: sa: %d\n' % (log_ts.get(), sa))
         else:
             if self.debug > 10:
                 lcw_data = get_ordinals(msg[1:])
