@@ -1526,11 +1526,11 @@ class p25_receiver(object):
         self.nac_set({'tuner': self.msgq_id,'nac': nac})
 
     def idle_rx(self):
-        if not self.tuner_idle:
+        if not (self.tuner_idle or self.system.has_cc(self.msgq_id)): # don't idle a control channel or an already idle receiver
             if self.debug >= 5:
                 sys.stderr.write("%s [%d] idling receiver\n" % (log_ts.get(), self.msgq_id))
             if self.slot_set is not None:
-                self.slot_set({'tuner': self.msgq_id,'slot': 4}) # disable receiver (idle)
+                self.slot_set({'tuner': self.msgq_id,'slot': 4})      # disable receiver (idle)
             self.tuner_idle = True
             self.current_slot = None
 
