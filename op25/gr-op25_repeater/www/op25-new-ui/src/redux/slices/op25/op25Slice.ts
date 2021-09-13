@@ -4,17 +4,20 @@ import {
   OP25SendQueueItem,
   OP25TypeChannelUpdate,
   OP25TypeTerminalConfig,
+  OP25TypeTrunkUpdate,
   OP25Updates,
 } from "types/OP25";
 import { OP25State } from "types/OP25State";
 import axios from "utils/axios";
-import { channel_update, terminal_config } from "lib/op25";
+import { channel_update, terminal_config, trunk_update } from "lib/op25";
 import { Channel, Channels } from "types/Channel";
+import { System, Systems } from "types/System";
 
-const SEND_QLIMIT = 5;
+const SEND_QLIMIT = 10;
 
 const initialState: OP25State = {
   channels: [],
+  systems: [],
   terminalConfig: undefined,
   send_queue: [{ command: "get_config", arg1: 0, arg2: 0 }],
 };
@@ -86,7 +89,7 @@ export const op25Slice = createSlice({
               switch (update.json_type) {
                 case "trunk_update":
                   //console.log("trunk_update", update);
-                  // trunk_update(update);
+                  trunk_update(update as OP25TypeTrunkUpdate, state);
                   return;
                 case "change_freq":
                   //console.log("***** change_freq *****", update);
@@ -130,6 +133,24 @@ export const selectChannel =
   (channelId: number) =>
   (state: RootState): Channel | undefined =>
     state.op25.channels.find((channel) => channel.id === channelId);
+
+export const selectSystemFromChannelId =
+  (channelId: number) =>
+  (state: RootState): System | undefined => {
+    const channel = state.op25.channels.find(
+      (channel) => channel.id === channelId
+    );
+    return channel
+      ? state.op25.systems.find((system) => system.name === channel.systemName)
+      : undefined;
+  };
+
+export const selectSystems = (state: RootState): Systems => state.op25.systems;
+
+export const selectSystem =
+  (systemId: number) =>
+  (state: RootState): System | undefined =>
+    state.op25.systems.find((system) => system.id === systemId);
 
 export const selectStepSizes = (
   state: RootState

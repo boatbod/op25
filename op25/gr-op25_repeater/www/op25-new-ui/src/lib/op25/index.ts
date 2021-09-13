@@ -123,13 +123,21 @@
 import { Draft } from "@reduxjs/toolkit";
 import { StoreType } from "redux/app/store";
 import { addToSendQueue } from "redux/slices/op25/op25Slice";
-import { Channels } from "types/Channel";
+import { AdjacentData } from "types/AdjacentData";
+import { Channel } from "types/Channel";
+import { Frequencies } from "types/Frequency";
 import {
   OP25ChannelUpdateChannelData,
+  OP25TrunkUpdateChannelData,
+  OP25TrunkUpdateChannelDataAdjacentDataItem,
+  OP25TrunkUpdateChannelDataFrequency,
+  OP25TrunkUpdateChannelDataFrequencyData,
   OP25TypeChannelUpdate,
   OP25TypeTerminalConfig,
+  OP25TypeTrunkUpdate,
 } from "types/OP25";
 import { OP25State } from "types/OP25State";
+import { System } from "types/System";
 import { TerminalConfig } from "types/TerminalConfig";
 
 export const frequencyToString = (frequency: number) => {
@@ -145,11 +153,9 @@ export const channel_update = (
   state: Draft<OP25State>
 ) => {
   if (data.json_type === "channel_update" && data.channels) {
-    let channels: Channels = [];
-
-    for (const channel in data.channels) {
+    data.channels.forEach((channel) => {
       const channelData = data[channel] as OP25ChannelUpdateChannelData;
-      channels.push({
+      const newData: Channel = {
         id: Number.parseInt(channel),
         encrypted: channelData.encrypted === 1,
         frequency: channelData.freq,
@@ -164,10 +170,99 @@ export const channel_update = (
         tdma: channelData.tdma,
         tgID: channelData.tgid,
         tgTag: channelData.tag,
-      });
-    }
+      };
 
-    state.channels = channels;
+      const currentItemIndex = state.channels.findIndex(
+        (ch) => ch.id === Number.parseInt(channel)
+      );
+
+      if (currentItemIndex === -1) {
+        state.channels.push(newData);
+      } else {
+        state.channels[currentItemIndex] = newData;
+      }
+    });
+  }
+};
+
+export const trunk_update = (
+  data: OP25TypeTrunkUpdate,
+  state: Draft<OP25State>
+) => {
+  if (data.json_type === "trunk_update") {
+    Object.keys(data)
+      .filter((id) => id !== "json_type" && id !== "nac")
+      .forEach((id) => {
+        const systemData = data[id] as OP25TrunkUpdateChannelData;
+
+        let frequencies: Frequencies = [];
+        let adjacentdata: AdjacentData = [];
+
+        Object.keys(
+          systemData.frequencies as OP25TrunkUpdateChannelDataFrequency
+        ).forEach((freq) => {
+          const freqDisplayData = (
+            systemData.frequencies as OP25TrunkUpdateChannelDataFrequency
+          )[freq];
+
+          const freqData = (
+            systemData.frequency_data as OP25TrunkUpdateChannelDataFrequencyData
+          )[Number.parseInt(freq)];
+
+          frequencies.push({
+            frequency: Number.parseInt(freq),
+            counter: freqData.counter,
+            lastActivitySeconds: Number.parseInt(freqData.last_activity),
+            talkgroups: freqData.tgids.map((talkgroup) => ({
+              id: talkgroup,
+            })),
+            displayText: freqDisplayData,
+          });
+        });
+
+        Object.keys(
+          systemData.adjacent_data as OP25TrunkUpdateChannelDataAdjacentDataItem
+        ).forEach((adjItem) => {
+          const adjItemData = (
+            systemData.adjacent_data as OP25TrunkUpdateChannelDataAdjacentDataItem
+          )[adjItem];
+
+          adjacentdata.push({
+            id: Number.parseInt(adjItem),
+            rfid: adjItemData.rfid,
+            stid: adjItemData.stid,
+            uplink: { frequency: adjItemData.uplink },
+            table: adjItemData.table,
+          });
+        });
+
+        const newData: System = {
+          id: Number.parseInt(id),
+          syid: systemData.syid,
+          rfid: systemData.rfid,
+          stid: systemData.stid,
+          rxFrequency: systemData.rxchan,
+          txFrequency: systemData.txchan,
+          wacn: systemData.wacn,
+          nac: data["nac"],
+          secondaryFrequencies: systemData.secondary,
+          frequencies: frequencies,
+          name: systemData.system,
+          TopLine: systemData.top_line,
+          lastTSBK: systemData.last_tsbk,
+          adjacentData: adjacentdata,
+        };
+
+        const currentItemIndex = state.systems.findIndex(
+          (sys) => sys.id === Number.parseInt(id)
+        );
+
+        if (currentItemIndex === -1) {
+          state.systems.push(newData);
+        } else {
+          state.systems[currentItemIndex] = newData;
+        }
+      });
   }
 };
 
