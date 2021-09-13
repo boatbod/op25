@@ -47,6 +47,58 @@ export interface OP25TypeChannelUpdate {
   [channelId: string]: OP25TypeChannelUpdateData;
 }
 
+// trunk_update
+
+export type OP25TrunkUpdateChannelDataFrequency = {
+  [frequency: string]: string;
+};
+
+export type OP25TrunkUpdateChannelDataFrequencyData = {
+  [frequency: string]: {
+    tgids: number[];
+    last_activity: string;
+    counter: number;
+  };
+};
+
+export type OP25TrunkUpdateChannelDataAdjacentDataItem = {
+  [frequency: string]: {
+    rfid: number;
+    stid: number;
+    uplink: number;
+    table: number;
+  };
+};
+
+export interface OP25TrunkUpdateChannelData {
+  system?: string;
+  top_line?: string;
+  syid?: number;
+  rfid?: number;
+  stid?: number;
+  sysid?: number;
+  rxchan?: number;
+  txchan?: number;
+  wacn?: number;
+  secondary?: number[];
+  frequencies?: OP25TrunkUpdateChannelDataFrequency;
+  frequency_data?: OP25TrunkUpdateChannelDataFrequencyData;
+  last_tsbk?: number;
+  adjacent_data: OP25TrunkUpdateChannelDataAdjacentDataItem;
+}
+
+export type OP25TypeTrunkUpdateData =
+  | "trunk_update"
+  | OP25TrunkUpdateChannelData
+  | string[]
+  | number;
+
+export interface OP25TypeTrunkUpdate {
+  ["json_type"]: "trunk_update";
+  [channelId: string]: OP25TypeTrunkUpdateData;
+  ["nac"]: number;
+}
+
 // terminal_config
 
 export interface OP25TypeTerminalConfig {

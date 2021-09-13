@@ -1,8 +1,8 @@
-import { createStyles, makeStyles } from "@material-ui/core/styles";
 import { useAppSelector } from "redux/app/hooks";
 import { selectChannel, selectStepSizes } from "redux/slices/op25/op25Slice";
 import { frequencyToString, OP25 } from "lib/op25";
 import { DataGrid, GridColDef, GridRenderCellParams } from "@mui/x-data-grid";
+import { selectIsDarkMode } from "redux/slices/preferences/preferencesSlice";
 
 import {
   Card,
@@ -15,6 +15,8 @@ import {
   Tooltip,
   Grid,
   CardHeader,
+  createStyles,
+  makeStyles,
 } from "@material-ui/core";
 
 import {
@@ -23,7 +25,6 @@ import {
   FiChevronsRight as DoubleArrowsRightIcon,
   FiChevronRight as ArrowRightIcon,
 } from "react-icons/fi";
-import { selectIsDarkMode } from "redux/slices/preferences/preferencesSlice";
 
 type ChannelDisplayProps = {
   className?: string | undefined;
@@ -72,7 +73,7 @@ const useStyles = makeStyles((theme: Theme) =>
       overflow: "auto",
     },
     grid: {
-      height: 210,
+      height: 260,
     },
     gridRoot: {
       fontSize: 12,
@@ -116,12 +117,12 @@ const ChannelDisplay = ({ className, channelId }: ChannelDisplayProps) => {
   const { stepSizeSmall, stepSizeLarge } = useAppSelector(selectStepSizes);
 
   const columns: GridColDef[] = [
-    { field: "id", hide: true, sortable: false },
+    { field: "id", hide: true, sortable: false, width: 0 },
     {
       field: "stateName",
       align: "right",
       sortable: false,
-      minWidth: 110,
+      width: 110,
       renderHeader: (_) => <></>,
       renderCell: (params: GridRenderCellParams) =>
         params.getValue(params.id, "description") ? (
@@ -144,6 +145,21 @@ const ChannelDisplay = ({ className, channelId }: ChannelDisplayProps) => {
       align: "left",
       sortable: false,
       renderHeader: (_) => <></>,
+      renderCell: (params: GridRenderCellParams) =>
+        params.getValue(params.id, "stateName") === "System Name:" ? (
+          <Tooltip
+            title={`${
+              params.getValue(params.id, "stateValue") &&
+              params.getValue(params.id, "stateValue")?.toString()
+            }`}
+            enterDelay={500}
+            placement="right"
+          >
+            <span>{params.getValue(params.id, "stateValue")}</span>
+          </Tooltip>
+        ) : (
+          <span>{params.getValue(params.id, "stateValue")}</span>
+        ),
     },
     { field: "description", hide: true, sortable: false },
   ];
@@ -178,19 +194,17 @@ const ChannelDisplay = ({ className, channelId }: ChannelDisplayProps) => {
       description:
         "Shows as yes if this channel is encrpyted (false positives do occur)",
     },
+    {
+      id: 5,
+      stateName: "System Name:",
+      stateValue: channel ? channel.systemName : "-",
+      nextFunction: () => {},
+    },
   ];
 
   const getCardHeaderText = (): string => {
     if (channel) {
-      if (channel.name && channel.systemName) {
-        return `${channel.name} / ${channel.systemName}`;
-      } else if (channel.name) {
-        return channel.name;
-      } else if (channel.systemName) {
-        return channel.systemName;
-      } else {
-        return "-";
-      }
+      return channel.name ? channel.name : "-";
     } else {
       return "-";
     }
