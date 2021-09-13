@@ -1698,16 +1698,17 @@ class p25_receiver(object):
                     sys.stderr.write('%s [%d] mac_ptt: mi: %x algid: %x keyid:%x ga: %d sa: %d\n' % (log_ts.get(), m_rxid, mi, algid, keyid, ga, sa))
                 updated += self.system.update_talkgroup_srcaddr(curr_time, ga, sa)
                 if algid != 0x80: # log and save encryption information
-                    if self.debug >= 5 and (algid != self.talkgroups[self.current_tgid]['algid'] or keyid != self.talkgroups[self.current_tgid]['keyid']):
-                        sys.stderr.write('%s [%d] encrypt info: tg=%d, algid=0x%x, keyid=0x%x\n' % (log_ts.get(), self.msgq_id, self.current_tgid, algid, keyid))
-                    self.talkgroups[self.current_tgid]['encrypted'] = 1
-                    self.talkgroups[self.current_tgid]['algid'] = algid
-                    self.talkgroups[self.current_tgid]['keyid'] = keyid
+                    if self.debug >= 5 and (algid != self.talkgroups[ga]['algid'] or keyid != self.talkgroups[ga]['keyid']):
+                        sys.stderr.write('%s [%d] encrypt info: tg=%d, algid=0x%x, keyid=0x%x\n' % (log_ts.get(), self.msgq_id, ga, algid, keyid))
+                    if ga in self.talkgroups:
+                        self.talkgroups[ga]['encrypted'] = 1
+                        self.talkgroups[ga]['algid'] = algid
+                        self.talkgroups[ga]['keyid'] = keyid
                     if self.crypt_behavior > 1:
                         updated += 1
                         if self.debug > 1:
-                            sys.stderr.write('%s [%d] skipping encrypted tg(%d)\n' % (log_ts.get(), self.msgq_id, self.current_tgid))
-                        self.add_skiplist(self.current_tgid, curr_time + TGID_SKIP_TIME)
+                            sys.stderr.write('%s [%d] skipping encrypted tg(%d)\n' % (log_ts.get(), self.msgq_id, ga))
+                        self.add_skiplist(ga, curr_time + TGID_SKIP_TIME)
 
             elif m_type == 17: # MAC_END_PTT
                 sa    = get_ordinals(s[12:15])
