@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useAppSelector } from "redux/app/hooks";
 import { selectChannel, selectStepSizes } from "redux/slices/op25/op25Slice";
 import { frequencyToString, OP25 } from "lib/op25";
@@ -24,6 +25,8 @@ import {
   FiChevronLeft as ArrowLeftIcon,
   FiChevronsRight as DoubleArrowsRightIcon,
   FiChevronRight as ArrowRightIcon,
+  FiMinimize2 as MinimizeIcon,
+  FiMaximize2 as MaximizeIcon,
 } from "react-icons/fi";
 
 type ChannelDisplayProps = {
@@ -66,6 +69,10 @@ const useStyles = makeStyles((theme: Theme) =>
       textAlign: "center",
       height: 30,
       color: theme.palette.primary.contrastText,
+    },
+    cardHeaderActions: {
+      display: "block",
+      marginTop: -15,
     },
     currentchannel: {
       marginLeft: 15,
@@ -110,11 +117,12 @@ const ChannelDisplay = ({ className, channelId }: ChannelDisplayProps) => {
   const op25 = OP25.getInstance();
   const channel = useAppSelector(selectChannel(channelId));
   const isDarkMode = useAppSelector(selectIsDarkMode);
+  const { stepSizeSmall, stepSizeLarge } = useAppSelector(selectStepSizes);
+  const [minimized, setMinimized] = useState(false);
   const classes = useStyles({
     isEncrypted: channel ? channel.encrypted : false,
     isDarkMode,
   });
-  const { stepSizeSmall, stepSizeLarge } = useAppSelector(selectStepSizes);
 
   const columns: GridColDef[] = [
     { field: "id", hide: true, sortable: false, width: 0 },
@@ -203,10 +211,24 @@ const ChannelDisplay = ({ className, channelId }: ChannelDisplayProps) => {
   ];
 
   const getCardHeaderText = (): string => {
-    if (channel) {
-      return channel.name ? channel.name : "-";
+    if (minimized) {
+      if (channel) {
+        return channel.name || channel.tgTag || channel.tgID
+          ? `${channel.name ? `${channel.name} / ` : ""}${
+              channel.tgTag || channel.tgID
+                ? channel.tgTag
+                  ? channel.tgTag
+                  : channel.tgID
+                : channel.name
+                ? "-"
+                : ""
+            }`
+          : "-";
+      } else {
+        return "-";
+      }
     } else {
-      return "-";
+      return channel ? (channel.name ? channel.name : "-") : "-";
     }
   };
 
@@ -277,6 +299,10 @@ const ChannelDisplay = ({ className, channelId }: ChannelDisplayProps) => {
     }
   };
 
+  const toggleMinimized = () => {
+    setMinimized(!minimized);
+  };
+
   const onSkipTalkgroup = async () => {
     if (channel) {
       await op25.sendSkipOnChannel(channel.id);
@@ -292,107 +318,132 @@ const ChannelDisplay = ({ className, channelId }: ChannelDisplayProps) => {
     >
       <CardHeader
         title={getCardHeaderText()}
+        action={
+          <span className={classes.cardHeaderActions}>
+            <IconButton onClick={toggleMinimized}>
+              {minimized ? <MaximizeIcon /> : <MinimizeIcon />}
+            </IconButton>
+          </span>
+        }
         className={classes.cardHeader}
         titleTypographyProps={{ variant: "subtitle2" }}
       />
-      <CardContent className={classes.cardContent}>
-        <Typography
-          className={classes.currentchannel}
-          variant="h5"
-          component="h2"
-        >
-          {channel && (channel.tgTag || channel.tgID)
-            ? channel.tgTag
-              ? channel.tgTag
-              : channel.tgID
-            : "-"}
-        </Typography>
-        <div className={classes.grid}>
-          <DataGrid
-            classes={{
-              root: classes.gridRoot,
-              row: classes.rowRoot,
-              cell: classes.cellRoot,
-            }}
-            rows={rows}
-            columns={columns}
-            headerHeight={0}
-            isRowSelectable={(_) => false}
-            hideFooter
-          />
-        </div>
-      </CardContent>
-      <CardActions className={classes.cardActions}>
-        <Grid container direction="column" spacing={2}>
-          <Grid item>
-            <Grid container direction="row" justifyContent="center">
-              <Button size="small" onClick={onSkipTalkgroup}>
-                Skip
-              </Button>
-              <Button size="small" onClick={onHoldTalkgroup}>
-                Hold
-              </Button>
-              <Button size="small" onClick={onReloadChannel}>
-                Reload
-              </Button>
-              <Button size="small" onClick={onGoToTalkgroup}>
-                GOTO
-              </Button>
-              <Tooltip
-                title="Blacklist"
-                placement="top"
-                enterDelay={500}
-                onClick={onBlacklistTalkgroup}
-              >
-                <Button size="small">B/List</Button>
-              </Tooltip>
-              <Tooltip
-                title="Whitelist"
-                placement="top"
-                enterDelay={500}
-                onClick={onWhitelistTalkgroup}
-              >
-                <Button size="small">W/List</Button>
-              </Tooltip>
-              <Tooltip
-                title="Log Verbosity"
-                placement="top"
-                enterDelay={500}
-                onClick={onLogVerboseChange}
-              >
-                <Button size="small">Log/V</Button>
-              </Tooltip>
-            </Grid>
-          </Grid>
-          <Grid item>
-            <Grid container direction="row" justifyContent="center">
-              <Tooltip title={`-${stepSizeLarge}`} placement="top">
-                <IconButton size="small" className={classes.actionbuttons}>
-                  <DoubleArrowsLeftIcon />
-                </IconButton>
-              </Tooltip>
-              <Tooltip title={`-${stepSizeSmall}`} placement="top">
-                <IconButton size="small" className={classes.actionbuttons}>
-                  <ArrowLeftIcon />
-                </IconButton>
-              </Tooltip>
-              <Tooltip title={`+${stepSizeSmall}`} placement="top">
-                <IconButton size="small" className={classes.actionbuttons}>
-                  <ArrowRightIcon />
-                </IconButton>
-              </Tooltip>
-              <Tooltip title={`+${stepSizeLarge}`} placement="top">
-                <IconButton size="small" className={classes.actionbuttons}>
-                  <DoubleArrowsRightIcon />
-                </IconButton>
-              </Tooltip>
-              <Button size="small" onClick={onGoToTalkgroup}>
-                View Plot
-              </Button>
-            </Grid>
-          </Grid>
-        </Grid>
-      </CardActions>
+      {!minimized && (
+        <>
+          <CardContent className={classes.cardContent}>
+            <Typography
+              className={classes.currentchannel}
+              variant="h5"
+              component="h2"
+            >
+              {channel && (channel.tgTag || channel.tgID)
+                ? channel.tgTag
+                  ? channel.tgTag
+                  : channel.tgID
+                : "-"}
+            </Typography>
+            <div className={classes.grid}>
+              <DataGrid
+                classes={{
+                  root: classes.gridRoot,
+                  row: classes.rowRoot,
+                  cell: classes.cellRoot,
+                }}
+                rows={rows}
+                columns={columns}
+                headerHeight={0}
+                isRowSelectable={(_) => false}
+                hideFooter
+              />
+            </div>
+          </CardContent>
+          <CardActions className={classes.cardActions}>
+            {!minimized && (
+              <Grid container direction="column" spacing={2}>
+                <Grid item>
+                  <Grid container direction="row" justifyContent="center">
+                    <Button size="small" onClick={onSkipTalkgroup}>
+                      Skip
+                    </Button>
+                    <Button size="small" onClick={onHoldTalkgroup}>
+                      Hold
+                    </Button>
+                    <Button size="small" onClick={onReloadChannel}>
+                      Reload
+                    </Button>
+                    <Button size="small" onClick={onGoToTalkgroup}>
+                      GOTO
+                    </Button>
+                    <Tooltip
+                      title="Blacklist"
+                      placement="top"
+                      enterDelay={500}
+                      onClick={onBlacklistTalkgroup}
+                    >
+                      <Button size="small">B/List</Button>
+                    </Tooltip>
+                    <Tooltip
+                      title="Whitelist"
+                      placement="top"
+                      enterDelay={500}
+                      onClick={onWhitelistTalkgroup}
+                    >
+                      <Button size="small">W/List</Button>
+                    </Tooltip>
+                    <Tooltip
+                      title="Log Verbosity"
+                      placement="top"
+                      enterDelay={500}
+                      onClick={onLogVerboseChange}
+                    >
+                      <Button size="small">Log/V</Button>
+                    </Tooltip>
+                  </Grid>
+                </Grid>
+                <Grid item>
+                  <Grid container direction="row" justifyContent="center">
+                    <Tooltip title={`-${stepSizeLarge}`} placement="top">
+                      <IconButton
+                        size="small"
+                        className={classes.actionbuttons}
+                      >
+                        <DoubleArrowsLeftIcon />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title={`-${stepSizeSmall}`} placement="top">
+                      <IconButton
+                        size="small"
+                        className={classes.actionbuttons}
+                      >
+                        <ArrowLeftIcon />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title={`+${stepSizeSmall}`} placement="top">
+                      <IconButton
+                        size="small"
+                        className={classes.actionbuttons}
+                      >
+                        <ArrowRightIcon />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title={`+${stepSizeLarge}`} placement="top">
+                      <IconButton
+                        size="small"
+                        className={classes.actionbuttons}
+                      >
+                        <DoubleArrowsRightIcon />
+                      </IconButton>
+                    </Tooltip>
+                    <Button size="small" onClick={onGoToTalkgroup}>
+                      View Plot
+                    </Button>
+                  </Grid>
+                </Grid>
+              </Grid>
+            )}
+          </CardActions>
+        </>
+      )}
     </Card>
   );
 };

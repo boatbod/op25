@@ -49,7 +49,7 @@ const MainUi = () => {
       </Typography>
       <Grid container spacing={2}>
         {systems.map((system) => (
-          <Grid item key={system.id} xs={12} md={6}>
+          <Grid item key={system.id} xs={12}>
             <SystemDisplay systemId={system.id} />
           </Grid>
         ))}
