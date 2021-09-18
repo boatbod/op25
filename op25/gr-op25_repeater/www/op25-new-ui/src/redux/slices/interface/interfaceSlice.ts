@@ -3,7 +3,6 @@ import { RootState } from "../../app/store";
 import { InterfaceState } from "../../../types/InterfaceState";
 
 const initialState: InterfaceState = {
-  isConnected: false,
   isMenuDrawerOpen: true,
   isMobileMenuDrawerOpen: false,
   isPreferencesDrawerOpen: false,

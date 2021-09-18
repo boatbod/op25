@@ -4,6 +4,7 @@ import { Systems } from "./System";
 import { TerminalConfig } from "./TerminalConfig";
 
 export interface OP25State {
+  isConnected?: boolean;
   channels: Channels;
   systems: Systems;
   terminalConfig?: TerminalConfig;
