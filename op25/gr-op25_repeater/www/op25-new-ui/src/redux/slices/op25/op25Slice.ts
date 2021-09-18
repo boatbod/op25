@@ -12,10 +12,12 @@ import axios from "utils/axios";
 import { channel_update, terminal_config, trunk_update } from "lib/op25";
 import { Channel, Channels } from "types/Channel";
 import { System, Systems } from "types/System";
+import { AxiosResponse } from "axios";
 
 const SEND_QLIMIT = 10;
 
 const initialState: OP25State = {
+  isConnected: false,
   channels: [],
   systems: [],
   terminalConfig: undefined,
@@ -27,23 +29,16 @@ export const sendQueue = createAsyncThunk(
   async (_, { getState, dispatch }) => {
     const state = (getState() as any).op25 as OP25State;
 
-    try {
-      const queue: OP25SendQueueItem[] = [...state.send_queue];
-      dispatch(emptySendQueue());
+    const queue: OP25SendQueueItem[] = [...state.send_queue];
+    dispatch(emptySendQueue());
 
-      const response = await axios().post("/", queue);
-      if (response.status !== 200) {
-        // TODO: Show the user SOMETHING!
-        console.log(
-          `Error ${response.status.toString(10)}: ${response.statusText}`
-        );
-        return;
-      }
-      return response.data;
-    } catch (err) {
-      // TODO: Show the user SOMETHING!
-      console.log("Axios request error:", err);
-    }
+    const response = await axios().post("/", queue);
+
+    return {
+      status: response.status,
+      statusText: response.statusText,
+      data: response.data,
+    };
   }
 );
 
@@ -76,11 +71,20 @@ export const op25Slice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      .addCase(sendQueue.fulfilled, (state, action: any) => {
-        if (action.payload) {
-          const data: OP25Updates = action.payload;
+      .addCase(sendQueue.fulfilled, (state, action) => {
+        state.isConnected = true;
+        const { status, statusText, data } =
+          action.payload as AxiosResponse<any>;
+        if (status !== 200) {
+          // TODO: Show the user SOMETHING!
+          console.log(`Error ${status.toString(10)}: ${statusText}`);
+          return;
+        }
+
+        if (data) {
+          const dataUpdates: OP25Updates = data;
           try {
-            data.forEach((update) => {
+            dataUpdates.forEach((update) => {
               if (!update.json_type) {
                 console.log("no json_type", update);
                 return;
@@ -119,12 +123,21 @@ export const op25Slice = createSlice({
           }
         }
       })
-      .addCase(addToSendQueue.fulfilled, (_, action) => {});
+      .addCase(sendQueue.rejected, (state) => {
+        if (state.isConnected === undefined || state.isConnected) {
+          state.isConnected = false;
+          globalThis.scroll({ top: 0, left: 0, behavior: "smooth" });
+        }
+      })
+      .addCase(addToSendQueue.fulfilled, (_) => {});
   },
 });
 
 export const { pushToSendQueue, unshiftOnSendQueue, emptySendQueue } =
   op25Slice.actions;
+
+export const isConnected = (state: RootState): boolean | undefined =>
+  state.op25.isConnected;
 
 export const selectChannels = (state: RootState): Channels =>
   state.op25.channels;
@@ -146,6 +159,9 @@ export const selectSystemFromChannelId =
   };
 
 export const selectSystems = (state: RootState): Systems => state.op25.systems;
+
+export const getSystemsCount = (state: RootState): number =>
+  state.op25.systems.length;
 
 export const selectSystem =
   (systemId: number) =>

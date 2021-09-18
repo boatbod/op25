@@ -4,9 +4,10 @@ import { useAppDispatch, useAppSelector } from "redux/app/hooks";
 import { isMenuDrawerOpen } from "redux/slices/interface/interfaceSlice";
 import ReceiverUi from "pages/ReceiverUi";
 import { sendQueue } from "redux/slices/op25/op25Slice";
+import { OP25 } from "lib/op25";
+import GlobalAlerts from "components/GlobalAlerts";
 
 import { createStyles, makeStyles, Theme } from "@material-ui/core";
-import { OP25 } from "lib/op25";
 
 interface useStylesProps {
   isOpen: boolean;
@@ -65,6 +66,7 @@ const App = () => {
     <>
       <TopMenuBarAndDrawers />
       <div className={classes.content}>
+        <GlobalAlerts />
         <ReceiverUi />
       </div>
     </>
