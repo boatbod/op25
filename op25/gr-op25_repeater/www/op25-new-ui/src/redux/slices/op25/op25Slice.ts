@@ -124,8 +124,10 @@ export const op25Slice = createSlice({
         }
       })
       .addCase(sendQueue.rejected, (state) => {
-        state.isConnected = false;
-        globalThis.scroll({ top: 0, left: 0, behavior: "smooth" });
+        if (state.isConnected === undefined || state.isConnected) {
+          state.isConnected = false;
+          globalThis.scroll({ top: 0, left: 0, behavior: "smooth" });
+        }
       })
       .addCase(addToSendQueue.fulfilled, (_) => {});
   },
