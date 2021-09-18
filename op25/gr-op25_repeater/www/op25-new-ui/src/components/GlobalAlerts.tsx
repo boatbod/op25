@@ -35,7 +35,7 @@ const GlobalAlerts = () => {
   }, [isAppConnected]);
 
   useEffect(() => {
-    // This prevents a reconnected message when the interface is first loaded.
+    // This prevents messages/alerts when the interface is first loaded.
     setTimeout(() => {
       setHoldAlerts(false);
     }, 5000);
