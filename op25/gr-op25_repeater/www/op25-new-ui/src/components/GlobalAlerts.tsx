@@ -1,9 +1,10 @@
 import { SyntheticEvent, useEffect, useState } from "react";
 import { Alert } from "@material-ui/lab";
 import { useAppSelector } from "redux/app/hooks";
-import { isConnected } from "redux/slices/op25/op25Slice";
+import { getSystemsCount, isConnected } from "redux/slices/op25/op25Slice";
 
 import { makeStyles, createStyles, Theme, Snackbar } from "@material-ui/core";
+import { AXIOS_BASE_URL } from "utils/axios";
 
 const useStyles = makeStyles((_theme: Theme) =>
   createStyles({
@@ -17,6 +18,7 @@ const GlobalAlerts = () => {
   const [snackbarReconnectedOpen, setSnackbarReconnectedOpen] = useState(false);
   const [holdAlerts, setHoldAlerts] = useState(true);
   const isAppConnected = useAppSelector(isConnected);
+  const systemsCount = useAppSelector(getSystemsCount);
   const classes = useStyles();
 
   const openSnackbarReconnected = () => {
@@ -56,7 +58,13 @@ const GlobalAlerts = () => {
       {!holdAlerts && isAppConnected !== undefined && !isAppConnected && (
         <Alert className={classes.spaced} variant="filled" severity="error">
           The OP25 web interface does not have a connection with the Python HTTP
-          server.
+          server. Address attempted is: {AXIOS_BASE_URL}
+        </Alert>
+      )}
+      {!holdAlerts && isAppConnected && systemsCount === 0 && (
+        <Alert className={classes.spaced} variant="outlined" severity="error">
+          There are no available systems. Check the logs for a control channel
+          timeout.
         </Alert>
       )}
       {snackbarReconnectedOpen && (

@@ -160,6 +160,9 @@ export const selectSystemFromChannelId =
 
 export const selectSystems = (state: RootState): Systems => state.op25.systems;
 
+export const getSystemsCount = (state: RootState): number =>
+  state.op25.systems.length;
+
 export const selectSystem =
   (systemId: number) =>
   (state: RootState): System | undefined =>
