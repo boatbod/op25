@@ -232,64 +232,66 @@ const SystemDisplay = ({ className, systemId }: SystemDisplayProps) => {
                   variant="caption"
                   component="table"
                 >
-                  <tr className={classes.tr}>
-                    <td className={classes.tdName}>WACN:</td>
-                    <td className={classes.td}>
-                      {system && system.wacn
-                        ? `0x${system.wacn.toString(16).toUpperCase()}`
-                        : "-"}
-                    </td>
-                  </tr>
-                  <tr className={classes.tr}>
-                    <td className={classes.tdName}>System ID:</td>
-                    <td className={classes.td}>
-                      {system && system.syid
-                        ? `0x${system.syid.toString(16).toUpperCase()}`
-                        : "-"}
-                    </td>
-                  </tr>
-                  <tr className={classes.tr}>
-                    <td className={classes.tdName}>NAC:</td>
-                    <td className={classes.td}>
-                      {system && system.nac
-                        ? `0x${system.nac.toString(16).toUpperCase()}`
-                        : "-"}
-                    </td>
-                  </tr>
-                  <tr className={classes.tr}>
-                    <td className={classes.tdName}>RFSS/Site:</td>
-                    <td className={classes.td}>
-                      {system && system.rfid
-                        ? `${system.rfid.toString()} (${system.rfid
-                            .toString(16)
-                            .toUpperCase()})`
-                        : "-"}{" "}
-                      &nbsp;/&nbsp;
-                      {system && system.stid
-                        ? `${system.stid
-                            .toString()
-                            .padStart(3, "0")} (${system.stid
-                            .toString(16)
-                            .toUpperCase()})`
-                        : "-"}
-                    </td>
-                  </tr>
-                  <tr className={classes.tr}>
-                    <td className={classes.tdName}>Rx/Tx Frequency:</td>
-                    <td className={classes.td}>{systemFrequency}</td>
-                  </tr>
-                  <tr className={classes.tr}>
-                    <td className={classes.tdName}>Secondary CC:</td>
-                    <td className={classes.td}>
-                      {system && system.secondaryFrequencies
-                        ? system.secondaryFrequencies.map((freq, index) =>
-                            index > 0
-                              ? `, ${frequencyToString(freq)}`
-                              : frequencyToString(freq)
-                          )
-                        : "-"}
-                    </td>
-                  </tr>
+                  <tbody>
+                    <tr className={classes.tr}>
+                      <td className={classes.tdName}>WACN:</td>
+                      <td className={classes.td}>
+                        {system && system.wacn
+                          ? `0x${system.wacn.toString(16).toUpperCase()}`
+                          : "-"}
+                      </td>
+                    </tr>
+                    <tr className={classes.tr}>
+                      <td className={classes.tdName}>System ID:</td>
+                      <td className={classes.td}>
+                        {system && system.syid
+                          ? `0x${system.syid.toString(16).toUpperCase()}`
+                          : "-"}
+                      </td>
+                    </tr>
+                    <tr className={classes.tr}>
+                      <td className={classes.tdName}>NAC:</td>
+                      <td className={classes.td}>
+                        {system && system.nac
+                          ? `0x${system.nac.toString(16).toUpperCase()}`
+                          : "-"}
+                      </td>
+                    </tr>
+                    <tr className={classes.tr}>
+                      <td className={classes.tdName}>RFSS/Site:</td>
+                      <td className={classes.td}>
+                        {system && system.rfid
+                          ? `${system.rfid.toString()} (${system.rfid
+                              .toString(16)
+                              .toUpperCase()})`
+                          : "-"}{" "}
+                        &nbsp;/&nbsp;
+                        {system && system.stid
+                          ? `${system.stid
+                              .toString()
+                              .padStart(3, "0")} (${system.stid
+                              .toString(16)
+                              .toUpperCase()})`
+                          : "-"}
+                      </td>
+                    </tr>
+                    <tr className={classes.tr}>
+                      <td className={classes.tdName}>Rx/Tx Frequency:</td>
+                      <td className={classes.td}>{systemFrequency}</td>
+                    </tr>
+                    <tr className={classes.tr}>
+                      <td className={classes.tdName}>Secondary CC:</td>
+                      <td className={classes.td}>
+                        {system && system.secondaryFrequencies
+                          ? system.secondaryFrequencies.map((freq, index) =>
+                              index > 0
+                                ? `, ${frequencyToString(freq)}`
+                                : frequencyToString(freq)
+                            )
+                          : "-"}
+                      </td>
+                    </tr>
+                  </tbody>
                 </Typography>
               </Grid>
               <Grid item xs={12} lg={6}>
@@ -298,76 +300,80 @@ const SystemDisplay = ({ className, systemId }: SystemDisplayProps) => {
                   variant="caption"
                   component="table"
                 >
-                  <tr className={classes.tr}>
-                    <th className={classes.td}>Voice Frequency:</th>
-                    <th className={classes.td}>Last Used:</th>
-                    <th className={classes.td}>Active Talkgroup ID(s):</th>
-                    <th className={classes.td}>Count:</th>
-                  </tr>
-                  {system?.frequencies?.map((frequency) => (
-                    <tr key={frequency.frequency} className={classes.tr}>
-                      <td className={classes.tdFrequency}>
-                        <Grid
-                          container
-                          justifyContent="space-around"
-                          alignItems="center"
-                          spacing={2}
-                        >
-                          <Hidden smDown>
-                            <Grid item>
-                              <Icon>
-                                <RadioIcon />
-                              </Icon>
-                            </Grid>
-                          </Hidden>
-                          <Grid item>
-                            {frequencyToString(frequency.frequency)}
-                          </Grid>
-                        </Grid>
-                      </td>
-                      <td className={classes.tdFrequency}>
-                        {frequency.lastActivitySeconds
-                          ? formatDuration(
-                              intervalToDuration({
-                                start: sub(new Date(Date.now()), {
-                                  seconds: frequency.lastActivitySeconds,
-                                }),
-                                end: new Date(Date.now()),
-                              }),
-                              {
-                                format: [
-                                  "years",
-                                  "days",
-                                  "hours",
-                                  "minutes",
-                                  "seconds",
-                                ],
-                              }
-                            )
-                          : "-"}
-                      </td>
-                      <td className={classes.tdFrequency}>
-                        {frequency.talkgroups
-                          ?.filter(
-                            (tg, index, arry) =>
-                              index === 0 ||
-                              arry.findIndex((t) => t.id === tg.id) === -1
-                          )
-                          .map((tg, index) =>
-                            tg.id
-                              ? index > 0
-                                ? ` / [ ${tg.id.toString()} ]`
-                                : `[ ${tg.id.toString()} ]`
-                              : "-"
-                          )}
-                      </td>
-                      <td className={classes.tdFrequency}>
-                        {frequency.counter && frequency.counter > 0
-                          ? frequency.counter.toString()
-                          : "00"}
-                      </td>
+                  <thead>
+                    <tr className={classes.tr}>
+                      <th className={classes.td}>Voice Frequency:</th>
+                      <th className={classes.td}>Last Used:</th>
+                      <th className={classes.td}>Active Talkgroup ID(s):</th>
+                      <th className={classes.td}>Count:</th>
                     </tr>
-                  ))}
+                  </thead>
+                  <tbody>
+                    {system?.frequencies?.map((frequency) => (
+                      <tr key={frequency.frequency} className={classes.tr}>
+                        <td className={classes.tdFrequency}>
+                          <Grid
+                            container
+                            justifyContent="space-around"
+                            alignItems="center"
+                            spacing={2}
+                          >
+                            <Hidden smDown>
+                              <Grid item>
+                                <Icon>
+                                  <RadioIcon />
+                                </Icon>
+                              </Grid>
+                            </Hidden>
+                            <Grid item>
+                              {frequencyToString(frequency.frequency)}
+                            </Grid>
+                          </Grid>
+                        </td>
+                        <td className={classes.tdFrequency}>
+                          {frequency.lastActivitySeconds
+                            ? formatDuration(
+                                intervalToDuration({
+                                  start: sub(new Date(Date.now()), {
+                                    seconds: frequency.lastActivitySeconds,
+                                  }),
+                                  end: new Date(Date.now()),
+                                }),
+                                {
+                                  format: [
+                                    "years",
+                                    "days",
+                                    "hours",
+                                    "minutes",
+                                    "seconds",
+                                  ],
+                                }
+                              )
+                            : "-"}
+                        </td>
+                        <td className={classes.tdFrequency}>
+                          {frequency.talkgroups
+                            ?.filter(
+                              (tg, index, arry) =>
+                                index === 0 ||
+                                arry.findIndex((t) => t.id === tg.id) === -1
+                            )
+                            .map((tg, index) =>
+                              tg.id
+                                ? index > 0
+                                  ? ` / [ ${tg.id.toString()} ]`
+                                  : `[ ${tg.id.toString()} ]`
+                                : "-"
+                            )}
+                        </td>
+                        <td className={classes.tdFrequency}>
+                          {frequency.counter && frequency.counter > 0
+                            ? frequency.counter.toString()
+                            : "00"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
                 </Typography>
               </Grid>
             </Grid>
