@@ -32,7 +32,13 @@ export const sendQueue = createAsyncThunk(
     const queue: OP25SendQueueItem[] = [...state.send_queue];
     dispatch(emptySendQueue());
 
-    return axios().post("/", queue);
+    const response = await axios().post("/", queue);
+
+    return {
+      status: response.status,
+      statusText: response.statusText,
+      data: response.data,
+    };
   }
 );
 
@@ -67,19 +73,18 @@ export const op25Slice = createSlice({
     builder
       .addCase(sendQueue.fulfilled, (state, action) => {
         state.isConnected = true;
-        const response = action.payload as AxiosResponse<any>;
-        if (response.status !== 200) {
+        const { status, statusText, data } =
+          action.payload as AxiosResponse<any>;
+        if (status !== 200) {
           // TODO: Show the user SOMETHING!
-          console.log(
-            `Error ${response.status.toString(10)}: ${response.statusText}`
-          );
+          console.log(`Error ${status.toString(10)}: ${statusText}`);
           return;
         }
 
-        if (response.data) {
-          const data: OP25Updates = response.data;
+        if (data) {
+          const dataUpdates: OP25Updates = data;
           try {
-            data.forEach((update) => {
+            dataUpdates.forEach((update) => {
               if (!update.json_type) {
                 console.log("no json_type", update);
                 return;
