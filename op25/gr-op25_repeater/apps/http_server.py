@@ -27,7 +27,7 @@ import traceback
 import threading
 
 from gnuradio import gr
-from waitress.server import create_server
+from flask import Flask, Response, request, send_from_directory, send_file
 
 my_input_q = None
 my_output_q = None
@@ -39,55 +39,10 @@ fake http and ajax server module
 TODO: make less fake
 """
 
-
-def static_file(environ, start_response):
-    content_types = {'png': 'image/png', 'jpeg': 'image/jpeg', 'jpg': 'image/jpeg', 'gif': 'image/gif',
-                     'css': 'text/css', 'css.map': 'text/css', 'html': 'text/html', 'ico': 'image/x-icon',
-                     'js': 'application/javascript', 'js.map': 'application/javascript',
-                     'json': 'application/json', 'woff': 'font/woff', 'woff2': 'font/woff2'}
-    css_types = 'css css.map'.split()
-    js_types = 'js js.map'.split()
-    media_types = 'woff woff2'.split()
-    img_types = 'png jpg jpeg gif'.split()
-
-    if environ['PATH_INFO'] == '/':
-        filename = 'index.html'
-    else:
-        filename = re.sub(
-            r'[^a-zA-Z0-9_.\-]', '', re.sub(r'^\/static\/(js|css|media)\/', '', environ['PATH_INFO']))
-    suf = filename.split('.')[-1]
-
-    if suf == 'map':
-        suf = filename.split('.')[-2] + "." + filename.split('.')[-1]
-
-    pathname = '../www/www-static'
-    if suf in img_types:
-        pathname = '../www/images'
-
-    if suf in css_types:
-        pathname = "../www/www-static/static/css"
-    if suf in js_types:
-        pathname = "../www/www-static/static/js"
-    if suf in media_types:
-        pathname = "../www/www-static/static/media"
-    pathname = '%s/%s' % (pathname, filename)
-    if suf not in list(content_types.keys()) or '..' in filename or not os.access(pathname, os.R_OK):
-        sys.stderr.write('404 %s\n' % pathname)
-        status = '404 NOT FOUND'
-        content_type = 'text/plain'
-        output = status
-    else:
-        output = open(pathname, 'rb').read()
-        content_type = content_types[suf]
-        status = '200 OK'
-    return status, content_type, output
-
-
-def post_req(environ, start_response, postdata):
+def post_req(data):
     global my_input_q, my_output_q, my_recv_q, my_port
     valid_req = False
     try:
-        data = json.loads(postdata)
         for d in data:
             msg = gr.message().make_from_string(
                 str(d['command']), -2, d['arg1'], d['arg2'])
@@ -96,7 +51,7 @@ def post_req(environ, start_response, postdata):
         time.sleep(0.2)
     except:
         sys.stderr.write('post_req: error processing input: %s\n%s\n' %
-                         (postdata, traceback.format_exc()))
+                         (str(data), traceback.format_exc()))
 
     resp_msg = []
     while not my_recv_q.empty_p():
@@ -105,54 +60,10 @@ def post_req(environ, start_response, postdata):
             resp_msg.append(json.loads(msg.to_string()))
     if not valid_req:
         resp_msg = []
-    status = '200 OK'
-    content_type = 'application/json'
-    output = json.dumps(resp_msg)
-    return status, content_type, output
 
-
-def http_request(environ, start_response):
-    if environ['REQUEST_METHOD'] == 'GET':
-        status, content_type, output = static_file(environ, start_response)
-    elif environ['REQUEST_METHOD'] == 'POST':
-        postdata = environ['wsgi.input'].read()
-        status, content_type, output = post_req(
-            environ, start_response, postdata)
-    elif environ['REQUEST_METHOD'] == 'OPTIONS':
-        status = '200 OK'
-        content_type = 'text/plain'
-        output = status
-    else:
-        status = '200 OK'
-        content_type = 'text/plain'
-        output = status
-        sys.stderr.write('http_request: unexpected input %s\n' %
-                         environ['PATH_INFO'])
-
-    response_headers = [('Content-type', content_type),
-                        ('Content-Length', str(len(output))),
-                        ('Access-Control-Allow-Origin', '*'),
-                        ('Access-Control-Allow-Headers', '*')]
-    start_response(status, response_headers)
-
-    if sys.version[0] > '2':
-        if type(output) is str:
-            output = output.encode()
-
-    return [output]
-
-
-def application(environ, start_response):
-    failed = False
-    try:
-        result = http_request(environ, start_response)
-    except:
-        failed = True
-        sys.stderr.write('application: request failed:\n%s\n' %
-                         traceback.format_exc())
-        sys.exit(1)
-    return result
-
+    resp = Response(response=json.dumps(resp_msg), status=200, mimetype="application/json")
+    resp.headers["Content-Type"] = "application/json; charset=utf-8"
+    return resp
 
 def process_qmsg(msg):
     if my_recv_q.full_p():
@@ -163,6 +74,8 @@ def process_qmsg(msg):
 
 
 class http_server(object):
+    server = Flask(__name__, static_url_path='')
+
     def __init__(self, input_q, output_q, endpoint, **kwds):
         global my_input_q, my_output_q, my_recv_q, my_port
         host, port = endpoint.split(':')
@@ -176,15 +89,45 @@ class http_server(object):
         my_recv_q = gr.msg_queue(10)
         self.q_watcher = queue_watcher(my_input_q, process_qmsg)
 
+        self.http_host = host
+        self.http_port = my_port
+
+    def run(self):
         try:
-            self.server = create_server(application, host=host, port=my_port)
+            self.server.run(host=self.http_host, port=self.http_port)
         except:
             sys.stderr.write(
                 'Failed to create http terminal server\n%s\n' % traceback.format_exc())
             sys.exit(1)
 
-    def run(self):
-        self.server.run()
+    @server.after_request
+    def add_headers(response):
+        response.headers.add('Content-Type', 'application/json')
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Methods', 'PUT, GET, POST, DELETE, OPTIONS')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+        response.headers.add('Access-Control-Expose-Headers', 'Content-Type,Content-Length,Authorization,X-Pagination')
+        return response
+
+    @server.route('/', methods=['GET', 'POST'])
+    def send_app():
+        if request.method == 'GET':
+            return send_file('../www/www-static/index.html', 'text/html')
+        else:
+            return post_req(request.json)
+
+    @server.route('/static/js/<path:path>')
+    def send_js(path):
+        return send_from_directory('../www/www-static/static/js', path)
+    
+    @server.route('/static/css/<path:path>')
+    def send_css(path):
+        return send_from_directory('../www/www-static/static/css', path)
+    
+    @server.route('/static/media/<path:path>')
+    def send_media(path):
+        return send_from_directory('../www/www-static/static/media', path)
+
 
 
 class queue_watcher(threading.Thread):
