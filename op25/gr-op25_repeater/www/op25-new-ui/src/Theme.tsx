@@ -10,9 +10,10 @@ interface ThemeFuncProps {
 
 interface ThemeComponentProps {
   children: any;
+  theme?: "default" | "light" | "dark";
 }
 
-const theme = ({ useDarkMode }: ThemeFuncProps = {}) =>
+const themeCreator = ({ useDarkMode }: ThemeFuncProps = {}) =>
   createTheme({
     palette: {
       type: useDarkMode === false ? "light" : "dark",
@@ -22,10 +23,12 @@ const theme = ({ useDarkMode }: ThemeFuncProps = {}) =>
     },
   });
 
-const Theme = ({ children }: ThemeComponentProps) => {
-  const darkmode = useAppSelector(selectIsDarkMode);
+const Theme = ({ children, theme = "default" }: ThemeComponentProps) => {
+  const preferencesDarkMode = useAppSelector(selectIsDarkMode);
+  const darkmode = theme === "default" ? preferencesDarkMode : theme === "dark";
+
   return (
-    <ThemeProvider theme={theme({ useDarkMode: darkmode })}>
+    <ThemeProvider theme={themeCreator({ useDarkMode: darkmode })}>
       {children}
     </ThemeProvider>
   );
