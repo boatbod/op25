@@ -2,14 +2,16 @@ import { ComponentStory, ComponentMeta } from "@storybook/react";
 import { Grid } from "@material-ui/core";
 import ChannelDisplay from "components/ChannelDisplay";
 import { dummyData } from "redux/app/store";
-import ChannelDisplayDocumentation from "./ChannelDisplayDocs.mdx";
+
+// @ts-ignore
+import docs from "./ChannelDisplayDocs.mdx";
 
 export default {
   title: "OP25/Channel Display",
   component: ChannelDisplay,
   parameters: {
     docs: {
-      page: ChannelDisplayDocumentation,
+      page: docs,
     },
   },
   args: {
