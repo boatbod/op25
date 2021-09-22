@@ -19,7 +19,6 @@ export const dummyData: RootState = {
   },
   preferences: {
     darkmode: true,
-    showChannelInTitle: true,
   },
   op25: {
     isConnected: false,

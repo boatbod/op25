@@ -6,7 +6,7 @@ import interfaceReducer, {
   setMobileMenuDrawerOpen,
   togglePreferencesDrawerOpen,
   setPreferencesDrawerOpen,
-} from "./interfaceSlice";
+} from "../interfaceSlice";
 
 describe("interface reducer", () => {
   describe("menu drawer", () => {
