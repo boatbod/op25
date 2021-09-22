@@ -45,6 +45,73 @@ const App = () => {
   const isOpen = useAppSelector(isMenuDrawerOpen);
   const classes = useStyles({ isOpen });
 
+  const onChannelHoldTalkgroup = async (
+    channelId: number,
+    channelTgId: number
+  ) => {
+    await op25.sendHoldOnChannel(channelId, channelTgId);
+  };
+
+  // TODO: Create better prompt.
+  const onGoToTalkgroup = async (channelId: number) => {
+    const talkgroupId = prompt("Hold on what talkgroup ID?");
+    if (talkgroupId) {
+      await op25.sendHoldOnChannel(channelId, Number.parseInt(talkgroupId));
+    }
+  };
+
+  const onReloadChannel = async (channelId: number) => {
+    await op25.sendReloadOnChannel(channelId);
+  };
+
+  // TODO: Create better prompt.
+  const onBlacklistTalkgroup = async (
+    channelId: number,
+    channelTgId: number
+  ) => {
+    const talkgroupId = prompt(
+      "Blacklist what talkgroup ID?",
+      channelTgId.toString()
+    );
+    if (talkgroupId) {
+      await op25.sendBlacklistOnChannel(
+        channelId,
+        Number.parseInt(talkgroupId)
+      );
+    }
+  };
+
+  // TODO: Create better prompt.
+  const onWhitelistTalkgroup = async (
+    channelId: number,
+    channelTgId: number
+  ) => {
+    const talkgroupId = prompt(
+      "Whitelist what talkgroup ID?",
+      channelTgId.toString()
+    );
+    if (talkgroupId) {
+      await op25.sendWhitelistOnChannel(
+        channelId,
+        Number.parseInt(talkgroupId)
+      );
+    }
+  };
+
+  // TODO: Create better prompt.
+  const onLogVerboseChange = async (channelId: number) => {
+    const verboseLevel = prompt("What log verbose level?");
+    if (verboseLevel) {
+      await op25.sendSetDebugOnChannel(
+        channelId,
+        Number.parseInt(verboseLevel)
+      );
+    }
+  };
+  const onSkipTalkgroup = async (channelId: number) => {
+    await op25.sendSkipOnChannel(channelId);
+  };
+
   useEffect(() => {
     const updateTimer = setInterval(async () => {
       op25.sendUpdateChannels();
@@ -67,7 +134,15 @@ const App = () => {
       <TopMenuBarAndDrawers />
       <div className={classes.content}>
         <GlobalAlerts />
-        <ReceiverUi />
+        <ReceiverUi
+          onChannelHoldTalkgroup={onChannelHoldTalkgroup}
+          onGoToTalkgroup={onGoToTalkgroup}
+          onReloadChannel={onReloadChannel}
+          onBlacklistTalkgroup={onBlacklistTalkgroup}
+          onWhitelistTalkgroup={onWhitelistTalkgroup}
+          onLogVerboseChange={onLogVerboseChange}
+          onSkipTalkgroup={onSkipTalkgroup}
+        />
       </div>
     </>
   );

@@ -2,7 +2,7 @@ import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { RootState } from "../../app/store";
 import { InterfaceState } from "../../../types/InterfaceState";
 
-const initialState: InterfaceState = {
+export const initialState: InterfaceState = {
   isMenuDrawerOpen: true,
   isMobileMenuDrawerOpen: false,
   isPreferencesDrawerOpen: false,
