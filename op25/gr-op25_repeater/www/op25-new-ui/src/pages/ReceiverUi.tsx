@@ -11,6 +11,16 @@ import {
   Typography,
 } from "@material-ui/core";
 
+type MainUiProps = {
+  onChannelHoldTalkgroup: (channelId: number, channelTgId: number) => void;
+  onGoToTalkgroup: (channelId: number) => void;
+  onReloadChannel: (channelId: number) => void;
+  onBlacklistTalkgroup: (channelId: number, channelTgId: number) => void;
+  onWhitelistTalkgroup: (channelId: number, channelTgId: number) => void;
+  onLogVerboseChange: (channelId: number) => void;
+  onSkipTalkgroup: (channelId: number) => void;
+};
+
 const useStyles = makeStyles((theme: Theme) =>
   createStyles({
     channelsHeadingText: {
@@ -27,7 +37,15 @@ const useStyles = makeStyles((theme: Theme) =>
   })
 );
 
-const MainUi = () => {
+const MainUi = ({
+  onChannelHoldTalkgroup,
+  onGoToTalkgroup,
+  onReloadChannel,
+  onBlacklistTalkgroup,
+  onWhitelistTalkgroup,
+  onLogVerboseChange,
+  onSkipTalkgroup,
+}: MainUiProps) => {
   const classes = useStyles();
   const channels = useAppSelector(selectChannels);
   const systems = useAppSelector(selectSystems);
@@ -40,7 +58,16 @@ const MainUi = () => {
       <Grid container spacing={2}>
         {channels.map((channel) => (
           <Grid item key={channel.id} xs={12} md={6}>
-            <ChannelDisplay channelId={channel.id} />
+            <ChannelDisplay
+              channelId={channel.id}
+              onChannelHoldTalkgroup={onChannelHoldTalkgroup}
+              onGoToTalkgroup={onGoToTalkgroup}
+              onReloadChannel={onReloadChannel}
+              onBlacklistTalkgroup={onBlacklistTalkgroup}
+              onWhitelistTalkgroup={onWhitelistTalkgroup}
+              onLogVerboseChange={onLogVerboseChange}
+              onSkipTalkgroup={onSkipTalkgroup}
+            />
           </Grid>
         ))}
       </Grid>
