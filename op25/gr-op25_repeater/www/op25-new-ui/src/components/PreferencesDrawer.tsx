@@ -5,9 +5,7 @@ import {
 } from "../redux/slices/interface/interfaceSlice";
 import {
   selectIsDarkMode,
-  selectShowChannelInTitle,
   setDarkMode,
-  setShowChannelInTitle,
 } from "../redux/slices/preferences/preferencesSlice";
 
 import {
@@ -74,7 +72,6 @@ const PreferencesDrawer = () => {
   const dispatch = useAppDispatch();
   const isOpen = useAppSelector(isPreferencesOpen);
   const isDarkMode = useAppSelector(selectIsDarkMode);
-  const isShowChannelInTitle = useAppSelector(selectShowChannelInTitle);
   const classes = useStyles({ isDarkMode });
   const theme = useTheme();
 
@@ -136,19 +133,6 @@ const PreferencesDrawer = () => {
                   />
                 }
                 label="Dark Mode"
-              />
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={isShowChannelInTitle}
-                    onChange={(e) => {
-                      dispatch(setShowChannelInTitle(e.target.checked));
-                    }}
-                    name="showChannelInTitleEnabled"
-                  />
-                }
-                label={`Show Channel In Browser Title`}
-                className={classes.checkboxMaxWidth}
               />
             </FormGroup>
           </Grid>
