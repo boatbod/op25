@@ -224,6 +224,9 @@ class channel(object):
                              symbol_rate = self.symbol_rate)
         self.decoder = op25_repeater.frame_assembler(str(config['destination']), verbosity, msgq_id, rx_q)
 
+        # Ensure demodulator is tuned where we think it is; e.g. if relative tuning failed during initialization
+        self.frequency = ((dev.frequency + dev.offset + dev.fractional_corr) - self.frequency) if self.demod.set_relative_frequency((dev.frequency + dev.offset + dev.fractional_corr) - self.frequency) else (dev.frequency + dev.offset)
+
         if 'key' in config and (config['key'] != ""):
             self.set_key(int(config['key'], 0))
 
