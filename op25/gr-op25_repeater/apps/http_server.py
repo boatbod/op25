@@ -28,6 +28,8 @@ import threading
 
 from gnuradio import gr
 from flask import Flask, Response, request, send_from_directory, send_file
+import logging
+import click
 
 my_input_q = None
 my_output_q = None
@@ -75,6 +77,13 @@ def process_qmsg(msg):
 
 class http_server(object):
     server = Flask(__name__, static_url_path='')
+    log = logging.getLogger('werkzeug')
+
+    def secho(text, file=None, nl=None, err=None, color=None, **styles):
+        pass
+
+    def echo(text, file=None, nl=None, err=None, color=None, **styles):
+        pass
 
     def __init__(self, input_q, output_q, endpoint, **kwds):
         global my_input_q, my_output_q, my_recv_q, my_port
@@ -92,6 +101,11 @@ class http_server(object):
         self.http_host = host
         self.http_port = my_port
 
+        # Disable Flask Logging
+        self.log.setLevel(logging.ERROR)
+        click.echo = self.echo
+        click.secho = self.secho
+
     def run(self):
         try:
             self.server.run(host=self.http_host, port=self.http_port)
@@ -102,7 +116,6 @@ class http_server(object):
 
     @server.after_request
     def add_headers(response):
-        response.headers.add('Content-Type', 'application/json')
         response.headers.add('Access-Control-Allow-Origin', '*')
         response.headers.add('Access-Control-Allow-Methods', 'PUT, GET, POST, DELETE, OPTIONS')
         response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
