@@ -18,7 +18,7 @@ if [ ${GR_VER} = "3.8" ]; then
     echo "Installing for GNURadio 3.8"
     sudo sed -i -- 's/^# *deb-src/deb-src/' /etc/apt/sources.list
     sudo apt-get build-dep gnuradio
-    sudo apt-get install gnuradio gnuradio-dev gr-osmosdr librtlsdr-dev libuhd-dev libhackrf-dev libitpp-dev libpcap-dev liborc-dev cmake git swig build-essential pkg-config doxygen python3-numpy python3-waitress python3-requests gnuplot-x11
+    sudo apt-get install gnuradio gnuradio-dev gr-osmosdr librtlsdr-dev libuhd-dev libhackrf-dev libitpp-dev libpcap-dev liborc-dev cmake git swig build-essential pkg-config doxygen python3-numpy python3-flask python3-requests gnuplot-x11
 
     # Tell op25 to use python3
     echo "/usr/bin/python3" > op25/gr-op25_repeater/apps/op25_python
@@ -26,7 +26,7 @@ if [ ${GR_VER} = "3.8" ]; then
 else
     echo "Installing for GNURadio 3.7"
     sudo apt-get build-dep gnuradio
-    sudo apt-get install gnuradio gnuradio-dev gr-osmosdr librtlsdr-dev libuhd-dev  libhackrf-dev libitpp-dev libpcap-dev cmake git swig build-essential pkg-config doxygen python-numpy python-waitress python-requests gnuplot-x11
+    sudo apt-get install gnuradio gnuradio-dev gr-osmosdr librtlsdr-dev libuhd-dev  libhackrf-dev libitpp-dev libpcap-dev cmake git swig build-essential pkg-config doxygen python-numpy python-flask python-requests gnuplot-x11
 
     # Tell op25 to use python2
     echo "/usr/bin/python2" > op25/gr-op25_repeater/apps/op25_python
