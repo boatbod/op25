@@ -201,13 +201,13 @@ export const trunk_update = (
         Object.keys(
           systemData.frequencies as OP25TrunkUpdateChannelDataFrequency
         ).forEach((freq) => {
-          const freqDisplayData = (
-            systemData.frequencies as OP25TrunkUpdateChannelDataFrequency
-          )[freq];
+          const freqDisplayData = (systemData.frequencies as OP25TrunkUpdateChannelDataFrequency)[
+            freq
+          ];
 
-          const freqData = (
-            systemData.frequency_data as OP25TrunkUpdateChannelDataFrequencyData
-          )[Number.parseInt(freq)];
+          const freqData = (systemData.frequency_data as OP25TrunkUpdateChannelDataFrequencyData)[
+            Number.parseInt(freq)
+          ];
 
           frequencies.push({
             frequency: Number.parseInt(freq),
@@ -223,9 +223,9 @@ export const trunk_update = (
         Object.keys(
           systemData.adjacent_data as OP25TrunkUpdateChannelDataAdjacentDataItem
         ).forEach((adjItem) => {
-          const adjItemData = (
-            systemData.adjacent_data as OP25TrunkUpdateChannelDataAdjacentDataItem
-          )[adjItem];
+          const adjItemData = (systemData.adjacent_data as OP25TrunkUpdateChannelDataAdjacentDataItem)[
+            adjItem
+          ];
 
           adjacentdata.push({
             id: Number.parseInt(adjItem),
@@ -244,7 +244,7 @@ export const trunk_update = (
           rxFrequency: systemData.rxchan,
           txFrequency: systemData.txchan,
           wacn: systemData.wacn,
-          nac: data["nac"],
+          nac: systemData.nac,
           secondaryFrequencies: systemData.secondary,
           frequencies: frequencies,
           name: systemData.system,

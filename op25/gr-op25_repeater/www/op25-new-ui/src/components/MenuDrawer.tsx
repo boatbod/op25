@@ -1,4 +1,7 @@
+import { NavLink } from "react-router-dom";
 import { useAppDispatch, useAppSelector } from "../redux/app/hooks";
+import { selectIsDarkMode } from "../redux/slices/preferences/preferencesSlice";
+
 import {
   isMenuDrawerOpen,
   isMobileMenuDrawerOpen,
@@ -31,7 +34,6 @@ import {
   Build as BuildIcon,
   History as HistoryIcon,
 } from "@material-ui/icons";
-import { selectIsDarkMode } from "../redux/slices/preferences/preferencesSlice";
 
 const drawerWidth = 240;
 
@@ -69,25 +71,46 @@ const MenuDrawerContent = () => {
       </AppBar>
       <Divider />
       <List>
-        <ListItem button selected>
+        <ListItem
+          button
+          component={NavLink}
+          to="/"
+          activeClassName="Mui-selected"
+          exact
+        >
           <ListItemIcon>
             <HomeIcon />
           </ListItemIcon>
           <ListItemText>Receiver</ListItemText>
         </ListItem>
-        <ListItem button>
+        <ListItem
+          button
+          component={NavLink}
+          to="/history"
+          activeClassName="Mui-selected"
+        >
           <ListItemIcon>
             <HistoryIcon />
           </ListItemIcon>
           <ListItemText>History</ListItemText>
         </ListItem>
-        <ListItem button>
+        <ListItem
+          button
+          component={NavLink}
+          to="/config"
+          activeClassName="Mui-selected"
+        >
           <ListItemIcon>
             <BuildIcon />
           </ListItemIcon>
           <ListItemText>Config</ListItemText>
         </ListItem>
-        <ListItem button>
+        <ListItem
+          button
+          component={NavLink}
+          to="/plot"
+          activeClassName="Mui-selected"
+        >
           <ListItemIcon>
             <PieChartIcon />
           </ListItemIcon>
@@ -96,7 +119,12 @@ const MenuDrawerContent = () => {
       </List>
       <Divider />
       <List>
-        <ListItem button>
+        <ListItem
+          button
+          component={NavLink}
+          to="/about"
+          activeClassName="Mui-selected"
+        >
           <ListItemIcon>
             <InfoRoundedIcon />
           </ListItemIcon>

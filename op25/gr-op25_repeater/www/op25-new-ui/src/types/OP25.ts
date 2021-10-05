@@ -80,6 +80,7 @@ export interface OP25TrunkUpdateChannelData {
   rxchan?: number;
   txchan?: number;
   wacn?: number;
+  nac?: number;
   secondary?: number[];
   frequencies?: OP25TrunkUpdateChannelDataFrequency;
   frequency_data?: OP25TrunkUpdateChannelDataFrequencyData;
