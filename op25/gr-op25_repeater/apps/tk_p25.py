@@ -1477,7 +1477,7 @@ class p25_receiver(object):
         self.meta_q = meta_q
         self.meta_stream = from_dict(self.config, 'meta_stream_name', "")
         self.tuned_frequency = freq
-        self.tuner_idle = True
+        self.tuner_idle = False
         self.voice_frequencies = self.system.get_frequencies()
         self.talkgroups = self.system.get_talkgroups()
         self.skiplist = {}
@@ -1508,6 +1508,7 @@ class p25_receiver(object):
         self.load_bl_wl()
         self.tgid_hold_time = float(from_dict(self.system.config, 'tgid_hold_time', TGID_HOLD_TIME))
         meta_update(self.meta_q, msgq_id=self.msgq_id)
+        self.idle_rx()
 
     def load_bl_wl(self):
         if 'blacklist' in self.config and self.config['blacklist'] != "":
