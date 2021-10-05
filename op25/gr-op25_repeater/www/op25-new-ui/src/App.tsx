@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { BrowserRouter as Router, Switch, Route } from "react-router-dom";
 import TopMenuBarAndDrawers from "./components/TopMenuBarAndDrawers";
 import { useAppDispatch, useAppSelector } from "redux/app/hooks";
 import { isMenuDrawerOpen } from "redux/slices/interface/interfaceSlice";
@@ -8,6 +9,7 @@ import { OP25 } from "lib/op25";
 import GlobalAlerts from "components/GlobalAlerts";
 
 import { createStyles, makeStyles, Theme } from "@material-ui/core";
+import ScrollToTop from "components/ScrollToTop";
 
 interface useStylesProps {
   isOpen: boolean;
@@ -130,21 +132,26 @@ const App = () => {
   }, []);
 
   return (
-    <>
+    <Router>
       <TopMenuBarAndDrawers />
       <div className={classes.content}>
         <GlobalAlerts />
-        <ReceiverUi
-          onChannelHoldTalkgroup={onChannelHoldTalkgroup}
-          onGoToTalkgroup={onGoToTalkgroup}
-          onReloadChannel={onReloadChannel}
-          onBlacklistTalkgroup={onBlacklistTalkgroup}
-          onWhitelistTalkgroup={onWhitelistTalkgroup}
-          onLogVerboseChange={onLogVerboseChange}
-          onSkipTalkgroup={onSkipTalkgroup}
-        />
+        <Switch>
+          <Route path="/" exact>
+            <ScrollToTop />
+            <ReceiverUi
+              onChannelHoldTalkgroup={onChannelHoldTalkgroup}
+              onGoToTalkgroup={onGoToTalkgroup}
+              onReloadChannel={onReloadChannel}
+              onBlacklistTalkgroup={onBlacklistTalkgroup}
+              onWhitelistTalkgroup={onWhitelistTalkgroup}
+              onLogVerboseChange={onLogVerboseChange}
+              onSkipTalkgroup={onSkipTalkgroup}
+            />
+          </Route>
+        </Switch>
       </div>
-    </>
+    </Router>
   );
 };
 
