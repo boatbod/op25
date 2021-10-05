@@ -1,3 +1,56 @@
+This is the boatbod fork of op25.  
+
+Capabilities are broadly categorized into two lists - those supported by the legacy "rx.py" version
+of the app and those by the newer "multi_rx.py" version.  I recommend using multi_rx where at all
+possible as this is the focus of future development.
+
+rx.py capabilities
+------------------
+P25 Conventional (single frequency)
+P25 Trunking Phase 1, Phase 2 and TDMA Control Channel
+Single SDR (dongle) tuning regardless of bandwidth
+TGID Blacklist, Whitelist with dynamic reloading
+TGID Priority with mid-call preemption
+Multi-system scanning (switches between multiple systems sequentially)
+TGID text tagging and metadata upload to Icecast server for streaming
+Dynamically controllable real-time plots: FFT, Constellation, Symbol, Datascope, Mixer, Tuning
+Dynamically controllable log level
+Curses or HTTP based terminal
+Demodulator symbol capture and replay
+Voice Encryption detection and skipping (configurable behavior)
+
+multi_rx.py capabilities
+------------------------
+P25 Conventional (multiple frequencies)
+P25 Trunking Phase 1, Phase 2 and TDMA Control Channel
+Motorola Smartzone Trunking (requires two dongles)
+Motorola Connect+ TRBO DMR Trunking (experimental, requires two dongles)
+DMR BS Mode (non-trunked)
+NBFM analog (conventional or Smartzone trunked)
+Multi-system/multi-channel concurrent operation (full time, not sequential)
+Single, Multiple and Shared SDR devices (e.g. wideband devices such as Airspy etc)
+TGID Blacklist, Whitelist with dynamic reloading
+TGID Priority with mid-call preemption
+TGID text tagging and metadata upload to Icecast server for streaming
+RID text tagging
+Dynamically controllable real-time plots: FFT, Constellation, Symbol, Datascope, Mixer, Tuning
+Dynamically controllable log level
+Curses or HTTP based terminal
+JSON based configuration
+DSD .wav and .iq file replay
+Dynamic demodulator symbol capture and replay (commanded through terminal)
+Voice Encryption detection and skipping (configurable behavior)
+
+Roadmap (under development)
+---------------------------
+New HTTP GUI
+Logging to GUI
+Dynamic configuration
+
+- * - * - * - * - * - * - * - * - * -
+
+History
+-------
 Forked from git://git.osmocom.org/op25 "max" branch on 9/10/2017
 Up to date with osmocom "max" branch as of 3/3/2018
 Note: as of 2019, codebase has diverged too far to continue syncing with osmocom
