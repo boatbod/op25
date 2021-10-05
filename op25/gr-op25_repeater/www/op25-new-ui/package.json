@@ -34,7 +34,8 @@
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "storybook": "start-storybook -p 6006 -s public",
-    "build-storybook": "build-storybook -s public"
+    "build-storybook": "build-storybook -s public",
+    "publish:op25": "rm -rf ../www-static/* && cp -r build/* ../www-static/"
   },
   "eslintConfig": {
     "extends": "react-app",
