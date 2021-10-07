@@ -3,6 +3,7 @@
         {
             "device": "",
             "demod_type": "cqpsk", 
+            "cqpsk_tracking": true,
             "destination": "udp://127.0.0.1:56120", 
             "excess_bw": 0.2, 
             "filter_type": "rc", 
@@ -22,6 +23,7 @@
         {
             "device": "device_0",
             "demod_type": "fsk4", 
+            "cqpsk_tracking": false,
             "destination": "file:///tmp/out1.raw", 
             "excess_bw": 0.2, 
             "filter_type": "rrc", 
@@ -39,6 +41,7 @@
         {
             "device": "device_1",
             "demod_type": "fsk4", 
+            "cqpsk_tracking": false,
             "destination": "udp://127.0.0.1:56122", 
             "excess_bw": 0.2, 
             "filter_type": "rrc", 
