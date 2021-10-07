@@ -18,6 +18,7 @@ Dynamically controllable log level
 Curses or HTTP based terminal
 Demodulator symbol capture and replay
 Voice Encryption detection and skipping (configurable behavior)
+Automatic fine tune tracking for CQPSK demodulator (-X command-line parameter)
 
 multi_rx.py capabilities
 ------------------------
@@ -40,6 +41,7 @@ JSON based configuration
 DSD .wav and .iq file replay
 Dynamic demodulator symbol capture and replay (commanded through terminal)
 Voice Encryption detection and skipping (configurable behavior)
+Automatic fine tune tracking for CQPSK demodulator (cqpsk_tracking parameter)
 
 Roadmap (under development)
 ---------------------------
