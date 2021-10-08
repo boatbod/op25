@@ -277,6 +277,8 @@ function channel_update(d) {
 
             c_freq = d[c_id]['freq'];
             c_ppm = d[c_id]['ppm'];
+            if (d[c_id]['error'] != undefined)
+                error_val = d[c_id]['error'];
             current_tgid = d[c_id]['tgid'];
             c_tag = d[c_id]['tag'];
             c_srcaddr = d[c_id]['srcaddr'];

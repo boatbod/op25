@@ -186,6 +186,7 @@ class channel(object):
         if str(from_dict(config, "demod_type", "")).lower() != "cqpsk":
             self.auto_tracking = False
         self.tracking = 0
+        self.error = 0
         self.chan_idle = False
         self.sinks = {}
         self.tdma_state = False
@@ -515,8 +516,15 @@ class channel(object):
         freq = self.demod.get_freq_error()
         if self.verbosity >= 10:
             sys.stderr.write("%s [%d] frequency tracking(%d): band: %d, freq: %d\n" % (log_ts.get(), self.msgq_id, self.tracking, band, freq))
+        self.error = (band * 1200) + freq
         self.tracking += (band * 1200) + (freq * 0.40)
         self.demod.set_relative_frequency(self.device.offset + self.device.frequency + self.device.fractional_corr + self.tracking - self.frequency)
+
+    def get_error(self):
+        return self.error
+
+    def get_tracking(self):
+        return self.tracking
 
 class rx_block (gr.top_block):
 
@@ -883,6 +891,8 @@ class rx_block (gr.top_block):
         for rx_id in params['channels']:                       # iterate and convert stream name to url
             params[rx_id]['ppm'] = self.find_channel(int(rx_id)).device.get_ppm()
             params[rx_id]['capture'] = False if self.find_channel(int(rx_id)).raw_sink is None else True
+            params[rx_id]['error'] = self.find_channel(int(rx_id)).get_error()
+            params[rx_id]['tracking'] = self.find_channel(int(rx_id)).get_tracking()
             s_name = params[rx_id]['stream']
             if s_name not in self.meta_streams:
                 continue
