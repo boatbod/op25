@@ -4,6 +4,7 @@
             "device": "",
             "demod_type": "cqpsk", 
             "cqpsk_tracking": true,
+            "tracking_threshold": 30,
             "destination": "udp://127.0.0.1:56120", 
             "excess_bw": 0.2, 
             "filter_type": "rc", 

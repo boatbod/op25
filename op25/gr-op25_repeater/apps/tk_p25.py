@@ -147,7 +147,11 @@ class rx_ctl(object):
     def post_init(self):
         for rx in self.receivers:
             if self.receivers[rx]['rx_rcvr'] is not None:
+                if self.debug >= 10:
+                    sys.stderr.write("%s [rx_ctl] post initialize receiver[%d]\n" % (log_ts.get(), rx))
                 self.receivers[rx]['rx_rcvr'].post_init()
+        if self.debug >= 10:
+            sys.stderr.write("%s [rx_ctl] post initialize check control channel assignments\n" % (log_ts.get()))
         self.check_cc_assignments()
 
     # process_qmsg is the main message dispatch handler connecting the 'radios' to python
@@ -181,10 +185,17 @@ class rx_ctl(object):
         for p25_sysname in self.systems:
             p25_system = self.systems[p25_sysname]['system']
             if p25_system.cc_msgq_id is None:
+                if self.debug >= 10:
+                    sys.stderr.write("%s [%s] needs control channel receiver\n" % (log_ts.get(), p25_sysname))
                 for rx in self.systems[p25_sysname]['receivers']:
                     if rx.tuner_idle:
+                        if self.debug >= 10:
+                            sys.stderr.write("%s [%s] attempt to assign control channel receiver[%d]\n" % (log_ts.get(), p25_sysname, rx.msgq_id))
                         rx.tune_cc(p25_system.get_cc(rx.msgq_id))
                         break
+                    else:
+                        if self.debug >= 10:
+                            sys.stderr.write("%s [%s] receiver[%d] not idle\n" % (log_ts.get(), p25_sysname, rx.msgq_id))
             if p25_system.cc_msgq_id is None: # no receivers assigned
                 if self.debug >= 5:
                     sys.stderr.write("%s [%s] has no idle receivers for control channel monitoring\n" % (log_ts.get(), p25_sysname))
