@@ -184,6 +184,7 @@ class channel(object):
         self.nbfm_mode = 0
         self.auto_tracking = bool(from_dict(config, "cqpsk_tracking", True))
         self.tracking_threshold = int(from_dict(config, "tracking_threshold", 30))
+        self.tracking_feedback = float(from_dict(config, "tracking_feedback", 0.85))
         if str(from_dict(config, "demod_type", "")).lower() != "cqpsk":
             self.auto_tracking = False
         self.tracking = 0
@@ -519,7 +520,7 @@ class channel(object):
             sys.stderr.write("%s [%d] frequency tracking(%d): band: %d, freq: %d\n" % (log_ts.get(), self.msgq_id, self.tracking, band, freq))
         self.error = (band * 1200) + freq
         if abs(self.error) >= self.tracking_threshold:
-            self.tracking += (band * 1200) + (freq * 0.40)
+            self.tracking += (band * 1200) + (freq * self.tracking_feedback)
             self.demod.set_relative_frequency(self.device.offset + self.device.frequency + self.device.fractional_corr + self.tracking - self.frequency)
 
     def get_error(self):
