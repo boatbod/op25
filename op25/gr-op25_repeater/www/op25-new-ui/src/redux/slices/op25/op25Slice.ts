@@ -73,8 +73,11 @@ export const op25Slice = createSlice({
     builder
       .addCase(sendQueue.fulfilled, (state, action) => {
         state.isConnected = true;
-        const { status, statusText, data } =
-          action.payload as AxiosResponse<any>;
+        const {
+          status,
+          statusText,
+          data,
+        } = action.payload as AxiosResponse<any>;
         if (status !== 200) {
           // TODO: Show the user SOMETHING!
           console.log(`Error ${status.toString(10)}: ${statusText}`);
@@ -96,14 +99,14 @@ export const op25Slice = createSlice({
                   trunk_update(update as OP25TypeTrunkUpdate, state);
                   return;
                 case "change_freq":
-                  //console.log("***** change_freq *****", update);
+                  console.log("***** change_freq *****", update);
                   // change_freq(update);
                   return;
                 case "channel_update":
                   channel_update(update as OP25TypeChannelUpdate, state);
                   return;
                 case "rx_update":
-                  // console.log("***** rx_update *****", update); // Plot Updates
+                  console.log("***** rx_update *****", update); // Plot Updates
                   // rx_update(update);
                   return;
                 case "terminal_config":
@@ -133,8 +136,11 @@ export const op25Slice = createSlice({
   },
 });
 
-export const { pushToSendQueue, unshiftOnSendQueue, emptySendQueue } =
-  op25Slice.actions;
+export const {
+  pushToSendQueue,
+  unshiftOnSendQueue,
+  emptySendQueue,
+} = op25Slice.actions;
 
 export const isConnected = (state: RootState): boolean | undefined =>
   state.op25.isConnected;
@@ -142,31 +148,31 @@ export const isConnected = (state: RootState): boolean | undefined =>
 export const selectChannels = (state: RootState): Channels =>
   state.op25.channels;
 
-export const selectChannel =
-  (channelId: number) =>
-  (state: RootState): Channel | undefined =>
-    state.op25.channels.find((channel) => channel.id === channelId);
+export const selectChannel = (channelId: number) => (
+  state: RootState
+): Channel | undefined =>
+  state.op25.channels.find((channel) => channel.id === channelId);
 
-export const selectSystemFromChannelId =
-  (channelId: number) =>
-  (state: RootState): System | undefined => {
-    const channel = state.op25.channels.find(
-      (channel) => channel.id === channelId
-    );
-    return channel
-      ? state.op25.systems.find((system) => system.name === channel.systemName)
-      : undefined;
-  };
+export const selectSystemFromChannelId = (channelId: number) => (
+  state: RootState
+): System | undefined => {
+  const channel = state.op25.channels.find(
+    (channel) => channel.id === channelId
+  );
+  return channel
+    ? state.op25.systems.find((system) => system.name === channel.systemName)
+    : undefined;
+};
 
 export const selectSystems = (state: RootState): Systems => state.op25.systems;
 
 export const getSystemsCount = (state: RootState): number =>
   state.op25.systems.length;
 
-export const selectSystem =
-  (systemId: number) =>
-  (state: RootState): System | undefined =>
-    state.op25.systems.find((system) => system.id === systemId);
+export const selectSystem = (systemId: number) => (
+  state: RootState
+): System | undefined =>
+  state.op25.systems.find((system) => system.id === systemId);
 
 export const selectStepSizes = (
   state: RootState
