@@ -188,6 +188,7 @@ class channel(object):
         if str(from_dict(config, "demod_type", "")).lower() != "cqpsk":
             self.auto_tracking = False
         self.tracking = 0
+        self.tracking_cache = {}
         self.error = 0
         self.chan_idle = False
         self.sinks = {}
@@ -427,18 +428,22 @@ class channel(object):
     def set_freq(self, freq):
         if self.frequency == freq:
             return True
+
         old_freq = self.frequency
         old_track = self.tracking
         self.frequency = freq
+        self.tracking_cache[old_freq] = old_track
+        if self.frequency in self.tracking_cache:
+            self.tracking = self.tracking_cache[self.frequency]     # if cached value available use it otherwise continue with existing
+
         if not self.demod.set_relative_frequency(self.device.offset + self.device.frequency + self.device.fractional_corr + self.tracking - freq): # First attempt relative tune
             if self.device.tunable:                                                                  # then hard tune if allowed
-                self.tracking = 0
                 self.device.frequency = self.frequency
                 self.device.src.set_center_freq(self.frequency + self.device.offset)
                 self.device.fractional_corr = int((int(round(self.device.ppm)) - self.device.ppm) * (self.device.frequency/1e6))        # Calc frac ppm using new freq
                 self.demod.set_relative_frequency(self.device.offset + self.device.frequency + self.device.fractional_corr + self.tracking - freq)
                 if self.verbosity >= 9:
-                    sys.stderr.write("%s [%d] Hardware tune: dev_freq(%d), dev_off(%d), dev_frac(%d), tune_freq(%d)\n" % (log_ts.get(), self.msgq_id, self.device.frequency, self.device.offset, self.device.fractional_corr, (self.device.frequency - (self.device.offset + self.device.frequency + self.device.fractional_corr - freq))))
+                    sys.stderr.write("%s [%d] Hardware tune: dev_freq(%d), dev_off(%d), dev_frac(%d), tune_freq(%d), tracking(%d)\n" % (log_ts.get(), self.msgq_id, self.device.frequency, self.device.offset, self.device.fractional_corr, (self.device.frequency - (self.device.offset + self.device.frequency + self.device.fractional_corr - freq)), self.tracking))
             else:                                                                                    # otherwise fail and reset to prev freq
                 self.tracking = old_track
                 self.demod.set_relative_frequency(self.device.offset + self.device.frequency + self.device.fractional_corr + self.tracking - old_freq)
@@ -448,7 +453,7 @@ class channel(object):
                 return False
         else:
             if self.verbosity >= 9:
-                sys.stderr.write("%s [%d] Relative tune: dev_freq(%d), dev_off(%d), dev_frac(%d), tune_freq(%d)\n" % (log_ts.get(), self.msgq_id, self.device.frequency, self.device.offset, self.device.fractional_corr, (self.device.frequency - (self.device.offset + self.device.frequency + self.device.fractional_corr + self.tracking - freq))))
+                sys.stderr.write("%s [%d] Relative tune: dev_freq(%d), dev_off(%d), dev_frac(%d), tune_freq(%d), tracking(%d)\n" % (log_ts.get(), self.msgq_id, self.device.frequency, self.device.offset, self.device.fractional_corr, (self.device.frequency - (self.device.offset + self.device.frequency + self.device.fractional_corr + self.tracking - freq)), self.tracking))
         if 'fft' in self.sinks:
                 self.sinks['fft'][0].set_center_freq(self.device.frequency)
                 self.sinks['fft'][0].set_relative_freq(self.device.frequency - freq)
@@ -521,6 +526,7 @@ class channel(object):
         self.error = (band * 1200) + freq
         if abs(self.error) >= self.tracking_threshold:
             self.tracking += (band * 1200) + (freq * self.tracking_feedback)
+            self.tracking_cache[self.frequency] = self.tracking
             self.demod.set_relative_frequency(self.device.offset + self.device.frequency + self.device.fractional_corr + self.tracking - self.frequency)
 
     def get_error(self):
