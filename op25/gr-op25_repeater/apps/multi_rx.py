@@ -521,7 +521,7 @@ class channel(object):
             return
         band = self.demod.get_error_band()
         freq = self.demod.get_freq_error()
-        if self.verbosity >= 5:
+        if self.verbosity >= 10:
             sys.stderr.write("%s [%d] frequency tracking(%d): band: %d, freq: %d\n" % (log_ts.get(), self.msgq_id, self.tracking, band, freq))
         self.error = (band * 1200) + freq
         if abs(self.error) >= self.tracking_threshold:
