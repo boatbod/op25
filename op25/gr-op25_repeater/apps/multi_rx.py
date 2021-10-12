@@ -531,7 +531,7 @@ class channel(object):
 
     def dump_tracking(self):
         sys.stderr.write("%s [%d] Frequency Tracking Cache: ch(%d)\n{\n" % (log_ts.get(), self.msgq_id, self.msgq_id))
-        for freq in self.tracking_cache:
+        for freq in sorted(self.tracking_cache):
             sys.stderr.write("%f : %d\n" % ((freq/1e6), self.tracking_cache[freq]))
         sys.stderr.write("}\n")
 
