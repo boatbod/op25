@@ -589,6 +589,7 @@ function f_chan_button(command) {
 
 function f_dump_button(command) {
     send_command('dump_tgids', 0, Number(channel_list[channel_index]));
+    send_command('dump_tracking', 0, Number(channel_list[channel_index]));
 }
 
 function f_cap_button(command) {

@@ -529,6 +529,12 @@ class channel(object):
             self.tracking_cache[self.frequency] = self.tracking
             self.demod.set_relative_frequency(self.device.offset + self.device.frequency + self.device.fractional_corr + self.tracking - self.frequency)
 
+    def dump_tracking(self):
+        sys.stderr.write("%s [%d] Frequency Tracking Cache: ch(%d)\n{\n" % (log_ts.get(), self.msgq_id, self.msgq_id))
+        for freq in self.tracking_cache:
+            sys.stderr.write("%f : %d\n" % ((freq/1e6), self.tracking_cache[freq]))
+        sys.stderr.write("}\n")
+
     def get_error(self):
         return self.error
 
@@ -872,6 +878,9 @@ class rx_block (gr.top_block):
             pass
         elif s == 'dump_tgids':
             self.trunk_rx.dump_tgids()
+        elif s == 'dump_tracking':
+            msgq_id = int(msg.arg2())
+            self.channels[msgq_id].dump_tracking()
         elif s == 'capture':
             if not self.get_interactive():
                 sys.stderr.write("%s Cannot start capture for non-realtime (replay) sessions\n" % log_ts.get())
