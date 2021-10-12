@@ -8,6 +8,7 @@ rx.py capabilities
 ------------------
 P25 Conventional (single frequency)
 P25 Trunking Phase 1, Phase 2 and TDMA Control Channel
+P25 Phase 2 tone synthesis
 Single SDR (dongle) tuning regardless of bandwidth
 TGID Blacklist, Whitelist with dynamic reloading
 TGID Priority with mid-call preemption
@@ -24,6 +25,7 @@ multi_rx.py capabilities
 ------------------------
 P25 Conventional (multiple frequencies)
 P25 Trunking Phase 1, Phase 2 and TDMA Control Channel
+P25 Phase 2 tone synthesis
 Motorola Smartzone Trunking (requires two dongles)
 Motorola Connect+ TRBO DMR Trunking (experimental, requires two dongles)
 DMR BS Mode (non-trunked)
@@ -41,7 +43,7 @@ JSON based configuration
 DSD .wav and .iq file replay
 Dynamic demodulator symbol capture and replay (commanded through terminal)
 Voice Encryption detection and skipping (configurable behavior)
-Automatic fine tune tracking for CQPSK demodulator (cqpsk_tracking parameter)
+Automatic fine tune tracking/caching for CQPSK demodulator (cqpsk_tracking parameter)
 
 Roadmap (under development)
 ---------------------------
