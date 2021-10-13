@@ -1,6 +1,6 @@
 #!/bin/sh
 # Copyright 2011, 2012, 2013, 2014, 2015, 2016, 2017 Max H. Parke KA1RBI
-# Copyright 2020 Graham J. Norbury - gnorbury@bondcar.com
+# Copyright 2020, 2021 Graham J. Norbury - gnorbury@bondcar.com
 # 
 # This file is part of OP25
 # 
@@ -182,9 +182,10 @@ class channel(object):
         self.throttle = None
         self.nbfm = None
         self.nbfm_mode = 0
-        self.auto_tracking = bool(from_dict(config, "cqpsk_tracking", True))
+        self.auto_tracking      = bool(from_dict(config, "cqpsk_tracking", True))
         self.tracking_threshold = int(from_dict(config, "tracking_threshold", 30))
-        self.tracking_feedback = float(from_dict(config, "tracking_feedback", 0.85))
+        self.tracking_limit     = int(from_dict(config, "tracking_limit", 2400))
+        self.tracking_feedback  = float(from_dict(config, "tracking_feedback", 0.85))
         if str(from_dict(config, "demod_type", "")).lower() != "cqpsk":
             self.auto_tracking = False
         self.tracking = 0
@@ -526,6 +527,7 @@ class channel(object):
         self.error = (band * 1200) + freq
         if abs(self.error) >= self.tracking_threshold:
             self.tracking += (band * 1200) + (freq * self.tracking_feedback)
+            self.tracking = min(self.tracking_limit, max(-self.tracking_limit, self.tracking))
             self.tracking_cache[self.frequency] = self.tracking
             self.demod.set_relative_frequency(self.device.offset + self.device.frequency + self.device.fractional_corr + self.tracking - self.frequency)
 
