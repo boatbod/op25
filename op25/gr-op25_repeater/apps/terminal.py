@@ -303,6 +303,8 @@ class curses_terminal(threading.Thread):
             self.send_command('toggle_plot', (c - ord('0')), int(self.current_msgqid))
         elif c == ord('d'):
             self.send_command('dump_tgids', 0, int(self.current_msgqid))
+        elif c == ord('D'):
+            self.send_command('dump_tracking', 0, int(self.current_msgqid))
         elif c == ord('x'):
             assert 1 == 0
         elif c == curses.KEY_UP:

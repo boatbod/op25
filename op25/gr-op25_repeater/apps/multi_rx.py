@@ -1,6 +1,6 @@
 #!/bin/sh
 # Copyright 2011, 2012, 2013, 2014, 2015, 2016, 2017 Max H. Parke KA1RBI
-# Copyright 2020 Graham J. Norbury - gnorbury@bondcar.com
+# Copyright 2020, 2021 Graham J. Norbury - gnorbury@bondcar.com
 # 
 # This file is part of OP25
 # 
@@ -182,12 +182,14 @@ class channel(object):
         self.throttle = None
         self.nbfm = None
         self.nbfm_mode = 0
-        self.auto_tracking = bool(from_dict(config, "cqpsk_tracking", True))
+        self.auto_tracking      = bool(from_dict(config, "cqpsk_tracking", True))
         self.tracking_threshold = int(from_dict(config, "tracking_threshold", 30))
-        self.tracking_feedback = float(from_dict(config, "tracking_feedback", 0.85))
+        self.tracking_limit     = int(from_dict(config, "tracking_limit", 2400))
+        self.tracking_feedback  = float(from_dict(config, "tracking_feedback", 0.85))
         if str(from_dict(config, "demod_type", "")).lower() != "cqpsk":
             self.auto_tracking = False
         self.tracking = 0
+        self.tracking_cache = {}
         self.error = 0
         self.chan_idle = False
         self.sinks = {}
@@ -427,18 +429,22 @@ class channel(object):
     def set_freq(self, freq):
         if self.frequency == freq:
             return True
+
         old_freq = self.frequency
         old_track = self.tracking
         self.frequency = freq
+        self.tracking_cache[old_freq] = old_track
+        if self.frequency in self.tracking_cache:
+            self.tracking = self.tracking_cache[self.frequency]     # if cached value available use it otherwise continue with existing
+
         if not self.demod.set_relative_frequency(self.device.offset + self.device.frequency + self.device.fractional_corr + self.tracking - freq): # First attempt relative tune
             if self.device.tunable:                                                                  # then hard tune if allowed
-                self.tracking = 0
                 self.device.frequency = self.frequency
                 self.device.src.set_center_freq(self.frequency + self.device.offset)
                 self.device.fractional_corr = int((int(round(self.device.ppm)) - self.device.ppm) * (self.device.frequency/1e6))        # Calc frac ppm using new freq
                 self.demod.set_relative_frequency(self.device.offset + self.device.frequency + self.device.fractional_corr + self.tracking - freq)
                 if self.verbosity >= 9:
-                    sys.stderr.write("%s [%d] Hardware tune: dev_freq(%d), dev_off(%d), dev_frac(%d), tune_freq(%d)\n" % (log_ts.get(), self.msgq_id, self.device.frequency, self.device.offset, self.device.fractional_corr, (self.device.frequency - (self.device.offset + self.device.frequency + self.device.fractional_corr - freq))))
+                    sys.stderr.write("%s [%d] Hardware tune: dev_freq(%d), dev_off(%d), dev_frac(%d), tune_freq(%d), tracking(%d)\n" % (log_ts.get(), self.msgq_id, self.device.frequency, self.device.offset, self.device.fractional_corr, (self.device.frequency - (self.device.offset + self.device.frequency + self.device.fractional_corr - freq)), self.tracking))
             else:                                                                                    # otherwise fail and reset to prev freq
                 self.tracking = old_track
                 self.demod.set_relative_frequency(self.device.offset + self.device.frequency + self.device.fractional_corr + self.tracking - old_freq)
@@ -448,7 +454,7 @@ class channel(object):
                 return False
         else:
             if self.verbosity >= 9:
-                sys.stderr.write("%s [%d] Relative tune: dev_freq(%d), dev_off(%d), dev_frac(%d), tune_freq(%d)\n" % (log_ts.get(), self.msgq_id, self.device.frequency, self.device.offset, self.device.fractional_corr, (self.device.frequency - (self.device.offset + self.device.frequency + self.device.fractional_corr + self.tracking - freq))))
+                sys.stderr.write("%s [%d] Relative tune: dev_freq(%d), dev_off(%d), dev_frac(%d), tune_freq(%d), tracking(%d)\n" % (log_ts.get(), self.msgq_id, self.device.frequency, self.device.offset, self.device.fractional_corr, (self.device.frequency - (self.device.offset + self.device.frequency + self.device.fractional_corr + self.tracking - freq)), self.tracking))
         if 'fft' in self.sinks:
                 self.sinks['fft'][0].set_center_freq(self.device.frequency)
                 self.sinks['fft'][0].set_relative_freq(self.device.frequency - freq)
@@ -516,12 +522,20 @@ class channel(object):
             return
         band = self.demod.get_error_band()
         freq = self.demod.get_freq_error()
-        if self.verbosity >= 5:
+        if self.verbosity >= 10:
             sys.stderr.write("%s [%d] frequency tracking(%d): band: %d, freq: %d\n" % (log_ts.get(), self.msgq_id, self.tracking, band, freq))
         self.error = (band * 1200) + freq
         if abs(self.error) >= self.tracking_threshold:
             self.tracking += (band * 1200) + (freq * self.tracking_feedback)
+            self.tracking = min(self.tracking_limit, max(-self.tracking_limit, self.tracking))
+            self.tracking_cache[self.frequency] = self.tracking
             self.demod.set_relative_frequency(self.device.offset + self.device.frequency + self.device.fractional_corr + self.tracking - self.frequency)
+
+    def dump_tracking(self):
+        sys.stderr.write("%s [%d] Frequency Tracking Cache: ch(%d)\n{\n" % (log_ts.get(), self.msgq_id, self.msgq_id))
+        for freq in sorted(self.tracking_cache):
+            sys.stderr.write("%f : %d\n" % ((freq/1e6), self.tracking_cache[freq]))
+        sys.stderr.write("}\n")
 
     def get_error(self):
         return self.error
@@ -866,6 +880,9 @@ class rx_block (gr.top_block):
             pass
         elif s == 'dump_tgids':
             self.trunk_rx.dump_tgids()
+        elif s == 'dump_tracking':
+            msgq_id = int(msg.arg2())
+            self.channels[msgq_id].dump_tracking()
         elif s == 'capture':
             if not self.get_interactive():
                 sys.stderr.write("%s Cannot start capture for non-realtime (replay) sessions\n" % log_ts.get())
