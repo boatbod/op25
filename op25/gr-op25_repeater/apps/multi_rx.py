@@ -537,6 +537,16 @@ class channel(object):
             sys.stderr.write("%f : %d\n" % ((freq/1e6), self.tracking_cache[freq]))
         sys.stderr.write("}\n")
 
+    def set_tracking(self, tracking):
+        if tracking > 0:
+            self.auto_tracking = True
+        elif tracking == 0:
+            self.auto_tracking = False
+        else:
+            self.auto_tracking = not self.auto_tracking
+        if self.verbosity >= 1:
+            sys.stderr.write("%s [%d] set auto_tracking:%s\n" % (log_ts.get(), self.msgq_id, ("on" if self.auto_tracking else "off")))
+
     def get_error(self):
         return self.error
 
@@ -883,6 +893,10 @@ class rx_block (gr.top_block):
         elif s == 'dump_tracking':
             msgq_id = int(msg.arg2())
             self.channels[msgq_id].dump_tracking()
+        elif s == 'set_tracking':
+            tracking = msg.arg1()
+            msgq_id = int(msg.arg2())
+            self.find_channel(msgq_id).set_tracking(tracking)
         elif s == 'capture':
             if not self.get_interactive():
                 sys.stderr.write("%s Cannot start capture for non-realtime (replay) sessions\n" % log_ts.get())
