@@ -270,6 +270,9 @@ class p25_demod_fb(p25_demod_base):
         except:
             pass
 
+    def set_relative_frequency(self, freq):
+        return True
+
 class p25_demod_cb(p25_demod_base):
 
     def __init__(self,
