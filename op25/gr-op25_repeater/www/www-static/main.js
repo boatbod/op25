@@ -24,6 +24,7 @@ var d_debug = 1;
 var http_req = new XMLHttpRequest();
 var counter1 = 0;
 var error_val = null;
+var auto_tracking = null;
 var fine_tune = null;
 var current_tgid = null;
 var capture_active = false;
@@ -253,12 +254,13 @@ function change_freq(d) {
 }
 
 function channel_update(d) {
-    var s2_c = document.getElementById("s2_ch_lbl");
-    var s2_d = document.getElementById("s2_ch_txt");
-    var s2_e = document.getElementById("s2_ch_dn");
-    var s2_f = document.getElementById("s2_ch_dmp");
-    var s2_g = document.getElementById("s2_ch_up");
-    var s2_h = document.getElementById("s2_ch_cap");
+    var s2_c  = document.getElementById("s2_ch_lbl");
+    var s2_d  = document.getElementById("s2_ch_txt");
+    var s2_e  = document.getElementById("s2_ch_dn");
+    var s2_f  = document.getElementById("s2_ch_dmp");
+    var s2_g  = document.getElementById("s2_ch_up");
+    var s2_hc = document.getElementById("s2_ch_cap");
+    var s2_ht = document.getElementById("s2_ch_trk");
 
     if (d['channels'] != undefined) {
         channel_list = d['channels'];    
@@ -279,6 +281,8 @@ function channel_update(d) {
             c_ppm = d[c_id]['ppm'];
             if (d[c_id]['error'] != undefined)
                 error_val = d[c_id]['error'];
+            if (d[c_id]['auto_tracking'] != undefined)
+                auto_tracking = d[c_id]['auto_tracking'];
             current_tgid = d[c_id]['tgid'];
             c_tag = d[c_id]['tag'];
             c_srcaddr = d[c_id]['srcaddr'];
@@ -290,7 +294,8 @@ function channel_update(d) {
             s2_e.style['display'] = "";
             s2_f.style['display'] = "";
             s2_g.style['display'] = "";
-            s2_h.style['display'] = "";
+            s2_hc.style['display'] = "";
+            s2_ht.style['display'] = "";
         }
         else {
             s2_c.style['display'] = "none";
@@ -298,7 +303,8 @@ function channel_update(d) {
             s2_e.style['display'] = "none";
             s2_f.style['display'] = "none";
             s2_g.style['display'] = "none";
-            s2_h.style['display'] = "none";
+            s2_hc.style['display'] = "none";
+            s2_ht.style['display'] = "none";
             c_name = "";
             c_freq = 0.0;
             c_system = "";
@@ -320,6 +326,7 @@ function channel_status() {
     var s2_src = document.getElementById("s2_src");
     var s2_ch_txt = document.getElementById("s2_ch_txt");
     var s2_cap = document.getElementById("cap_bn");
+    var s2_trk = document.getElementById("trk_bn");
 
     html = "";
     if (c_stream_url != "") {
@@ -353,10 +360,16 @@ function channel_status() {
     s2_tg.innerHTML = html;
 
     html = "";
-    if (current_tgid != null)
+    if (current_tgid != null) {
         html += "<span class=\"value\">" + current_tgid + "</span>";
-    else if (c_grpaddr != 0)
+    }
+    else if (c_grpaddr != 0) {
         html += "<span class=\"value\">" + c_grpaddr + "</span>";
+    }
+    else
+    {
+        html += "<span class=\"value\">&nbsp;</span>";
+    }
     s2_grp.innerHTML = html;
 
     html = "";
@@ -371,6 +384,11 @@ function channel_status() {
         s2_cap.value = "stop capture";
     else
         s2_cap.value = "start capture";
+
+    if (auto_tracking)
+        s2_trk.value = "tracking off";
+    else
+        s2_trk.value = "tracking on";
 }
 
 // adjacent sites table
@@ -448,7 +466,12 @@ function trunk_update(d) {
             html += "</span><br>";
         }
         if (error_val != null) {
-            html += "<span class=\"label\">Frequency error: </span><span class=\"value\">" + error_val + " Hz. (approx) </span><br>";
+            if (auto_tracking != null) {
+                html += "<span class=\"label\">Frequency error: </span><span class=\"value\">" + error_val + " Hz. (approx)</span><span class=\"label\"> auto tracking: </span><span class=\"value\">" + (auto_tracking ? "on" : "off") + " </span><br>";
+            }
+            else {
+                html += "<span class=\"label\">Frequency error: </span><span class=\"value\">" + error_val + " Hz. (approx)</span><br>";
+            }
         }
         if (fine_tune != null) {
             html += "<span class=\"label\">Fine tune offset: </span><span class=\"value\">" + fine_tune + "</span>";
@@ -594,6 +617,10 @@ function f_dump_button(command) {
 
 function f_cap_button(command) {
     send_command('capture', 0, Number(channel_list[channel_index]));
+}
+
+function f_trk_button(command) {
+    send_command('set_tracking', command, Number(channel_list[channel_index]));
 }
 
 function f_tune_button(command) {
