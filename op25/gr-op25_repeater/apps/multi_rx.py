@@ -611,6 +611,9 @@ class rx_block (gr.top_block):
             dev.set_debug(dbglvl)
         if self.trunking is not None and self.trunk_rx is not None:
             self.trunk_rx.set_debug(dbglvl)
+        if self.metadata is not None:
+            for stream in self.meta_streams:
+                self.meta_streams[stream][0].set_debug(dbglvl)
 
     def set_interactive(self, session_type):
         self.interactive = session_type
