@@ -932,7 +932,7 @@ class rx_block (gr.top_block):
         for rx_id in params['channels']:                       # iterate and convert stream name to url
             params[rx_id]['ppm'] = self.find_channel(int(rx_id)).device.get_ppm()
             params[rx_id]['capture'] = False if self.find_channel(int(rx_id)).raw_sink is None else True
-            params[rx_id]['error'] = self.find_channel(int(rx_id)).get_error()
+            params[rx_id]['error'] = self.find_channel(int(rx_id)).get_error() if self.find_channel(int(rx_id)).auto_tracking else None
             params[rx_id]['auto_tracking'] = self.find_channel(int(rx_id)).get_auto_tracking()
             params[rx_id]['tracking'] = self.find_channel(int(rx_id)).get_tracking()
             s_name = params[rx_id]['stream']

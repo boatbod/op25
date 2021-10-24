@@ -238,6 +238,8 @@ function rx_update(d) {
     }
     if (d["error"] != undefined)
         error_val = d["error"];
+    else
+        error_val = null;
     if (d["fine_tune"] != undefined)
         fine_tune = d["fine_tune"];
 }
@@ -281,6 +283,8 @@ function channel_update(d) {
             c_ppm = d[c_id]['ppm'];
             if (d[c_id]['error'] != undefined)
                 error_val = d[c_id]['error'];
+            else
+                error_val = null;
             if (d[c_id]['auto_tracking'] != undefined)
                 auto_tracking = d[c_id]['auto_tracking'];
             current_tgid = d[c_id]['tgid'];
