@@ -171,16 +171,24 @@ bool p25_framer::rx_sym(uint8_t dibit) {
     if(check_frame_sync((nid_accum & P25_FRAME_SYNC_MASK) ^ P25_FRAME_SYNC_REV_P, 0, 48)) {
         nid_syms = 1;
         reverse_p ^= 0x02;   // auto flip polarity reversal
-        fprintf(stderr, "%s p25_framer::rx_sym() Reversed FS polarity detected - autocorrecting\n", logts.get(d_msgq_id));
+        if (d_debug >= 10) {
+            fprintf(stderr, "%s p25_framer::rx_sym() Reversed FS polarity detected - autocorrecting\n", logts.get(d_msgq_id));
+        }
     }
     if(check_frame_sync((nid_accum & P25_FRAME_SYNC_MASK) ^ P25_FRAME_SYNC_N1200, 0, 48)) {
-        fprintf(stderr, "%s p25_framer::rx_sym() tuning error -1200\n", logts.get(d_msgq_id));
+        if (d_debug >= 10) {
+            fprintf(stderr, "%s p25_framer::rx_sym() tuning error -1200\n", logts.get(d_msgq_id));
+        }
     }
     if(check_frame_sync((nid_accum & P25_FRAME_SYNC_MASK) ^ P25_FRAME_SYNC_P1200, 0, 48)) {
-        fprintf(stderr, "%s p25_framer::rx_sym() tuning error +1200\n", logts.get(d_msgq_id));
+        if (d_debug >= 10) {
+            fprintf(stderr, "%s p25_framer::rx_sym() tuning error +1200\n", logts.get(d_msgq_id));
+        }
     }
     if(check_frame_sync((nid_accum & P25_FRAME_SYNC_MASK) ^ P25_FRAME_SYNC_X2400, 0, 48)) {
-        fprintf(stderr, "%s p25_framer::rx_sym() tuning error +/- 2400\n", logts.get(d_msgq_id));
+        if (d_debug >= 10) {
+            fprintf(stderr, "%s p25_framer::rx_sym() tuning error +/- 2400\n", logts.get(d_msgq_id));
+        }
     }
     if (next_bit > 0) {
         frame_body[next_bit++] = (dibit >> 1) & 1;
@@ -202,10 +210,7 @@ bool p25_framer::rx_sym(uint8_t dibit) {
 
 /*
  * load_nid: called by framer when SYNC + NID have been received (first 57 symbols)
- * 1. validates sync flags sequences
- * 2. do BCH check on completed NID
- * 3. after valid BCH check accumulate frame data bits
- *
+ * Perform BCH check on received NID
  * Returns number of symbols required to complete the frame, else 0 upon error
  */
 uint32_t p25_framer::load_nid(const uint8_t *syms, int nsyms) {
@@ -220,33 +225,7 @@ uint32_t p25_framer::load_nid(const uint8_t *syms, int nsyms) {
         frame_body[next_bit++] =  dibit       & 1;
     }
 
-    bool sync_valid = false;
     uint64_t accum = 0;
-    for (int i = 0; i < 48; i++) {
-        accum <<= 1;
-        accum |= frame_body[i];
-    }
-    if(check_frame_sync((accum & P25_FRAME_SYNC_MASK) ^ P25_FRAME_SYNC_MAGIC, 6, 48)) {
-        sync_valid = true;
-    }
-    if(check_frame_sync((accum & P25_FRAME_SYNC_MASK) ^ P25_FRAME_SYNC_REV_P, 0, 48)) {
-        reverse_p ^= 0x02;   // auto flip polarity reversal
-        fprintf(stderr, "%s p25_framer::load_nid() Reversed FS polarity detected - autocorrecting\n", logts.get(d_msgq_id));
-    }
-    if(check_frame_sync((accum & P25_FRAME_SYNC_MASK) ^ P25_FRAME_SYNC_N1200, 0, 48)) {
-        fprintf(stderr, "%s p25_framer::load_nid() tuning error -1200\n", logts.get(d_msgq_id));
-    }
-    if(check_frame_sync((accum & P25_FRAME_SYNC_MASK) ^ P25_FRAME_SYNC_P1200, 0, 48)) {
-        fprintf(stderr, "%s p25_framer::load_nid() tuning error +1200\n", logts.get(d_msgq_id));
-    }
-    if(check_frame_sync((accum & P25_FRAME_SYNC_MASK) ^ P25_FRAME_SYNC_X2400, 0, 48)) {
-        fprintf(stderr, "%s p25_framer::load_nid() tuning error +/- 2400\n", logts.get(d_msgq_id));
-    }
-
-    if (!sync_valid)
-        return 0;
-
-    accum = 0;
     for (int i = 48; i < 114; i++) {
         if ((i == 70) || (i == 71))
             continue;
