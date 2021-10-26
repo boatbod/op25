@@ -520,11 +520,7 @@ class trunked_system (object):
                 self.rfss_stid = stid
                 self.rfss_chan = f1
                 self.rfss_txchan = f2
-                if len(self.cc_list) == 0:
-                    self.cc_list = [self.rfss_chan]
-                    self.cc_list.extend(list(self.secondary.keys()))
-                    self.cc_list_index = 0
-                    self.trunk_cc = self.cc_list[0]
+                #add_unique_freq(self.cc_list, f1)
             if self.debug >= 10:
                 sys.stderr.write('%s [0] mbt(3a) rfss_sts_bcst: sys %x rfid %x stid %x ch1 %s ch2 %s\n' %(log_ts.get(), syid, rfid, stid, self.channel_id_to_string(ch1), self.channel_id_to_string(ch2)))
         else:
@@ -756,11 +752,7 @@ class trunked_system (object):
                 self.rfss_stid = stid
                 self.rfss_chan = f1
                 self.rfss_txchan = f1 + self.freq_table[chan >> 12]['offset']
-                if len(self.cc_list) == 0:
-                    self.cc_list = [self.rfss_chan]
-                    self.cc_list.extend(list(self.secondary.keys()))
-                    self.cc_list_index = 0
-                    self.trunk_cc = self.cc_list[0]
+                #add_unique_freq(self.cc_list, f1)
             if self.debug >= 10:
                 sys.stderr.write('%s [0] tsbk(3a) rfss_sts_bcst: syid: %x rfid: %x stid: %d ch1: %x(%s)\n' %(log_ts.get(), syid, rfid, stid, chan, self.channel_id_to_string(chan)))
         elif opcode == 0x39:   # secondary cc
@@ -1067,11 +1059,7 @@ class trunked_system (object):
                 self.rfss_stid = stid
                 self.rfss_chan = f
                 self.rfss_txchan = f + self.freq_table[ch_t >> 12]['offset']
-                if len(self.cc_list) == 0:
-                    self.cc_list = [self.rfss_chan]
-                    self.cc_list.extend(list(self.secondary.keys()))
-                    self.cc_list_index = 0
-                    self.trunk_cc = self.cc_list[0]
+                #add_unique_freq(self.cc_list, f1)
             if self.debug >= 10:
                 sys.stderr.write('%s [0] tdma(fa) rfss_sts_bcst: syid: %x rfid: %x stid: %x ch %x(%s)\n' % (log_ts.get(), syid, rfid, stid, ch_t, self.channel_id_to_string(ch_t)))
         elif op == 0xfb: # Network Status Broadcast Explicit
@@ -1174,7 +1162,7 @@ class trunked_system (object):
         return updated
 
     def hunt_cc(self, curr_time):
-        if (self.cc_timeouts >=0) and (self.cc_timeouts < 6):
+        if ((self.cc_timeouts >=0) and (self.cc_timeouts < 6)) or (len(self.cc_list) == 0):
             return False
         self.cc_timeouts = 0
         self.cc_list_index += 1
@@ -1225,6 +1213,7 @@ class rx_ctl (object):
             CC = 1
             TO_VC = 2
             VC = 3
+        self.autostart = False
         self.states = _states
         self.current_state = self.states.CC
         self.trunked_systems = {}
@@ -1431,8 +1420,9 @@ class rx_ctl (object):
     def setup_config(self, configs):
         for nac in configs:
             self.configs[nac] = {'cclist':[], 'offset':0, 'whitelist':None, 'blacklist':{}, 'tgid_map':{}, 'sysname': configs[nac]['sysname'], 'center_frequency': None}
-            for f in configs[nac]['control_channel_list'].split(','):
-                self.configs[nac]['cclist'].append(get_frequency(f))
+            if len(configs[nac]['control_channel_list']) > 0:
+                for f in configs[nac]['control_channel_list'].split(','):
+                    self.configs[nac]['cclist'].append(get_frequency(f))
             if 'offset' in configs[nac]:
                 self.configs[nac]['offset'] = int(configs[nac]['offset'])
             if 'modulation' in configs[nac]:
@@ -1605,8 +1595,9 @@ class rx_ctl (object):
             if not self.configs:
                 # TODO: allow whitelist/blacklist rather than blind automatic-add
                 sys.stderr.write("%s Adding default config for NAC 0x%x\n" % (log_ts.get(), nac))
-                cfgs = {int(nac): {"sysname": "P25", "control_channel_list": "0.0", "offset": 0, "nac": nac, "modulation": "cqpsk", "tgid_tags_file": "", "whitelist": "", "blacklist": "", "center_frequency": 0} }
+                cfgs = {int(nac): {"sysname": "P25", "control_channel_list": "", "offset": 0, "nac": nac, "modulation": "cqpsk", "tgid_tags_file": "", "whitelist": "", "blacklist": "", "center_frequency": 0} }
                 self.setup_config(cfgs)
+                self.autostart = True
                 #TODO: make trunking properly auto-start with minimal configuration
                 #self.nacs = list(self.configs.keys())
                 #self.current_nac = nac
@@ -1654,6 +1645,21 @@ class rx_ctl (object):
 
         elif m_type == 19:   # trunk: FDMA LCW
             updated += self.trunked_systems[nac].decode_fdma_lcw(s, curr_time)
+
+        if self.autostart:
+            nac_list = list(self.configs.keys()) # for autostart there really should only be one NAC entry
+            if (len(nac_list) > 0):
+                tsys = self.trunked_systems[nac_list[0]]
+                if (tsys.rfss_chan > 0) and (len(tsys.secondary) > 0):
+                    add_unique_freq(tsys.cc_list, tsys.rfss_chan)
+                    for f in list(tsys.secondary.keys()):
+                        add_unique_freq(tsys.cc_list, f)
+                    sys.stderr.write("%s Autostart trunking for NAC 0x%03x with cc_list: %s\n" % (log_ts.get(), nac_list[0], tsys.cc_list))
+                    self.nacs = list(self.configs.keys())
+                    self.current_nac = nac_list[0]
+                    self.nac_set({'tuner': 0,'nac': nac_list[0]})
+                    self.current_state = self.states.CC
+                    self.autostart = False
 
         if self.current_nac is None:
             return          # Trunking not yet enabled so discard anything further

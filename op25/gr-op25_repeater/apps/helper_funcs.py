@@ -49,6 +49,13 @@ def get_frequency( f):    # return frequency in Hz
     else:     # assume in MHz due to '.'
         return int(float(f) * 1000000)
 
+def add_unique_freq(freq_list, freq):
+    if freq_list is None or freq is None:
+        return
+    normalized_freq = get_frequency(freq)
+    if normalized_freq not in freq_list:
+        freq_list.append(normalized_freq)
+
 def get_int_dict(s, _id = 0):      # used to read blacklist/whitelist files
     d = {}
     try:
