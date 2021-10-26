@@ -459,7 +459,8 @@ class p25_rx_block (gr.top_block):
             self.freq_correction += 1200
             self.error_band -= 1
         self.tuning_error = self.error_band * 1200 + self.freq_correction
-        e = 0
+        err_hz = 0
+        err_ppm = 0
         if self.last_change_freq > 0:
             err_ppm = round((self.tuning_error*1e6) / float(self.last_change_freq))
             err_hz = -int(self.tuning_error - (err_ppm * (self.last_change_freq / 1e6)))
