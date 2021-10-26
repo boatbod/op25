@@ -207,6 +207,12 @@ class p25_demod_base(gr.hier_block2):
     def reset(self):
         pass
 
+    def get_error_band(self):
+        return 0
+
+    def get_freq_error(self):
+        return 0
+
 class p25_demod_fb(p25_demod_base):
 
     def __init__(self,

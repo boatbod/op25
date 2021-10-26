@@ -169,7 +169,6 @@ class trunked_system (object):
             b = self.freq_table[table]['step'] / 1000000.0
             c = self.freq_table[table]['offset'] / 1000000.0
             s.append('tbl-id: %x frequency: %f step %f offset %f' % ( table, a,b,c))
-            #self.freq_table[table]['frequency'] / 1000000.0, self.freq_table[table]['step'] / 1000000.0, self.freq_table[table]['offset']) / 1000000.0)
         for f in self.adjacent:
             s.append('adjacent %f: %s' % (float(f) / 1000000.0, self.adjacent[f]))
         return '\n'.join(s)
@@ -205,7 +204,6 @@ class trunked_system (object):
         if not tgid:
             return ""
         if tgid not in self.tgid_map:
-            #return "Talkgroup ID %d [0x%x]" % (tgid, tgid)
             return ""
         return self.tgid_map[tgid][0]
 
@@ -456,8 +454,8 @@ class trunked_system (object):
             self.update_voice_frequency(f, tgid=ga, tdma_slot=self.get_tdma_slot(ch1), srcaddr=src)
             if f:
                 updated += 1
-            if self.debug > 10:
-                sys.stderr.write('%s mbt(00) grp_v_ch_grant: ch1: %x ch2: %x ga: %d\n' %(log_ts.get(), ch1, ch2, ga))
+            if self.debug >= 10:
+                sys.stderr.write('%s [0] mbt(00) grp_v_ch_grant: ch1: %x ch2: %x ga: %d\n' %(log_ts.get(), ch1, ch2, ga))
         if opcode == 0x02: # grp regroup voice channel grant
             mfrid  = (mbt_data >> 168) & 0xff
             if mfrid == 0x90:    # MOT_GRG_CN_GRANT_EXP
@@ -468,8 +466,8 @@ class trunked_system (object):
                 self.update_voice_frequency(f, tgid=sg, tdma_slot=self.get_tdma_slot(ch1), srcaddr=src)
                 if f:
                     updated += 1
-                if self.debug > 10:
-                    sys.stderr.write('%s mbt(02) mfid90_grg_cn_grant_exp: ch1: %x ch2: %x sg: %d\n' %(log_ts.get(), ch1, ch2, ga))
+                if self.debug >= 10:
+                    sys.stderr.write('%s [0] mbt(02) mfid90_grg_cn_grant_exp: ch1: %x ch2: %x sg: %d\n' %(log_ts.get(), ch1, ch2, ga))
         elif opcode == 0x28:  # grp_aff_rsp
             ta    = src
             mfrid = (header >> 56) & 0xff
@@ -480,8 +478,8 @@ class trunked_system (object):
             ga    = (mbt_data >> 128) & 0xffff
             lg    = (mbt_data >> 127) & 0x1
             gav   = (mbt_data >> 120) & 0x3
-            if self.debug > 10:
-                sys.stderr.write('%s mbt(28) grp_aff_rsp: mfid: 0x%x wacn: 0x%x syid: 0x%x lg: %d gav: %d aga: %d ga: %d ta: %d\n\n' %(log_ts.get(), mfrid, wacn, syid, lg, gav, aga, ga, ta))
+            if self.debug >= 10:
+                sys.stderr.write('%s [0] mbt(28) grp_aff_rsp: mfid: 0x%x wacn: 0x%x syid: 0x%x lg: %d gav: %d aga: %d ga: %d ta: %d\n\n' %(log_ts.get(), mfrid, wacn, syid, lg, gav, aga, ga, ta))
         elif opcode == 0x3c:  # adjacent status
             syid = (header >> 48) & 0xfff
             rfid = (header >> 24) & 0xff
@@ -493,8 +491,8 @@ class trunked_system (object):
             if f1 and f2:
                 self.adjacent[f1] = 'rfid: %d stid:%d uplink:%f' % (rfid, stid, f2 / 1000000.0)
                 self.adjacent_data[f1] = {'rfid': rfid, 'stid':stid, 'uplink': f2, 'table': None}
-            if self.debug > 10:
-                sys.stderr.write('%s mbt(3c) adj_sts_bcst: syid: %x rfid %x stid %x ch1 %x ch2 %x f1 %s f2 %s\n' % (log_ts.get(), syid, rfid, stid, ch1, ch2, self.channel_id_to_string(ch1), self.channel_id_to_string(ch2)))
+            if self.debug >= 10:
+                sys.stderr.write('%s [0] mbt(3c) adj_sts_bcst: syid: %x rfid %x stid %x ch1 %x ch2 %x f1 %s f2 %s\n' % (log_ts.get(), syid, rfid, stid, ch1, ch2, self.channel_id_to_string(ch1), self.channel_id_to_string(ch2)))
         elif opcode == 0x3b:  # network status
             syid = (header >> 48) & 0xfff
             wacn = (mbt_data >> 76) & 0xfffff
@@ -506,8 +504,8 @@ class trunked_system (object):
                 self.ns_syid = syid
                 self.ns_wacn = wacn
                 self.ns_chan = f1
-            if self.debug > 10:
-                sys.stderr.write('%s mbt(3b) net_sts_bcst: syid: %x wacn: %x ch1: %s ch2: %s\n' %(log_ts.get(), syid, wacn, self.channel_id_to_string(ch1), self.channel_id_to_string(ch2)))
+            if self.debug >= 10:
+                sys.stderr.write('%s [0] mbt(3b) net_sts_bcst: syid: %x wacn: %x ch1: %s ch2: %s\n' %(log_ts.get(), syid, wacn, self.channel_id_to_string(ch1), self.channel_id_to_string(ch2)))
         elif opcode == 0x3a:  # rfss status
             syid = (header >> 48) & 0xfff
             rfid = (mbt_data >> 88) & 0xff
@@ -522,11 +520,16 @@ class trunked_system (object):
                 self.rfss_stid = stid
                 self.rfss_chan = f1
                 self.rfss_txchan = f2
-            if self.debug > 10:
-                sys.stderr.write('%s mbt(3a) rfss_sts_bcst: sys %x rfid %x stid %x ch1 %s ch2 %s\n' %(log_ts.get(), syid, rfid, stid, self.channel_id_to_string(ch1), self.channel_id_to_string(ch2)))
+                if len(self.cc_list) == 0:
+                    self.cc_list = [self.rfss_chan]
+                    self.cc_list.extend(list(self.secondary.keys()))
+                    self.cc_list_index = 0
+                    self.trunk_cc = self.cc_list[0]
+            if self.debug >= 10:
+                sys.stderr.write('%s [0] mbt(3a) rfss_sts_bcst: sys %x rfid %x stid %x ch1 %s ch2 %s\n' %(log_ts.get(), syid, rfid, stid, self.channel_id_to_string(ch1), self.channel_id_to_string(ch2)))
         else:
-            if self.debug > 10:
-                sys.stderr.write('%s mbt(%02x) unhandled: %x\n' %(log_ts.get(), opcode, mbt_data))
+            if self.debug >= 10:
+                sys.stderr.write('%s [0] mbt(%02x) unhandled: %x\n' %(log_ts.get(), opcode, mbt_data))
         return updated
 
     def decode_tsbk(self, tsbk):
@@ -543,8 +546,8 @@ class trunked_system (object):
                 ga1  = (tsbk >> 48) & 0xffff
                 ga2  = (tsbk >> 32) & 0xffff
                 ga3  = (tsbk >> 16) & 0xffff
-                if self.debug > 10:
-                    sys.stderr.write('%s tsbk(00) mfid90_grg_add_cmd: sg: %d ga1: %d ga2: %d ga3: %d\n' % (log_ts.get(), sg, ga1, ga2, ga3))
+                if self.debug >= 10:
+                    sys.stderr.write('%s [0] tsbk(00) mfid90_grg_add_cmd: sg: %d ga1: %d ga2: %d ga3: %d\n' % (log_ts.get(), sg, ga1, ga2, ga3))
                 self.add_patch(sg, ga1, ga2, ga3)
             else:
                 opts = (tsbk >> 72) & 0xff
@@ -555,8 +558,8 @@ class trunked_system (object):
                 self.update_voice_frequency(f, tgid=ga, tdma_slot=self.get_tdma_slot(ch), srcaddr=sa)
                 if f:
                     updated += 1
-                if self.debug > 10:
-                    sys.stderr.write('%s tsbk(00) grp_v_ch_grant: f: %s ga: %d sa: %d\n' % (log_ts.get(), self.channel_id_to_string(ch), ga, sa))
+                if self.debug >= 10:
+                    sys.stderr.write('%s [0] tsbk(00) grp_v_ch_grant: f: %s ga: %d sa: %d\n' % (log_ts.get(), self.channel_id_to_string(ch), ga, sa))
         elif opcode == 0x01:   # reserved
             mfrid  = (tsbk >> 80) & 0xff
             if mfrid == 0x90: #MOT_GRG_DEL_CMD
@@ -564,8 +567,8 @@ class trunked_system (object):
                 ga1  = (tsbk >> 48) & 0xffff
                 ga2  = (tsbk >> 32) & 0xffff
                 ga3  = (tsbk >> 16) & 0xffff
-                if self.debug > 10:
-                    sys.stderr.write('%s tsbk(01) mfid90_grg_del_cmd: sg: %d ga1: %d ga2: %d ga3: %d\n' % (log_ts.get(), sg, ga1, ga2, ga3))
+                if self.debug >= 10:
+                    sys.stderr.write('%s [0] tsbk(01) mfid90_grg_del_cmd: sg: %d ga1: %d ga2: %d ga3: %d\n' % (log_ts.get(), sg, ga1, ga2, ga3))
                 self.del_patch(sg, ga1, ga2, ga3)
         elif opcode == 0x02:   # group voice chan grant update
             mfrid  = (tsbk >> 80) & 0xff
@@ -577,8 +580,8 @@ class trunked_system (object):
                 self.update_voice_frequency(f, tgid=sg, tdma_slot=self.get_tdma_slot(ch), srcaddr=sa)
                 if f:
                     updated += 1
-                if self.debug > 10:
-                    sys.stderr.write('%s tsbk(02) mfid90_grg_ch_grant: f: %s sg: %d sa: %d\n' % (log_ts.get(), self.channel_id_to_string(ch), sg, sa))
+                if self.debug >= 10:
+                    sys.stderr.write('%s [0] tsbk(02) mfid90_grg_ch_grant: f: %s sg: %d sa: %d\n' % (log_ts.get(), self.channel_id_to_string(ch), sg, sa))
             else:
                 ch1  = (tsbk >> 64) & 0xffff
                 ga1  = (tsbk >> 48) & 0xffff
@@ -593,8 +596,8 @@ class trunked_system (object):
                     updated += 1
                 if f2:
                     updated += 1
-                if self.debug > 10:
-                    sys.stderr.write('%s tsbk(02) grp_v_ch_grant_updt: ch1: %s ga1: %d ch2: %s ga2: %d\n' %(log_ts.get(), self.channel_id_to_string(ch1), ga1, self.channel_id_to_string(ch2), ga2))
+                if self.debug >= 10:
+                    sys.stderr.write('%s [0] tsbk(02) grp_v_ch_grant_updt: ch1: %s ga1: %d ch2: %s ga2: %d\n' %(log_ts.get(), self.channel_id_to_string(ch1), ga1, self.channel_id_to_string(ch2), ga2))
         elif opcode == 0x03:   # group voice chan grant update exp : TIA.102-AABC-B-2005 page 56
             mfrid  = (tsbk >> 80) & 0xff
             if mfrid == 0x90: #MOT_GRG_CN_GRANT_UPDT
@@ -611,8 +614,8 @@ class trunked_system (object):
                     updated += 1
                 if f2:
                     updated += 1
-                if self.debug > 10:
-                    sys.stderr.write('%s tsbk(03) mfid90_grg_ch_grant_updt: f1: %s sg1: %d f2: %s sg2: %d\n' % (log_ts.get(), self.channel_id_to_string(ch1), sg1, self.channel_id_to_string(ch2), sg2))
+                if self.debug >= 10:
+                    sys.stderr.write('%s [0] tsbk(03) mfid90_grg_ch_grant_updt: f1: %s sg1: %d f2: %s sg2: %d\n' % (log_ts.get(), self.channel_id_to_string(ch1), sg1, self.channel_id_to_string(ch2), sg2))
             elif mfrid == 0:
                 ch1  = (tsbk >> 48) & 0xffff
                 ch2   = (tsbk >> 32) & 0xffff
@@ -621,14 +624,14 @@ class trunked_system (object):
                 self.update_voice_frequency(f, tgid=ga, tdma_slot=self.get_tdma_slot(ch1))
                 if f:
                     updated += 1
-                if self.debug > 10:
-                    sys.stderr.write('%s tsbk(03) grp_v_ch_grant_updt: freq-t: %s freq-r: %s ga: %d\n' % (log_ts.get(), self.channel_id_to_string(ch1), self.channel_id_to_string(ch2), ga))
+                if self.debug >= 10:
+                    sys.stderr.write('%s [0] tsbk(03) grp_v_ch_grant_updt: freq-t: %s freq-r: %s ga: %d\n' % (log_ts.get(), self.channel_id_to_string(ch1), self.channel_id_to_string(ch2), ga))
 
         elif opcode == 0x16:   # sndcp data ch
             ch1  = (tsbk >> 48) & 0xffff
             ch2  = (tsbk >> 32) & 0xffff
-            if self.debug > 10:
-                sys.stderr.write('%s tsbk(16) sndcp_data_ch: ch1: %x ch2: %x\n' % (log_ts.get(), ch1, ch2))
+            if self.debug >= 10:
+                sys.stderr.write('%s [0] tsbk(16) sndcp_data_ch: ch1: %x ch2: %x\n' % (log_ts.get(), ch1, ch2))
         elif opcode == 0x28:   # grp_aff_rsp
             mfrid  = (tsbk >> 80) & 0xff
             lg     = (tsbk >> 79) & 0x01
@@ -636,8 +639,8 @@ class trunked_system (object):
             aga    = (tsbk >> 56) & 0xffff
             ga     = (tsbk >> 40) & 0xffff
             ta     = (tsbk >> 16) & 0xffffff
-            if self.debug > 10:
-                sys.stderr.write('%s tsbk(28) grp_aff_rsp: mfid: 0x%x gav: %d aga: %d ga: %d ta: %d\n' % (log_ts.get(), mfrid, gav, aga, ga, ta))
+            if self.debug >= 10:
+                sys.stderr.write('%s [0] tsbk(28) grp_aff_rsp: mfid: 0x%x gav: %d aga: %d ga: %d ta: %d\n' % (log_ts.get(), mfrid, gav, aga, ga, ta))
         elif opcode == 0x29:   # secondary cc explicit form
             mfrid = (tsbk >> 80) & 0xff
             rfid  = (tsbk >> 72) & 0xff
@@ -649,23 +652,23 @@ class trunked_system (object):
                 self.secondary[ f1 ] = 1
                 sorted_freqs = collections.OrderedDict(sorted(self.secondary.items()))
                 self.secondary = sorted_freqs
-            if self.debug > 10:
-                sys.stderr.write('%s tsbk(29) sccb_exp: rfid: %x stid: %d ch1: %x(%s) ch2: %x(%s)\n' %(log_ts.get(), rfid, stid, ch1, self.channel_id_to_string(ch1), ch2, self.channel_id_to_string(ch2)))
+            if self.debug >= 10:
+                sys.stderr.write('%s [0] tsbk(29) sccb_exp: rfid: %x stid: %d ch1: %x(%s) ch2: %x(%s)\n' %(log_ts.get(), rfid, stid, ch1, self.channel_id_to_string(ch1), ch2, self.channel_id_to_string(ch2)))
         elif opcode == 0x2c:   # u_reg_rsp
             mfrid  = (tsbk >> 80) & 0xff
             rv     = (tsbk >> 76) & 0x3
             syid   = (tsbk >> 64) & 0xffff
             sid   = (tsbk >> 40) & 0xffffff
             sa     = (tsbk >> 16) & 0xffffff
-            if self.debug > 10:
-                sys.stderr.write('%s tsbk(2c) u_reg_rsp: mfid: 0x%x rv: %d syid: 0x%x sid: %d sa: %d\n' % (log_ts.get(), mfrid, rv, syid, sid, sa))
+            if self.debug >= 10:
+                sys.stderr.write('%s [0] tsbk(2c) u_reg_rsp: mfid: 0x%x rv: %d syid: 0x%x sid: %d sa: %d\n' % (log_ts.get(), mfrid, rv, syid, sid, sa))
         elif opcode == 0x2f:   # u_de_reg_ack
             mfrid  = (tsbk >> 80) & 0xff
             wacn   = (tsbk >> 52) & 0xfffff
             syid   = (tsbk >> 40) & 0xffff
             sid    = (tsbk >> 16) & 0xffffff
-            if self.debug > 10:
-                sys.stderr.write('%s tsbk(2f) u_de_reg_ack: mfid: 0x%x wacn: 0x%x syid: 0x%x sid: %d\n' % (log_ts.get(), mfrid, wacn, syid, sid))
+            if self.debug >= 10:
+                sys.stderr.write('%s [0] tsbk(2f) u_de_reg_ack: mfid: 0x%x wacn: 0x%x syid: 0x%x sid: %d\n' % (log_ts.get(), mfrid, wacn, syid, sid))
         elif opcode == 0x30:
             mfrid  = (tsbk >> 80) & 0xff
             if mfrid == 0xA4:  # GRG_EXENC_CMD
@@ -676,8 +679,8 @@ class trunked_system (object):
                 sg      = (tsbk >> 56) & 0xffff
                 keyid   = (tsbk >> 40) & 0xffff
                 rta     = (tsbk >> 16) & 0xffffff
-                if self.debug > 10:
-                    sys.stderr.write('%s tsbk(30) mfida4_grg_exenc_cmd: grg_t: %d grg_g: %d grg_a: %d grg_ssn: %d sg: %d keyid: %d rta: %d\n' % (log_ts.get(), grg_t, grg_g, grg_a, grg_ssn, sg, keyid, rta))
+                if self.debug >= 10:
+                    sys.stderr.write('%s [0] tsbk(30) mfida4_grg_exenc_cmd: grg_t: %d grg_g: %d grg_a: %d grg_ssn: %d sg: %d keyid: %d rta: %d\n' % (log_ts.get(), grg_t, grg_g, grg_a, grg_ssn, sg, keyid, rta))
                 if grg_a == 1: # Activate
                     if grg_g == 1: # Group request
                         algid = (rta >> 16) & 0xff
@@ -702,8 +705,8 @@ class trunked_system (object):
             self.freq_table[iden]['offset'] = toff * spac * 125
             self.freq_table[iden]['step'] = spac * 125
             self.freq_table[iden]['frequency'] = freq * 5
-            if self.debug > 10:
-                sys.stderr.write('%s tsbk(34) iden_up_vu: id: %d toff: %f spac: %f freq: %f [%s]\n' % (log_ts.get(), iden, toff * spac * 0.125 * 1e-3, spac * 0.125, freq * 0.000005, txt[toff_sign]))
+            if self.debug >= 10:
+                sys.stderr.write('%s [0] tsbk(34) iden_up_vu: id: %d toff: %f spac: %f freq: %f [%s]\n' % (log_ts.get(), iden, toff * spac * 0.125 * 1e-3, spac * 0.125, freq * 0.000005, txt[toff_sign]))
         elif opcode == 0x33:   # iden_up_tdma
             mfrid  = (tsbk >> 80) & 0xff
             if mfrid == 0:
@@ -722,8 +725,8 @@ class trunked_system (object):
                 self.freq_table[iden]['step'] = spac * 125
                 self.freq_table[iden]['frequency'] = f1 * 5
                 self.freq_table[iden]['tdma'] = slots_per_carrier[channel_type]
-                if self.debug > 10:
-                    sys.stderr.write('%s tsbk(33) iden_up_tdma: %d freq: %d toff: %d spac: %d slots/carrier: %d\n' % (log_ts.get(), iden, self.freq_table[iden]['frequency'], self.freq_table[iden]['offset'], self.freq_table[iden]['step'], self.freq_table[iden]['tdma']))
+                if self.debug >= 10:
+                    sys.stderr.write('%s [0] tsbk(33) iden_up_tdma: %d freq: %d toff: %d spac: %d slots/carrier: %d\n' % (log_ts.get(), iden, self.freq_table[iden]['frequency'], self.freq_table[iden]['offset'], self.freq_table[iden]['step'], self.freq_table[iden]['tdma']))
         elif opcode == 0x3d:   # iden_up
             iden = (tsbk >> 76) & 0xf
             bw   = (tsbk >> 67) & 0x1ff
@@ -739,8 +742,8 @@ class trunked_system (object):
             self.freq_table[iden]['offset'] = toff * 250000
             self.freq_table[iden]['step'] = spac * 125
             self.freq_table[iden]['frequency'] = freq * 5
-            if self.debug > 10:
-                sys.stderr.write('%s tsbk(3d) iden_up: id: %d toff: %f spac: %f freq: %f\n' % (log_ts.get(), iden, toff * 0.25, spac * 0.125, freq * 0.000005))
+            if self.debug >= 10:
+                sys.stderr.write('%s [0] tsbk(3d) iden_up: id: %d toff: %f spac: %f freq: %f\n' % (log_ts.get(), iden, toff * 0.25, spac * 0.125, freq * 0.000005))
         elif opcode == 0x3a:   # rfss status
             syid = (tsbk >> 56) & 0xfff
             rfid = (tsbk >> 48) & 0xff
@@ -753,8 +756,13 @@ class trunked_system (object):
                 self.rfss_stid = stid
                 self.rfss_chan = f1
                 self.rfss_txchan = f1 + self.freq_table[chan >> 12]['offset']
-            if self.debug > 10:
-                sys.stderr.write('%s tsbk(3a) rfss_sts_bcst: syid: %x rfid: %x stid: %d ch1: %x(%s)\n' %(log_ts.get(), syid, rfid, stid, chan, self.channel_id_to_string(chan)))
+                if len(self.cc_list) == 0:
+                    self.cc_list = [self.rfss_chan]
+                    self.cc_list.extend(list(self.secondary.keys()))
+                    self.cc_list_index = 0
+                    self.trunk_cc = self.cc_list[0]
+            if self.debug >= 10:
+                sys.stderr.write('%s [0] tsbk(3a) rfss_sts_bcst: syid: %x rfid: %x stid: %d ch1: %x(%s)\n' %(log_ts.get(), syid, rfid, stid, chan, self.channel_id_to_string(chan)))
         elif opcode == 0x39:   # secondary cc
             rfid = (tsbk >> 72) & 0xff
             stid = (tsbk >> 64) & 0xff
@@ -767,8 +775,8 @@ class trunked_system (object):
                 self.secondary[ f2 ] = 1
                 sorted_freqs = collections.OrderedDict(sorted(self.secondary.items()))
                 self.secondary = sorted_freqs
-            if self.debug > 10:
-                sys.stderr.write('%s tsbk(39) sccb: rfid: %x stid: %d ch1: %x(%s) ch2: %x(%s)\n' %(log_ts.get(), rfid, stid, ch1, self.channel_id_to_string(ch1), ch2, self.channel_id_to_string(ch2)))
+            if self.debug >= 10:
+                sys.stderr.write('%s [0] tsbk(39) sccb: rfid: %x stid: %d ch1: %x(%s) ch2: %x(%s)\n' %(log_ts.get(), rfid, stid, ch1, self.channel_id_to_string(ch1), ch2, self.channel_id_to_string(ch2)))
         elif opcode == 0x3b:   # network status
             wacn = (tsbk >> 52) & 0xfffff
             syid = (tsbk >> 40) & 0xfff
@@ -778,8 +786,8 @@ class trunked_system (object):
                 self.ns_syid = syid
                 self.ns_wacn = wacn
                 self.ns_chan = f1
-            if self.debug > 10:
-                sys.stderr.write('%s tsbk(3b) net_sts_bcst: wacn: %x syid: %x ch1: %x(%s)\n' %(log_ts.get(), wacn, syid, ch1, self.channel_id_to_string(ch1)))
+            if self.debug >= 10:
+                sys.stderr.write('%s [0] tsbk(3b) net_sts_bcst: wacn: %x syid: %x ch1: %x(%s)\n' %(log_ts.get(), wacn, syid, ch1, self.channel_id_to_string(ch1)))
         elif opcode == 0x3c:   # adjacent status
             rfid = (tsbk >> 48) & 0xff
             stid = (tsbk >> 40) & 0xff
@@ -789,13 +797,13 @@ class trunked_system (object):
             if f1 and table in self.freq_table:
                 self.adjacent[f1] = 'rfid: %d stid:%d uplink:%f tbl:%d' % (rfid, stid, (f1 + self.freq_table[table]['offset']) / 1000000.0, table)
                 self.adjacent_data[f1] = {'rfid': rfid, 'stid':stid, 'uplink': f1 + self.freq_table[table]['offset'], 'table': table}
-            if self.debug > 10:
-                sys.stderr.write('%s tsbk(3c) adj_sts_bcst: rfid: %x stid: %d ch1: %x(%s)\n' %(log_ts.get(), rfid, stid, ch1, self.channel_id_to_string(ch1)))
+            if self.debug >= 10:
+                sys.stderr.write('%s [0] tsbk(3c) adj_sts_bcst: rfid: %x stid: %d ch1: %x(%s)\n' %(log_ts.get(), rfid, stid, ch1, self.channel_id_to_string(ch1)))
                 if table in self.freq_table:
                     sys.stderr.write('%s tsbk(3c) adj_sts_bcst: %s %s\n' % (log_ts.get(), self.freq_table[table]['frequency'] , self.freq_table[table]['step'] ))
             else:
-                if self.debug > 10:
-                    sys.stderr.write('%s tsbk(%02x) unhandled: 0x%024x\n' % (log_ts.get(), opcode, tsbk))
+                if self.debug >= 10:
+                    sys.stderr.write('%s [0] tsbk(%02x) unhandled: 0x%024x\n' % (log_ts.get(), opcode, tsbk))
         return updated
 
     def decode_tdma_ptt(self, msg, curr_time):
@@ -807,8 +815,8 @@ class trunked_system (object):
         keyid = get_ordinals(msg[10:12])
         sa    = get_ordinals(msg[12:15])
         ga    = get_ordinals(msg[15:17])
-        if self.debug > 10:
-            sys.stderr.write('%s mac_ptt: mi: %x algid: %x keyid:%x ga: %d sa: %d\n' % (log_ts.get(), mi, algid, keyid, ga, sa))
+        if self.debug >= 10:
+            sys.stderr.write('%s [0] mac_ptt: mi: %x algid: %x keyid:%x ga: %d sa: %d\n' % (log_ts.get(), mi, algid, keyid, ga, sa))
         updated += self.update_talkgroup_srcaddr(curr_time, ga, sa)
         updated += self.update_talkgroup_encrypted(curr_time, ga, (algid != 0x80))
         self.rxctl.current_encrypted = (algid != 0x80)
@@ -820,8 +828,8 @@ class trunked_system (object):
         mi    = get_ordinals(msg[0:9])
         sa    = get_ordinals(msg[12:15])
         ga    = get_ordinals(msg[15:17])
-        if self.debug > 10:
-            sys.stderr.write('%s mac_end_ptt: ga: %d sa: %d\n' % (log_ts.get(), ga, sa))
+        if self.debug >= 10:
+            sys.stderr.write('%s [0] mac_end_ptt: ga: %d sa: %d\n' % (log_ts.get(), ga, sa))
         return self.update_talkgroup_srcaddr(curr_time, ga, sa)
 
     def decode_tdma_msg(self, msg, curr_time):
@@ -839,8 +847,8 @@ class trunked_system (object):
         if op == 0x01:   # Group Voice Channel User Abbreviated
             ga = get_ordinals(msg[2:4])
             sa = get_ordinals(msg[4:7])
-            if self.debug > 10:
-                sys.stderr.write('%s tdma(01) grp_v_ch_usr: ga: %d sa: %d\n' % (log_ts.get(), ga, sa))
+            if self.debug >= 10:
+                sys.stderr.write('%s [0] tdma(01) grp_v_ch_usr: ga: %d sa: %d\n' % (log_ts.get(), ga, sa))
             updated += self.update_talkgroup_srcaddr(curr_time, ga, sa)
         elif op == 0x05: # Group Voice Channel Grant Update Multiple - Implicit
             ch1 = get_ordinals(msg[2:4])
@@ -852,8 +860,8 @@ class trunked_system (object):
             f1 = self.channel_id_to_frequency(ch1)
             f2 = self.channel_id_to_frequency(ch2)
             f3 = self.channel_id_to_frequency(ch3)
-            if self.debug > 10:
-                sys.stderr.write('%s tdma(05) grp_v_ch_grant_updt: f1: %s ga1: %d f2: %s ga2: %d f3: %s ga3: %d\n' % (log_ts.get(), self.channel_id_to_string(ch1), ga1, self.channel_id_to_string(ch2), ga2, self.channel_id_to_string(ch3), ga3))
+            if self.debug >= 10:
+                sys.stderr.write('%s [0] tdma(05) grp_v_ch_grant_updt: f1: %s ga1: %d f2: %s ga2: %d f3: %s ga3: %d\n' % (log_ts.get(), self.channel_id_to_string(ch1), ga1, self.channel_id_to_string(ch2), ga2, self.channel_id_to_string(ch3), ga3))
             self.update_voice_frequency(f1, tgid=ga1, tdma_slot=self.get_tdma_slot(ch1))
             self.update_voice_frequency(f2, tgid=ga2, tdma_slot=self.get_tdma_slot(ch2))
             self.update_voice_frequency(f3, tgid=ga3, tdma_slot=self.get_tdma_slot(ch3))
@@ -863,8 +871,8 @@ class trunked_system (object):
             ga   = get_ordinals(msg[2:4])
             sa   = get_ordinals(msg[4:7])
             suid = get_ordinals(msg[7:14])
-            if self.debug > 10:
-                sys.stderr.write('%s tdma(21) grp_v_ch_usr: ga: %d sa: %d: suid: %d\n' % (log_ts.get(), ga, sa, suid))
+            if self.debug >= 10:
+                sys.stderr.write('%s [0] tdma(21) grp_v_ch_usr: ga: %d sa: %d: suid: %d\n' % (log_ts.get(), ga, sa, suid))
             updated += self.update_talkgroup_srcaddr(curr_time, ga, sa)
         elif op == 0x25: # Group Voice Channel Grant Update Multiple - Explicit
             ch1t = get_ordinals(msg[2:4])
@@ -875,8 +883,8 @@ class trunked_system (object):
             ga2  = get_ordinals(msg[13:15])
             f1   = self.channel_id_to_frequency(ch1t)
             f2   = self.channel_id_to_frequency(ch2t)
-            if self.debug > 10:
-                sys.stderr.write('%s tdma(25) grp_v_ch_grant_updt: f1-t: %s f1-r: %s ga1: %d f2-t: %s f2-r: %s ga2: %d\n' % (log_ts.get(), self.channel_id_to_string(ch1t), self.channel_id_to_string(ch1r), ga1, self.channel_id_to_string(ch2t), self.channel_id_to_string(ch2r), ga2))
+            if self.debug >= 10:
+                sys.stderr.write('%s [0] tdma(25) grp_v_ch_grant_updt: f1-t: %s f1-r: %s ga1: %d f2-t: %s f2-r: %s ga2: %d\n' % (log_ts.get(), self.channel_id_to_string(ch1t), self.channel_id_to_string(ch1r), ga1, self.channel_id_to_string(ch2t), self.channel_id_to_string(ch2r), ga2))
             self.update_voice_frequency(f1, tgid=ga1, tdma_slot=self.get_tdma_slot(ch1t))
             self.update_voice_frequency(f2, tgid=ga2, tdma_slot=self.get_tdma_slot(ch2t))
             if f1 or f2:
@@ -884,19 +892,19 @@ class trunked_system (object):
         elif op == 0x30: # Power Control Signal Quality
             ta     = get_ordinals(msg[1:4])
             rf_ber = get_ordinals(msg[4:5])  
-            if self.debug > 10:
-                sys.stderr.write('%s tdma(30) pwr_ctl_sig_qual: ta: %d rf: 0x%x: ber: 0x%x\n' % (log_ts.get(), ta, ((rf_ber >> 4) & 0xf), (rf_ber & 0xf)))
+            if self.debug >= 10:
+                sys.stderr.write('%s [0] tdma(30) pwr_ctl_sig_qual: ta: %d rf: 0x%x: ber: 0x%x\n' % (log_ts.get(), ta, ((rf_ber >> 4) & 0xf), (rf_ber & 0xf)))
         elif op == 0x31: # MAC_Release (subscriber call pre-emption)
             uf = (get_ordinals(msg[1:2]) >> 7) & 0x1
             ca = (get_ordinals(msg[1:2]) >> 6) & 0x1
             sa = get_ordinals(msg[2:5])
-            if self.debug > 10:
-                sys.stderr.write('%s tdma(31) MAC_Release: uf: %d ca: %d sa: %d\n' % (log_ts.get(), uf, ca, sa))
+            if self.debug >= 10:
+                sys.stderr.write('%s [0] tdma(31) MAC_Release: uf: %d ca: %d sa: %d\n' % (log_ts.get(), uf, ca, sa))
         elif op == 0x80 and mfid == 0x90: # MFID90 Group Regroup Voice Channel User Abbreviated
             sg = get_ordinals(msg[3:5])
             sa = get_ordinals(msg[5:8])
-            if self.debug > 10:
-                sys.stderr.write('%s tdma(80) mfid90_grp_regrp_v_ch_usr: sg: %d sa: %d\n' % (log_ts.get(), sg, sa))
+            if self.debug >= 10:
+                sys.stderr.write('%s [0] tdma(80) mfid90_grp_regrp_v_ch_usr: sg: %d sa: %d\n' % (log_ts.get(), sg, sa))
             updated += self.update_talkgroup_srcaddr(curr_time, sg, sa)
         elif op == 0x81 and mfid == 0x90: # MFID90 Group Regroup Add Command
             wg_len = (get_ordinals(msg[2:3]) & 0x3f)
@@ -908,15 +916,15 @@ class trunked_system (object):
                 if wg not in wg_list:
                     wg_list.append(wg)
                 i += 2
-            if self.debug > 10:
-                sys.stderr.write('%s tdma(81) mfid90_grp_regrp_add: sg: %d wg_list: %s\n' % (log_ts.get(), sg, wg_list))
+            if self.debug >= 10:
+                sys.stderr.write('%s [0] tdma(81) mfid90_grp_regrp_add: sg: %d wg_list: %s\n' % (log_ts.get(), sg, wg_list))
             self.add_patch(sg, wg_list)
         elif op == 0x83 and mfid == 0x90: # MFID90 Group Regroup Voice Channel Update
             sg = get_ordinals(msg[3:5])
             ch = get_ordinals(msg[5:7])
             f = self.channel_id_to_frequency(ch)
-            if self.debug > 10:
-                sys.stderr.write('%s tdma(83) grp_regrp_v_ch_up freq: %s sg: %d\n' %(log_ts.get(), self.channel_id_to_string(ch), sg))
+            if self.debug >= 10:
+                sys.stderr.write('%s [0] tdma(83) grp_regrp_v_ch_up freq: %s sg: %d\n' %(log_ts.get(), self.channel_id_to_string(ch), sg))
             self.update_voice_frequency(f, tgid=sg, tdma_slot=self.get_tdma_slot(ch))
             if f:
                 updated += 1
@@ -930,23 +938,23 @@ class trunked_system (object):
                 if wg not in wg_list:
                     wg_list.append(wg)
                 i += 2
-            if self.debug > 10:
-                sys.stderr.write('%s tdma(89) mfid90_grp_regrp_del: sg: %d wg_list: %s\n' % (log_ts.get(), sg, wg_list))
+            if self.debug >= 10:
+                sys.stderr.write('%s [0] tdma(89) mfid90_grp_regrp_del: sg: %d wg_list: %s\n' % (log_ts.get(), sg, wg_list))
             self.del_patch(sg, wg_list)
         elif op == 0xa0 and mfid == 0x90: # MFID90 Group Regroup Voice Channel User Extendd
             sg    = get_ordinals(msg[4:6])
             sa    = get_ordinals(msg[6:9])
             ssuid = get_ordinals(msg[9:16])
-            if self.debug > 10:
-                sys.stderr.write('%s tdma(a0) mfid90_grp_regrp_v_ch_usr: sg: %d sa: %d, ssuid: %d\n' % (log_ts.get(), sg, sa, ssuid))
+            if self.debug >= 10:
+                sys.stderr.write('%s [0] tdma(a0) mfid90_grp_regrp_v_ch_usr: sg: %d sa: %d, ssuid: %d\n' % (log_ts.get(), sg, sa, ssuid))
             updated += self.update_talkgroup_srcaddr(curr_time, sg, sa)
         elif op == 0xa3 and mfid == 0x90: # MFID90 Group Regroup Channel Grant Implicit
             ch = get_ordinals(msg[4:6])
             sg = get_ordinals(msg[6:8])
             sa = get_ordinals(msg[8:11])
             f = self.channel_id_to_frequency(ch)
-            if self.debug > 10:
-                sys.stderr.write('%s tdma(a3) mfid90_grp_regrp_v_ch_grant freq: %s sg: %d sa: %d\n' %(log_ts.get(), self.channel_id_to_string(ch), sg, sa))
+            if self.debug >= 10:
+                sys.stderr.write('%s [0] tdma(a3) mfid90_grp_regrp_v_ch_grant freq: %s sg: %d sa: %d\n' %(log_ts.get(), self.channel_id_to_string(ch), sg, sa))
             self.update_voice_frequency(f, tgid=sg, tdma_slot=self.get_tdma_slot(ch), srcaddr=sa)
             if f:
                 updated += 1
@@ -956,8 +964,8 @@ class trunked_system (object):
             sg = get_ordinals(msg[8:10])
             sa = get_ordinals(msg[10:13])
             f = self.channel_id_to_frequency(ch1)
-            if self.debug > 10:
-                sys.stderr.write('%s tdma(a4) mfid90_grp_regrp_v_ch_grant freq-t: %s freq-r: %s sg: %d sa: %d\n' %(log_ts.get(), self.channel_id_to_string(ch1), self.channel_id_to_string(ch2), sg, sa))
+            if self.debug >= 10:
+                sys.stderr.write('%s [0] tdma(a4) mfid90_grp_regrp_v_ch_grant freq-t: %s freq-r: %s sg: %d sa: %d\n' %(log_ts.get(), self.channel_id_to_string(ch1), self.channel_id_to_string(ch2), sg, sa))
             self.update_voice_frequency(f, tgid=sg, tdma_slot=self.get_tdma_slot(ch1), srcaddr=sa)
             if f:
                 updated += 1
@@ -968,8 +976,8 @@ class trunked_system (object):
             ch2 = get_ordinals(msg[7:9])
             f1 = self.channel_id_to_frequency(ch1)
             f2 = self.channel_id_to_frequency(ch2)
-            if self.debug > 10:
-                sys.stderr.write('%s tdma(a5) mfid90_grp_regrp_ch_up f1: %s sg1: %d\n' %(log_ts.get(), self.channel_id_to_string(ch1), sg1, self.channel_id_to_string(ch2), sg2))
+            if self.debug >= 10:
+                sys.stderr.write('%s [0] tdma(a5) mfid90_grp_regrp_ch_up f1: %s sg1: %d\n' %(log_ts.get(), self.channel_id_to_string(ch1), sg1, self.channel_id_to_string(ch2), sg2))
             self.update_voice_frequency(f1, tgid=sg1, tdma_slot=self.get_tdma_slot(ch1))
             self.update_voice_frequency(f2, tgid=sg2, tdma_slot=self.get_tdma_slot(ch2))
             if f1 or f2:
@@ -988,8 +996,8 @@ class trunked_system (object):
                     wg = get_ordinals(msg[i,i+2])
                     wglst.append(wg)
                     i += 2
-                    if self.debug > 10:
-                        sys.stderr.write('%s tdma(b0) mfida4_grg_regrp_exenc_cmd: grg_opt: %d grg_ssn: %d sg: %d keyid: %x algid: %x wgids: %s\n' % (log_ts.get(), grg_opt, grg_ssn, sg, keyid, algid, wglst))
+                    if self.debug >= 10:
+                        sys.stderr.write('%s [0] tdma(b0) mfida4_grg_regrp_exenc_cmd: grg_opt: %d grg_ssn: %d sg: %d keyid: %x algid: %x wgids: %s\n' % (log_ts.get(), grg_opt, grg_ssn, sg, keyid, algid, wglst))
                 if (grg_opt & 0x1): # Activate
                     self.add_patch(sg, wglst)
                 else:               # Deactivate
@@ -1002,8 +1010,8 @@ class trunked_system (object):
             ga   = get_ordinals(msg[6:8])
             sa   = get_ordinals(msg[8:11])
             f    = self.channel_id_to_frequency(ch1t)
-            if self.debug > 10:
-                sys.stderr.write('%s tdma(c0) grp_v_ch_grant: freq-t: %s freq-r: %s ga: %d sa: %d\n' % (log_ts.get(), self.channel_id_to_string(ch1t), self.channel_id_to_string(ch1r), ga, sa))
+            if self.debug >= 10:
+                sys.stderr.write('%s [0] tdma(c0) grp_v_ch_grant: freq-t: %s freq-r: %s ga: %d sa: %d\n' % (log_ts.get(), self.channel_id_to_string(ch1t), self.channel_id_to_string(ch1r), ga, sa))
             self.update_voice_frequency(f, tgid=ga, tdma_slot=self.get_tdma_slot(ch1t), srcaddr=sa)
             if f:
                 updated += 1
@@ -1012,8 +1020,8 @@ class trunked_system (object):
             ch1r = get_ordinals(msg[4:6])
             ga   = get_ordinals(msg[6:8])
             f    = self.channel_id_to_frequency(ch1t)
-            if self.debug > 10:
-                sys.stderr.write('%s tdma(c3) grp_v_ch_grant_updt: freq-t: %s freq-r: %s ga: %d\n' % (log_ts.get(), self.channel_id_to_string(ch1t), self.channel_id_to_string(ch1r), ga))
+            if self.debug >= 10:
+                sys.stderr.write('%s [0] tdma(c3) grp_v_ch_grant_updt: freq-t: %s freq-r: %s ga: %d\n' % (log_ts.get(), self.channel_id_to_string(ch1t), self.channel_id_to_string(ch1r), ga))
             self.update_voice_frequency(f, tgid=ga, tdma_slot=self.get_tdma_slot(ch1t))
             if f:
                 updated += 1
@@ -1023,8 +1031,8 @@ class trunked_system (object):
             ch_t = get_ordinals(msg[3:5])
             ch_r = get_ordinals(msg[5:7])
             f    = self.channel_id_to_frequency(ch_t)
-            if self.debug > 10:
-                sys.stderr.write('%s tdma(e9) sccb: rfid: %x stid: %x freq-t: %s freq-r: %s\n' % (log_ts.get(), rfid, stid, self.channel_id_to_string(ch_t), self.channel_id_to_string(ch_r)))
+            if self.debug >= 10:
+                sys.stderr.write('%s [0] tdma(e9) sccb: rfid: %x stid: %x freq-t: %s freq-r: %s\n' % (log_ts.get(), rfid, stid, self.channel_id_to_string(ch_t), self.channel_id_to_string(ch_r)))
             if f:
                 self.secondary[ f ] = 1
                 sorted_freqs = collections.OrderedDict(sorted(self.secondary.items()))
@@ -1044,8 +1052,8 @@ class trunked_system (object):
             self.freq_table[iden]['step'] = ch_spac * 125
             self.freq_table[iden]['frequency'] = base_f * 5
             self.freq_table[iden]['tdma'] = slots_per_carrier[ch_type]
-            if self.debug > 10:
-                sys.stderr.write('%s tdma(f3) iden_up_tdma: id: %d base_f: %d offset: %d spacing: %d slots/carrier %d\n' % (log_ts.get(), iden, base_f, tx_off, ch_spac, slots_per_carrier[ch_type]))
+            if self.debug >= 10:
+                sys.stderr.write('%s [0] tdma(f3) iden_up_tdma: id: %d base_f: %d offset: %d spacing: %d slots/carrier %d\n' % (log_ts.get(), iden, base_f, tx_off, ch_spac, slots_per_carrier[ch_type]))
         elif op == 0xfa: # RFSS Status Broadcast Explicit
             syid = get_ordinals(msg[2:4]) & 0xfff
             rfid = get_ordinals(msg[4:5])
@@ -1059,8 +1067,13 @@ class trunked_system (object):
                 self.rfss_stid = stid
                 self.rfss_chan = f
                 self.rfss_txchan = f + self.freq_table[ch_t >> 12]['offset']
-            if self.debug > 10:
-                sys.stderr.write('%s tdma(fa) rfss_sts_bcst: syid: %x rfid: %x stid: %x ch %x(%s)\n' % (log_ts.get(), syid, rfid, stid, ch_t, self.channel_id_to_string(ch_t)))
+                if len(self.cc_list) == 0:
+                    self.cc_list = [self.rfss_chan]
+                    self.cc_list.extend(list(self.secondary.keys()))
+                    self.cc_list_index = 0
+                    self.trunk_cc = self.cc_list[0]
+            if self.debug >= 10:
+                sys.stderr.write('%s [0] tdma(fa) rfss_sts_bcst: syid: %x rfid: %x stid: %x ch %x(%s)\n' % (log_ts.get(), syid, rfid, stid, ch_t, self.channel_id_to_string(ch_t)))
         elif op == 0xfb: # Network Status Broadcast Explicit
             wacn = (get_ordinals(msg[2,5]) >> 4) & 0xfffff
             syid =  get_ordinals(msg[4:6]) & 0xfff
@@ -1072,8 +1085,8 @@ class trunked_system (object):
                 self.ns_wacn = wacn
                 self.ns_chan = f
                 self.ns_valid = True
-            if self.debug > 10:
-                sys.stderr.write('%s tdma(fb) net_sts_bcst: wacn: %x syid: %x ch %x(%s)\n' % (log_ts.get(), wacn, syid, ch_t, self.channel_id_to_string(ch_t)))
+            if self.debug >= 10:
+                sys.stderr.write('%s [0] tdma(fb) net_sts_bcst: wacn: %x syid: %x ch %x(%s)\n' % (log_ts.get(), wacn, syid, ch_t, self.channel_id_to_string(ch_t)))
         elif op == 0xfc: # Adjacent Status Broadcast Explicit
             syid  = get_ordinals(msg[2:4]) & 0xfff
             rfid  = get_ordinals(msg[4:5])
@@ -1085,8 +1098,8 @@ class trunked_system (object):
             if f and table in self.freq_table:
                 self.adjacent[f] = 'rfid: %d stid:%d uplink:%f tbl:%d' % (rfid, stid, (f + self.freq_table[table]['offset']) / 1000000.0, table)
                 self.adjacent_data[f] = {'rfid': rfid, 'stid':stid, 'uplink': f + self.freq_table[table]['offset'], 'table': table}
-            if self.debug > 10:
-                sys.stderr.write('%s tdma(fc) adj_sts_bcst: syid: %x rfid: %x stid: %x ch %x(%s)\n' % (log_ts.get(), syid, rfid, stid, ch_t, self.channel_id_to_string(ch_t)))
+            if self.debug >= 10:
+                sys.stderr.write('%s [0] tdma(fc) adj_sts_bcst: syid: %x rfid: %x stid: %x ch %x(%s)\n' % (log_ts.get(), syid, rfid, stid, ch_t, self.channel_id_to_string(ch_t)))
                 if table in self.freq_table:
                     sys.stderr.write('%s tdma(fc) adj_sts_bcst: %s %s\n' % (log_ts.get(), self.freq_table[table]['frequency'] , self.freq_table[table]['step'] ))
         elif op == 0xfe: # Adjacent Status Broadcast Extended Explicit
@@ -1101,14 +1114,14 @@ class trunked_system (object):
             if f and table in self.freq_table:
                 self.adjacent[f] = 'rfid: %d stid:%d uplink:%f tbl:%d' % (rfid, stid, (f + self.freq_table[table]['offset']) / 1000000.0, table)
                 self.adjacent_data[f] = {'rfid': rfid, 'stid':stid, 'uplink': f + self.freq_table[table]['offset'], 'table': table}
-            if self.debug > 10:
-                sys.stderr.write('%s tdma(fe) adj_sts_bcst: wacn: %x syid: %x rfid: %x stid: %x ch %x(%s)\n' % (log_ts.get(), wacn, syid, rfid, stid, ch_t, self.channel_id_to_string(ch_t)))
+            if self.debug >= 10:
+                sys.stderr.write('%s [0] tdma(fe) adj_sts_bcst: wacn: %x syid: %x rfid: %x stid: %x ch %x(%s)\n' % (log_ts.get(), wacn, syid, rfid, stid, ch_t, self.channel_id_to_string(ch_t)))
                 if table in self.freq_table:
                     sys.stderr.write('%s tdma(fe) adj_sts_bcst: %s %s\n' % (log_ts.get(), self.freq_table[table]['frequency'] , self.freq_table[table]['step'] ))
         else:
-            if self.debug > 10:
+            if self.debug >= 10:
                 m_data = get_ordinals(msg[1:])
-                sys.stderr.write('%s tdma(%02x) unhandled: mfid: %x msg_data: %x\n' % (log_ts.get(), op, mfid, m_data))
+                sys.stderr.write('%s [0] tdma(%02x) unhandled: mfid: %x msg_data: %x\n' % (log_ts.get(), op, mfid, m_data))
         return updated
 
     def decode_fdma_lcw(self, msg, curr_time):
@@ -1124,8 +1137,8 @@ class trunked_system (object):
             mfid = get_ordinals(msg[1:2])
             ga = get_ordinals(msg[4:6])
             sa = get_ordinals(msg[6:9])
-            if self.debug > 10:
-                sys.stderr.write('%s lcw(00) grp_v_ch_usr: ga: %d sa: %d\n' % (log_ts.get(), ga, sa))
+            if self.debug >= 10:
+                sys.stderr.write('%s [0] lcw(00) grp_v_ch_usr: ga: %d sa: %d\n' % (log_ts.get(), ga, sa))
             updated += self.update_talkgroup_srcaddr(curr_time, ga, sa)
         elif pb_sf_lco == 0x42:     # Group Voice Channel Update
             ch1 = get_ordinals(msg[1:3])
@@ -1134,8 +1147,8 @@ class trunked_system (object):
             ga2 = get_ordinals(msg[7:9])
             f1 = self.channel_id_to_frequency(ch1)
             f2 = self.channel_id_to_frequency(ch2)
-            if self.debug > 10:
-                sys.stderr.write('%s lcw(02) grp_v_ch_up f1: %s ga1: %d f2: %s ga2: %d\n' %(log_ts.get(), self.channel_id_to_string(ch1), ga1, self.channel_id_to_string(ch2), ga2))
+            if self.debug >= 10:
+                sys.stderr.write('%s [0] lcw(02) grp_v_ch_up f1: %s ga1: %d f2: %s ga2: %d\n' %(log_ts.get(), self.channel_id_to_string(ch1), ga1, self.channel_id_to_string(ch2), ga2))
             self.update_voice_frequency(f1, tgid=ga1, tdma_slot=self.get_tdma_slot(ch1))
             self.update_voice_frequency(f2, tgid=ga2, tdma_slot=self.get_tdma_slot(ch2))
             if f1 or f2:
@@ -1145,19 +1158,19 @@ class trunked_system (object):
             ch1t = get_ordinals(msg[5:7])
             ch1r = get_ordinals(msg[7:9])
             f    = self.channel_id_to_frequency(ch1t)
-            if self.debug > 10:
-                sys.stderr.write('%s lco(04) grp_v_ch_up: freq-t: %s freq-r: %s ga: %d\n' % (log_ts.get(), self.channel_id_to_string(ch1t), self.channel_id_to_string(ch1r), ga))
+            if self.debug >= 10:
+                sys.stderr.write('%s [0] lco(04) grp_v_ch_up: freq-t: %s freq-r: %s ga: %d\n' % (log_ts.get(), self.channel_id_to_string(ch1t), self.channel_id_to_string(ch1r), ga))
             self.update_voice_frequency(f, tgid=ga, tdma_slot=self.get_tdma_slot(ch1t))
             if f:
                 updated += 1
         elif pb_sf_lco == 0x4f:   # Call Termination/Cancellation (included with DUID15/ETDU)
             sa   = get_ordinals(msg[6:9])
-            if self.debug > 10:
-                sys.stderr.write('%s lco(0f) call_term_rel: sa: %d\n' % (log_ts.get(), sa))
+            if self.debug >= 10:
+                sys.stderr.write('%s [0] lco(0f) call_term_rel: sa: %d\n' % (log_ts.get(), sa))
         else:
-            if self.debug > 10:
+            if self.debug >= 10:
                 lcw_data = get_ordinals(msg[1:])
-                sys.stderr.write('%s lcw(%02x) unhandled: pb: %d sf: %d lcw_data: %x\n' % (log_ts.get(), (pb_sf_lco & 0x3f), ((pb_sf_lco >> 7) & 0x1), ((pb_sf_lco >> 6) & 0x1), lcw_data))
+                sys.stderr.write('%s [0] lcw(%02x) unhandled: pb: %d sf: %d lcw_data: %x\n' % (log_ts.get(), (pb_sf_lco & 0x3f), ((pb_sf_lco >> 7) & 0x1), ((pb_sf_lco >> 6) & 0x1), lcw_data))
         return updated
 
     def hunt_cc(self, curr_time):
@@ -1431,7 +1444,7 @@ class rx_ctl (object):
                     sys.stderr.write("%s Reading %s file\n" % (log_ts.get(), k))
                     self.configs[nac][k + ".file"] = configs[nac][k]
                     self.configs[nac][k] = get_int_dict(configs[nac][k])
-            if 'tgid_tags_file' in configs[nac]:
+            if 'tgid_tags_file' in configs[nac] and (configs[nac]['tgid_tags_file'] != ""):
                 import csv
                 with open(configs[nac]['tgid_tags_file'], 'r') as csvfile:
                     sreader = csv.reader(decomment(csvfile), delimiter='\t', quotechar='"', quoting=csv.QUOTE_ALL)
@@ -1544,13 +1557,13 @@ class rx_ctl (object):
             if type(cmd) is not str and isinstance(cmd, bytes):
                 cmd = cmd.decode()
             if self.debug > 10:
-                sys.stderr.write('process_qmsg: command: %s\n' % cmd)
+                sys.stderr.write('%s process_qmsg: command: %s\n' % (log_ts.get(), cmd))
             self.update_state(cmd, curr_time, int(msg.arg1()))
             return
 
         if m_type == -3:    # P25 call signalling data
             if self.debug > 10:
-                sys.stderr.write("process_qmsg: P25 info: %s\n" % msg.to_string())
+                sys.stderr.write("%s process_qmsg: P25 info: %s\n" % (log_ts.get(), msg.to_string()))
             js = json.loads(msg.to_string())
             if ('srcaddr' in js) and (js['srcaddr'] != 0):
                 self.current_srcaddr = js['srcaddr']
@@ -1574,7 +1587,7 @@ class rx_ctl (object):
             return
         elif m_type < 0:
             if self.debug > 10:
-                sys.stderr.write('unknown message type %d\n' % (m_type))
+                sys.stderr.write('%s unknown message type %d\n' % (log_ts.get(), m_type))
             return
         s = msg.to_string()
         # nac is always 1st two bytes
@@ -1588,10 +1601,16 @@ class rx_ctl (object):
         s = s[2:]
         if self.debug > 10:
             sys.stderr.write('%s nac %x type %d state %d len %d\n' %(log_ts.get(), nac, m_type, self.current_state, len(s)))
-        if (m_type == 7 or m_type == 12 or m_type == 16) and nac not in self.trunked_systems:
+        if ((m_type >= 0 and m_type <= 15) or (m_type == 19)) and nac not in self.trunked_systems:
             if not self.configs:
                 # TODO: allow whitelist/blacklist rather than blind automatic-add
-                self.add_trunked_system(nac)
+                sys.stderr.write("%s Adding default config for NAC 0x%x\n" % (log_ts.get(), nac))
+                cfgs = {int(nac): {"sysname": "P25", "control_channel_list": "0.0", "offset": 0, "nac": nac, "modulation": "cqpsk", "tgid_tags_file": "", "whitelist": "", "blacklist": "", "center_frequency": 0} }
+                self.setup_config(cfgs)
+                #TODO: make trunking properly auto-start with minimal configuration
+                #self.nacs = list(self.configs.keys())
+                #self.current_nac = nac
+                #self.nac_set({'tuner': 0,'nac': nac})
             else:
                 # If trunk.tsv file configured with nac=0, use decoded nac instead
                 if 0 in self.trunked_systems:
