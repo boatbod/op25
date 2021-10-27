@@ -520,7 +520,7 @@ class trunked_system (object):
                 self.rfss_stid = stid
                 self.rfss_chan = f1
                 self.rfss_txchan = f2
-                #add_unique_freq(self.cc_list, f1)
+                add_unique_freq(self.cc_list, f1)
             if self.debug >= 10:
                 sys.stderr.write('%s [0] mbt(3a) rfss_sts_bcst: sys %x rfid %x stid %x ch1 %s ch2 %s\n' %(log_ts.get(), syid, rfid, stid, self.channel_id_to_string(ch1), self.channel_id_to_string(ch2)))
         else:
@@ -648,6 +648,7 @@ class trunked_system (object):
                 self.secondary[ f1 ] = 1
                 sorted_freqs = collections.OrderedDict(sorted(self.secondary.items()))
                 self.secondary = sorted_freqs
+                add_unique_freq(self.cc_list, f1)
             if self.debug >= 10:
                 sys.stderr.write('%s [0] tsbk(29) sccb_exp: rfid: %x stid: %d ch1: %x(%s) ch2: %x(%s)\n' %(log_ts.get(), rfid, stid, ch1, self.channel_id_to_string(ch1), ch2, self.channel_id_to_string(ch2)))
         elif opcode == 0x2c:   # u_reg_rsp
@@ -752,7 +753,7 @@ class trunked_system (object):
                 self.rfss_stid = stid
                 self.rfss_chan = f1
                 self.rfss_txchan = f1 + self.freq_table[chan >> 12]['offset']
-                #add_unique_freq(self.cc_list, f1)
+                add_unique_freq(self.cc_list, f1)
             if self.debug >= 10:
                 sys.stderr.write('%s [0] tsbk(3a) rfss_sts_bcst: syid: %x rfid: %x stid: %d ch1: %x(%s)\n' %(log_ts.get(), syid, rfid, stid, chan, self.channel_id_to_string(chan)))
         elif opcode == 0x39:   # secondary cc
@@ -767,6 +768,8 @@ class trunked_system (object):
                 self.secondary[ f2 ] = 1
                 sorted_freqs = collections.OrderedDict(sorted(self.secondary.items()))
                 self.secondary = sorted_freqs
+                add_unique_freq(self.cc_list, f1)
+                add_unique_freq(self.cc_list, f2)
             if self.debug >= 10:
                 sys.stderr.write('%s [0] tsbk(39) sccb: rfid: %x stid: %d ch1: %x(%s) ch2: %x(%s)\n' %(log_ts.get(), rfid, stid, ch1, self.channel_id_to_string(ch1), ch2, self.channel_id_to_string(ch2)))
         elif opcode == 0x3b:   # network status
@@ -1029,6 +1032,7 @@ class trunked_system (object):
                 self.secondary[ f ] = 1
                 sorted_freqs = collections.OrderedDict(sorted(self.secondary.items()))
                 self.secondary = sorted_freqs
+                add_unique_freq(self.cc_list, f)
         elif op == 0xf3: # Identifier Update for TDMA Extended
             iden    = (get_ordinals(msg[2:3]) >> 4) & 0xf
             ch_type =  get_ordinals(msg[2:3]) & 0xf
@@ -1059,7 +1063,7 @@ class trunked_system (object):
                 self.rfss_stid = stid
                 self.rfss_chan = f
                 self.rfss_txchan = f + self.freq_table[ch_t >> 12]['offset']
-                #add_unique_freq(self.cc_list, f1)
+                add_unique_freq(self.cc_list, f)
             if self.debug >= 10:
                 sys.stderr.write('%s [0] tdma(fa) rfss_sts_bcst: syid: %x rfid: %x stid: %x ch %x(%s)\n' % (log_ts.get(), syid, rfid, stid, ch_t, self.channel_id_to_string(ch_t)))
         elif op == 0xfb: # Network Status Broadcast Explicit
