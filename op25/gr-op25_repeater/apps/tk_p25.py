@@ -1652,11 +1652,11 @@ class p25_receiver(object):
             updated += 1
             if self.current_tgid is None:
                 if self.debug > 0:
-                    sys.stderr.write("%s [%d] control channel timeout\n" % (log_ts.get(), self.msgq_id))
+                    sys.stderr.write("%s [%d] control channel timeout, freq(%f)\n" % (log_ts.get(), self.msgq_id, (self.tuned_frequency/1e6)))
                 self.tune_cc(self.system.timeout_cc(self.msgq_id))
             else:
                 if self.debug > 1:
-                    sys.stderr.write("%s [%d] voice channel timeout\n" % (log_ts.get(), self.msgq_id))
+                    sys.stderr.write("%s [%d] voice channel timeout, freq(%f)\n" % (log_ts.get(), self.msgq_id, (self.tuned_frequency/1e6)))
                 self.vc_retries += 1
                 if self.vc_retries >= VC_TIMEOUT_RETRIES:
                     self.expire_talkgroup(reason="timeout")
