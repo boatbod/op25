@@ -1205,7 +1205,7 @@ class p25_system(object):
             ga = get_ordinals(msg[4:6])
             sa = get_ordinals(msg[6:9])
             if self.debug >= 10:
-                sys.stderr.write('%s [%d] lcw(00) grp_v_ch_usr: ga: %d sa: %d\n' % (log_ts.get(), m_rxid, ga, sa))
+                sys.stderr.write('%s [%d] lcw(00) grp_v_ch_usr: ga: %d s: %d sa: %d\n' % (log_ts.get(), m_rxid, ga, (get_ordinals(msg[3:4]) & 0x1), sa))
             updated += self.update_talkgroup_srcaddr(curr_time, ga, sa)
         elif pb_sf_lco == 0x42:     # Group Voice Channel Update
             ch1 = get_ordinals(msg[1:3])
@@ -1230,6 +1230,12 @@ class p25_system(object):
             self.update_voice_frequency(f, tgid=ga, tdma_slot=self.get_tdma_slot(ch1t))
             if f:
                 updated += 1
+        elif pb_sf_lco == 0x49:   # Source ID Extension
+            netid = (get_ordinals(msg[2:5]) >> 4) & 0x0fffff
+            syid  = get_ordinals(msg[4,6]) & 0x0fff
+            sid   = get_ordinals(msg[6,9])
+            if self.debug >= 10:
+                sys.stderr.write('%s [%d] lcw(49) lc_source_id_ext: netid: %d, sysid: %d, sid: %d\n' % (log_ts.get(), m_rxid, netid, syid, sid))
         elif pb_sf_lco == 0x4f:   # Call Termination/Cancellation (included with DUID15/ETDU)
             sa   = get_ordinals(msg[6:9])
             if self.debug >= 10:
