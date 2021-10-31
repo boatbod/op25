@@ -1235,7 +1235,7 @@ class p25_system(object):
             syid  = get_ordinals(msg[4,6]) & 0x0fff
             sid   = get_ordinals(msg[6,9])
             if self.debug >= 10:
-                sys.stderr.write('%s [%d] lcw(49) lc_source_id_ext: netid: %d, sysid: %d, sid: %d\n' % (log_ts.get(), m_rxid, netid, syid, sid))
+                sys.stderr.write('%s [%d] lcw(09) lc_source_id_ext: netid: %d, sysid: %d, sid: %d\n' % (log_ts.get(), m_rxid, netid, syid, sid))
         elif pb_sf_lco == 0x4f:   # Call Termination/Cancellation (included with DUID15/ETDU)
             sa   = get_ordinals(msg[6:9])
             if self.debug >= 10:
@@ -1243,7 +1243,7 @@ class p25_system(object):
         else:
             if self.debug >= 10:
                 lcw_data = get_ordinals(msg[1:])
-                sys.stderr.write('%s [%d] lcw(%02x) unhandled: pb: %d sf: %d lcw_data: %x\n' % (log_ts.get(), m_rxid, (pb_sf_lco & 0x3f), ((pb_sf_lco >> 7) & 0x1), ((pb_sf_lco >> 6) & 0x1), lcw_data))
+                sys.stderr.write('%s [%d] lcw(%02x) unhandled: pb: %d sf: %d lcw_data: %016x\n' % (log_ts.get(), m_rxid, (pb_sf_lco & 0x3f), ((pb_sf_lco >> 7) & 0x1), ((pb_sf_lco >> 6) & 0x1), lcw_data))
         return updated
 
     def find_voice_freq(self, tgid=None):
