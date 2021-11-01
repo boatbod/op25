@@ -474,6 +474,9 @@ class p25_system(object):
             self.next_cc()
         return self.get_cc(msgq_id)
 
+    def sync_cc(self):
+        self.cc_retries = 0
+
     def get_nac(self):
         return self.nac
 
@@ -1657,9 +1660,10 @@ class p25_receiver(object):
         if (m_type == -1):  # Channel Timeout
             updated += 1
             if self.current_tgid is None:
-                if self.debug > 0:
-                    sys.stderr.write("%s [%d] control channel timeout, freq(%f)\n" % (log_ts.get(), self.msgq_id, (self.tuned_frequency/1e6)))
-                self.tune_cc(self.system.timeout_cc(self.msgq_id))
+                if self.system.has_cc(self.msgq_id):
+                    if self.debug > 0:
+                        sys.stderr.write("%s [%d] control channel timeout, freq(%f)\n" % (log_ts.get(), self.msgq_id, (self.tuned_frequency/1e6)))
+                    self.tune_cc(self.system.timeout_cc(self.msgq_id))
             else:
                 if self.debug > 1:
                     sys.stderr.write("%s [%d] voice channel timeout, freq(%f)\n" % (log_ts.get(), self.msgq_id, (self.tuned_frequency/1e6)))
@@ -1698,6 +1702,11 @@ class p25_receiver(object):
                     self.add_skiplist(self.current_tgid, curr_time + TGID_SKIP_TIME)
 
         elif m_type == -4: # P25 sync established
+            if self.current_tgid is None:
+                if self.system.has_cc(self.msgq_id):
+                    self.system.sync_cc()
+            else:
+                self.vc_retries = 0
             return updated
 
         elif m_type >= 0: # Channel Signaling (m_type is duid)
