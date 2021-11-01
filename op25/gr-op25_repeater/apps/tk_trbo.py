@@ -83,6 +83,17 @@ class dmr_receiver:
         else:
             self.tune_next_chan(msgq_id=1, chan=0, slot=4)
 
+    def to_json(self):  # ugly but required for compatibility with P25 trunking and terminal modules
+        d = {}
+        d['system']         = "tk_trbo"
+        d['top_line']       = "OP25 TRBO Trunking"
+        d['secondary']      = ""
+        d['frequencies']    = {}
+        d['frequency_data'] = {}
+        d['last_tsbk'] = 0
+        d['adjacent_data'] = ""
+        return json.dumps(d)
+
     def process_grant(self, m_buf):
             src_addr = get_ordinals(m_buf[2:5])
             grp_addr = get_ordinals(m_buf[5:8])
@@ -334,7 +345,6 @@ class dmr_receiver:
 
         # TODO: handle flco
 
-
     def rx_SLOT_PI(m_slot, m_buf):
         algid   = get_ordinals(m_buf[0])
         keyid   = get_ordinals(m_buf[2])
@@ -342,6 +352,21 @@ class dmr_receiver:
         dstaddr = get_ordinals(m_buf[7:10])
         if self.debug >= 9:
             sys.stderr.write("%s [%d] PI HEADER: slot(%d), algId(%02x), keyId(%02x), mi(%08x), grpAddr(%06x)\n" % (log_ts.get(), self.msgq_id, m_slot, algid, keyid, mi, dstaddr))
+
+    def get_status(self):
+        d = {}
+        d['freq'] = 0
+        d['tdma'] = None
+        d['tgid'] = None
+        d['system'] = ""
+        d['tag'] = ""
+        d['srcaddr'] = 0
+        d['srctag'] = ""
+        d['encrypted'] = 0
+        d['mode'] = None
+        d['stream'] = None
+        d['msgqid'] = self.msgq_id
+        return json.dumps(d)
 
 
 class rx_ctl(object):
@@ -402,4 +427,25 @@ class rx_ctl(object):
                     self.receivers[1].vc_timeouts = 0
                     self.receivers[1].current_state = self.receivers[1].states.IDLE
                     self.slot_set({'tuner': 1,'slot': 4})
+
+    def get_chan_status(self):
+        d = {'json_type': 'channel_update'}
+        rcvr_ids = []
+        for rcvr in self.receivers:
+            if self.receivers[rcvr] is not None:
+                rcvr_name = ("chan[%d]" % self.receivers[rcvr].msgq_id)
+                d[str(rcvr)] = json.loads(self.receivers[rcvr].get_status())
+                d[str(rcvr)]['name'] = rcvr_name
+                rcvr_ids.append(str(rcvr))
+        d['channels'] = rcvr_ids
+        return json.dumps(d)
+
+    def to_json(self):
+        d = {'json_type': 'trunk_update'}
+        syid = 0;
+        for rcvr in self.receivers:
+            d[syid] = json.loads(self.receivers[rcvr].to_json())
+            syid += 1
+        d['nac'] = 0
+        return json.dumps(d)
 
