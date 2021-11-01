@@ -388,10 +388,12 @@ dmr_slot::decode_pdp_header(uint8_t* dhdr) {
 	// Apply mask and validate CRC
 	for (int i = 0; i < 16; i++)
 		dhdr[i+80] ^= DATA_HEADER_CRC_MASK[i];
+#if 0
 	if (crc16(dhdr, 96) != 0) {
 		fprintf(stderr, "%s PDP Header CRC failure\n", logts.get(d_msgq_id));
 		return false;
 	}
+#endif
 
 	if (d_dhdr_state == DATA_INVALID) { // first data header received is always standard format
 		// Extract parameters
