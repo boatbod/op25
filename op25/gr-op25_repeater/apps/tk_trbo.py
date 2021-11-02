@@ -345,10 +345,10 @@ class dmr_receiver:
 
         # TODO: handle flco
 
-    def rx_SLOT_PI(m_slot, m_buf):
+    def rx_SLOT_PI(self, m_slot, m_buf):
         algid   = get_ordinals(m_buf[0])
         keyid   = get_ordinals(m_buf[2])
-        mi      = get_ordinals[3:7]
+        mi      = get_ordinals(m_buf[3:7])
         dstaddr = get_ordinals(m_buf[7:10])
         if self.debug >= 9:
             sys.stderr.write("%s [%d] PI HEADER: slot(%d), algId(%02x), keyId(%02x), mi(%08x), grpAddr(%06x)\n" % (log_ts.get(), self.msgq_id, m_slot, algid, keyid, mi, dstaddr))
