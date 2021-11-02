@@ -1157,8 +1157,8 @@ class trunked_system (object):
                 updated += 1
         elif pb_sf_lco == 0x49:   # Source ID Extension
             netid = (get_ordinals(msg[2:5]) >> 4) & 0x0fffff
-            syid  = get_ordinals(msg[4,6]) & 0x0fff
-            sid   = get_ordinals(msg[6,9])
+            syid  = get_ordinals(msg[4:6]) & 0x0fff
+            sid   = get_ordinals(msg[6:9])
             if self.debug >= 10:
                 sys.stderr.write('%s [0] lcw(0x09) lc_source_id_ext: netid: %d, sysid: %d, sid: %d\n' % (log_ts.get(), netid, syid, sid))
         elif pb_sf_lco == 0x4f:   # Call Termination/Cancellation (included with DUID15/ETDU)
