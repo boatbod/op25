@@ -988,7 +988,7 @@ class trunked_system (object):
                 wglst = []
                 i = 9
                 while i <= grg_len:
-                    wg = get_ordinals(msg[i,i+2])
+                    wg = get_ordinals(msg[i:i+2])
                     wglst.append(wg)
                     i += 2
                     if self.debug >= 10:
@@ -1040,8 +1040,8 @@ class trunked_system (object):
             tx_off  = (0 - tx_off) if ((tx_off >> 13) & 0x1) else tx_off
             ch_spac =  get_ordinals(msg[4:6]) & 0x3ff
             base_f  =  get_ordinals(msg[6:10])
-            wacn_id = (get_ordinals(msg[10,13]) >> 4) & 0xfffff
-            sys_id  =  get_ordinals(msg[13,14]) & 0xfff
+            wacn_id = (get_ordinals(msg[10:13]) >> 4) & 0xfffff
+            sys_id  =  get_ordinals(msg[13:14]) & 0xfff
             slots_per_carrier = [1,1,1,2,4,2,2,2,2,2,2,2,2,2,2,2] # values above 5 are reserved and not valid
             self.freq_table[iden] = {}
             self.freq_table[iden]['offset'] = tx_off * ch_spac * 125
@@ -1067,7 +1067,7 @@ class trunked_system (object):
             if self.debug >= 10:
                 sys.stderr.write('%s [0] tdma(0xfa) rfss_sts_bcst: syid: %x rfid: %x stid: %x ch %x(%s)\n' % (log_ts.get(), syid, rfid, stid, ch_t, self.channel_id_to_string(ch_t)))
         elif op == 0xfb: # Network Status Broadcast Explicit
-            wacn = (get_ordinals(msg[2,5]) >> 4) & 0xfffff
+            wacn = (get_ordinals(msg[2:5]) >> 4) & 0xfffff
             syid =  get_ordinals(msg[4:6]) & 0xfff
             ch_t = get_ordinals(msg[6:8])
             ch_r = get_ordinals(msg[8:10])
@@ -1100,7 +1100,7 @@ class trunked_system (object):
             stid  = get_ordinals(msg[5:6])
             ch_t  = get_ordinals(msg[6:8])
             ch_r  = get_ordinals(msg[8:10])
-            wacn  = (get_ordinals(msg[12,15]) >> 4) & 0xfffff
+            wacn  = (get_ordinals(msg[12:15]) >> 4) & 0xfffff
             table = (ch_t >> 12) & 0xf
             f     = self.channel_id_to_frequency(ch_t)
             if f and table in self.freq_table:
