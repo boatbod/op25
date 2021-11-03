@@ -1,5 +1,5 @@
 
-December 2020
+November 2021
 =============
 
 This file contains notes on the current OP25 P25 receiver (rx.py) and
@@ -7,14 +7,16 @@ multi receiver (multi_rx.py):
 
 EXAMPLE COMMAND LINE
 ====================
-./rx.py  --args 'rtl' --gains 'lna:49' -f 456.7e6 -T tsys.tsv -q -1  -S 1000000 -P symbol -o 50000 -w 2> stderr.2
+./rx.py  --args 'rtl' --gains 'lna:49' -T tsys.tsv -q -1 -2 -S 1000000 -P symbol -o 50000 -w 2> stderr.2
 
 Running stderr to a file (e.g., "2> stderr.2") is recommended to avoid 
 screen misprinting.
 
-NOTE: For phase1 voice the "-V" option is not used.  Instead the 
-"-w" option is used (see AUDIO SERVER section, below).  For P25 phase 2/TDMA,
+NOTE 1: For phase1 voice the "-V" option is not used.  Instead the 
+"-w" option is used (see AUDIO SERVER section, below).  For P25 phase 2/TDMA audio decode,
 the "-2" option is required in addition to the "-w" option.
+
+NOTE 2: For systems with a TDMA control channel the --tdma-cc option is required
 
 TERMINAL OPERATION
 ==================
@@ -131,18 +133,21 @@ Options:
   -D DEMOD_TYPE, --demod-type=DEMOD_TYPE
                         cqpsk | fsk4
   -P PLOT_MODE, --plot-mode=PLOT_MODE
-                        constellation | fft | symbol | datascope | mixer | tuner
+                        constellation | fft | symbol | datascope | mixer |
+                        tuner
   -f Hz, --frequency=Hz
                         USRP center frequency
   -F IFILE, --ifile=IFILE
                         read input from complex capture file
   -H HAMLIB_MODEL, --hamlib-model=HAMLIB_MODEL
                         specify model for hamlib
-  -s SEEK, --seek=SEEK  ifile seek in K
+  -s SEEK, --seek=SEEK  ifile seek in K, symbols file seek in seconds
   -l TERMINAL_TYPE, --terminal-type=TERMINAL_TYPE
                         'curses' or udp port or 'http:host:port'
   -L LOGFILE_WORKERS, --logfile-workers=LOGFILE_WORKERS
                         number of demodulators to instantiate
+  -M METACFG, --metacfg=METACFG
+                        Icecast Metadata Config File
   -S SAMPLE_RATE, --sample-rate=SAMPLE_RATE
                         source samp rate
   -t, --tone-detect     use experimental tone detect algorithm
@@ -152,6 +157,8 @@ Options:
                         message debug level
   -V, --vocoder         voice codec
   -n, --nocrypt         silence encrypted traffic
+  --crypt-behavior=CRYPT_BEHAVIOR
+                        encrypted traffic behavior: 0=allow, 1=silence, 2=skip
   -o Hz, --offset=Hz    tuning offset frequency [to circumvent DC offset]
   -p, --pause           block on startup
   -w, --wireshark       output data to Wireshark
@@ -161,22 +168,30 @@ Options:
                         Wireshark udp port
   -r RAW_SYMBOLS, --raw-symbols=RAW_SYMBOLS
                         dump decoded symbols to file
+  --symbols=SYMBOLS     playback symbols file (captured using -r)
   -R RX_SUBDEV_SPEC, --rx-subdev-spec=RX_SUBDEV_SPEC
                         select USRP Rx side A or B (default=A)
   -g GAIN, --gain=GAIN  set USRP gain in dB (default is midpoint) or set audio
                         gain
+  --gain-mode=GAIN_MODE
+                        Control SDR AGC with set_gain_mode()
   -G GAIN_MU, --gain-mu=GAIN_MU
                         gardner gain
   -N GAINS, --gains=GAINS
                         gain settings
   -O AUDIO_OUTPUT, --audio-output=AUDIO_OUTPUT
-                        audio output device name e.g. plughw:1
+                        audio output device name
+  -x AUDIO_GAIN, --audio-gain=AUDIO_GAIN
+                        audio gain (default = 1.0)
+  -X, --freq-error-tracking
+                        enable experimental frequency error tracking
   -U, --udp-player      enable built-in udp audio player
   -q FREQ_CORR, --freq-corr=FREQ_CORR
                         frequency correction
   -d FINE_TUNE, --fine-tune=FINE_TUNE
                         fine tuning
   -2, --phase2-tdma     enable phase2 tdma decode
+  --tdma-cc             enable tdma control channel
   -Z DECIM_AMT, --decim-amt=DECIM_AMT
                         spectrum decimation
 
