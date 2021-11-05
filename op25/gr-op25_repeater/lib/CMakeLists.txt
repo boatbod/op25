@@ -29,6 +29,8 @@ else()
 endif()
 unset(AMBE_TONES CACHE)
 
+add_definitions(-DEZPWD_NO_EXCEPTS)
+
 include(GrPlatform) #define LIB_SUFFIX
 
 include_directories(${Boost_INCLUDE_DIR})
