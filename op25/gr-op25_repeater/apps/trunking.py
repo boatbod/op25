@@ -323,13 +323,13 @@ class trunked_system (object):
             if self.debug > 1:
                 sys.stderr.write("%s removing expired skiplist: tg(%d)\n" % (log_ts.get(), tg));
 
-    def add_patch(self, sg, ga1, ga2, ga3):
+    def add_patch(self, sg, ga_list):
         if sg not in self.patches:
             self.patches[sg] = {}
             self.patches[sg]['ga'] = set()
             self.patches[sg]['ts'] = time.time()
 
-        for ga in [ga1, ga2, ga3]:
+        for ga in ga_list:
             if (ga != sg):
                 self.patches[sg]['ts'] = time.time() # update timestamp
                 if ga not in self.patches[sg]['ga']:
@@ -340,11 +340,11 @@ class trunked_system (object):
         if len(self.patches[sg]['ga']) == 0:
             del self.patches[sg]
 
-    def del_patch(self, sg, ga1, ga2, ga3):
+    def del_patch(self, sg, ga_list):
         if sg not in self.patches:
             return
 
-        for ga in [ga1, ga2, ga3]:
+        for ga in ga_list:
             if ga in self.patches[sg]['ga']:
                 self.patches[sg]['ga'].discard(ga)
                 if self.debug >= 5:
@@ -544,7 +544,7 @@ class trunked_system (object):
                 ga3  = (tsbk >> 16) & 0xffff
                 if self.debug >= 10:
                     sys.stderr.write('%s [0] tsbk(0x00) mfid90_grg_add_cmd: sg: %d ga1: %d ga2: %d ga3: %d\n' % (log_ts.get(), sg, ga1, ga2, ga3))
-                self.add_patch(sg, ga1, ga2, ga3)
+                self.add_patch(sg, [ga1, ga2, ga3])
             else:
                 opts = (tsbk >> 72) & 0xff
                 ch   = (tsbk >> 56) & 0xffff
@@ -565,7 +565,7 @@ class trunked_system (object):
                 ga3  = (tsbk >> 16) & 0xffff
                 if self.debug >= 10:
                     sys.stderr.write('%s [0] tsbk(0x01) mfid90_grg_del_cmd: sg: %d ga1: %d ga2: %d ga3: %d\n' % (log_ts.get(), sg, ga1, ga2, ga3))
-                self.del_patch(sg, ga1, ga2, ga3)
+                self.del_patch(sg, [ga1, ga2, ga3])
         elif opcode == 0x02:   # group voice chan grant update
             mfrid  = (tsbk >> 80) & 0xff
             if mfrid == 0x90:
@@ -682,11 +682,11 @@ class trunked_system (object):
                     if grg_g == 1: # Group request
                         algid = (rta >> 16) & 0xff
                         ga    =  rta        & 0xffff
-                        self.add_patch(sg, ga, ga, ga)
+                        self.add_patch(sg, [ga])
                     else:          # Unit request (currently unhandled)
                         pass
                 else:          # Deactivate
-                    self.del_patch(sg, 0, 0, 0)
+                    self.del_patch(sg, [ga])
         elif opcode == 0x34:   # iden_up vhf uhf
             iden = (tsbk >> 76) & 0xf
             bwvu = (tsbk >> 72) & 0xf
@@ -989,10 +989,11 @@ class trunked_system (object):
                 i = 9
                 while i <= grg_len:
                     wg = get_ordinals(msg[i:i+2])
-                    wglst.append(wg)
+                    if wg:
+                        wglst.append(wg)
                     i += 2
-                    if self.debug >= 10:
-                        sys.stderr.write('%s [0] tdma(0xb0) mfida4_grg_regrp_exenc_cmd: grg_opt: %d grg_ssn: %d sg: %d keyid: %x algid: %x wgids: %s\n' % (log_ts.get(), grg_opt, grg_ssn, sg, keyid, algid, wglst))
+                if self.debug >= 10:
+                    sys.stderr.write('%s [0] tdma(0xb0) mfida4_grg_regrp_exenc_cmd: grg_opt: %d grg_ssn: %d sg: %d keyid: %x algid: %x wgids: %s\n' % (log_ts.get(), grg_opt, grg_ssn, sg, keyid, algid, wglst))
                 if (grg_opt & 0x1): # Activate
                     self.add_patch(sg, wglst)
                 else:               # Deactivate
@@ -1798,6 +1799,8 @@ class rx_ctl (object):
             return    # run in "manual mode" if no conf
 
         nac = self.current_nac
+        if nac is None or nac not in self.trunked_systems:
+            return
         tsys = self.trunked_systems[nac]
 
         new_frequency = None

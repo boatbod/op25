@@ -1067,10 +1067,11 @@ class p25_system(object):
                 i = 9
                 while i <= grg_len:
                     wg = get_ordinals(msg[i:i+2])
-                    wglst.append(wg)
+                    if wg:
+                        wglst.append(wg)
                     i += 2
-                    if self.debug >= 10:
-                        sys.stderr.write('%s [%d] tdma(0xb0) grg_regrp_exenc_cmd: grg_opt: %d grg_ssn: %d sg: %d keyid: %x algid: %x wgids: %s\n' % (log_ts.get(), m_rxid, grg_opt, grg_ssn, sg, keyid, algid, wglst))
+                if self.debug >= 10:
+                    sys.stderr.write('%s [%d] tdma(0xb0) grg_regrp_exenc_cmd: grg_opt: %d grg_ssn: %d sg: %d keyid: %x algid: %x wgids: %s\n' % (log_ts.get(), m_rxid, grg_opt, grg_ssn, sg, keyid, algid, wglst))
                 if (grg_opt & 0x1): # Activate
                     self.add_patch(sg, wglst)
                 else:               # Deactivate
