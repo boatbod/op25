@@ -1602,7 +1602,7 @@ class rx_ctl (object):
         s = s[2:]
         if self.debug > 10:
             sys.stderr.write('%s nac %x type %d state %d len %d\n' %(log_ts.get(), nac, m_type, self.current_state, len(s)))
-        if ((m_type >= 0 and m_type <= 15) or (m_type == 19)) and nac not in self.trunked_systems:
+        if nac not in self.trunked_systems:
             if not self.configs:
                 # TODO: allow whitelist/blacklist rather than blind automatic-add
                 sys.stderr.write("%s Adding default config for NAC 0x%x\n" % (log_ts.get(), nac))
