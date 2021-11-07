@@ -350,7 +350,7 @@ class trunked_system (object):
                 if self.debug >= 5:
                     sys.stderr.write("%s del_patch: tgid(%d) is unpatched from sg(%d)\n" % (log_ts.get(), ga, sg))
 
-        if ((ga1, ga2, ga3) == (0, 0, 0)) or (len(self.patches[sg]['ga']) == 0):
+        if (sg in ga_list) or (len(self.patches[sg]['ga']) == 0):
             del self.patches[sg]
             if self.debug >= 5:
                 sys.stderr.write("%s del_patch: deleting patch sg(%d)\n" % (log_ts.get(), sg))
