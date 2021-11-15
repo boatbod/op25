@@ -326,7 +326,7 @@ class channel(object):
 
     def toggle_eye_plot(self):
         if 'eye' not in self.sinks:
-            sink = eye_sink_f(plot_name=("Ch:%s" % self.name), chan=self.msgq_id)
+            sink = eye_sink_f(plot_name=("Ch:%s" % self.name), chan=self.msgq_id, out_q=self.tb.ui_in_q)
             sink.set_sps(self.config['if_rate'] / self.symbol_rate)
             self.sinks['eye'] = (sink, self.toggle_eye_plot)
             self.set_plot_destination('eye')
@@ -344,7 +344,7 @@ class channel(object):
 
     def toggle_tuner_plot(self):
         if 'tuner' not in self.sinks:
-            sink = tuner_sink_f(plot_name=("Ch:%s" % self.name), chan=self.msgq_id)
+            sink = tuner_sink_f(plot_name=("Ch:%s" % self.name), chan=self.msgq_id, out_q=self.tb.ui_in_q)
             self.sinks['tuner'] = (sink, self.toggle_tuner_plot)
             self.set_plot_destination('tuner')
             self.tb.lock()
@@ -361,7 +361,7 @@ class channel(object):
 
     def toggle_symbol_plot(self):
         if 'symbol' not in self.sinks:
-            sink = symbol_sink_f(plot_name=("Ch:%s" % self.name), chan=self.msgq_id)
+            sink = symbol_sink_f(plot_name=("Ch:%s" % self.name), chan=self.msgq_id, out_q=self.tb.ui_in_q)
             self.sinks['symbol'] = (sink, self.toggle_symbol_plot)
             self.set_plot_destination('symbol')
             self.tb.lock()
@@ -376,7 +376,7 @@ class channel(object):
 
     def toggle_fft_plot(self):
         if 'fft' not in self.sinks:
-            sink = fft_sink_c(plot_name=("Ch:%s" % self.name), chan=self.msgq_id)
+            sink = fft_sink_c(plot_name=("Ch:%s" % self.name), chan=self.msgq_id, out_q=self.tb.ui_in_q)
             self.sinks['fft'] = (sink, self.toggle_fft_plot)
             self.set_plot_destination('fft')
             sink.set_offset(self.device.offset)
@@ -395,7 +395,7 @@ class channel(object):
 
     def toggle_mixer_plot(self):
         if 'mixer' not in self.sinks:
-            sink = mixer_sink_c(plot_name=("Ch:%s" % self.name), chan=self.msgq_id)
+            sink = mixer_sink_c(plot_name=("Ch:%s" % self.name), chan=self.msgq_id, out_q=self.tb.ui_in_q)
             self.sinks['mixer'] = (sink, self.toggle_mixer_plot)
             self.set_plot_destination('mixer')
             sink.set_width(self.config['if_rate'])
@@ -413,7 +413,7 @@ class channel(object):
         if str(self.config['demod_type']).lower() != "cqpsk":
             return
         if 'constellation' not in self.sinks:
-            sink = constellation_sink_c(plot_name=("Ch:%s" % self.name), chan=self.msgq_id)
+            sink = constellation_sink_c(plot_name=("Ch:%s" % self.name), chan=self.msgq_id, out_q=self.tb.ui_in_q)
             self.sinks['constellation'] = (sink, self.toggle_constellation_plot)
             self.set_plot_destination('constellation')
             self.tb.lock()
@@ -577,8 +577,8 @@ class rx_block (gr.top_block):
         self.trunking = None
         self.du_watcher = None
         self.rx_q = gr.msg_queue(100)
-        self.ui_in_q = gr.msg_queue(10)
-        self.ui_out_q = gr.msg_queue(10)
+        self.ui_in_q = gr.msg_queue(100)
+        self.ui_out_q = gr.msg_queue(100)
         self.ui_timeout = 5.0
         self.ui_last_update = 0.0
 

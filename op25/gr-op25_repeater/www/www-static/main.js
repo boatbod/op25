@@ -536,6 +536,10 @@ function trunk_update(d) {
     channel_status();
 }
 
+function plot(d) {
+    //TODO: implement local plot rendering using json data
+}
+
 function http_req_cb() {
     req_cb_count += 1;
     s = http_req.readyState;
@@ -549,7 +553,7 @@ function http_req_cb() {
     }
     r200_count += 1;
     var dl = JSON.parse(http_req.responseText);
-    var dispatch = {'trunk_update': trunk_update, 'change_freq': change_freq, 'channel_update': channel_update, 'rx_update': rx_update, 'terminal_config': term_config}
+    var dispatch = {'trunk_update': trunk_update, 'change_freq': change_freq, 'channel_update': channel_update, 'rx_update': rx_update, 'terminal_config': term_config, 'plot': plot}
     for (var i=0; i<dl.length; i++) {
         var d = dl[i];
         if (!("json_type" in d))

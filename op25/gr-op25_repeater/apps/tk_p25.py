@@ -1552,8 +1552,9 @@ class p25_receiver(object):
             self.whitelist = self.system.get_whitelist()
 
     def set_nac(self, nac):
-        self.current_nac = nac
-        self.nac_set({'tuner': self.msgq_id,'nac': nac})
+        if self.current_nac != nac:
+            self.current_nac = nac
+            self.nac_set({'tuner': self.msgq_id,'nac': nac})
 
     def idle_rx(self):
         if not (self.tuner_idle or self.system.has_cc(self.msgq_id)): # don't idle a control channel or an already idle receiver
