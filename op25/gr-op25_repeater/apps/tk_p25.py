@@ -205,6 +205,8 @@ class rx_ctl(object):
         curr_time = time.time()
         if msgq_id in self.receivers and self.receivers[msgq_id]['rx_rcvr'] is not None:
             self.receivers[msgq_id]['rx_rcvr'].ui_command(cmd = cmd, data = data, curr_time = curr_time)    # Dispatch message to the intended receiver
+        # Check for control channel reassignment
+        self.check_cc_assignments()
 
     def to_json(self):
         d = {'json_type': 'trunk_update'}
@@ -1793,10 +1795,8 @@ class p25_receiver(object):
         if self.debug > 1:
             sys.stderr.write("%s [%d] blacklisting: tgid(%d)\n" % (log_ts.get(), self.msgq_id, tgid))
         if self.current_tgid and self.current_tgid in self.blacklist:
-            self.expire_talkgroup(reason = "blacklisted")
+            self.expire_talkgroup(reason = "blacklisted", auto_hold = False)
             self.hold_mode = False
-            self.hold_tgid = None
-            self.hold_until = time.time()
 
     def add_whitelist(self, tgid):
         if not tgid or (tgid <= 0) or (tgid > 65534):
