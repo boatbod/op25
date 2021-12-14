@@ -45,7 +45,7 @@ def static_file(environ, start_response):
     if environ['PATH_INFO'] == '/':
         filename = 'index.html'
     else:
-        filename = re.sub(r'[^a-zA-Z0-9_.\-]', '', environ['PATH_INFO'])
+        filename = re.sub(r'[^a-zA-Z0-9_.\-\/]', '', environ['PATH_INFO'])
     suf = filename.split('.')[-1]
     pathname = '../www/www-static'
     if suf in img_types:

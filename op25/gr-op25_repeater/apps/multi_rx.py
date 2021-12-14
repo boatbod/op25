@@ -302,6 +302,7 @@ class channel(object):
             return
         if self.tb.terminal_type == "http":
             self.sinks[plot][0].gnuplot.set_interval(self.tb.http_plot_interval)
+            self.sinks[plot][0].gnuplot.set_sequence_buffer_size(self.tb.http_plot_buffer_size)
             self.sinks[plot][0].gnuplot.set_output_dir(self.tb.http_plot_directory)
         else:
             self.sinks[plot][0].gnuplot.set_interval(self.tb.curses_plot_interval)
@@ -326,7 +327,7 @@ class channel(object):
 
     def toggle_eye_plot(self):
         if 'eye' not in self.sinks:
-            sink = eye_sink_f(plot_name=("Ch:%s" % self.name), chan=self.msgq_id, out_q=self.tb.ui_in_q)
+            sink = eye_sink_f(plot_name=("Ch:%s" % self.name), chan=self.msgq_id, out_q=self.tb.ui_in_q, plot_type=self.tb.http_plot_type)
             sink.set_sps(self.config['if_rate'] / self.symbol_rate)
             self.sinks['eye'] = (sink, self.toggle_eye_plot)
             self.set_plot_destination('eye')
@@ -344,7 +345,7 @@ class channel(object):
 
     def toggle_tuner_plot(self):
         if 'tuner' not in self.sinks:
-            sink = tuner_sink_f(plot_name=("Ch:%s" % self.name), chan=self.msgq_id, out_q=self.tb.ui_in_q)
+            sink = tuner_sink_f(plot_name=("Ch:%s" % self.name), chan=self.msgq_id, out_q=self.tb.ui_in_q, plot_type=self.tb.http_plot_type)
             self.sinks['tuner'] = (sink, self.toggle_tuner_plot)
             self.set_plot_destination('tuner')
             self.tb.lock()
@@ -361,7 +362,7 @@ class channel(object):
 
     def toggle_symbol_plot(self):
         if 'symbol' not in self.sinks:
-            sink = symbol_sink_f(plot_name=("Ch:%s" % self.name), chan=self.msgq_id, out_q=self.tb.ui_in_q)
+            sink = symbol_sink_f(plot_name=("Ch:%s" % self.name), chan=self.msgq_id, out_q=self.tb.ui_in_q, plot_type=self.tb.http_plot_type)
             self.sinks['symbol'] = (sink, self.toggle_symbol_plot)
             self.set_plot_destination('symbol')
             self.tb.lock()
@@ -376,7 +377,7 @@ class channel(object):
 
     def toggle_fft_plot(self):
         if 'fft' not in self.sinks:
-            sink = fft_sink_c(plot_name=("Ch:%s" % self.name), chan=self.msgq_id, out_q=self.tb.ui_in_q)
+            sink = fft_sink_c(plot_name=("Ch:%s" % self.name), chan=self.msgq_id, out_q=self.tb.ui_in_q, plot_type=self.tb.http_plot_type)
             self.sinks['fft'] = (sink, self.toggle_fft_plot)
             self.set_plot_destination('fft')
             sink.set_offset(self.device.offset)
@@ -395,7 +396,7 @@ class channel(object):
 
     def toggle_mixer_plot(self):
         if 'mixer' not in self.sinks:
-            sink = mixer_sink_c(plot_name=("Ch:%s" % self.name), chan=self.msgq_id, out_q=self.tb.ui_in_q)
+            sink = mixer_sink_c(plot_name=("Ch:%s" % self.name), chan=self.msgq_id, out_q=self.tb.ui_in_q, plot_type=self.tb.http_plot_type)
             self.sinks['mixer'] = (sink, self.toggle_mixer_plot)
             self.set_plot_destination('mixer')
             sink.set_width(self.config['if_rate'])
@@ -413,7 +414,7 @@ class channel(object):
         if str(self.config['demod_type']).lower() != "cqpsk":
             return
         if 'constellation' not in self.sinks:
-            sink = constellation_sink_c(plot_name=("Ch:%s" % self.name), chan=self.msgq_id, out_q=self.tb.ui_in_q)
+            sink = constellation_sink_c(plot_name=("Ch:%s" % self.name), chan=self.msgq_id, out_q=self.tb.ui_in_q, plot_type=self.tb.http_plot_type)
             self.sinks['constellation'] = (sink, self.toggle_constellation_plot)
             self.set_plot_destination('constellation')
             self.tb.lock()
@@ -581,6 +582,7 @@ class rx_block (gr.top_block):
         self.ui_out_q = gr.msg_queue(100)
         self.ui_timeout = 5.0
         self.ui_last_update = 0.0
+        self.http_plot_type = 'image'
 
         gr.top_block.__init__(self)
         self.device_id_by_name = {}
@@ -670,7 +672,9 @@ class rx_block (gr.top_block):
         self.terminal_config = config
         self.curses_plot_interval = float(from_dict(config, 'curses_plot_interval', 0.0))
         self.http_plot_interval = float(from_dict(config, 'http_plot_interval', 1.0))
+        self.http_plot_buffer_size = int(from_dict(config, 'http_plot_buffer_size', 2))
         self.http_plot_directory = str(from_dict(config, 'http_plot_directory', "../www/images"))
+        self.http_plot_type = str(from_dict(config, 'http_plot_type', "image")) # raw or image or raw,image
         self.ui_timeout = float(from_dict(config, 'terminal_timeout', 5.0))
 
     def configure_trunking(self, config):
@@ -860,8 +864,10 @@ class rx_block (gr.top_block):
             self.ui_last_update = time.time()
             self.ui_freq_update()
             if self.trunking is None or self.trunk_rx is None:
-                return False
-            js = self.trunk_rx.to_json()    # extract data from trunking module
+                #return False
+                js = self.ui_nontrunked_freq_update_json()
+            else:
+                js = self.trunk_rx.to_json()    # extract data from trunking module
             msg = gr.message().make_from_string(js, -4, 0, 0)
             self.ui_in_q.insert_tail(msg)   # send info back to UI
             self.ui_plot_update()
@@ -896,7 +902,10 @@ class rx_block (gr.top_block):
         elif s == 'set_full_config':
             pass
         elif s == 'dump_tgids':
-            self.trunk_rx.dump_tgids()
+            if self.trunking is not None and self.trunk_rx is not None:
+                self.trunk_rx.dump_tgids()
+            else:
+                return False
         elif s == 'dump_tracking':
             msgq_id = int(msg.arg2())
             self.channels[msgq_id].dump_tracking()
@@ -925,6 +934,38 @@ class rx_block (gr.top_block):
                 self.trunk_rx.ui_command(s, msg.arg1(), msg.arg2())
         return False
 
+    # TODO: See if there is a cleaner way to do this with ui_freq_update below
+    def ui_nontrunked_freq_update_json(self):
+        d = {}
+        d['json_type'] = "channel_update"
+        d['channels'] = []
+        #c_idx = 0
+
+        for chan in self.channels:
+            c_idx = chan.msgq_id
+            d[c_idx] = {}
+            d[c_idx]['freq'] = chan.frequency
+            d[c_idx]['system'] = chan.config['demod_type']
+            d[c_idx]['name'] = chan.name
+            d[c_idx]['ppm'] = chan.device.get_ppm()
+            d[c_idx]['error'] = chan.get_error() if chan.auto_tracking else None
+            d[c_idx]['auto_tracking'] = chan.get_auto_tracking()
+            d[c_idx]['tgid'] = ""
+            d[c_idx]['srcaddr'] = ""
+            d[c_idx]['srctag'] = ""
+            d[c_idx]['capture'] = False if chan.raw_sink is None else True
+            d[c_idx]['stream_url'] = ""
+            if 'meta_stream_name' in chan.config and chan.config['meta_stream_name'] in self.meta_streams:
+                meta_s, meta_q = self.meta_streams[chan.config['meta_stream_name']]
+                d[c_idx]['stream_url'] = meta_s.get_url()
+
+            d['channels'].append(c_idx)
+
+            #c_idx += 1
+
+        return json.dumps(d)
+
+
     def ui_freq_update(self):
         if self.trunking is None or self.trunk_rx is None:
             return False
@@ -948,11 +989,16 @@ class rx_block (gr.top_block):
         if self.terminal_type is None or self.terminal_type != "http":
             return
 
+        if "image" not in self.http_plot_type:
+            return
+
         filenames = []
         for chan in self.channels:
+            path_prefix = ""
             for sink in chan.sinks:
                 if chan.sinks[sink][0].gnuplot.filename is not None:
-                    filenames.append(chan.sinks[sink][0].gnuplot.filename)
+                    path_prefix = chan.tb.http_plot_directory.split("../www/images/")[1]
+                    filenames.append("%s/%s" % (path_prefix, chan.sinks[sink][0].gnuplot.filename))
         d = {'json_type': 'rx_update', 'files': filenames}
         msg = gr.message().make_from_string(json.dumps(d), -4, 0, 0)
         self.ui_in_q.insert_tail(msg)
