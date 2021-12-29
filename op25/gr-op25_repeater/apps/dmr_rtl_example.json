@@ -69,5 +69,16 @@
                 "cc": 5
             }
         ]
+    },
+    "terminal": {
+        "module": "terminal.py",
+        "terminal_type": "curses",
+        "#terminal_type": "http:127.0.0.1:8080",
+        "terminal_timeout": 5.0,
+        "curses_plot_interval": 0.2,
+        "http_plot_interval": 1.0,
+        "http_plot_directory": "../www/images",
+        "tuning_step_large": 1200,
+        "tuning_step_small": 100
     }
 }

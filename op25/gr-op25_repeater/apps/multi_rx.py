@@ -326,7 +326,7 @@ class channel(object):
 
     def toggle_eye_plot(self):
         if 'eye' not in self.sinks:
-            sink = eye_sink_f(plot_name=("Ch:%s" % self.name), chan=self.msgq_id)
+            sink = eye_sink_f(plot_name=("Ch:%s" % self.name), chan=self.msgq_id, out_q=self.tb.ui_in_q)
             sink.set_sps(self.config['if_rate'] / self.symbol_rate)
             self.sinks['eye'] = (sink, self.toggle_eye_plot)
             self.set_plot_destination('eye')
@@ -344,7 +344,7 @@ class channel(object):
 
     def toggle_tuner_plot(self):
         if 'tuner' not in self.sinks:
-            sink = tuner_sink_f(plot_name=("Ch:%s" % self.name), chan=self.msgq_id)
+            sink = tuner_sink_f(plot_name=("Ch:%s" % self.name), chan=self.msgq_id, out_q=self.tb.ui_in_q)
             self.sinks['tuner'] = (sink, self.toggle_tuner_plot)
             self.set_plot_destination('tuner')
             self.tb.lock()
@@ -361,7 +361,7 @@ class channel(object):
 
     def toggle_symbol_plot(self):
         if 'symbol' not in self.sinks:
-            sink = symbol_sink_f(plot_name=("Ch:%s" % self.name), chan=self.msgq_id)
+            sink = symbol_sink_f(plot_name=("Ch:%s" % self.name), chan=self.msgq_id, out_q=self.tb.ui_in_q)
             self.sinks['symbol'] = (sink, self.toggle_symbol_plot)
             self.set_plot_destination('symbol')
             self.tb.lock()
@@ -376,7 +376,7 @@ class channel(object):
 
     def toggle_fft_plot(self):
         if 'fft' not in self.sinks:
-            sink = fft_sink_c(plot_name=("Ch:%s" % self.name), chan=self.msgq_id)
+            sink = fft_sink_c(plot_name=("Ch:%s" % self.name), chan=self.msgq_id, out_q=self.tb.ui_in_q)
             self.sinks['fft'] = (sink, self.toggle_fft_plot)
             self.set_plot_destination('fft')
             sink.set_offset(self.device.offset)
@@ -395,7 +395,7 @@ class channel(object):
 
     def toggle_mixer_plot(self):
         if 'mixer' not in self.sinks:
-            sink = mixer_sink_c(plot_name=("Ch:%s" % self.name), chan=self.msgq_id)
+            sink = mixer_sink_c(plot_name=("Ch:%s" % self.name), chan=self.msgq_id, out_q=self.tb.ui_in_q)
             self.sinks['mixer'] = (sink, self.toggle_mixer_plot)
             self.set_plot_destination('mixer')
             sink.set_width(self.config['if_rate'])
@@ -413,7 +413,7 @@ class channel(object):
         if str(self.config['demod_type']).lower() != "cqpsk":
             return
         if 'constellation' not in self.sinks:
-            sink = constellation_sink_c(plot_name=("Ch:%s" % self.name), chan=self.msgq_id)
+            sink = constellation_sink_c(plot_name=("Ch:%s" % self.name), chan=self.msgq_id, out_q=self.tb.ui_in_q)
             self.sinks['constellation'] = (sink, self.toggle_constellation_plot)
             self.set_plot_destination('constellation')
             self.tb.lock()
@@ -537,11 +537,25 @@ class channel(object):
             sys.stderr.write("%f : %d\n" % ((freq/1e6), self.tracking_cache[freq]))
         sys.stderr.write("}\n")
 
+    def set_tracking(self, tracking):
+        if tracking > 0:
+            self.auto_tracking = True
+        elif tracking == 0:
+            self.auto_tracking = False
+        else:
+            self.auto_tracking = not self.auto_tracking
+        if self.verbosity >= 10:
+            sys.stderr.write("%s [%d] set auto_tracking:%s\n" % (log_ts.get(), self.msgq_id, ("on" if self.auto_tracking else "off")))
+
     def get_error(self):
         return self.error
 
     def get_tracking(self):
         return self.tracking
+
+    def get_auto_tracking(self):
+        return self.auto_tracking
+
 
 class rx_block (gr.top_block):
 
@@ -563,8 +577,8 @@ class rx_block (gr.top_block):
         self.trunking = None
         self.du_watcher = None
         self.rx_q = gr.msg_queue(100)
-        self.ui_in_q = gr.msg_queue(10)
-        self.ui_out_q = gr.msg_queue(10)
+        self.ui_in_q = gr.msg_queue(100)
+        self.ui_out_q = gr.msg_queue(100)
         self.ui_timeout = 5.0
         self.ui_last_update = 0.0
 
@@ -597,6 +611,9 @@ class rx_block (gr.top_block):
             dev.set_debug(dbglvl)
         if self.trunking is not None and self.trunk_rx is not None:
             self.trunk_rx.set_debug(dbglvl)
+        if self.metadata is not None:
+            for stream in self.meta_streams:
+                self.meta_streams[stream][0].set_debug(dbglvl)
 
     def set_interactive(self, session_type):
         self.interactive = session_type
@@ -883,6 +900,10 @@ class rx_block (gr.top_block):
         elif s == 'dump_tracking':
             msgq_id = int(msg.arg2())
             self.channels[msgq_id].dump_tracking()
+        elif s == 'set_tracking':
+            tracking = msg.arg1()
+            msgq_id = int(msg.arg2())
+            self.find_channel(msgq_id).set_tracking(tracking)
         elif s == 'capture':
             if not self.get_interactive():
                 sys.stderr.write("%s Cannot start capture for non-realtime (replay) sessions\n" % log_ts.get())
@@ -911,7 +932,8 @@ class rx_block (gr.top_block):
         for rx_id in params['channels']:                       # iterate and convert stream name to url
             params[rx_id]['ppm'] = self.find_channel(int(rx_id)).device.get_ppm()
             params[rx_id]['capture'] = False if self.find_channel(int(rx_id)).raw_sink is None else True
-            params[rx_id]['error'] = self.find_channel(int(rx_id)).get_error()
+            params[rx_id]['error'] = self.find_channel(int(rx_id)).get_error() if self.find_channel(int(rx_id)).auto_tracking else None
+            params[rx_id]['auto_tracking'] = self.find_channel(int(rx_id)).get_auto_tracking()
             params[rx_id]['tracking'] = self.find_channel(int(rx_id)).get_tracking()
             s_name = params[rx_id]['stream']
             if s_name not in self.meta_streams:
