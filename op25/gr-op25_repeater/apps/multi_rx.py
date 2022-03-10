@@ -117,6 +117,7 @@ class device(object):
                 self.sample_rate = config['rate']
                 self.offset = int(from_dict(config, 'offset', 0))
             self.fractional_corr = int((int(round(self.ppm)) - self.ppm) * (self.frequency/1e6))
+            self.usable_bw = float(from_dict(config, 'usable_bw_pct', 1.0))
 
         elif config['args'] == 'wavsrc':
             self.src = op25_wavsrc.op25_wavsrc_f(str(config['name']), config)
