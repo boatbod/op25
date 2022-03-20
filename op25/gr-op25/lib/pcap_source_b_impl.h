@@ -23,7 +23,7 @@
 #ifndef INCLUDED_OP25_PCAP_SOURCE_B_IMPL_H
 #define INCLUDED_OP25_PCAP_SOURCE_B_IMPL_H
 
-#include <op25/pcap_source_b.h>
+#include <gnuradio/op25/pcap_source_b.h>
 
 namespace gr {
   namespace op25 {

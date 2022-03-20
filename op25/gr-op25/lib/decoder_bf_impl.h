@@ -23,7 +23,7 @@
 #ifndef INCLUDED_OP25_DECODER_BF_IMPL_H
 #define INCLUDED_OP25_DECODER_BF_IMPL_H
 
-#include <op25/decoder_bf.h>
+#include <gnuradio/op25/decoder_bf.h>
 #include "data_unit.h"
 #include "data_unit_handler.h"
 #include "imbe_decoder.h"

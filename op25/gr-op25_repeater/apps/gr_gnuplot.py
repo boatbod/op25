@@ -23,7 +23,7 @@ import time
 import subprocess
 import json
 
-from gnuradio import gr, gru, eng_notation
+from gnuradio import gr, eng_notation
 from gnuradio import blocks, audio
 from gnuradio.eng_option import eng_option
 import numpy as np

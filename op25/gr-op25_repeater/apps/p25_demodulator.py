@@ -29,11 +29,11 @@ P25 C4FM/CQPSK demodulation block.
 """
 
 import sys
-from gnuradio import gr, gru, eng_notation
+from gnuradio import gr, eng_notation
 from gnuradio import filter, analog, digital, blocks
 from gnuradio.eng_option import eng_option
-import op25
-import op25_repeater
+import gnuradio.op25 as op25
+import gnuradio.op25_repeater as op25_repeater
 from math import pi
 
 sys.path.append('tx')

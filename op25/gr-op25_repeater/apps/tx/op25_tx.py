@@ -48,7 +48,7 @@ from usrpm import usrp_dbid
 import math
 import sys
 import osmosdr
-import op25_repeater
+import gnuradio.op25_repeater as op25_repeater
 
 from gnuradio.wxgui import stdgui2, fftsink2
 import wx

@@ -23,7 +23,7 @@
 #ifndef INCLUDED_OP25_REPEATER_IQFILE_SOURCE_IMPL_H
 #define INCLUDED_OP25_REPEATER_IQFILE_SOURCE_IMPL_H
 
-#include <op25_repeater/iqfile_source.h>
+#include <gnuradio/op25_repeater/iqfile_source.h>
 #include <boost/thread/mutex.hpp>
 
 namespace gr {

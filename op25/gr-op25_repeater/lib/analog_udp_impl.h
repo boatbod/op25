@@ -21,7 +21,7 @@
 #ifndef INCLUDED_OP25_REPEATER_ANALOG_UDP_IMPL_H
 #define INCLUDED_OP25_REPEATER_ANALOG_UDP_IMPL_H
 
-#include <op25_repeater/analog_udp.h>
+#include <gnuradio/op25_repeater/analog_udp.h>
 
 #include <gnuradio/msg_queue.h>
 #include <sys/socket.h>

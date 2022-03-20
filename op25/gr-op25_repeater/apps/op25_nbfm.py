@@ -25,10 +25,10 @@ OP25 Analog Narrowband FM Demodulator Block
 """
 
 import sys
-from gnuradio import gr, gru, eng_notation
+from gnuradio import gr, eng_notation
 from gnuradio import filter, analog, digital, blocks
 from math import pi
-import op25_repeater
+import gnuradio.op25_repeater as op25_repeater
 from log_ts import log_ts
 
 _PCM_RATE       = 8000   # PCM is 8kHz S16LE format

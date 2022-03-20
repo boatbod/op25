@@ -52,13 +52,13 @@ import traceback
 import osmosdr
 import importlib
 
-from gnuradio import audio, eng_notation, gr, gru, filter, blocks, fft, analog, digital
+from gnuradio import audio, eng_notation, gr, filter, blocks, fft, analog, digital
 from gnuradio.eng_option import eng_option
 from math import pi
 from optparse import OptionParser
 
-import op25
-import op25_repeater
+import gnuradio.op25 as op25
+import gnuradio.op25_repeater as op25_repeater
 import p25_demodulator
 import p25_decoder
 import op25_nbfm
@@ -983,7 +983,7 @@ class du_queue_watcher(threading.Thread):
 
     def __init__(self, msgq,  callback, **kwds):
         threading.Thread.__init__ (self, **kwds)
-        self.setDaemon(1)
+        self.daemon = True
         self.msgq = msgq
         self.callback = callback
         self.keep_running = True

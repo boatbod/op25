@@ -24,7 +24,9 @@
 #ifndef INCLUDED_OP25_FSK4_DEMOD_FF_IMPL_H
 #define INCLUDED_OP25_FSK4_DEMOD_FF_IMPL_H
 
-#include <op25/fsk4_demod_ff.h>
+#include <gnuradio/op25/fsk4_demod_ff.h>
+#include <boost/scoped_array.hpp>
+#include <boost/scoped_ptr.hpp>
 
 namespace gr {
   namespace op25 {

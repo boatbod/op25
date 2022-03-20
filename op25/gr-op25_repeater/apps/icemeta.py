@@ -39,7 +39,7 @@ def from_dict(d, key, def_val):
 class meta_server(threading.Thread):
     def __init__(self, input_q, metacfg, debug = 0, **kwds):
         threading.Thread.__init__(self, **kwds)
-        self.setDaemon(1)
+        self.daemon = True
         self.input_q = input_q
         self.logging = debug
         self.keep_running = True

@@ -16,12 +16,12 @@
 import sys
 import os
 import math
-from gnuradio import gr, gru, audio, eng_notation
+from gnuradio import gr,  audio, eng_notation
 from gnuradio import filter, blocks, analog, digital
 from gnuradio.eng_option import eng_option
 from optparse import OptionParser
 
-import op25_repeater
+import gnuradio.op25_repeater as op25_repeater
 
 from math import pi
 

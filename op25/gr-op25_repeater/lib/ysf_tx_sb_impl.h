@@ -23,7 +23,7 @@
 #ifndef INCLUDED_OP25_REPEATER_YSF_TX_SB_IMPL_H
 #define INCLUDED_OP25_REPEATER_YSF_TX_SB_IMPL_H
 
-#include <op25_repeater/ysf_tx_sb.h>
+#include <gnuradio/op25_repeater/ysf_tx_sb.h>
 
 #include <sys/time.h>
 #include <netinet/in.h>

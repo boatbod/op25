@@ -59,7 +59,7 @@ KEEPALIVE_TIME = 3.0   # no data received in (seconds)
 class q_watcher(threading.Thread):
     def __init__(self, msgq,  callback, **kwds):
         threading.Thread.__init__ (self, **kwds)
-        self.setDaemon(1)
+        self.daemon = True
         self.msgq = msgq
         self.callback = callback
         self.keep_running = True
@@ -73,7 +73,7 @@ class q_watcher(threading.Thread):
 class curses_terminal(threading.Thread):
     def __init__(self, input_q,  output_q, sock=None, **kwds):
         threading.Thread.__init__ (self, **kwds)
-        self.setDaemon(1)
+        self.daemon = True
         self.input_q = input_q
         self.output_q = output_q
         self.keep_running = True
@@ -524,7 +524,7 @@ class http_terminal(threading.Thread):
         from http_server import http_server
 
         threading.Thread.__init__ (self, **kwds)
-        self.setDaemon(1)
+        self.daemon = True
         self.input_q = input_q
         self.output_q = output_q
         self.endpoint = endpoint
@@ -545,7 +545,7 @@ class http_terminal(threading.Thread):
 class udp_terminal(threading.Thread):
     def __init__(self, input_q,  output_q, port, **kwds):
         threading.Thread.__init__ (self, **kwds)
-        self.setDaemon(1)
+        self.daemon = True
         self.input_q = input_q
         self.output_q = output_q
         self.keep_running = True

@@ -29,7 +29,7 @@
 #include <boost/noncopyable.hpp>
 #include <boost/shared_ptr.hpp>
 
-typedef boost::shared_ptr<class data_unit_handler> data_unit_handler_sptr;
+typedef std::shared_ptr<class data_unit_handler> data_unit_handler_sptr;
 
 /**
  * P25 data_unit_handler interface.
