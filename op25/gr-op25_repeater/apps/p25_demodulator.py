@@ -34,6 +34,7 @@ from gnuradio import filter, analog, digital, blocks
 from gnuradio.eng_option import eng_option
 import gnuradio.op25 as op25
 import gnuradio.op25_repeater as op25_repeater
+from gnuradio.fft import window
 from math import pi
 
 sys.path.append('tx')
@@ -333,13 +334,13 @@ class p25_demod_cb(p25_demod_base):
             self.if1 = input_rate / self.decim
             self.if2 = self.if1 / self.decim2
             sys.stderr.write( 'Using two-stage decimator for speed=%d, decim=%d/%d if1=%d if2=%d\n' % (input_rate, self.decim, self.decim2, self.if1, self.if2))
-            bpf_coeffs = filter.firdes.complex_band_pass(1.0, input_rate, -self.if1/2, self.if1/2, self.if1/2, filter.firdes.WIN_HAMMING)
+            bpf_coeffs = filter.firdes.complex_band_pass(1.0, input_rate, -self.if1/2, self.if1/2, self.if1/2, window.WIN_HAMMING)
             self.t_cache[0] = bpf_coeffs
             fa = 6250
             fb = self.if2 / 2
             if filter_type == 'nxdn' and self.symbol_rate == 2400:	# nxdn48 6.25 KHz
                 fa = 3125
-            lpf_coeffs = filter.firdes.low_pass(1.0, self.if1, (fb+fa)/2, fb-fa, filter.firdes.WIN_HAMMING)
+            lpf_coeffs = filter.firdes.low_pass(1.0, self.if1, (fb+fa)/2, fb-fa, window.WIN_HAMMING)
             self.bpf = filter.fir_filter_ccc(self.decim,  bpf_coeffs)
             self.lpf = filter.fir_filter_ccf(self.decim2, lpf_coeffs)
             resampled_rate = self.if2
@@ -355,7 +356,7 @@ class p25_demod_cb(p25_demod_base):
             if filter_type == 'nxdn' and self.symbol_rate == 2400:	# nxdn48 6.25 KHz
                 f1 = 3125
                 f2 = 625
-            lpf_coeffs = filter.firdes.low_pass(1.0, input_rate, f1, f2, filter.firdes.WIN_HANN)
+            lpf_coeffs = filter.firdes.low_pass(1.0, input_rate, f1, f2, window.WIN_HANN)
             decimation = int(input_rate / if_rate)
             self.lpf = filter.fir_filter_ccf(decimation, lpf_coeffs)
             resampled_rate = float(input_rate) / float(decimation) # rate at output of self.lpf
@@ -371,7 +372,7 @@ class p25_demod_cb(p25_demod_base):
 
         fa = 6250
         fb = fa + 625
-        cutoff_coeffs = filter.firdes.low_pass(1.0, self.if_rate, (fb+fa)/2, fb-fa, filter.firdes.WIN_HANN)
+        cutoff_coeffs = filter.firdes.low_pass(1.0, self.if_rate, (fb+fa)/2, fb-fa, window.WIN_HANN)
         self.cutoff = filter.fir_filter_ccf(1, cutoff_coeffs)
 
         omega = float(self.if_rate) / float(self.symbol_rate)
@@ -435,7 +436,7 @@ class p25_demod_cb(p25_demod_base):
         self.lo_freq = freq
         if self.if1:
             if freq not in list(self.t_cache.keys()):
-                self.t_cache[freq] = filter.firdes.complex_band_pass(1.0, self.input_rate, -freq - self.if1/2, -freq + self.if1/2, self.if1/2, filter.firdes.WIN_HAMMING)
+                self.t_cache[freq] = filter.firdes.complex_band_pass(1.0, self.input_rate, -freq - self.if1/2, -freq + self.if1/2, self.if1/2, window.WIN_HAMMING)
             self.bpf.set_taps(self.t_cache[freq])
             bfo_f = self.decim * -freq / float(self.input_rate)
             bfo_f -= int(bfo_f)

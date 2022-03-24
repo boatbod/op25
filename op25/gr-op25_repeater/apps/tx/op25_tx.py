@@ -45,6 +45,7 @@ from gnuradio import audio, filter, analog
 from gnuradio.eng_option import eng_option
 from optparse import OptionParser
 from usrpm import usrp_dbid
+from gnuradio.fft import window
 import math
 import sys
 import osmosdr
@@ -93,7 +94,7 @@ class pipeline(gr.hier_block2):
         interp_factor = if_rate / audio_rate
 
         low_pass = 2.88e3
-        interp_taps = filter.firdes.low_pass(1.0, if_rate, low_pass, low_pass * 0.1, filter.firdes.WIN_HANN)
+        interp_taps = filter.firdes.low_pass(1.0, if_rate, low_pass, low_pass * 0.1, window.WIN_HANN)
 
         interpolator = filter.interp_fir_filter_fff (int(interp_factor), interp_taps)
 

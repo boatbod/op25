@@ -33,6 +33,7 @@ import math
 from gnuradio import gr,  audio, eng_notation
 from gnuradio import filter, blocks, analog, digital
 from gnuradio.eng_option import eng_option
+from gnuradio.fft import window
 from optparse import OptionParser
 
 import osmosdr
@@ -143,7 +144,7 @@ class my_top_block(gr.top_block):
 
         if options.do_audio:
             AUDIO = audio.source(options.alsa_rate, options.audio_input)
-            lpf_taps = filter.firdes.low_pass(1.0, options.alsa_rate, 3400.0, 3400 * 0.1, filter.firdes.WIN_HANN)
+            lpf_taps = filter.firdes.low_pass(1.0, options.alsa_rate, 3400.0, 3400 * 0.1, window.WIN_HANN)
             audio_rate = 8000
             AUDIO_DECIM = filter.fir_filter_fff (int(options.alsa_rate / audio_rate), lpf_taps)
             AUDIO_SCALE = blocks.multiply_const_ff(32767.0 * options.gain)
