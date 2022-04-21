@@ -13,15 +13,29 @@
 #define INCLUDED_P25_FRAMER_H
 
 #include "log_ts.h"
+#include "frame_sync_magics.h"
 
 class p25_framer
 {
+    static const uint8_t  fs_table_len           = 5;
+    const uint64_t fs_table[fs_table_len]        = {P25_FRAME_SYNC_MAGIC,
+                                                    P25_FRAME_SYNC_REV_P,
+                                                    P25_FRAME_SYNC_X2400,
+                                                    P25_FRAME_SYNC_N1200,
+                                                    P25_FRAME_SYNC_P1200};
+
+    const uint8_t  fs_dibit_map[fs_table_len][4] = {{0,1,2,3},
+                                                    {2,3,0,1},
+                                                    {3,2,1,0},
+                                                    {1,3,0,2},
+                                                    {2,0,3,1}};
     private:
         typedef std::vector<bool> bit_vector;
         // internal functions
         bool nid_codeword(uint64_t acc);
+        void update_fs_index(const uint64_t fs);
         // internal instance variables and state
-        uint8_t reverse_p;
+        uint8_t fs_map_idx;
         int nid_syms;
         uint32_t next_bit;
         uint64_t nid_accum;
@@ -39,7 +53,7 @@ class p25_framer
         void set_nac(uint32_t nac) { d_expected_nac = nac; }
         void set_debug(int debug) { d_debug = debug; }
         bool rx_sym(uint8_t dibit) ;
-        uint32_t load_nid(const uint8_t *syms, int nsyms);
+        uint32_t load_nid(const uint8_t *syms, int nsyms, const uint64_t fs);
         bool load_body(const uint8_t * syms, int nsyms);
 
         uint32_t symbols_received;

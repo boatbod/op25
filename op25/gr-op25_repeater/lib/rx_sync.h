@@ -82,15 +82,15 @@ static const struct _mode_data {
 };   // index order must match rx_types enum
 
 //static const int KNOWN_MAGICS = 16;
-static const int KNOWN_MAGICS = 13;
+static const int KNOWN_MAGICS = 16;
 static const struct _sync_magic {
 	int type;
 	uint64_t magic;
 } SYNC_MAGIC[KNOWN_MAGICS] = {
 	{RX_TYPE_P25P1, P25_FRAME_SYNC_MAGIC},
-//	{RX_TYPE_P25P1, P25_FRAME_SYNC_N1200},
-//	{RX_TYPE_P25P1, P25_FRAME_SYNC_X2400},
-//	{RX_TYPE_P25P1, P25_FRAME_SYNC_P1200},
+	{RX_TYPE_P25P1, P25_FRAME_SYNC_N1200},
+	{RX_TYPE_P25P1, P25_FRAME_SYNC_X2400},
+	{RX_TYPE_P25P1, P25_FRAME_SYNC_P1200},
 	{RX_TYPE_P25P2, P25P2_FRAME_SYNC_MAGIC},
 	{RX_TYPE_DMR, DMR_BS_VOICE_SYNC_MAGIC},
 	{RX_TYPE_DMR, DMR_BS_DATA_SYNC_MAGIC},
@@ -140,6 +140,7 @@ private:
 	op25_timer sync_timer;
 	unsigned int d_symbol_count;
 	uint64_t d_sync_reg;
+	uint64_t d_fs;
 	uint8_t d_cbuf[CBUF_SIZE*2];
 	unsigned int d_cbuf_idx;
 	enum rx_types d_current_type;
