@@ -81,6 +81,7 @@ static const struct _mode_data {
 	{"YSF",    40,0,480,480*2}
 };   // index order must match rx_types enum
 
+//static const int KNOWN_MAGICS = 16;
 static const int KNOWN_MAGICS = 16;
 static const struct _sync_magic {
 	int type;
@@ -139,6 +140,7 @@ private:
 	op25_timer sync_timer;
 	unsigned int d_symbol_count;
 	uint64_t d_sync_reg;
+	uint64_t d_fs;
 	uint8_t d_cbuf[CBUF_SIZE*2];
 	unsigned int d_cbuf_idx;
 	enum rx_types d_current_type;
