@@ -89,17 +89,26 @@ uint8_t gardner_costas_cc_impl::slicer(float sym) {
 	if(check_frame_sync((nid_accum & P25_FRAME_SYNC_MASK) ^ P25_FRAME_SYNC_MAGIC, 0, 48)) {
 		UPDATE_COUNT(' ')
 	}
-	else if(check_frame_sync((nid_accum & P25_FRAME_SYNC_MASK) ^ 0x001050551155LL, 0, 48)) {
+	else if(check_frame_sync((nid_accum & P25_FRAME_SYNC_MASK) ^ P25_FRAME_SYNC_N1200, 0, 48)) {
 		UPDATE_COUNT('-')
 	}
-	else if(check_frame_sync((nid_accum & P25_FRAME_SYNC_MASK) ^ 0xFFEFAFAAEEAALL, 0, 48)) {
+	else if(check_frame_sync((nid_accum & P25_FRAME_SYNC_MASK) ^ P25_FRAME_SYNC_P1200, 0, 48)) {
 		UPDATE_COUNT('+')
 	}
-	else if(check_frame_sync((nid_accum & P25_FRAME_SYNC_MASK) ^ 0xAA8A0A008800LL, 0, 48)) {
+	else if(check_frame_sync((nid_accum & P25_FRAME_SYNC_MASK) ^ P25_FRAME_SYNC_X2400, 0, 48)) {
 		UPDATE_COUNT('|')
 	}
 	else if(check_frame_sync((nid_accum & P25P2_FRAME_SYNC_MASK) ^ P25P2_FRAME_SYNC_MAGIC, 0, 40)) {
 		UPDATE_COUNT(' ')
+	}
+	else if(check_frame_sync((nid_accum & P25P2_FRAME_SYNC_MASK) ^ P25P2_FRAME_SYNC_N1200, 0, 40)) {
+		UPDATE_COUNT('-')
+	}
+	else if(check_frame_sync((nid_accum & P25P2_FRAME_SYNC_MASK) ^ P25P2_FRAME_SYNC_P1200, 0, 40)) {
+		UPDATE_COUNT('+')
+	}
+	else if(check_frame_sync((nid_accum & P25P2_FRAME_SYNC_MASK) ^ P25P2_FRAME_SYNC_X2400, 0, 40)) {
+		UPDATE_COUNT('|')
 	}
     if (d_event_type == ' ' || d_event_count < 5) {
         d_update_request = 0;

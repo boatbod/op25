@@ -110,6 +110,7 @@ p25p2_tdma::p25p2_tdma(const op25_audio& udp, int slotid, int debug, bool do_msg
 	ESS_B(16,0),
 	ess_keyid(0),
 	ess_algid(0x80),
+    ph2_dibit(debug, msgq_id),
 	p2framer()
 {
 	assert (slotid == 0 || slotid == 1);
@@ -561,13 +562,18 @@ int p25p2_tdma::handle_frame(void)
 	int rc;
 	for (size_t i=0; i<sizeof(dibits); i++)
 		dibits[i] = p2framer.d_frame_body[i*2+1] + (p2framer.d_frame_body[i*2] << 1);
-	rc = handle_packet(dibits);
+	rc = handle_packet(dibits, p2framer.get_fs());
 	return rc;
 }
 
 /* returns true if in sync and slot matches current active slot d_slotid */
-int p25p2_tdma::handle_packet(const uint8_t dibits[]) 
+int p25p2_tdma::handle_packet(uint8_t dibits[], const uint64_t fs) 
 {
+	// correct any dibit rotation caused by demodulator phase error
+	ph2_dibit.set_fs_index(fs);
+ 	ph2_dibit.correct_dibits(dibits, 180);
+
+	// descramble and process the frame
 	int rc = -1;
 	static const int which_slot[] = {0,1,0,1,0,1,0,1,0,1,1,0};
 	packets++;

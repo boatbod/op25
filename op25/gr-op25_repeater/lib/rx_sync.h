@@ -1,5 +1,5 @@
 // P25 Decoder (C) Copyright 2013, 2014, 2015, 2016, 2017 Max H. Parke KA1RBI
-//             (C) Copyright 2019, 2020 Graham J. Norbury
+//             (C) Copyright 2019, 2020, 2021, 2022 Graham J. Norbury
 // 
 // This file is part of OP25
 // 
@@ -81,17 +81,19 @@ static const struct _mode_data {
 	{"YSF",    40,0,480,480*2}
 };   // index order must match rx_types enum
 
-//static const int KNOWN_MAGICS = 16;
-static const int KNOWN_MAGICS = 16;
+static const int KNOWN_MAGICS = 19;
 static const struct _sync_magic {
 	int type;
 	uint64_t magic;
 } SYNC_MAGIC[KNOWN_MAGICS] = {
 	{RX_TYPE_P25P1, P25_FRAME_SYNC_MAGIC},
-	{RX_TYPE_P25P1, P25_FRAME_SYNC_N1200},
-	{RX_TYPE_P25P1, P25_FRAME_SYNC_X2400},
-	{RX_TYPE_P25P1, P25_FRAME_SYNC_P1200},
 	{RX_TYPE_P25P2, P25P2_FRAME_SYNC_MAGIC},
+	{RX_TYPE_P25P1, P25_FRAME_SYNC_N1200},
+	{RX_TYPE_P25P2, P25P2_FRAME_SYNC_N1200},
+	{RX_TYPE_P25P1, P25_FRAME_SYNC_X2400},
+	{RX_TYPE_P25P2, P25P2_FRAME_SYNC_X2400},
+	{RX_TYPE_P25P1, P25_FRAME_SYNC_P1200},
+	{RX_TYPE_P25P2, P25P2_FRAME_SYNC_P1200},
 	{RX_TYPE_DMR, DMR_BS_VOICE_SYNC_MAGIC},
 	{RX_TYPE_DMR, DMR_BS_DATA_SYNC_MAGIC},
 	{RX_TYPE_DMR, DMR_MS_VOICE_SYNC_MAGIC},

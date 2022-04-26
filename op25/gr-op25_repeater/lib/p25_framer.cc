@@ -44,6 +44,7 @@ p25_framer::p25_framer(int debug, int msgq_id) :
     d_msgq_id(msgq_id),
     d_expected_nac(0),
     d_unexpected_nac(0),
+    ph1_dibit(debug),
     symbols_received(0),
     nac(0),
     duid(0),
@@ -140,7 +141,7 @@ bool p25_framer::nid_codeword(uint64_t acc) {
  * Returns true when complete frame received, else false
  */
 bool p25_framer::rx_sym(uint8_t dibit) {
-    dibit = fs_dibit_map[fs_map_idx][dibit & 0x3];
+    dibit = ph1_dibit.dibit_map()[dibit];
     symbols_received++;
     bool rc = false;
     nid_accum <<= 2;
@@ -168,32 +169,32 @@ bool p25_framer::rx_sym(uint8_t dibit) {
         nid_syms++; // count symbols in nid
 
     if(check_frame_sync((nid_accum & P25_FRAME_SYNC_MASK) ^ P25_FRAME_SYNC_MAGIC, 6, 48)) {
-        update_fs_index(P25_FRAME_SYNC_MAGIC);
+        ph1_dibit.set_fs_index(P25_FRAME_SYNC_MAGIC);
         nid_syms = 1;
     }
     if(check_frame_sync((nid_accum & P25_FRAME_SYNC_MASK) ^ P25_FRAME_SYNC_REV_P, 0, 48)) {
-        update_fs_index(P25_FRAME_SYNC_REV_P);
+        ph1_dibit.set_fs_index(P25_FRAME_SYNC_REV_P);
         nid_syms = 1;
         if (d_debug >= 10) {
             fprintf(stderr, "%s p25_framer::rx_sym() Reversed FS polarity detected - autocorrecting\n", logts.get(d_msgq_id));
         }
     }
     if(check_frame_sync((nid_accum & P25_FRAME_SYNC_MASK) ^ P25_FRAME_SYNC_N1200, 0, 48)) {
-        update_fs_index(P25_FRAME_SYNC_N1200);
+        ph1_dibit.set_fs_index(P25_FRAME_SYNC_N1200);
         nid_syms = 1;
         if (d_debug >= 10) {
             fprintf(stderr, "%s p25_framer::rx_sym() tuning error -1200\n", logts.get(d_msgq_id));
         }
     }
     if(check_frame_sync((nid_accum & P25_FRAME_SYNC_MASK) ^ P25_FRAME_SYNC_P1200, 0, 48)) {
-        update_fs_index(P25_FRAME_SYNC_P1200);
+        ph1_dibit.set_fs_index(P25_FRAME_SYNC_P1200);
         nid_syms = 1;
         if (d_debug >= 10) {
             fprintf(stderr, "%s p25_framer::rx_sym() tuning error +1200\n", logts.get(d_msgq_id));
         }
     }
     if(check_frame_sync((nid_accum & P25_FRAME_SYNC_MASK) ^ P25_FRAME_SYNC_X2400, 0, 48)) {
-        update_fs_index(P25_FRAME_SYNC_X2400);
+        ph1_dibit.set_fs_index(P25_FRAME_SYNC_X2400);
         nid_syms = 1;
         if (d_debug >= 10) {
             fprintf(stderr, "%s p25_framer::rx_sym() tuning error +/- 2400\n", logts.get(d_msgq_id));
@@ -226,12 +227,12 @@ uint32_t p25_framer::load_nid(const uint8_t *syms, int nsyms, const uint64_t fs)
     if (nsyms < 57)
         return 0;
 
-    update_fs_index(fs);
+    ph1_dibit.set_fs_index(fs);
 
     uint8_t dibit;
     next_bit = 0;
     for (int i = 0; i < nsyms; i++) {
-        dibit = fs_dibit_map[fs_map_idx][syms[i] & 0x3];
+        dibit = ph1_dibit.dibit_map()[syms[i] & 0x3];
         frame_body[next_bit++] = (dibit >> 1) & 1;
         frame_body[next_bit++] =  dibit       & 1;
     }
@@ -264,7 +265,7 @@ uint32_t p25_framer::load_nid(const uint8_t *syms, int nsyms, const uint64_t fs)
 bool p25_framer::load_body(const uint8_t * syms, int nsyms) {
     uint8_t dibit;
     for (int i = 0; i < nsyms; i++) {
-        dibit = fs_dibit_map[fs_map_idx][syms[i] & 0x3];
+        dibit = ph1_dibit.dibit_map()[syms[i] & 0x3];
         frame_body[next_bit++] = (dibit >> 1) & 1;
         frame_body[next_bit++] =  dibit       & 1;
     }
@@ -272,19 +273,3 @@ bool p25_framer::load_body(const uint8_t * syms, int nsyms) {
     return true;
 }
 
-/*
- * update_fs_index: identify current frame sync index using lookup table
- *
- */
-void p25_framer::update_fs_index(const uint64_t fs) {
-    fs_map_idx = 0;
-    for (uint8_t i = 0; i < fs_table_len; i++) {
-        if (fs == fs_table[i]) {
-            fs_map_idx = i;
-            if (d_debug >= 10) {
-                fprintf(stderr, "%s p25_framer::update_fs_index(): fs_type=%d, fs=%012lx\n", logts.get(d_msgq_id), fs_map_idx, fs);
-            } 
-            break;
-        }
-    }
-}
