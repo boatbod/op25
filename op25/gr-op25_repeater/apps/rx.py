@@ -707,7 +707,7 @@ class p25_rx_block (gr.top_block):
             self.constellation_sink = constellation_sink_c()
             self.add_plot_sink(self.constellation_sink)
             self.lock()
-            self.demod.connect_complex('diffdec', self.constellation_sink)
+            self.demod.connect_complex('costas', self.constellation_sink)
             self.unlock()
         elif (self.constellation_sink is not None):
             self.lock()

@@ -418,7 +418,7 @@ class channel(object):
             self.sinks['constellation'] = (sink, self.toggle_constellation_plot)
             self.set_plot_destination('constellation')
             self.tb.lock()
-            self.demod.connect_complex('diffdec', sink)
+            self.demod.connect_complex('costas', sink)
             self.tb.unlock()
         else:
             (sink, fn) = self.sinks.pop('constellation')

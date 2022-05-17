@@ -32,6 +32,7 @@ import sys
 from gnuradio import gr, gru, eng_notation
 from gnuradio import filter, analog, digital, blocks
 from gnuradio.eng_option import eng_option
+import pmt
 import op25
 import op25_repeater
 from math import pi
@@ -43,7 +44,7 @@ import op25_c4fm_mod
 _def_output_sample_rate = 48000
 _def_if_rate = 24000
 _def_gain_mu = 0.025
-_def_costas_alpha = 0.04
+_def_costas_alpha = 0.001
 _def_symbol_rate = 4800
 _def_symbol_deviation = 600.0
 _def_bb_gain = 1.0
@@ -314,7 +315,7 @@ class p25_demod_cb(p25_demod_base):
         self.aux_fm_connected = 0
         self.nbfm = None
         self.offset = 0
-        self.sps = 0.0
+        self.sps = if_rate / float(symbol_rate)
         self.lo_freq = 0
         self.float_sink = {}
         self.complex_sink = {}
@@ -377,14 +378,9 @@ class p25_demod_cb(p25_demod_base):
         omega = float(self.if_rate) / float(self.symbol_rate)
         gain_omega = 0.1  * gain_mu * gain_mu
 
-        alpha = costas_alpha
-        beta = 0.125 * alpha * alpha
-        fmax = 2400 # Hz
-        fmax = 2*pi * fmax / float(self.if_rate)
-
-        self.clock = op25_repeater.gardner_costas_cc(omega, gain_mu, gain_omega, alpha,  beta, fmax, -fmax)
-
         self.agc = analog.feedforward_agc_cc(16, 1.0)
+        self.clock = op25_repeater.gardner_cc(omega, gain_mu, gain_omega) # timing recovery
+        self.costas = digital.costas_loop_cc(costas_alpha, 4, False)      # phase and freq correction
 
         # Perform Differential decoding on the constellation
         self.diffdec = digital.diff_phasor_cc()
@@ -408,10 +404,10 @@ class p25_demod_cb(p25_demod_base):
         self.set_relative_frequency(relative_freq)
 
     def get_error_band(self):
-        return int(self.clock.get_error_band())
+        return 0
 
     def get_freq_error(self):   # get error in Hz (approx).
-        return int(self.clock.get_freq_error() * self.symbol_rate)
+        return 0
 
     def set_omega(self, rate):
         self.set_symbol_rate(rate)
@@ -455,7 +451,7 @@ class p25_demod_cb(p25_demod_base):
             self.nbfm = None
         if self.connect_state == 'cqpsk':
             self.disconnect_fm_demod()
-            self.disconnect(self.if_out, self.cutoff, self.agc, self.clock, self.diffdec, self.to_float, self.rescale, self.slicer)
+            self.disconnect(self.if_out, self.cutoff, self.agc, self.clock, self.diffdec, self.costas, self.to_float, self.rescale, self.slicer)
         elif self.connect_state == 'fsk4':
             self.disconnect(self.if_out, self.cutoff, self.fm_demod, self.baseband_amp, self.symbol_filter, self.fsk4_demod, self.slicer)
         self.connect_state = None
@@ -469,7 +465,7 @@ class p25_demod_cb(p25_demod_base):
         if demod_type == 'fsk4':
             self.connect(self.if_out, self.cutoff, self.fm_demod, self.baseband_amp, self.symbol_filter, self.fsk4_demod, self.slicer)
         elif demod_type == 'cqpsk':
-            self.connect(self.if_out, self.cutoff, self.agc, self.clock, self.diffdec, self.to_float, self.rescale, self.slicer)
+            self.connect(self.if_out, self.cutoff, self.agc, self.clock, self.diffdec, self.costas, self.to_float, self.rescale, self.slicer)
         else:
             sys.stderr.write("connect_chain failed, type: %s\n" % demod_type)
             assert 0 == 1
@@ -527,6 +523,9 @@ class p25_demod_cb(p25_demod_base):
         elif src == 'diffdec':
             self.connect(self.diffdec, sink)
             self.complex_sink[sink] = self.diffdec
+        elif src == 'costas':
+            self.connect(self.costas, sink)
+            self.complex_sink[sink] = self.costas
         elif src == 'mixer':
             self.connect(self.mixer, sink)
             self.complex_sink[sink] = self.mixer
