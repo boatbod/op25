@@ -461,7 +461,7 @@ class channel(object):
                 self.sinks['fft'][0].set_relative_freq(self.device.frequency - freq)
         if self.verbosity >= 9:
             sys.stderr.write("%s [%d] Tuning to frequency %f\n" % (log_ts.get(), self.msgq_id, (freq/1e6)))
-        self.demod.reset()          # reset gardner-costas tracking loop
+        #self.demod.reset()          # reset gardner-costas tracking loop
         self.decoder.sync_reset()   # reset frame_assembler
         return True
 
@@ -472,7 +472,7 @@ class channel(object):
         self.device.src.set_center_freq(self.device.frequency + self.device.offset)
         self.device.fractional_corr = int((int(round(self.device.ppm)) - self.device.ppm) * (self.device.frequency/1e6))
         self.demod.set_relative_frequency(self.device.offset + self.device.frequency + self.device.fractional_corr + self.tracking - self.frequency)
-        self.demod.reset()          # reset gardner-costas tracking loop
+        #self.demod.reset()          # reset gardner-costas tracking loop
 
     def configure_p25_tdma(self, params):
         set_tdma = False
@@ -521,13 +521,12 @@ class channel(object):
     def error_tracking(self):
         if self.chan_idle or not self.auto_tracking:
             return
-        band = self.demod.get_error_band()
-        freq = self.demod.get_freq_error()
+        self.error = self.demod.get_freq_error()
         if self.verbosity >= 10:
-            sys.stderr.write("%s [%d] frequency tracking(%d): band: %d, freq: %d\n" % (log_ts.get(), self.msgq_id, self.tracking, band, freq))
-        self.error = (band * 1200) + freq
+        #if self.verbosity >= 1:
+            sys.stderr.write("%s [%d] frequency tracking(%d): freq: %d\n" % (log_ts.get(), self.msgq_id, self.tracking, self.error))
         if abs(self.error) >= self.tracking_threshold:
-            self.tracking += (band * 1200) + (freq * self.tracking_feedback)
+            self.tracking += self.error * self.tracking_feedback
             self.tracking = min(self.tracking_limit, max(-self.tracking_limit, self.tracking))
             self.tracking_cache[self.frequency] = self.tracking
             self.demod.set_relative_frequency(self.device.offset + self.device.frequency + self.device.fractional_corr + self.tracking - self.frequency)

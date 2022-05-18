@@ -55,6 +55,8 @@ _def_mu = 0.5
 _def_freq_error = 0.0
 _def_omega_relative_limit = 0.005
 
+TWO_PI = 2.0 * pi
+
 # /////////////////////////////////////////////////////////////////////////////
 #                           demodulator
 # /////////////////////////////////////////////////////////////////////////////
@@ -393,9 +395,9 @@ class p25_demod_cb(p25_demod_base):
 
         # fm demodulator (needed in fsk4 case)
         if filter_type is not None and filter_type[:4] == 'fsk2':
-            fm_demod_gain = if_rate / (2.0 * pi * 3600)
+            fm_demod_gain = if_rate / (TWO_PI * 3600)
         else:
-            fm_demod_gain = if_rate / (2.0 * pi * _def_symbol_deviation)
+            fm_demod_gain = if_rate / (TWO_PI * _def_symbol_deviation)
         self.fm_demod = analog.quadrature_demod_cf(fm_demod_gain)
 
         self.connect_chain(demod_type)
@@ -407,7 +409,8 @@ class p25_demod_cb(p25_demod_base):
         return 0
 
     def get_freq_error(self):   # get error in Hz (approx).
-        return 0
+        freq = (-self.costas.get_phase() / TWO_PI) * self.symbol_rate
+        return freq
 
     def set_omega(self, rate):
         self.set_symbol_rate(rate)
@@ -416,10 +419,10 @@ class p25_demod_cb(p25_demod_base):
             return
         self.sps = sps
         self.clock.set_omega(self.sps)
+        self.costas_reset()
 
     def reset(self):
-        if callable(getattr(self.clock, 'reset', None)):
-            self.clock.reset()
+        self.costas_reset()
         if callable(getattr(self.fsk4_demod, 'reset', None)):
             self.fsk4_demod.reset()
 
@@ -552,3 +555,11 @@ class p25_demod_cb(p25_demod_base):
             return True
         else:
             return False
+
+    def costas_callback(self, msg):
+        pass
+
+    def costas_reset(self):
+        # is this actually necessary any more?
+        self.costas.set_frequency(0)
+        self.costas.set_phase(0)

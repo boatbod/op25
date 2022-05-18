@@ -131,7 +131,6 @@ class p25_rx_block (gr.top_block):
         self.tuner_sink = None
         self.target_freq = 0.0
         self.last_error_update = 0
-        self.error_band = 0
         self.tuning_error = 0
         self.freq_correction = 0
         self.last_set_freq = 0
@@ -443,29 +442,24 @@ class p25_rx_block (gr.top_block):
             or self.last_change_freq_at + UPDATE_TIME > time.time():
             return
         self.last_error_update = time.time()
-        band = self.demod.get_error_band()
         freq_error = self.demod.get_freq_error()
-        if band:
-            self.error_band += band
-        if band or abs(freq_error) >= 200: # avoid hunting by only compensating errors over 200hz
+        if abs(freq_error) >= 200: # avoid hunting by only compensating errors over 200hz
             self.freq_correction += freq_error * 0.15
             do_freq_update = 1
         else:
             do_freq_update = 0
         if self.freq_correction > 600:
             self.freq_correction -= 1200
-            self.error_band += 1
         elif self.freq_correction < -600:
             self.freq_correction += 1200
-            self.error_band -= 1
-        self.tuning_error = self.error_band * 1200 + self.freq_correction
+        self.tuning_error = self.freq_correction
         err_hz = 0
         err_ppm = 0
         if self.last_change_freq > 0:
             err_ppm = round((self.tuning_error*1e6) / float(self.last_change_freq))
             err_hz = -int(self.tuning_error - (err_ppm * (self.last_change_freq / 1e6)))
         if self.options.verbosity >= 10:
-            sys.stderr.write('%s frequency_tracking\t%d\t%d\t%d\t%d\t%d\n' % (log_ts.get(), freq_error, self.error_band, self.tuning_error, err_ppm, err_hz))
+            sys.stderr.write('%s frequency_tracking\t%d\t%d\t%d\t%d\n' % (log_ts.get(), freq_error, self.tuning_error, err_ppm, err_hz))
         if do_freq_update:
             corrected_ppm = self.options.freq_corr + err_ppm  # compute new device ppm based on starting point plus adjustment
             if corrected_ppm != self.last_set_ppm:
@@ -501,7 +495,7 @@ class p25_rx_block (gr.top_block):
                 else:    
                     self.lo_freq = self.options.offset + relative_freq
                     if self.demod.set_relative_frequency(self.lo_freq):      # relative tune successful
-                        self.demod.reset()                                       # reset gardner-costas loop
+                        #self.demod.reset()                                       # reset gardner-costas loop
                         self.set_freq(center_freq + offset)
                         if self.fft_sink:
                             self.fft_sink.set_relative_freq(relative_freq)
@@ -589,7 +583,7 @@ class p25_rx_block (gr.top_block):
         self.target_freq = target_freq
         tune_freq = target_freq + self.options.calibration + self.options.offset + self.options.fine_tune
         r = self.src.set_center_freq(tune_freq)
-        self.demod.reset()      # reset gardner-costas loop
+        #self.demod.reset()      # reset gardner-costas loop
 
         if self.fft_sink:
             self.fft_sink.set_center_freq(target_freq)
