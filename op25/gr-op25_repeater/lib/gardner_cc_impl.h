@@ -36,6 +36,29 @@
 namespace gr {
     namespace op25_repeater {
 
+// Integrate & Dump Averager - maintains queue of N samples
+// New samples added to accumulator total and old samples subtracted as they drop off
+class id_avg {
+    public:
+        inline id_avg(int N) { d_N = N; d_accum = 0; }
+        inline ~id_avg() { }
+        inline void reset() { d_queue.clear(); d_accum = 0; }
+        inline float avg() { if (d_queue.empty()) return 0; return d_accum / (2 * d_queue.size()); }
+        inline void add(const float new_value) {
+            d_accum += new_value; d_queue.push_front(new_value);
+            if ((d_queue.size() > d_N) && !d_queue.empty()) {
+                d_accum -= d_queue.back();
+                d_queue.pop_back();
+            }
+        }
+
+    private:
+        size_t d_N;
+        float d_accum;
+        std::deque<float> d_queue;
+};
+
+// Gardner Timing Recovery
 class gardner_cc_impl : public gardner_cc
 {
     public:
@@ -65,6 +88,8 @@ class gardner_cc_impl : public gardner_cc
         //! Sets value of omega and its min and max values 
         void set_omega (float omega);
         void reset();
+        bool locked() { return (d_lock_accum.avg() >= 0.35 ? true : false); } // TODO: adjustable lock threshold 
+        float quality() { return d_lock_accum.avg(); }
 
     protected:
         bool input_sample0(gr_complex, gr_complex& outp);
@@ -74,6 +99,7 @@ class gardner_cc_impl : public gardner_cc
         float d_mu;
         float d_omega, d_gain_omega, d_omega_rel, d_max_omega, d_min_omega, d_omega_mid;
         float d_gain_mu;
+        id_avg d_lock_accum;
 
         gr_complex d_last_sample;
         gr::filter::mmse_fir_interpolator_cc *d_interp;
@@ -101,6 +127,7 @@ class gardner_cc_impl : public gardner_cc
         float       d_fm_accum;
         int         d_fm_count;
 };
+
 
     } // namespace op25_repeater
 } // namespace gr

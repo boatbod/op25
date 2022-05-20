@@ -210,7 +210,10 @@ class p25_demod_base(gr.hier_block2):
     def reset(self):
         pass
 
-    def get_error_band(self):
+    def locked(self):
+        return -1
+
+    def quality(self):
         return 0
 
     def get_freq_error(self):
@@ -372,8 +375,8 @@ class p25_demod_cb(p25_demod_base):
         else:
             self.if_out = self.lpf
 
-        fa = 6250
-        fb = fa + 625
+        fa = 7250
+        fb = fa + 1450
         cutoff_coeffs = filter.firdes.low_pass(1.0, self.if_rate, (fb+fa)/2, fb-fa, filter.firdes.WIN_HANN)
         self.cutoff = filter.fir_filter_ccf(1, cutoff_coeffs)
 
@@ -405,11 +408,16 @@ class p25_demod_cb(p25_demod_base):
 
         self.set_relative_frequency(relative_freq)
 
-    def get_error_band(self):
-        return 0
+    def locked(self):
+        return 1 if self.clock.locked() else 0
+
+    def quality(self):
+        return self.clock.quality()
 
     def get_freq_error(self):   # get error in Hz (approx).
-        freq = (-self.costas.get_phase() / TWO_PI) * self.symbol_rate
+        freq = 0
+        if self.clock.locked():
+            freq = int((-self.costas.get_phase() / TWO_PI) * self.symbol_rate)
         return freq
 
     def set_omega(self, rate):

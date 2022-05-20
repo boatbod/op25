@@ -3,7 +3,9 @@
  * Copyright 2005,2006,2007 Free Software Foundation, Inc.
  *
  * Gardner symbol recovery block for GR - Copyright 2010, 2011, 2012, 2013, 2014, 2015 KA1RBI
- * Pare down functionality to timing recovery only - Copyright 2022 gnorbury@bondcar.com
+ *
+ * Pared down original functionality to handle timing recovery only
+ * Added lock detector based on Yair Linn's research - Copyright 2022 gnorbury@bondcar.com
  * 
  * This file is part of OP25 and part of GNU Radio
  * 
@@ -70,6 +72,7 @@ gardner_cc_impl::gardner_cc_impl(float samples_per_symbol, float gain_mu, float 
     d_gain_omega(gain_omega),
     d_omega_rel(0.002),
     d_gain_mu(gain_mu),
+    d_lock_accum(480),                      // detect timing lock based on last 480 symbols TODO: make configurable
     d_last_sample(0), d_interp(new gr::filter::mmse_fir_interpolator_cc()),
     d_verbose(false),
     d_dl(new gr_complex[NUM_COMPLEX]),
@@ -102,6 +105,7 @@ gardner_cc_impl::reset()
     d_phase = 0;
     d_update_request = 0;
     d_last_sample = 0;
+    d_lock_accum.reset();
 }
 
 void
@@ -194,6 +198,16 @@ gardner_cc_impl::general_work (int noutput_items,
             if (std::isnan(symbol_error)) symbol_error = 0.0;
             if (symbol_error < -1.0) symbol_error = -1.0;
             if (symbol_error >  1.0) symbol_error =  1.0;
+
+            // Lock detector, based on research paper presented by Yair Linn
+            // IEEE Transactions on Wireless Communications Vol 5, No 2, Feb 2006
+            float ie2 = interp_samp.real() * interp_samp.real();
+            float io2 = interp_samp_mid.real() * interp_samp_mid.real();
+            float qe2 = interp_samp.imag() * interp_samp.imag();
+            float qo2 = interp_samp_mid.imag() * interp_samp_mid.imag();
+            float yi = ((ie2+io2) != 0) ? (ie2-io2)/(ie2+io2) : 0;
+            float yq = ((qe2+qo2) != 0) ? (qe2-qo2)/(qe2+qo2) : 0;
+            d_lock_accum.add(yi + yq);
 
             d_omega = d_omega + (d_gain_omega * symbol_error * abs(interp_samp));           // update omega based on loop error
             d_omega = d_omega_mid + gr::branchless_clip(d_omega-d_omega_mid, d_omega_rel);  // make sure we don't walk away

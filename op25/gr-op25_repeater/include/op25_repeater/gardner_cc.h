@@ -49,6 +49,8 @@ namespace gr {
       static sptr make(float samples_per_symbol, float gain_mu, float gain_omega);
       virtual void set_omega(float omega) {}
       virtual void reset() {}
+      virtual bool locked() { return false; }
+      virtual float quality() { return 0; }
     };
 
   } // namespace op25_repeater
