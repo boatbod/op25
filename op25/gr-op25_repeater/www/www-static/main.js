@@ -22,6 +22,7 @@
 var d_debug = 1;
 
 var http_req = new XMLHttpRequest();
+var terminal_config = {};
 var counter1 = 0;
 var error_val = null;
 var auto_tracking = null;
@@ -151,6 +152,8 @@ function term_config(d) {
     var lg_step = 1200;
     var sm_step = 100;
     var updated = 0;
+
+    terminal_config = d;
 
     if ((d["tuning_step_large"] != undefined) && (d["tuning_step_large"] != lg_step)) {
         lg_step = d["tuning_step_large"];
@@ -537,7 +540,575 @@ function trunk_update(d) {
 }
 
 function plot(d) {
-    //TODO: implement local plot rendering using json data
+    var mode_handler = {"fft": plot_fft, "constellation": plot_constellation, "symbol": plot_symbol, "eye": plot_eye, "mixer": plot_mixer, "tuner": plot_tuner};
+
+    if (d.mode in mode_handler) {
+        mode_handler[d.mode](d);
+    } else {
+        console.log("No handler for mode " + d.mode);
+    }
+}
+
+function plot_fft(d) {
+    var xArray = [];
+    var yArray = [];
+
+    for (var i = 0; i < d.data.length; i++) {
+        xArray.push(d.data[i][0])
+        yArray.push(d.data[i][1])
+    }
+
+    var data = [{
+        type: "scatter",
+        mode: "lines",
+        x: xArray,
+        y: yArray,
+        line: {
+            color: '#17BECF',
+            width: 1
+        }
+    }];
+
+    // TODO: Get actual frequency...
+    var center = (d.xrange[1] - d.xrange[0]) / 2 + d.xrange[0];
+
+    var layout = {
+        title: d.title + "<br>" + Date().toString(),
+        xaxis: {
+            title: {
+                text: "Frequency"
+            },
+            range: d.xrange,
+            type: 'linear',
+            dtick: 0.1
+        },
+        yaxis: {
+            title: {
+                text: "Power (dB)"
+            },
+            range: d.yrange,
+            type: 'linear'
+        },
+        shapes: [{
+            type: 'line',
+            x0: center,
+            y0: d.yrange[0],
+            x1: center,
+            y1: d.yrange[1],
+            line: {
+                color: 'grey',
+                width: 1.5,
+                opacity: 0.2
+            }
+        },
+	{
+            type: 'line',
+            x0: d.xrange[0],
+            y0: d.yrange[0],
+            x1: d.xrange[0],
+            y1: d.yrange[1],
+            line: {
+                color: 'black',
+                width: 1
+            }
+        }, {
+            type: 'line',
+            x0: d.xrange[1],
+            y0: d.yrange[0],
+            x1: d.xrange[1],
+            y1: d.yrange[1],
+            line: {
+                color: 'black',
+                width: 1
+            }
+        }, {
+            type: 'line',
+            x0: d.xrange[0],
+            y0: d.yrange[0],
+            x1: d.xrange[1],
+            y1: d.yrange[0],
+            line: {
+                color: 'black',
+                width: 1
+            }
+        }, {
+            type: 'line',
+            x0: d.xrange[0],
+            y0: d.yrange[1],
+            x1: d.xrange[1],
+            y1: d.yrange[1],
+            line: {
+                color: 'black',
+                width: 1
+            }
+        }]
+    };
+
+    var plot_div = document.getElementById('js_plot_fft');
+    if (plot_div.style['display'] != 'none') {
+        Plotly.react(plot_div, data, layout);
+    } else {
+        Plotly.newPlot(plot_div, data, layout);
+    }
+}
+
+function plot_constellation(d) {
+    var xArray = [];
+    var yArray = [];
+
+    for (var i = 0; i < d.data.length; i++) {
+        xArray.push(d.data[i][0])
+        yArray.push(d.data[i][1])
+    }
+
+    var data = [{
+        type: "scatter",
+        mode: "markers",
+        x: xArray,
+        y: yArray,
+        line: {
+            color: '#17BECF',
+            width: 1
+        }
+    }];
+
+
+    var layout = {
+        title: d.title + "<br>" + Date().toString(),
+        xaxis: {
+            title: {
+                text: ""
+            },
+            range: d.xrange,
+            type: 'linear',
+            dtick: 500
+        },
+        yaxis: {
+            title: {
+                text: ""
+            },
+            range: d.yrange,
+            type: 'linear'
+        },
+        shapes: [{
+            type: 'line',
+            x0: d.xrange[0],
+            y0: d.yrange[0],
+            x1: d.xrange[0],
+            y1: d.yrange[1],
+            line: {
+                color: 'black',
+                width: 1
+            }
+        }, {
+            type: 'line',
+            x0: d.xrange[1],
+            y0: d.yrange[0],
+            x1: d.xrange[1],
+            y1: d.yrange[1],
+            line: {
+                color: 'black',
+                width: 1
+            }
+        }, {
+            type: 'line',
+            x0: d.xrange[0],
+            y0: d.yrange[0],
+            x1: d.xrange[1],
+            y1: d.yrange[0],
+            line: {
+                color: 'black',
+                width: 1
+            }
+        }, {
+            type: 'line',
+            x0: d.xrange[0],
+            y0: d.yrange[1],
+            x1: d.xrange[1],
+            y1: d.yrange[1],
+            line: {
+                color: 'black',
+                width: 1
+            }
+        }]
+    };
+
+    var plot_div = document.getElementById('js_plot_constellation');
+    if (plot_div.style['display'] != 'none') {
+        Plotly.react(plot_div, data, layout);
+    } else {
+        Plotly.newPlot(plot_div, data, layout);
+    }
+
+}
+
+function plot_symbol(d) {
+    var xArray = [];
+    var yArray = [];
+
+    for (var i = 0; i < d.data.length; i++) {
+        xArray.push(d.data[i][0])
+        yArray.push(d.data[i][1])
+    }
+
+    var data = [{
+        type: "scatter",
+        mode: "markers",
+        x: xArray,
+        y: yArray,
+        line: {
+            color: '#17BECF',
+            width: 1
+        }
+    }];
+
+
+    var layout = {
+        title: d.title + "<br>" + Date().toString(),
+        xaxis: {
+            title: {
+                text: ""
+            },
+            range: d.xrange,
+            type: 'linear',
+            dtick: 500
+        },
+        yaxis: {
+            title: {
+                text: ""
+            },
+            range: d.yrange,
+            type: 'linear'
+        },
+        shapes: [{
+            type: 'line',
+            x0: d.xrange[0],
+            y0: d.yrange[0],
+            x1: d.xrange[0],
+            y1: d.yrange[1],
+            line: {
+                color: 'black',
+                width: 1
+            }
+        }, {
+            type: 'line',
+            x0: d.xrange[1],
+            y0: d.yrange[0],
+            x1: d.xrange[1],
+            y1: d.yrange[1],
+            line: {
+                color: 'black',
+                width: 1
+            }
+        }, {
+            type: 'line',
+            x0: d.xrange[0],
+            y0: d.yrange[0],
+            x1: d.xrange[1],
+            y1: d.yrange[0],
+            line: {
+                color: 'black',
+                width: 1
+            }
+        }, {
+            type: 'line',
+            x0: d.xrange[0],
+            y0: d.yrange[1],
+            x1: d.xrange[1],
+            y1: d.yrange[1],
+            line: {
+                color: 'black',
+                width: 1
+            }
+        }]
+    };
+
+    var plot_div = document.getElementById('js_plot_symbol');
+    if (plot_div.style['display'] != 'none') {
+        Plotly.react(plot_div, data, layout);
+    } else {
+        Plotly.newPlot(plot_div, data, layout);
+    }
+}
+
+function plot_eye(d) {
+    var xArray = [];
+    var yArray = [];
+
+    var lines = -1;
+
+    for (var i = 0; i < d.data.length; i++) {
+        if (d.data[i][0] == 0) {
+            lines++;
+            xArray[lines] = [];
+            yArray[lines] = [];
+        }
+	xArray[lines].push(d.data[i][0] * 100)
+        yArray[lines].push(d.data[i][1])
+    }
+
+    var data = [];
+
+    for (var i = 0; i <= lines; i++) {
+        data.push({
+            type: "scatter",
+            mode: "lines",
+            x: xArray[i],
+            y: yArray[i],
+            line: {
+                //color: '#17BECF',
+                width: 1
+            }
+        });
+    }
+
+
+    var layout = {
+        title: d.title + "<br>" + Date().toString(),
+        xaxis: {
+            title: {
+                text: ""
+            },
+            range: d.xrange,
+            type: 'linear',
+            //dtick: 500
+        },
+        yaxis: {
+            title: {
+                text: ""
+            },
+            range: d.yrange,
+            type: 'linear'
+        },
+        shapes: [{
+            type: 'line',
+            x0: d.xrange[0],
+            y0: d.yrange[0],
+            x1: d.xrange[0],
+            y1: d.yrange[1],
+            line: {
+                color: 'black',
+                width: 1
+            }
+        }, {
+            type: 'line',
+            x0: d.xrange[1],
+            y0: d.yrange[0],
+            x1: d.xrange[1],
+            y1: d.yrange[1],
+            line: {
+                color: 'black',
+                width: 1
+            }
+        }, {
+            type: 'line',
+            x0: d.xrange[0],
+            y0: d.yrange[0],
+            x1: d.xrange[1],
+            y1: d.yrange[0],
+            line: {
+                color: 'black',
+                width: 1
+            }
+        }, {
+            type: 'line',
+            x0: d.xrange[0],
+            y0: d.yrange[1],
+            x1: d.xrange[1],
+            y1: d.yrange[1],
+            line: {
+                color: 'black',
+                width: 1
+            }
+        }]
+    };
+
+    var plot_div = document.getElementById('js_plot_eye');
+    if (plot_div.style['display'] != 'none') {
+        Plotly.react(plot_div, data, layout);
+    } else {
+        Plotly.newPlot(plot_div, data, layout);
+    }
+
+}
+
+function plot_mixer(d) {
+    var xArray = [];
+    var yArray = [];
+
+    for (var i = 0; i < d.data.length; i++) {
+        xArray.push(d.data[i][0])
+        yArray.push(d.data[i][1])
+    }
+
+    var data = [{
+        type: "scatter",
+        mode: "lines",
+        x: xArray,
+        y: yArray,
+        line: {
+            color: '#17BECF',
+            width: 1
+        }
+    }];
+
+
+    var layout = {
+        title: d.title + "<br>" + Date().toString(),
+        xaxis: {
+            title: {
+                text: "Frequency"
+            },
+            range: d.xrange,
+            type: 'linear',
+            dtick: 5000
+        },
+        yaxis: {
+            title: {
+                text: "Power (dB)"
+            },
+            range: d.yrange,
+            type: 'linear'
+        },
+        shapes: [{
+            type: 'line',
+            x0: d.xrange[0],
+            y0: d.yrange[0],
+            x1: d.xrange[0],
+            y1: d.yrange[1],
+            line: {
+                color: 'black',
+                width: 1
+            }
+        }, {
+            type: 'line',
+            x0: d.xrange[1],
+            y0: d.yrange[0],
+            x1: d.xrange[1],
+            y1: d.yrange[1],
+            line: {
+                color: 'black',
+                width: 1
+            }
+        }, {
+            type: 'line',
+            x0: d.xrange[0],
+            y0: d.yrange[0],
+            x1: d.xrange[1],
+            y1: d.yrange[0],
+            line: {
+                color: 'black',
+                width: 1
+            }
+        }, {
+            type: 'line',
+            x0: d.xrange[0],
+            y0: d.yrange[1],
+            x1: d.xrange[1],
+            y1: d.yrange[1],
+            line: {
+                color: 'black',
+                width: 1
+            }
+        }]
+    };
+
+    var plot_div = document.getElementById('js_plot_mixer');
+    if (plot_div.style['display'] != 'none') {
+        Plotly.react(plot_div, data, layout);
+    } else {
+        Plotly.newPlot(plot_div, data, layout);
+    }
+}
+
+function plot_tuner(d) {
+    var xArray = [];
+    var yArray = [];
+
+    for (var i = 0; i < d.data.length; i++) {
+        xArray.push(d.data[i][0])
+        yArray.push(d.data[i][1])
+    }
+
+    var data = [{
+        type: "bar",
+        //mode: "lines",
+        x: xArray,
+        y: yArray,
+        /*line: {
+            color: '#17BECF',
+            width: 1
+        }*/
+    }];
+
+
+    var layout = {
+        title: d.title + "<br>" + Date().toString(),
+        xaxis: {
+            title: {
+                text: ""
+            },
+            range: d.xrange,
+            type: 'linear',
+            dtick: 0.5
+        },
+        yaxis: {
+            title: {
+                text: ""
+            },
+            range: d.yrange,
+            type: 'linear',
+            dtick: 0.5
+        },
+        shapes: [{
+            type: 'line',
+            x0: d.xrange[0],
+            y0: d.yrange[0],
+            x1: d.xrange[0],
+            y1: d.yrange[1],
+            line: {
+                color: 'black',
+                width: 1
+            }
+        }, {
+            type: 'line',
+            x0: d.xrange[1],
+            y0: d.yrange[0],
+            x1: d.xrange[1],
+            y1: d.yrange[1],
+            line: {
+                color: 'black',
+                width: 1
+            }
+        }, {
+            type: 'line',
+            x0: d.xrange[0],
+            y0: d.yrange[0],
+            x1: d.xrange[1],
+            y1: d.yrange[0],
+            line: {
+                color: 'black',
+                width: 1
+            }
+        }, {
+            type: 'line',
+            x0: d.xrange[0],
+            y0: d.yrange[1],
+            x1: d.xrange[1],
+            y1: d.yrange[1],
+            line: {
+                color: 'black',
+                width: 1
+            }
+        }]
+    };
+
+    var plot_div = document.getElementById('js_plot_tuner');
+    if (plot_div.style['display'] != 'none') {
+        Plotly.react(plot_div, data, layout);
+    } else {
+        Plotly.newPlot(plot_div, data, layout);
+    }
 }
 
 function http_req_cb() {
@@ -640,6 +1211,27 @@ function f_tune_button(command) {
     }
 }
 
+function toggle_js_plot_display(command) {
+    var plot_list = [
+        "js_plot_fft",
+        "js_plot_constellation",
+        "js_plot_symbol",
+        "js_plot_eye",
+        "js_plot_mixer",
+        "js_plot_tuner"
+    ];
+
+    if (terminal_config.http_plot_type == "raw" && command >= 1 && command <= 6) {
+        var plot_div = document.getElementById(plot_list[command-1]);
+
+        if (plot_div.style['display'] != 'none') {
+            plot_div.style['display'] = 'none';
+        } else {
+            plot_div.style['display'] = 'block';
+        }
+    }
+}
+
 function f_plot_button(command) {
     if (channel_list.length == 0) {
         send_command('toggle_plot', command, 0);
@@ -647,6 +1239,7 @@ function f_plot_button(command) {
     else {
         send_command('toggle_plot', command, Number(channel_list[channel_index]));
     }
+    toggle_js_plot_display(command);
 }
 
 function f_scan_button(command) {

@@ -44,7 +44,7 @@ FFT_FREQ = 0.05   # time interval between fft updates
 MIX_FREQ = 0.02   # time interval between mixer updates
 
 class wrap_gp(object):
-    def __init__(self, sps=_def_sps, plot_name="", chan = 0, out_q = None):
+    def __init__(self, sps=_def_sps, plot_name="", chan = 0, out_q = None, plot_type = "image"):
         self.sps = sps
         self.center_freq = 0.0
         self.relative_freq = 0.0
@@ -59,7 +59,9 @@ class wrap_gp(object):
         self.plot_count = 0
         self.last_plot = 0
         self.plot_interval = None
+        self.plot_type = plot_type
         self.sequence = 0
+        self.seq_buf_size = 2
         self.output_dir = None
         self.filename = None
         self.chan = chan
@@ -99,6 +101,9 @@ class wrap_gp(object):
 
     def set_output_dir(self, v):
         self.output_dir = v
+
+    def set_sequence_buffer_size(self, v):
+        self.seq_buf_size = v
 
     def plot(self, buf, bufsz, mode='eye'):
         BUFSZ = bufsz
@@ -190,18 +195,21 @@ class wrap_gp(object):
             return consumed
         self.last_plot = time.time()
 
-        filename = None
-        if self.output_dir:
-            if self.sequence >= 2:
-                delete_pathname = '%s/plot-%d-%s-%d.png' % (self.output_dir, self.chan, mode, self.sequence-2)
-                if os.access(delete_pathname, os.W_OK):
-                    os.remove(delete_pathname)
-            h= 'set terminal png\n'
-            filename = 'plot-%d-%s-%d.png' % (self.chan, mode, self.sequence)
-            self.sequence += 1
-            h += 'set output "%s/%s"\n' % (self.output_dir, filename)
+        if "image" in self.plot_type:
+            filename = None
+            if self.output_dir:
+                if self.sequence >= self.seq_buf_size:
+                    delete_pathname = '%s/plot-%d-%s-%d.png' % (self.output_dir, self.chan, mode, self.sequence-self.seq_buf_size)
+                    if os.access(delete_pathname, os.W_OK):
+                        os.remove(delete_pathname)
+                h= 'set terminal png\n'
+                filename = 'plot-%d-%s-%d.png' % (self.chan, mode, self.sequence)
+                self.sequence += 1
+                h += 'set output "%s/%s"\n' % (self.output_dir, filename)
+            else:
+                h= 'set terminal x11 noraise\n'
         else:
-            h= 'set terminal x11 noraise\n'
+            h = '\n'
 
         #background = 'set object 1 circle at screen 0,0 size screen 1 fillcolor rgb"black"\n' #FIXME!
         background = ''
@@ -229,7 +237,7 @@ class wrap_gp(object):
             h+= 'set boxwidth 0.25\n'
             h+= 'set style fill solid\n'
             h+= 'set title "%sTuner"\n' % self.plot_name
-            plot_data['xrange'] = (0,len(plot_data['data']))
+            plot_data['xrange'] = (-1,1)
             plot_data['yrange'] = (-1,1)
             plot_data['title'] = "%sTuner" % self.plot_name
         elif mode == 'symbol':
@@ -260,19 +268,21 @@ class wrap_gp(object):
                 else:
                     h+= 'set title "%sSpectrum"\n' % self.plot_name
                     plot_data['title'] = "%sSpectrum" % self.plot_name
-        dat = '%splot %s\n%s' % (h, ','.join(plots), s)
-        if sys.version[0] != '2':
-            dat = bytes(dat, 'utf8')
-        self.gp.poll()
-        if self.gp.returncode is None:  # make sure gnuplot is still running 
-            try:
-                self.gp.stdin.write(dat)
-            except (IOError, ValueError):
-                pass
-        if filename:
-            self.filename = filename
 
-        if self.out_q is not None:      # if configured, send raw plot data to UI
+        if "image" in self.plot_type:
+            dat = '%splot %s\n%s' % (h, ','.join(plots), s)
+            if sys.version[0] != '2':
+                dat = bytes(dat, 'utf8')
+            self.gp.poll()
+            if self.gp.returncode is None:  # make sure gnuplot is still running 
+                try:
+                    self.gp.stdin.write(dat)
+                except (IOError, ValueError):
+                    pass
+            if filename:
+                self.filename = filename
+
+        if self.out_q is not None and "raw" in self.plot_type:      # if configured, send raw plot data to UI
             msg = gr.message().make_from_string(json.dumps(plot_data), -4, 0, 0)
             self.out_q.insert_tail(msg)
 
@@ -293,14 +303,14 @@ class wrap_gp(object):
 class eye_sink_f(gr.sync_block):
     """
     """
-    def __init__(self, debug = _def_debug, sps = _def_sps, plot_name = "", chan = 0, out_q = None):
+    def __init__(self, debug = _def_debug, sps = _def_sps, plot_name = "", chan = 0, out_q = None, plot_type = "image"):
         gr.sync_block.__init__(self,
             name="eye_sink_f",
             in_sig=[np.float32],
             out_sig=None)
         self.debug = debug
         self.sps = sps * _def_sps_mult
-        self.gnuplot = wrap_gp(sps=self.sps, plot_name=plot_name, chan=chan, out_q=out_q)
+        self.gnuplot = wrap_gp(sps=self.sps, plot_name=plot_name, chan=chan, out_q=out_q, plot_type=plot_type)
 
     def set_sps(self, sps):
         self.sps = sps * _def_sps_mult
@@ -317,13 +327,13 @@ class eye_sink_f(gr.sync_block):
 class tuner_sink_f(gr.sync_block):
     """
     """
-    def __init__(self, debug = _def_debug, plot_name = "", chan = 0, out_q = None):
+    def __init__(self, debug = _def_debug, plot_name = "", chan = 0, out_q = None, plot_type = "image"):
         gr.sync_block.__init__(self,
             name="tuner_sink_f",
             in_sig=[np.float32],
             out_sig=None)
         self.debug = debug
-        self.gnuplot = wrap_gp(plot_name=plot_name, chan=chan, out_q=out_q)
+        self.gnuplot = wrap_gp(plot_name=plot_name, chan=chan, out_q=out_q, plot_type=plot_type)
 
     def work(self, input_items, output_items):
         in0 = input_items[0]
@@ -336,13 +346,13 @@ class tuner_sink_f(gr.sync_block):
 class constellation_sink_c(gr.sync_block):
     """
     """
-    def __init__(self, debug = _def_debug, plot_name = "", chan = 0, out_q = None):
+    def __init__(self, debug = _def_debug, plot_name = "", chan = 0, out_q = None, plot_type = "image"):
         gr.sync_block.__init__(self,
             name="constellation_sink_c",
             in_sig=[np.complex64],
             out_sig=None)
         self.debug = debug
-        self.gnuplot = wrap_gp(plot_name=plot_name, chan=chan, out_q=out_q)
+        self.gnuplot = wrap_gp(plot_name=plot_name, chan=chan, out_q=out_q, plot_type=plot_type)
 
     def work(self, input_items, output_items):
         in0 = input_items[0]
@@ -355,13 +365,13 @@ class constellation_sink_c(gr.sync_block):
 class fft_sink_c(gr.sync_block):
     """
     """
-    def __init__(self, debug = _def_debug, plot_name = "", chan = 0, out_q = None):
+    def __init__(self, debug = _def_debug, plot_name = "", chan = 0, out_q = None, plot_type = "image"):
         gr.sync_block.__init__(self,
             name="fft_sink_c",
             in_sig=[np.complex64],
             out_sig=None)
         self.debug = debug
-        self.gnuplot = wrap_gp(plot_name=plot_name, chan=chan, out_q=out_q)
+        self.gnuplot = wrap_gp(plot_name=plot_name, chan=chan, out_q=out_q, plot_type=plot_type)
         self.next_due = time.time()
 
     def work(self, input_items, output_items):
@@ -390,13 +400,13 @@ class fft_sink_c(gr.sync_block):
 class mixer_sink_c(gr.sync_block):
     """
     """
-    def __init__(self, debug = _def_debug, plot_name = "", chan = 0, out_q = None):
+    def __init__(self, debug = _def_debug, plot_name = "", chan = 0, out_q = None, plot_type = "image"):
         gr.sync_block.__init__(self,
             name="mixer_sink_c",
             in_sig=[np.complex64],
             out_sig=None)
         self.debug = debug
-        self.gnuplot = wrap_gp(plot_name=plot_name, chan=chan, out_q=out_q)
+        self.gnuplot = wrap_gp(plot_name=plot_name, chan=chan, out_q=out_q, plot_type=plot_type)
         self.next_due = time.time()
 
     def work(self, input_items, output_items):
@@ -415,13 +425,13 @@ class mixer_sink_c(gr.sync_block):
 class symbol_sink_f(gr.sync_block):
     """
     """
-    def __init__(self, debug = _def_debug, plot_name = "", chan = 0, out_q = None):
+    def __init__(self, debug = _def_debug, plot_name = "", chan = 0, out_q = None, plot_type = "image"):
         gr.sync_block.__init__(self,
             name="symbol_sink_f",
             in_sig=[np.float32],
             out_sig=None)
         self.debug = debug
-        self.gnuplot = wrap_gp(plot_name=plot_name, chan=chan, out_q=out_q)
+        self.gnuplot = wrap_gp(plot_name=plot_name, chan=chan, out_q=out_q, plot_type=plot_type)
 
     def work(self, input_items, output_items):
         in0 = input_items[0]
