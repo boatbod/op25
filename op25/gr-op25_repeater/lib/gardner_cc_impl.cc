@@ -78,12 +78,9 @@ gardner_cc_impl::gardner_cc_impl(float samples_per_symbol, float gain_mu, float 
     d_dl(new gr_complex[NUM_COMPLEX]),
     d_dl_index(0),
     d_interp_counter(0),
-    d_theta(M_PI / 4.0), d_phase(0), 
-    nid_accum(0), d_prev(0),
     d_event_count(0), d_event_type(' '),
     d_symbol_seq(samples_per_symbol * 4800),
-    d_update_request(0),
-    d_fm(0), d_fm_accum(0), d_fm_count(0)
+    d_update_request(0)
 {
         set_omega(samples_per_symbol);
         set_relative_rate (1.0 / d_omega);
@@ -142,37 +139,15 @@ gardner_cc_impl::general_work (int noutput_items,
     gr_complex *out = (gr_complex *) output_items[0];
 
     int i=0, o=0;
-    gr_complex symbol, sample, nco;
 
     while((o < noutput_items) && (i < ninput_items[0])) {
         while((d_mu > 1.0) && (i < ninput_items[0]))  {
             d_mu --;
-
-            // Keep phase clamped and not walk to infinity
-            while(d_phase > M_TWOPI)
-                d_phase -= M_TWOPI;
-            while(d_phase < -M_TWOPI)
-                d_phase += M_TWOPI;
-
-            nco = gr_expj(d_phase+d_theta);   // get the NCO value for derotating the curr
-            symbol = in[i];
-            sample = nco*symbol;      // get the downconverted symbol
-
-            d_dl[d_dl_index] = sample;
-            d_dl[d_dl_index + d_twice_sps] = sample;
+            d_dl[d_dl_index] = in[i];
+            d_dl[d_dl_index + d_twice_sps] = in[i];
             d_dl_index ++;
             d_dl_index = d_dl_index % d_twice_sps;
-
             i++;
-            gr_complex df = symbol * conj(d_prev);
-            float fmd = atan2f(df.imag(), df.real());
-            d_fm_accum += fmd;
-            d_fm_count ++;
-            if (d_fm_count % FM_COUNT == 0) {
-                d_fm = d_fm_accum / FM_COUNT;
-                d_fm_accum = 0;
-            }
-            d_prev = symbol;
         }
     
         if (i < ninput_items[0]) {
