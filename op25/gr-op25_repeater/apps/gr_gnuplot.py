@@ -84,6 +84,8 @@ class wrap_gp(object):
             self.gp.stdin.close()   # closing pipe should cause subprocess to exit
         except IOError:
             pass
+        self.out_q.flush()
+        self.out_q = None
         sleep_count = 0
         while True:                     # wait politely, but only for so long
             self.gp.poll()
@@ -272,7 +274,7 @@ class wrap_gp(object):
         if filename:
             self.filename = filename
 
-        if self.out_q is not None:      # if configured, send raw plot data to UI
+        if self.out_q is not None and not self.out_q.full_p():      # if configured, send raw plot data to UI
             msg = gr.message().make_from_string(json.dumps(plot_data), -4, 0, 0)
             self.out_q.insert_tail(msg)
 
