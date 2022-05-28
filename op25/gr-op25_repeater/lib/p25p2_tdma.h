@@ -31,7 +31,6 @@
 #include "p25p2_sync.h"
 #include "p25p2_vf.h"
 #include "p25p2_framer.h"
-#include "p25_dibit.h"
 #include "op25_audio.h"
 #include "log_ts.h"
 
@@ -50,7 +49,7 @@ public:
 	~p25p2_tdma();	// destructor
 	void set_xormask(const char*p);
 	inline void set_nac(int nac) { d_nac = nac; }
-	inline void set_debug(int debug) { d_debug = debug; ph2_dibit.set_debug(debug); }
+	inline void set_debug(int debug) { d_debug = debug; }
 	bool rx_sym(uint8_t sym);
 	int handle_frame(void) ;
 private:
@@ -91,7 +90,6 @@ private:
 	uint8_t ess_algid;
 	uint8_t ess_mi[9] = {0};
 
-    p25_dibit ph2_dibit;
 	p25p2_framer p2framer;
 
 	int handle_acch_frame(const uint8_t dibits[], bool fast, bool is_lcch) ;

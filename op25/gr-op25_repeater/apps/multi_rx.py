@@ -185,7 +185,7 @@ class channel(object):
         self.nbfm_mode = 0
         self.auto_tracking      = bool(from_dict(config, "cqpsk_tracking", True))
         self.tracking_threshold = int(from_dict(config, "tracking_threshold", 30))
-        self.tracking_limit     = int(from_dict(config, "tracking_limit", 2400))
+        self.tracking_limit     = int(from_dict(config, "tracking_limit", 1200))
         self.tracking_feedback  = float(from_dict(config, "tracking_feedback", 0.85))
         if str(from_dict(config, "demod_type", "")).lower() != "cqpsk":
             self.auto_tracking = False
@@ -201,6 +201,8 @@ class channel(object):
         self.channel_rate = self.symbol_rate
         if dev.args == 'wavsrc':
             self.demod = p25_demodulator.p25_demod_fb(
+                             msgq_id = self.msgq_id,
+                             debug = self.verbosity,
                              input_rate=dev.sample_rate,
                              filter_type = config['filter_type'],
                              excess_bw=config['excess_bw'],
@@ -210,6 +212,8 @@ class channel(object):
             if filter_type[:4] != 'fsk2':   # has to be 'fsk2' or derivative such as 'fsk2mm'
                 filter_type = 'fsk2mm'
             self.demod = p25_demodulator.p25_demod_cb(
+                             msgq_id = self.msgq_id,
+                             debug = self.verbosity,
                              input_rate = dev.sample_rate,
                              demod_type = 'fsk4',
                              filter_type = filter_type,
@@ -221,6 +225,8 @@ class channel(object):
                              symbol_rate = self.symbol_rate)
         else:                             # P25, DMR, NXDN and everything else
             self.demod = p25_demodulator.p25_demod_cb(
+                             msgq_id = self.msgq_id,
+                             debug = self.verbosity,
                              input_rate = dev.sample_rate,
                              demod_type = config['demod_type'],
                              filter_type = config['filter_type'],
@@ -282,6 +288,8 @@ class channel(object):
             self.decoder.set_debug(dbglvl)
         if self.nbfm is not None:
             self.nbfm.set_debug(dbglvl)
+        if self.demod is not None:
+            self.demod.set_debug(dbglvl)
 
     def toggle_capture(self):
         if self.raw_sink is None:   # turn on raw symbol capture
@@ -461,7 +469,7 @@ class channel(object):
                 self.sinks['fft'][0].set_relative_freq(self.device.frequency - freq)
         if self.verbosity >= 9:
             sys.stderr.write("%s [%d] Tuning to frequency %f\n" % (log_ts.get(), self.msgq_id, (freq/1e6)))
-        #self.demod.reset()          # reset gardner-costas tracking loop
+        self.demod.reset()          # reset gardner-costas tracking loop
         self.decoder.sync_reset()   # reset frame_assembler
         return True
 
@@ -472,7 +480,7 @@ class channel(object):
         self.device.src.set_center_freq(self.device.frequency + self.device.offset)
         self.device.fractional_corr = int((int(round(self.device.ppm)) - self.device.ppm) * (self.device.frequency/1e6))
         self.demod.set_relative_frequency(self.device.offset + self.device.frequency + self.device.fractional_corr + self.tracking - self.frequency)
-        #self.demod.reset()          # reset gardner-costas tracking loop
+        self.demod.reset()          # reset gardner-costas tracking loop
 
     def configure_p25_tdma(self, params):
         set_tdma = False

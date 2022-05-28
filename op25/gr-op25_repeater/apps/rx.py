@@ -306,7 +306,7 @@ class p25_rx_block (gr.top_block):
         self.corr_i_chan = False
 
         if self.baseband_input:
-            self.demod = p25_demodulator.p25_demod_fb(input_rate=capture_rate, excess_bw=self.options.excess_bw)
+            self.demod = p25_demodulator.p25_demod_fb(msgq_id=0, debug=self.options.verbosity, input_rate=capture_rate, excess_bw=self.options.excess_bw)
         elif self.options.symbols:
             self.demod = None
         else:    # complex input
@@ -314,7 +314,9 @@ class p25_rx_block (gr.top_block):
             self.lo_freq = self.options.offset
             if self.options.audio_if or self.options.ifile or self.options.input:
                 self.lo_freq += self.options.calibration
-            self.demod = p25_demodulator.p25_demod_cb( input_rate = capture_rate,
+            self.demod = p25_demodulator.p25_demod_cb( msgq_id = 0,
+                                                       debug = self.options.verbosity,
+                                                       input_rate = capture_rate,
                                                        demod_type = self.options.demod_type,
                                                        relative_freq = self.lo_freq,
                                                        offset = self.options.offset,
@@ -362,7 +364,9 @@ class p25_rx_block (gr.top_block):
             num_ambe = 2
         if self.options.logfile_workers:
             for i in range(self.options.logfile_workers):
-                demod = p25_demodulator.p25_demod_cb(input_rate=capture_rate,
+                demod = p25_demodulator.p25_demod_cb(msgq_id=0,
+                                                     debug=self.options.verbosity,
+                                                     input_rate=capture_rate,
                                                      demod_type=self.options.demod_type,
                                                      offset=self.options.offset)
                 decoder = p25_decoder.p25_decoder_sink_b(debug = self.options.verbosity, do_imbe = self.options.vocoder, num_ambe=num_ambe)
@@ -495,7 +499,7 @@ class p25_rx_block (gr.top_block):
                 else:    
                     self.lo_freq = self.options.offset + relative_freq
                     if self.demod.set_relative_frequency(self.lo_freq):      # relative tune successful
-                        #self.demod.reset()                                       # reset gardner-costas loop
+                        self.demod.reset()                                       # reset gardner-costas loop
                         self.set_freq(center_freq + offset)
                         if self.fft_sink:
                             self.fft_sink.set_relative_freq(relative_freq)
@@ -583,7 +587,7 @@ class p25_rx_block (gr.top_block):
         self.target_freq = target_freq
         tune_freq = target_freq + self.options.calibration + self.options.offset + self.options.fine_tune
         r = self.src.set_center_freq(tune_freq)
-        #self.demod.reset()      # reset gardner-costas loop
+        self.demod.reset()      # reset gardner-costas loop
 
         if self.fft_sink:
             self.fft_sink.set_center_freq(target_freq)
@@ -608,6 +612,7 @@ class p25_rx_block (gr.top_block):
     def set_debug(self, dbglvl):
         self.options.verbosity = dbglvl
         self.decoder.set_debug(dbglvl)
+        self.demod.set_debug(dbglvl)
         if self.trunk_rx is not None:
             self.trunk_rx.set_debug(dbglvl)
 

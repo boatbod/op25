@@ -81,6 +81,8 @@ def get_decim(speed):
 
 class p25_demod_base(gr.hier_block2):
     def __init__(self,
+                 msgq_id = 0,
+                 debug = 0,
                  if_rate     = None,
                  filter_type = None,
                  excess_bw   = _def_excess_bw,
@@ -91,6 +93,8 @@ class p25_demod_base(gr.hier_block2):
         @param if_rate: sample rate of complex input channel
         @type if_rate: int
         """
+        self.msgq_id = msgq_id
+        self.debug = debug
         self.if_rate = if_rate
         self.symbol_rate = symbol_rate
         self.bb_sink = {}
@@ -137,7 +141,7 @@ class p25_demod_base(gr.hier_block2):
                                                            _mu, _gain_mu,
                                                            _def_omega_relative_limit)
             levels = [ -2.0, 0.0, 2.0, 4.0 ]
-            self.slicer = op25_repeater.fsk4_slicer_fb(levels)
+            self.slicer = op25_repeater.fsk4_slicer_fb(self.debug, levels)
         elif filter_type == 'fsk2mm':
             ntaps = 7 * sps
             if ntaps & 1 == 0:
@@ -163,13 +167,16 @@ class p25_demod_base(gr.hier_block2):
             autotuneq = gr.msg_queue(2)
             self.fsk4_demod = op25.fsk4_demod_ff(autotuneq, self.if_rate, self.symbol_rate)
             levels = [ -2.0, 0.0, 2.0, 4.0 ]
-            self.slicer = op25_repeater.fsk4_slicer_fb(levels)
+            self.slicer = op25_repeater.fsk4_slicer_fb(self.debug, levels)
         else:
             self.symbol_filter = filter.fir_filter_fff(1, coeffs)
             autotuneq = gr.msg_queue(2)
             self.fsk4_demod = op25.fsk4_demod_ff(autotuneq, self.if_rate, self.symbol_rate)
             levels = [ -2.0, 0.0, 2.0, 4.0 ]
-            self.slicer = op25_repeater.fsk4_slicer_fb(levels)
+            self.slicer = op25_repeater.fsk4_slicer_fb(self.debug, levels)
+
+    def set_debug(self, debug):
+        self.slicer.set_debug(debug)
 
     def set_symbol_rate(self, rate):
         self.symbol_rate = rate
@@ -222,6 +229,8 @@ class p25_demod_base(gr.hier_block2):
 class p25_demod_fb(p25_demod_base):
 
     def __init__(self,
+                 msgq_id = 0,
+                 debug = 0,
                  input_rate  = None,
                  filter_type = None,
                  excess_bw   = _def_excess_bw,
@@ -233,13 +242,14 @@ class p25_demod_fb(p25_demod_base):
         @param input_rate: sample rate of complex input channel
         @type input_rate: int
         """
-
+        self.msgq_id = msgq_id
+        self.debug = debug
         sys.stderr.write("p25_demod_fb: input_rate=%d, symbol_rate=%d\n" % (input_rate, symbol_rate))
         gr.hier_block2.__init__(self, "p25_demod_fb",
                                 gr.io_signature(1, 1, gr.sizeof_float), # Input signature
                                 gr.io_signature(1, 1, gr.sizeof_char))  # Output signature
 
-        p25_demod_base.__init__(self, if_rate=input_rate, symbol_rate=symbol_rate, filter_type=filter_type, excess_bw = excess_bw)
+        p25_demod_base.__init__(self, msgq_id=msgq_id, debug=debug, if_rate=input_rate, symbol_rate=symbol_rate, filter_type=filter_type, excess_bw = excess_bw)
 
         self.input_rate = input_rate
         self.float_sink = {}
@@ -288,6 +298,8 @@ class p25_demod_fb(p25_demod_base):
 class p25_demod_cb(p25_demod_base):
 
     def __init__(self,
+                 msgq_id = 0,
+                 debug = 0,
                  input_rate     = None,
                  demod_type     = 'cqpsk',
                  filter_type    = None,
@@ -306,11 +318,12 @@ class p25_demod_cb(p25_demod_base):
         @param input_rate: sample rate of complex input channel
         @type input_rate: int
         """
-
+        self.msgq_id = msgq_id
+        self.debug = debug
         gr.hier_block2.__init__(self, "p25_demod_cb",
                                 gr.io_signature(1, 1, gr.sizeof_gr_complex),  # Input signature
                                 gr.io_signature(1, 1, gr.sizeof_char))        # Output signature
-        p25_demod_base.__init__(self, if_rate=if_rate, symbol_rate=symbol_rate, filter_type=filter_type, excess_bw = excess_bw)
+        p25_demod_base.__init__(self, msgq_id=msgq_id, debug=debug, if_rate=if_rate, symbol_rate=symbol_rate, filter_type=filter_type, excess_bw = excess_bw)
 
         self.usable_bw = usable_bw
         self.input_rate = input_rate
@@ -383,6 +396,7 @@ class p25_demod_cb(p25_demod_base):
         omega = float(self.if_rate) / float(self.symbol_rate)
         gain_omega = 0.1  * gain_mu * gain_mu
 
+        #self.agc = analog.feedforward_agc_cc(4, 1.0)
         self.agc = analog.feedforward_agc_cc(16, 1.0)
         self.clock = op25_repeater.gardner_cc(omega, gain_mu, gain_omega) # timing recovery
         self.costas = digital.costas_loop_cc(costas_alpha, 4, False)      # phase and freq correction
@@ -568,6 +582,5 @@ class p25_demod_cb(p25_demod_base):
         pass
 
     def costas_reset(self):
-        # is this actually necessary any more?
         self.costas.set_frequency(0)
         self.costas.set_phase(0)

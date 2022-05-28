@@ -13,7 +13,6 @@
 #define INCLUDED_P25_FRAMER_H
 
 #include "log_ts.h"
-#include "p25_dibit.h"
 
 class p25_framer
 {
@@ -22,7 +21,6 @@ class p25_framer
         // internal functions
         bool nid_codeword(uint64_t acc);
         // internal instance variables and state
-        uint8_t fs_map_idx;
         int nid_syms;
         uint32_t next_bit;
         uint64_t nid_accum;
@@ -33,13 +31,12 @@ class p25_framer
         uint32_t d_expected_nac;
         int d_unexpected_nac;
         log_ts logts;
-        p25_dibit ph1_dibit;
 
     public:
         p25_framer(int debug = 0, int msgq_id = 0);
         ~p25_framer ();	// destructor
         void set_nac(uint32_t nac) { d_expected_nac = nac; }
-        void set_debug(int debug) { d_debug = debug; ph1_dibit.set_debug(debug); }
+        void set_debug(int debug) { d_debug = debug; }
         bool rx_sym(uint8_t dibit) ;
         uint32_t load_nid(const uint8_t *syms, int nsyms, const uint64_t fs);
         bool load_body(const uint8_t * syms, int nsyms);
