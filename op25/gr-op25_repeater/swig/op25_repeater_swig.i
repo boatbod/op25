@@ -10,6 +10,7 @@
 %{
 #include "op25_repeater/vocoder.h"
 #include "op25_repeater/gardner_cc.h"
+#include "op25_repeater/costas_loop_cc.h"
 #include "op25_repeater/p25_frame_assembler.h"
 #include "op25_repeater/frame_assembler.h"
 #include "op25_repeater/analog_udp.h"
@@ -39,6 +40,9 @@ GR_SWIG_BLOCK_MAGIC2(op25_repeater, vocoder);
 
 %include "op25_repeater/gardner_cc.h"
 GR_SWIG_BLOCK_MAGIC2(op25_repeater, gardner_cc);
+
+%include "op25_repeater/costas_loop_cc.h"
+GR_SWIG_BLOCK_MAGIC2(op25_repeater, costas_loop_cc);
 
 %include "op25_repeater/p25_frame_assembler.h"
 GR_SWIG_BLOCK_MAGIC2(op25_repeater, p25_frame_assembler);

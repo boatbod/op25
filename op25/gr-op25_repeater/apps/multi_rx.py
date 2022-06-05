@@ -60,7 +60,6 @@ from optparse import OptionParser
 import op25
 import op25_repeater
 import p25_demodulator
-import p25_decoder
 import op25_nbfm
 import op25_iqsrc
 import op25_wavsrc
@@ -183,7 +182,7 @@ class channel(object):
         self.throttle = None
         self.nbfm = None
         self.nbfm_mode = 0
-        self.auto_tracking      = bool(from_dict(config, "cqpsk_tracking", True))
+        self.auto_tracking      = bool(from_dict(config, "cqpsk_tracking", False))
         self.tracking_threshold = int(from_dict(config, "tracking_threshold", 30))
         self.tracking_limit     = int(from_dict(config, "tracking_limit", 1200))
         self.tracking_feedback  = float(from_dict(config, "tracking_feedback", 0.85))
@@ -427,6 +426,7 @@ class channel(object):
             self.set_plot_destination('constellation')
             self.tb.lock()
             self.demod.connect_complex('costas', sink)
+            #self.demod.connect_complex('diffdec', sink)
             self.tb.unlock()
         else:
             (sink, fn) = self.sinks.pop('constellation')

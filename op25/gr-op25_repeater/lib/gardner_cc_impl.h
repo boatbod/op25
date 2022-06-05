@@ -62,7 +62,7 @@ class id_avg {
 class gardner_cc_impl : public gardner_cc
 {
     public:
-        gardner_cc_impl(float samples_per_symbol, float gain_mu, float gain_omega);
+        gardner_cc_impl(float samples_per_symbol, float gain_mu, float gain_omega, float lock_threshold);
 
         /*!
          * \brief Gardner based repeater gardner_cc block with complex input, complex output.
@@ -88,7 +88,7 @@ class gardner_cc_impl : public gardner_cc
         //! Sets value of omega and its min and max values 
         void set_omega (float omega);
         void reset();
-        bool locked() { return (d_lock_accum.avg() >= 0.35 ? true : false); } // TODO: adjustable lock threshold 
+        bool locked() { return (d_lock_accum.avg() >= d_lock_threshold ? true : false); }
         float quality() { return d_lock_accum.avg(); }
 
     protected:
@@ -99,6 +99,7 @@ class gardner_cc_impl : public gardner_cc
         float d_mu;
         float d_omega, d_gain_omega, d_omega_rel, d_max_omega, d_min_omega, d_omega_mid;
         float d_gain_mu;
+        float d_lock_threshold;
         id_avg d_lock_accum;
 
         gr_complex d_last_sample;

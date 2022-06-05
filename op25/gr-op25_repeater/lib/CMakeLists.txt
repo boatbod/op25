@@ -42,6 +42,7 @@ list(APPEND op25_repeater_sources
     dstar_tx_sb_impl.cc
     vocoder_impl.cc
     gardner_cc_impl.cc
+    costas_loop_cc_impl.cc
     p25_frame_assembler_impl.cc
     frame_assembler_impl.cc
     analog_udp_impl.cc
@@ -91,7 +92,7 @@ set(GR_FILTER_LIBRARIES ${GR_FILTER_LIBRARY})
 if ("${Gnuradio_VERSION}" VERSION_LESS "3.8.0")
     target_link_libraries(gnuradio-op25_repeater ${Boost_LIBRARIES} ${GNURADIO_RUNTIME_LIBRARIES} ${GR_FILTER_LIBRARIES} imbe_vocoder)
 else()
-    target_link_libraries(gnuradio-op25_repeater ${Boost_LIBRARIES} gnuradio::gnuradio-runtime ${GR_FILTER_LIBRARIES} imbe_vocoder)
+    target_link_libraries(gnuradio-op25_repeater ${Boost_LIBRARIES} gnuradio::gnuradio-runtime gnuradio-blocks ${GR_FILTER_LIBRARIES} imbe_vocoder)
 endif()
 set_target_properties(gnuradio-op25_repeater PROPERTIES DEFINE_SYMBOL "gnuradio_op25_repeater_EXPORTS")
 

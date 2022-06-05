@@ -46,7 +46,10 @@ namespace gr {
        * class. op25_repeater::gardner_cc::make is the public interface for
        * creating new instances.
        */
-      static sptr make(float samples_per_symbol, float gain_mu, float gain_omega);
+      static sptr make(float samples_per_symbol,
+                       float gain_mu,
+                       float gain_omega,
+                       float lock_threshold = 0.28);
       virtual void set_omega(float omega) {}
       virtual void reset() {}
       virtual bool locked() { return false; }

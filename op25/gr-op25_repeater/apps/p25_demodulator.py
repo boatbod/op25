@@ -35,6 +35,7 @@ from gnuradio.eng_option import eng_option
 import pmt
 import op25
 import op25_repeater
+import rms_agc
 from math import pi
 
 sys.path.append('tx')
@@ -396,10 +397,10 @@ class p25_demod_cb(p25_demod_base):
         omega = float(self.if_rate) / float(self.symbol_rate)
         gain_omega = 0.1  * gain_mu * gain_mu
 
-        #self.agc = analog.feedforward_agc_cc(4, 1.0)
-        self.agc = analog.feedforward_agc_cc(16, 1.0)
-        self.clock = op25_repeater.gardner_cc(omega, gain_mu, gain_omega) # timing recovery
-        self.costas = digital.costas_loop_cc(costas_alpha, 4, False)      # phase and freq correction
+        #self.agc = analog.feedforward_agc_cc(1, 1.0)
+        self.agc = rms_agc.rms_agc(0.45, 0.85)
+        self.clock = op25_repeater.gardner_cc(omega, gain_mu, gain_omega)     # timing recovery
+        self.costas = op25_repeater.costas_loop_cc(costas_alpha, 4, TWO_PI/4) # phase and freq correction
 
         # Perform Differential decoding on the constellation
         self.diffdec = digital.diff_phasor_cc()
@@ -577,9 +578,6 @@ class p25_demod_cb(p25_demod_base):
             return True
         else:
             return False
-
-    def costas_callback(self, msg):
-        pass
 
     def costas_reset(self):
         self.costas.set_frequency(0)

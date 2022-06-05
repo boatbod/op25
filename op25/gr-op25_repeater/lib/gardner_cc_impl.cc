@@ -45,7 +45,6 @@
 
 static const float M_TWOPI = 2 * M_PI;
 static const int   NUM_COMPLEX=100;
-static const int   FM_COUNT=500;	// number of samples per measurement frame
 
 namespace gr {
     namespace op25_repeater {
@@ -57,21 +56,23 @@ static inline std::complex<float> sgn(std::complex<float>c) {
 }
 
 gardner_cc::sptr
-gardner_cc::make(float samples_per_symbol, float gain_mu, float gain_omega) {
+gardner_cc::make(float samples_per_symbol, float gain_mu, float gain_omega, float lock_threshold) {
       return gnuradio::get_initial_sptr
-        (new gardner_cc_impl(samples_per_symbol, gain_mu, gain_omega));
+        (new gardner_cc_impl(samples_per_symbol, gain_mu, gain_omega, lock_threshold));
 }
 
 /*
  * The private constructor
  */
-gardner_cc_impl::gardner_cc_impl(float samples_per_symbol, float gain_mu, float gain_omega) : gr::block("gardner_cc",
-                                gr::io_signature::make(1, 1, sizeof(gr_complex)),
-                                gr::io_signature::make(1, 1, sizeof(gr_complex))),
+gardner_cc_impl::gardner_cc_impl(float samples_per_symbol, float gain_mu, float gain_omega, float lock_threshold)
+                                : gr::block("gardner_cc",
+                                            gr::io_signature::make(1, 1, sizeof(gr_complex)),
+                                            gr::io_signature::make(1, 1, sizeof(gr_complex))),
     d_mu(0),
     d_gain_omega(gain_omega),
     d_omega_rel(0.002),
     d_gain_mu(gain_mu),
+    d_lock_threshold(lock_threshold),
     d_lock_accum(480),                      // detect timing lock based on last 480 symbols TODO: make configurable
     d_last_sample(0), d_interp(new gr::filter::mmse_fir_interpolator_cc()),
     d_verbose(false),
