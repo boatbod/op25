@@ -70,8 +70,7 @@ class p25_dibit
                     break;
                 }
             }
-            if (d_debug >= 10) {
-            //if ((d_debug >= 2) && (fs_map_idx != 0) && (fs_map_idx != 1)) {
+            if ((d_debug >= 10) && (fs_map_idx != 0) && (fs_map_idx != 1)) {
                 fprintf(stderr, "%s p25_dibit::set_fs_index(): fs_type=%d, fs=%012lx\n", logts.get(d_msgq_id), fs_map_idx, fs);
             }
         }
