@@ -93,10 +93,10 @@ fsk4_slicer_fb_impl::work (int noutput_items,
         // look for rotated dibits
         d_accum <<= 2;
         d_accum |= dibit;
-        if(check_frame_sync((d_accum & P25_FRAME_SYNC_MASK) ^ P25_FRAME_SYNC_MAGIC, 6, 48)) {
+        if(check_frame_sync((d_accum & P25_FRAME_SYNC_MASK) ^ P25_FRAME_SYNC_MAGIC, 0, 48)) {
             p25dibit.set_fs_index(P25_FRAME_SYNC_MAGIC);
         }
-        else if(check_frame_sync((d_accum & P25P2_FRAME_SYNC_MASK) ^ P25P2_FRAME_SYNC_MAGIC, 4, 40)) {
+        else if(check_frame_sync((d_accum & P25P2_FRAME_SYNC_MASK) ^ P25P2_FRAME_SYNC_MAGIC, 0, 40)) {
             p25dibit.set_fs_index(P25P2_FRAME_SYNC_MAGIC);
         }
         else if(check_frame_sync((d_accum & P25_FRAME_SYNC_MASK) ^ P25_FRAME_SYNC_REV_P, 0, 48)) {

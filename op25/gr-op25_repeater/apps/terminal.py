@@ -414,6 +414,8 @@ class curses_terminal(threading.Thread):
             s += 'Frequency %f' % (msg[c_id]['freq'] / 1000000.0)
             if msg[c_id]['ppm'] is not None:
                 s += '(%.3f)' % (msg[c_id]['ppm'])
+            if msg[c_id]['error'] is not None:
+                s += '(%dHz)' % (msg[c_id]['error'])
             if msg[c_id]['capture'] is not None:
                 if msg[c_id]['capture'] != self.capture_active:
                     self.capture_active = msg[c_id]['capture']
