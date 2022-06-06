@@ -84,7 +84,8 @@ class wrap_gp(object):
             self.gp.stdin.close()   # closing pipe should cause subprocess to exit
         except IOError:
             pass
-        self.out_q.flush()
+        if self.out_q is not None:
+            self.out_q.flush()
         self.out_q = None
         sleep_count = 0
         while True:                     # wait politely, but only for so long
