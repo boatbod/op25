@@ -31,9 +31,9 @@ namespace gr {
   namespace op25_repeater {
 
 fsk4_slicer_fb::sptr
-fsk4_slicer_fb::make(const int debug, const std::vector<float> &slice_levels)
+fsk4_slicer_fb::make(const int msgq_id, const int debug, const std::vector<float> &slice_levels)
 {
-   return gnuradio::get_initial_sptr(new fsk4_slicer_fb_impl(debug, slice_levels));
+   return gnuradio::get_initial_sptr(new fsk4_slicer_fb_impl(msgq_id, debug, slice_levels));
 }
 
 static const int MIN_IN = 1;	// mininum number of input streams
@@ -44,12 +44,14 @@ static const int MAX_OUT = 1;	// maximum number of output streams
 /*
  * The private constructor
  */
-fsk4_slicer_fb_impl::fsk4_slicer_fb_impl(const int debug, const std::vector<float> &slice_levels)
+fsk4_slicer_fb_impl::fsk4_slicer_fb_impl(const int msgq_id, const int debug, const std::vector<float> &slice_levels)
     : gr::sync_block("fsk4_slicer_fb",
                      gr::io_signature::make (MIN_IN, MAX_IN, sizeof (float)),
                      gr::io_signature::make (MIN_OUT, MAX_OUT, sizeof (unsigned char))),
+    d_msgq_id(msgq_id),
     d_debug(debug),
-    d_accum(0)
+    d_accum(0),
+    p25dibit(debug, msgq_id)
 {
     d_slice_levels[0] = slice_levels[0];
     d_slice_levels[1] = slice_levels[1];

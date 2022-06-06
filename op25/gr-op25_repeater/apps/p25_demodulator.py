@@ -142,7 +142,7 @@ class p25_demod_base(gr.hier_block2):
                                                            _mu, _gain_mu,
                                                            _def_omega_relative_limit)
             levels = [ -2.0, 0.0, 2.0, 4.0 ]
-            self.slicer = op25_repeater.fsk4_slicer_fb(self.debug, levels)
+            self.slicer = op25_repeater.fsk4_slicer_fb(self.msgq_id, self.debug, levels)
         elif filter_type == 'fsk2mm':
             ntaps = 7 * sps
             if ntaps & 1 == 0:
@@ -168,13 +168,13 @@ class p25_demod_base(gr.hier_block2):
             autotuneq = gr.msg_queue(2)
             self.fsk4_demod = op25.fsk4_demod_ff(autotuneq, self.if_rate, self.symbol_rate)
             levels = [ -2.0, 0.0, 2.0, 4.0 ]
-            self.slicer = op25_repeater.fsk4_slicer_fb(self.debug, levels)
+            self.slicer = op25_repeater.fsk4_slicer_fb(self.msgq_id, self.debug, levels)
         else:
             self.symbol_filter = filter.fir_filter_fff(1, coeffs)
             autotuneq = gr.msg_queue(2)
             self.fsk4_demod = op25.fsk4_demod_ff(autotuneq, self.if_rate, self.symbol_rate)
             levels = [ -2.0, 0.0, 2.0, 4.0 ]
-            self.slicer = op25_repeater.fsk4_slicer_fb(self.debug, levels)
+            self.slicer = op25_repeater.fsk4_slicer_fb(self.msgq_id, self.debug, levels)
 
     def set_debug(self, debug):
         self.slicer.set_debug(debug)

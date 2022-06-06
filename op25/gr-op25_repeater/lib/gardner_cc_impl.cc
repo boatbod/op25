@@ -144,8 +144,8 @@ gardner_cc_impl::general_work (int noutput_items,
     while((o < noutput_items) && (i < ninput_items[0])) {
         while((d_mu > 1.0) && (i < ninput_items[0]))  {
             d_mu --;
-            d_dl[d_dl_index] = in[i];
-            d_dl[d_dl_index + d_twice_sps] = in[i];
+            d_dl[d_dl_index] = (in[i]==in[i]) ? in[i] : gr_complex(0, 0);                // Check for NaN values
+            d_dl[d_dl_index + d_twice_sps] = (in[i]==in[i]) ? in[i] : gr_complex(0, 0);  // and set to 0
             d_dl_index ++;
             d_dl_index = d_dl_index % d_twice_sps;
             i++;
@@ -168,7 +168,6 @@ gardner_cc_impl::general_work (int noutput_items,
 
             float error_real = (d_last_sample.real() - interp_samp.real()) * interp_samp_mid.real();
             float error_imag = (d_last_sample.imag() - interp_samp.imag()) * interp_samp_mid.imag();
-            gr_complex diffdec = interp_samp * conj(d_last_sample);
             d_last_sample = interp_samp;	// save for next time
             float symbol_error = error_real + error_imag; // Gardner loop error
             if (std::isnan(symbol_error)) symbol_error = 0.0;

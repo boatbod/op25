@@ -30,6 +30,7 @@ namespace gr {
 class fsk4_slicer_fb_impl : public fsk4_slicer_fb
 {
     private:
+        int d_msgq_id;
         int d_debug;
         float d_slice_levels[4];
         uint64_t d_accum;
@@ -37,7 +38,7 @@ class fsk4_slicer_fb_impl : public fsk4_slicer_fb
         p25_dibit p25dibit;
 
     public:
-        fsk4_slicer_fb_impl(const int debug, const std::vector<float> &slice_levels);
+        fsk4_slicer_fb_impl(const int msgq_id, const int debug, const std::vector<float> &slice_levels);
         ~fsk4_slicer_fb_impl();
         void set_debug(int debug) { d_debug = debug; p25dibit.set_debug(debug); }
 
