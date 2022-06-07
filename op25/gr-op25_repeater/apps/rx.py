@@ -658,7 +658,8 @@ class p25_rx_block (gr.top_block):
             self.mixer_sink = mixer_sink_c()
             self.add_plot_sink(self.mixer_sink)
             self.lock()
-            self.demod.connect_complex('cutoff', self.mixer_sink)
+            #self.demod.connect_complex('cutoff', self.mixer_sink)
+            self.demod.connect_complex('fll', self.mixer_sink)
             self.mixer_sink.set_width(self.basic_rate)
             self.unlock()
         elif (self.mixer_sink is not None):

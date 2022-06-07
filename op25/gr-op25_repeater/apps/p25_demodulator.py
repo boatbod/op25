@@ -181,6 +181,10 @@ class p25_demod_base(gr.hier_block2):
 
     def set_symbol_rate(self, rate):
         self.symbol_rate = rate
+        if callable(getattr(self.fsk4_demod, 'set_rate', None)):       # op25.fsk4_demod_ff
+            self.fsk4_demod.set_rate(self.if_rate, self.symbol_rate)
+        elif callable(getattr(self.fsk4_demod, 'set_omega', None)):    # digital.clock_recovery_mm_ff
+            self.fsk4_demod.set_omega(self.if_rate // self.symbol_rate)
 
     def set_baseband_gain(self, k):
         self.baseband_amp.set_k(k)
@@ -491,7 +495,7 @@ class p25_demod_cb(p25_demod_base):
         self.disconnect_chain()
         self.connect_state = demod_type
         if demod_type == 'fsk4':
-            self.connect(self.if_out, self.cutoff, self.fm_demod, self.baseband_amp, self.symbol_filter, self.fsk4_demod, self.slicer)
+            self.connect(self.if_out, self.cutoff, self.agc, self.fll, self.fm_demod, self.baseband_amp, self.symbol_filter, self.fsk4_demod, self.slicer)
         elif demod_type == 'cqpsk':
             self.connect(self.if_out, self.cutoff, self.agc, self.fll, self.clock, self.diffdec, self.costas, self.to_float, self.rescale, self.slicer)
         else:
@@ -503,7 +507,7 @@ class p25_demod_cb(p25_demod_base):
         if self.connect_state != 'cqpsk':   # only valid for cqpsk demod type
             return
         if self.aux_fm_connected == 0:
-            self.connect(self.cutoff, self.fm_demod, self.baseband_amp, self.symbol_filter, self.null_sink)
+            self.connect(self.fll, self.fm_demod, self.baseband_amp, self.symbol_filter, self.null_sink)
         self.aux_fm_connected += 1          # increment refcount
 
     # assumes lock held or init
@@ -513,7 +517,7 @@ class p25_demod_cb(p25_demod_base):
             return
         self.aux_fm_connected -= 1          # decrement refcount
         if self.aux_fm_connected == 0:
-            self.disconnect(self.cutoff, self.fm_demod, self.baseband_amp, self.symbol_filter, self.null_sink)
+            self.disconnect(self.fll, self.fm_demod, self.baseband_amp, self.symbol_filter, self.null_sink)
 
     def disconnect_float(self, sink):
         # assumes lock held or init
