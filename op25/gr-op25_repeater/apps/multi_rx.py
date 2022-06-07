@@ -408,7 +408,8 @@ class channel(object):
             self.set_plot_destination('mixer')
             sink.set_width(self.config['if_rate'])
             self.tb.lock()
-            self.demod.connect_complex('cutoff', sink)
+            #self.demod.connect_complex('cutoff', sink)
+            self.demod.connect_complex('fll', sink)
             self.tb.unlock()
         else:
             (sink, fn) = self.sinks.pop('mixer')
