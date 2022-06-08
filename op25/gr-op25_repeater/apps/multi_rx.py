@@ -70,7 +70,7 @@ from gr_gnuplot import fft_sink_c
 from gr_gnuplot import symbol_sink_f
 from gr_gnuplot import eye_sink_f
 from gr_gnuplot import mixer_sink_c
-from gr_gnuplot import tuner_sink_f
+from gr_gnuplot import fll_sink_c
 
 sys.path.append('tdma')
 import lfsr
@@ -275,8 +275,8 @@ class channel(object):
                 self.toggle_constellation_plot()
             elif plot == 'mixer':
                 self.toggle_mixer_plot()
-            elif plot == 'tuner':
-                self.toggle_tuner_plot()
+            elif plot == 'fll':
+                self.toggle_fll_plot()
             else:
                 sys.stderr.write('unrecognized plot type %s\n' % plot)
                 return
@@ -326,7 +326,7 @@ class channel(object):
         elif plot_type == 5:
             self.toggle_mixer_plot()
         elif plot_type == 6:
-            self.toggle_tuner_plot()
+            self.toggle_fll_plot()
 
     def close_plots(self):
         for plot in list(self.sinks.keys()):
@@ -350,20 +350,19 @@ class channel(object):
             self.tb.unlock()
             sink.kill()
 
-    def toggle_tuner_plot(self):
-        if 'tuner' not in self.sinks:
-            sink = tuner_sink_f(plot_name=("Ch:%s" % self.name), chan=self.msgq_id, out_q=self.tb.ui_in_q)
-            self.sinks['tuner'] = (sink, self.toggle_tuner_plot)
-            self.set_plot_destination('tuner')
+    def toggle_fll_plot(self):
+        if 'fll' not in self.sinks:
+            sink = fll_sink_c(plot_name=("Ch:%s" % self.name), chan=self.msgq_id, out_q=self.tb.ui_in_q)
+            self.sinks['fll'] = (sink, self.toggle_mixer_plot)
+            self.set_plot_destination('fll')
+            sink.set_width(self.config['if_rate'])
             self.tb.lock()
-            self.demod.connect_fm_demod()                   # add fm demod to flowgraph if not already present
-            self.demod.connect_bb_tuner('symbol_filter', sink)
+            self.demod.connect_complex('fll', sink)
             self.tb.unlock()
         else:
-            (sink, fn) = self.sinks.pop('tuner')
+            (sink, fn) = self.sinks.pop('fll')
             self.tb.lock()
-            self.demod.disconnect_bb_tuner(sink)
-            self.demod.disconnect_fm_demod()                # remove fm demod from flowgraph if no longer needed
+            self.demod.disconnect_complex(sink)
             self.tb.unlock()
             sink.kill()
 
@@ -408,8 +407,7 @@ class channel(object):
             self.set_plot_destination('mixer')
             sink.set_width(self.config['if_rate'])
             self.tb.lock()
-            #self.demod.connect_complex('cutoff', sink)
-            self.demod.connect_complex('fll', sink)
+            self.demod.connect_complex('agc', sink)
             self.tb.unlock()
         else:
             (sink, fn) = self.sinks.pop('mixer')
@@ -427,7 +425,6 @@ class channel(object):
             self.set_plot_destination('constellation')
             self.tb.lock()
             self.demod.connect_complex('costas', sink)
-            #self.demod.connect_complex('diffdec', sink)
             self.tb.unlock()
         else:
             (sink, fn) = self.sinks.pop('constellation')

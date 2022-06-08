@@ -90,7 +90,7 @@ from gr_gnuplot import fft_sink_c
 from gr_gnuplot import symbol_sink_f
 from gr_gnuplot import eye_sink_f
 from gr_gnuplot import mixer_sink_c
-from gr_gnuplot import tuner_sink_f
+from gr_gnuplot import fll_sink_c
 
 from terminal import op25_terminal
 from sockaudio  import audio_thread
@@ -128,7 +128,7 @@ class p25_rx_block (gr.top_block):
         self.symbol_sink = None
         self.eye_sink = None
         self.mixer_sink = None
-        self.tuner_sink = None
+        self.fll_sink = None
         self.target_freq = 0.0
         self.last_error_update = 0
         self.tuning_error = 0
@@ -351,8 +351,8 @@ class p25_rx_block (gr.top_block):
                 self.toggle_eye()
             elif self.options.plot_mode == 'mixer':
                 self.toggle_mixer()
-            elif self.options.plot_mode == 'tuner':
-                self.toggle_tuner()
+            elif self.options.plot_mode == 'fll':
+                self.toggle_fll()
 
             if self.options.raw_symbols:
                 sys.stderr.write("Saving raw symbols to file: %s\n" % self.options.raw_symbols)
@@ -640,8 +640,8 @@ class p25_rx_block (gr.top_block):
         elif (self.mixer_sink is not None):
             self.toggle_mixer()
             plot_off = 5
-        elif (self.tuner_sink is not None):
-            self.toggle_tuner()
+        elif (self.fll_sink is not None):
+            self.toggle_fll()
             plot_off = 6
 
         if (plot_type == 1) and (plot_off != 1):    # fft
@@ -654,16 +654,15 @@ class p25_rx_block (gr.top_block):
             self.toggle_eye()
         elif (plot_type == 5) and (plot_off != 5):  # mixer output
             self.toggle_mixer()
-        elif (plot_type == 6) and (plot_off != 6):  # mixer output
-            self.toggle_tuner()
+        elif (plot_type == 6) and (plot_off != 6):  # fll output
+            self.toggle_fll()
 
     def toggle_mixer(self):
         if (self.mixer_sink is None):
             self.mixer_sink = mixer_sink_c()
             self.add_plot_sink(self.mixer_sink)
             self.lock()
-            #self.demod.connect_complex('cutoff', self.mixer_sink)
-            self.demod.connect_complex('fll', self.mixer_sink)
+            self.demod.connect_complex('agc', self.mixer_sink)
             self.mixer_sink.set_width(self.basic_rate)
             self.unlock()
         elif (self.mixer_sink is not None):
@@ -753,22 +752,20 @@ class p25_rx_block (gr.top_block):
             self.remove_plot_sink(self.eye_sink)
             self.eye_sink = None
 
-    def toggle_tuner(self):
-        if (self.tuner_sink is None):
-            self.tuner_sink = tuner_sink_f()
-            self.add_plot_sink(self.tuner_sink)
+    def toggle_fll(self):
+        if (self.fll_sink is None):
+            self.fll_sink = fll_sink_c()
+            self.add_plot_sink(self.fll_sink)
             self.lock()
-            self.demod.connect_fm_demod()       # make sure fm demod exists in flowgraph
-            self.demod.connect_bb_tuner('symbol_filter', self.tuner_sink)
+            self.demod.connect_complex('fll', self.fll_sink)
+            self.fll_sink.set_width(self.basic_rate)
             self.unlock()
-        elif (self.tuner_sink is not None):
+        elif (self.fll_sink is not None):
             self.lock()
-            self.demod.disconnect_bb_tuner(self.tuner_sink)
-            self.demod.disconnect_fm_demod()    # attempt to remove fm demod if not needed
             self.unlock()
-            self.tuner_sink.kill()
-            self.remove_plot_sink(self.tuner_sink)
-            self.tuner_sink = None
+            self.fll_sink.kill()
+            self.remove_plot_sink(self.fll_sink)
+            self.fll_sink = None
 
     def add_plot_sink(self, plot):
         if plot not in self.plot_sinks:
