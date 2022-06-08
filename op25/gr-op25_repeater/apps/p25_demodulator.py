@@ -45,7 +45,7 @@ import op25_c4fm_mod
 _def_output_sample_rate = 48000
 _def_if_rate = 24000
 _def_gain_mu = 0.025
-_def_costas_alpha = 0.005
+_def_costas_alpha = 0.006
 _def_symbol_rate = 4800
 _def_symbol_deviation = 600.0
 _def_bb_gain = 1.0
@@ -393,8 +393,10 @@ class p25_demod_cb(p25_demod_base):
         else:
             self.if_out = self.lpf
 
-        fa = 7250
-        fb = fa + 1450
+        #fa = 7250
+        #fb = fa + 1450
+        fa = 6250
+        fb = fa + 1250
         cutoff_coeffs = filter.firdes.low_pass(1.0, self.if_rate, (fb+fa)/2, fb-fa, filter.firdes.WIN_HANN)
         self.cutoff = filter.fir_filter_ccf(1, cutoff_coeffs)
 
@@ -434,11 +436,8 @@ class p25_demod_cb(p25_demod_base):
     def quality(self):
         return self.clock.quality()
 
-    def get_freq_error(self):   # get error in Hz (approx).
-        freq = 0
-        if self.clock.locked():
-            freq = int((-self.costas.get_phase() / TWO_PI) * self.symbol_rate)
-        return freq
+    def get_freq_error(self):   # get frequency error from FLL and convert to Hz
+        return int((self.fll.get_frequency() / TWO_PI) * self.if_rate)
 
     def set_omega(self, rate):
         self.set_symbol_rate(rate)
