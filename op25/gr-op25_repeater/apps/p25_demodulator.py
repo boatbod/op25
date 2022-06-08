@@ -507,6 +507,7 @@ class p25_demod_cb(p25_demod_base):
             return
         if self.aux_fm_connected == 0:
             self.connect(self.fll, self.fm_demod, self.baseband_amp, self.symbol_filter, self.null_sink)
+            #self.connect(self.agc, self.fm_demod, self.baseband_amp, self.symbol_filter, self.null_sink)
         self.aux_fm_connected += 1          # increment refcount
 
     # assumes lock held or init
@@ -517,6 +518,7 @@ class p25_demod_cb(p25_demod_base):
         self.aux_fm_connected -= 1          # decrement refcount
         if self.aux_fm_connected == 0:
             self.disconnect(self.fll, self.fm_demod, self.baseband_amp, self.symbol_filter, self.null_sink)
+            #self.disconnect(self.agc, self.fm_demod, self.baseband_amp, self.symbol_filter, self.null_sink)
 
     def disconnect_float(self, sink):
         # assumes lock held or init
