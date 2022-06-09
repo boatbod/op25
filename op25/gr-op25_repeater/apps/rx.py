@@ -482,8 +482,8 @@ class p25_rx_block (gr.top_block):
         freq = params['freq']
         offset = params['offset']
         center_freq = params['center_frequency']
-        if self.options.freq_error_tracking:
-            self.error_tracking()
+        #if self.options.freq_error_tracking:
+        #    self.error_tracking()
         self.last_change_freq = freq
         self.last_change_freq_at = time.time()
 

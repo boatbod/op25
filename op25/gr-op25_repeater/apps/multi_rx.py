@@ -525,18 +525,19 @@ class channel(object):
             self.sinks[sink][0].kill()
 
     def error_tracking(self):
-        if self.chan_idle or not self.auto_tracking:
+        #if self.chan_idle or not self.auto_tracking:
+        if self.chan_idle:
             self.error = None
             return
         self.error = self.demod.get_freq_error()
-        if self.verbosity >= 10:
+        #if self.verbosity >= 10:
         #if self.verbosity >= 1:
-            sys.stderr.write("%s [%d] frequency tracking(%d): locked: % d, quality: %f, freq: %d\n" % (log_ts.get(), self.msgq_id, self.tracking, self.demod.locked(), self.demod.quality(), self.error))
-        if abs(self.error) >= self.tracking_threshold:
-            self.tracking += self.error * self.tracking_feedback
-            self.tracking = min(self.tracking_limit, max(-self.tracking_limit, self.tracking))
-            self.tracking_cache[self.frequency] = self.tracking
-            self.demod.set_relative_frequency(self.device.offset + self.device.frequency + self.device.fractional_corr + self.tracking - self.frequency)
+        #    sys.stderr.write("%s [%d] frequency tracking(%d): locked: % d, quality: %f, freq: %d\n" % (log_ts.get(), self.msgq_id, self.tracking, self.demod.locked(), self.demod.quality(), self.error))
+        #if abs(self.error) >= self.tracking_threshold:
+        #    self.tracking += self.error * self.tracking_feedback
+        #    self.tracking = min(self.tracking_limit, max(-self.tracking_limit, self.tracking))
+        #    self.tracking_cache[self.frequency] = self.tracking
+        #    self.demod.set_relative_frequency(self.device.offset + self.device.frequency + self.device.fractional_corr + self.tracking - self.frequency)
 
     def dump_tracking(self):
         sys.stderr.write("%s [%d] Frequency Tracking Cache: ch(%d)\n{\n" % (log_ts.get(), self.msgq_id, self.msgq_id))
