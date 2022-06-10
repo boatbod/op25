@@ -19,7 +19,7 @@ Dynamically controllable log level
 Curses or HTTP based terminal
 Demodulator symbol capture and replay
 Voice Encryption detection and skipping (configurable behavior)
-Automatic fine tune tracking for CQPSK demodulator (-X command-line parameter)
+Automatic fine tune tracking using Frequency Locked Loop (FLL).
 
 multi_rx.py capabilities
 ------------------------
@@ -43,7 +43,7 @@ JSON based configuration
 DSD .wav and .iq file replay
 Dynamic demodulator symbol capture and replay (commanded through terminal)
 Voice Encryption detection and skipping (configurable behavior)
-Automatic fine tune tracking/caching for CQPSK demodulator (cqpsk_tracking parameter)
+Automatic fine tune tracking using Frequency Locked Loop (FLL)
 
 Roadmap (under development)
 ---------------------------
@@ -60,6 +60,7 @@ Up to date with osmocom "max" branch as of 3/3/2018
 Note: as of 2019, codebase has diverged too far to continue syncing with osmocom
 
 Many changes:
+- new DQPSK demodulator chain with automatic fine tuning & tracking
 - udp python audio server sockaudio.py and remote player audio.py
 - wireshark fixes (experimental)
 - ability to configure NAC 0x000 in trunk.tsv and have system use first NAC decoded
@@ -67,7 +68,7 @@ Many changes:
 - ability to adjust fine tuning in real time (,./<> keys in terminal) 
 - ability to dynamically resize the curses terminal
 - ability to dunamically turn plots on and off from the terminal (keys 1-5)
-- new 'mixer' and 'tuner' output plots (terminal keys 5 & 6) to assist with fine tuning
+- new 'mixer' and 'fll' output plots (terminal keys 5 & 6)
 - reworked trunking hold/release logic that improves Phase 1 audio on some systems
 - decoding and logging of encryption sync info ("ESS") at log level 10 (-v 10)
 - ability to silence the playing of encrypted audio
