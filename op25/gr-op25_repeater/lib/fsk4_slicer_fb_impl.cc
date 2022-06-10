@@ -95,34 +95,34 @@ fsk4_slicer_fb_impl::work (int noutput_items,
         // look for rotated dibits
         d_accum <<= 2;
         d_accum |= dibit;
-        if(check_frame_sync((d_accum & P25_FRAME_SYNC_MASK) ^ P25_FRAME_SYNC_MAGIC, 0, 48)) {
+        if(((d_accum & P25_FRAME_SYNC_MASK) ^ P25_FRAME_SYNC_MAGIC) == 0) {
             p25dibit.set_fs_index(P25_FRAME_SYNC_MAGIC);
         }
-        else if(check_frame_sync((d_accum & P25P2_FRAME_SYNC_MASK) ^ P25P2_FRAME_SYNC_MAGIC, 0, 40)) {
+        else if(((d_accum & P25P2_FRAME_SYNC_MASK) ^ P25P2_FRAME_SYNC_MAGIC) == 0) {
             p25dibit.set_fs_index(P25P2_FRAME_SYNC_MAGIC);
         }
-        else if(check_frame_sync((d_accum & P25_FRAME_SYNC_MASK) ^ P25_FRAME_SYNC_REV_P, 0, 48)) {
+        else if(((d_accum & P25_FRAME_SYNC_MASK) ^ P25_FRAME_SYNC_REV_P) == 0) {
             p25dibit.set_fs_index(P25_FRAME_SYNC_REV_P);
         }
-        else if(check_frame_sync((d_accum & P25P2_FRAME_SYNC_MASK) ^ P25P2_FRAME_SYNC_REV_P, 0, 40)) {
+        else if(((d_accum & P25P2_FRAME_SYNC_MASK) ^ P25P2_FRAME_SYNC_REV_P) == 0) {
             p25dibit.set_fs_index(P25P2_FRAME_SYNC_REV_P);
         }
-        else if(check_frame_sync((d_accum & P25_FRAME_SYNC_MASK) ^ P25_FRAME_SYNC_N1200, 0, 48)) {
+        else if(((d_accum & P25_FRAME_SYNC_MASK) ^ P25_FRAME_SYNC_N1200) == 0) {
             p25dibit.set_fs_index(P25_FRAME_SYNC_N1200);
         }
-        else if(check_frame_sync((d_accum & P25P2_FRAME_SYNC_MASK) ^ P25P2_FRAME_SYNC_N1200, 0, 40)) {
+        else if(((d_accum & P25P2_FRAME_SYNC_MASK) ^ P25P2_FRAME_SYNC_N1200) == 0) {
             p25dibit.set_fs_index(P25P2_FRAME_SYNC_N1200);
         }
-        else if(check_frame_sync((d_accum & P25_FRAME_SYNC_MASK) ^ P25_FRAME_SYNC_P1200, 0, 48)) {
+        else if(((d_accum & P25_FRAME_SYNC_MASK) ^ P25_FRAME_SYNC_P1200) == 0) {
             p25dibit.set_fs_index(P25_FRAME_SYNC_P1200);
         }
-        else if(check_frame_sync((d_accum & P25P2_FRAME_SYNC_MASK) ^ P25P2_FRAME_SYNC_P1200, 0, 40)) {
+        else if(((d_accum & P25P2_FRAME_SYNC_MASK) ^ P25P2_FRAME_SYNC_P1200) == 0) {
             p25dibit.set_fs_index(P25P2_FRAME_SYNC_P1200);
         }
-        else if(check_frame_sync((d_accum & P25_FRAME_SYNC_MASK) ^ P25_FRAME_SYNC_X2400, 0, 48)) {
+        else if(((d_accum & P25_FRAME_SYNC_MASK) ^ P25_FRAME_SYNC_X2400) == 0) {
             p25dibit.set_fs_index(P25_FRAME_SYNC_X2400);
         }
-        else if(check_frame_sync((d_accum & P25P2_FRAME_SYNC_MASK) ^ P25P2_FRAME_SYNC_X2400, 0, 40)) {
+        else if(((d_accum & P25P2_FRAME_SYNC_MASK) ^ P25P2_FRAME_SYNC_X2400) == 0) {
             p25dibit.set_fs_index(P25P2_FRAME_SYNC_X2400);
         }
         // de-rotate output
