@@ -695,7 +695,9 @@ class p25_rx_block (gr.top_block):
             self.lock()
             if self.spectrum_decim is not None:
                 self.disconnect(self.spectrum_decim, self.fft_sink)
-            self.demod.disconnect_complex(self.fft_sink)
+                self.demod.disconnect_complex(self.spectrum_decim)
+            else:
+                self.demod.disconnect_complex(self.fft_sink)
             self.unlock()
             self.fft_sink.kill()
             self.remove_plot_sink(self.fft_sink)
