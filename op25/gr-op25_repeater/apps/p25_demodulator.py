@@ -45,7 +45,7 @@ import op25_c4fm_mod
 _def_output_sample_rate = 48000
 _def_if_rate = 24000
 _def_gain_mu = 0.025
-_def_costas_alpha = 0.006
+_def_costas_alpha = 0.008
 _def_symbol_rate = 4800
 _def_symbol_deviation = 600.0
 _def_bb_gain = 1.0
