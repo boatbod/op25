@@ -71,7 +71,7 @@ def read_configs(tsv_filename):
                         hdrmap.append(hdr)
                     continue
                 fields = {}
-                if (len(row) < 4) or (len(row) > 9):
+                if (len(row) < 4) or (len(row) > 10):
                     sys.stderr.write("Skipping invalid row in %s: %s\n" % (tsv_filename, row))
                     continue
                 for i in range(len(row)):
