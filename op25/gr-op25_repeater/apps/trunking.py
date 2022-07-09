@@ -61,6 +61,7 @@ class trunked_system (object):
         self.blacklist = {}
         self.whitelist = None
         self.tgid_map = {}
+        self.srcid_map = {}
         self.offset = 0
         self.sysname = 0
         self.rxctl = rxctl
@@ -81,6 +82,7 @@ class trunked_system (object):
             self.blacklist = config['blacklist']
             self.whitelist = config['whitelist']
             self.tgid_map  = config['tgid_map']
+            self.srcid_map = config['srcid_map']
             self.offset    = config['offset']
             self.sysname   = config['sysname']
             self.cc_list   = config['cclist']
@@ -206,6 +208,13 @@ class trunked_system (object):
         if tgid not in self.tgid_map:
             return ""
         return self.tgid_map[tgid][0]
+
+    def get_src(self, srcid):
+        if not srcid:
+            return ""
+        if srcid not in self.srcid_map:
+            return "%d" % (srcid)
+        return self.srcid_map[srcid]
 
     def get_prio(self, tgid):
         if (not tgid) or (tgid not in self.tgid_map):
@@ -1359,6 +1368,7 @@ class rx_ctl (object):
         blacklist = {}
         whitelist = None
         tgid_map = {}
+        srcid_map = {}
         cfg = None
         nac0 = False
         if nac in self.configs:
@@ -1403,7 +1413,7 @@ class rx_ctl (object):
             configs[nac]['sysname'] = section
         self.setup_config(configs)
 
-    def add_default_config(self, nac, cclist=[], offset=0, whitelist=None, blacklist={}, tgid_map={}, sysname=None, center_frequency=None, modulation='cqpsk'):
+    def add_default_config(self, nac, cclist=[], offset=0, whitelist=None, blacklist={}, tgid_map={}, srcid_map={}, sysname=None, center_frequency=None, modulation='cqpsk'):
         if nac in list(self.configs.keys()):
             return
         if nac not in list(self.trunked_systems.keys()):
@@ -1427,7 +1437,7 @@ class rx_ctl (object):
             cclist = [tsys.rfss_chan]
             cclist.extend(list(tsys.secondary.keys()))
             tsys.cc_list = cclist
-        self.configs[nac] = {'cclist':cclist, 'offset':offset, 'whitelist':whitelist, 'blacklist':blacklist, 'tgid_map':tgid_map, 'sysname': sysname, 'center_frequency': center_frequency, 'modulation':modulation}
+        self.configs[nac] = {'cclist':cclist, 'offset':offset, 'whitelist':whitelist, 'blacklist':blacklist, 'tgid_map':tgid_map, 'srcid_map':srcid_map, 'sysname': sysname, 'center_frequency': center_frequency, 'modulation':modulation}
         self.current_nac = nac
         self.current_state = self.states.CC
         if nac not in self.nacs:
@@ -1435,7 +1445,7 @@ class rx_ctl (object):
 
     def setup_config(self, configs):
         for nac in configs:
-            self.configs[nac] = {'cclist':[], 'offset':0, 'whitelist':None, 'blacklist':{}, 'tgid_map':{}, 'sysname': configs[nac]['sysname'], 'center_frequency': None}
+            self.configs[nac] = {'cclist':[], 'offset':0, 'whitelist':None, 'blacklist':{}, 'tgid_map':{}, 'srcid_map':{}, 'sysname': configs[nac]['sysname'], 'center_frequency': None}
             if len(configs[nac]['control_channel_list']) > 0:
                 for f in configs[nac]['control_channel_list'].split(','):
                     self.configs[nac]['cclist'].append(get_frequency(f))
@@ -1476,6 +1486,19 @@ class rx_ctl (object):
                         self.configs[nac]['tgid_map'][tgid] = (txt, prio)
             if 'center_frequency' in configs[nac]:
                 self.configs[nac]['center_frequency'] = get_frequency(configs[nac]['center_frequency'])
+
+            if 'source_tags_file' in configs[nac]:
+                import csv
+                with open(configs[nac]['source_tags_file'], 'r') as csvfile:
+                    sreader = csv.reader(csvfile, delimiter='\t', quotechar='"', quoting=csv.QUOTE_ALL)
+                    for row in sreader:
+                        #Sys.stderr.write("row: %s", row)
+                        try:
+                            srcid = int(row[0])
+                            txt = utf_ascii(row[1])
+                        except (IndexError, ValueError) as ex:
+                            continue
+                        self.configs[nac]['srcid_map'][srcid] = txt
 
             if 'crypt_behavior' in configs[nac]:
                 self.configs[nac]['crypt_behavior'] = configs[nac]['crypt_behavior']
@@ -2061,6 +2084,7 @@ class rx_ctl (object):
                 'tgid':   self.current_tgid,
                 'offset': tsys.offset,
                 'tag':    tsys.get_tag(self.current_tgid),
+                'src_tag':tsys.get_src(self.current_srcaddr),
                 'nac':    nac,
                 'system': tsys.sysname,
                 'center_frequency': tsys.center_frequency,
