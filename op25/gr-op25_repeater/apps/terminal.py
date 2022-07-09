@@ -54,6 +54,12 @@ import socket
 
 from gnuradio import gr
 
+# logging is optional
+try:
+    import logging
+except ImportError:
+    pass
+
 KEEPALIVE_TIME = 3.0   # no data received in (seconds)
 
 class q_watcher(threading.Thread):
@@ -89,6 +95,7 @@ class curses_terminal(threading.Thread):
         self.maxx = 0
         self.maxy = 0
         self.sock = sock
+        self.have_logging = False
         self.sm_step = 100
         self.lg_step = 1200
         # XXX - this seems to confuse rx.py at startup
@@ -334,6 +341,12 @@ class curses_terminal(threading.Thread):
 
     def process_json(self, js):
         # return true signifies end of main event loop
+
+        # set up local variables for logging
+        log_freq = ''
+        log_tgid = ''
+        log_tag = ''
+
         msg = json.loads(js)
         if msg['json_type'] == 'trunk_update':
             nacs = [x for x in list(msg.keys()) if x.isnumeric() ]
@@ -373,6 +386,9 @@ class curses_terminal(threading.Thread):
                     s = s[:14]
                     self.status1.addstr(0, (14-len(s)), s)
                     self.current_srcaddr = srcaddr
+                    self.log_src = '%s' % s
+                else:
+                    self.log_src = ''
                 self.status1.refresh()
             if 'encrypted' in msg:
                 encrypted = msg['encrypted']
@@ -386,26 +402,63 @@ class curses_terminal(threading.Thread):
             self.stdscr.refresh()
         elif msg['json_type'] == 'change_freq': # from rx.py trunking
             s = 'Frequency %f' % (msg['freq'] / 1000000.0)
+            log_freq += '%f' % (msg['freq'] / 1000000.0)
             if msg['fine_tune'] is not None:
                 s +='(%d)' % msg['fine_tune']
+                log_freq += '(%d)' % msg['fine_tune']
             if msg['error'] is not None:
                 s += '(%dHz)' % (msg['error'])
+                # don't log automatic freq error - it changes all the time
+                # and confuses the debouncing we do later (only print if
+                # this_log_line != old_log_line)
+                # log_freq += '(%dHz)' % msg['error']
             if msg['tgid'] is not None:
                 s += ' Talkgroup ID %s' % (msg['tgid'])
+                log_tgid += '%s' % (msg['tgid'])
                 if msg['tdma'] is not None:
                     s += ' TDMA Slot %s' % msg['tdma']
+            else:
+                log_tgid = None
+
             s = s[:(self.maxx - 16)]
             self.active1.erase()
             self.active2.erase()
             self.active1.addstr(0, 0, s)
             self.active1.refresh()
+
             s = ""
+
             if msg['tag']:
                 s = msg['tag']
                 s = s[:(self.maxx - 16)]
                 self.active2.addstr(0, 0, s)
+                log_tag = '"%s"' % (msg['tag'])
+            else:
+                log_tag = 'unknown';
+
             self.active2.refresh()
             self.stdscr.refresh()
+
+            if msg.get('src_tag', None) != None:
+                # only in log file for now
+                log_src_tag = '"%s"' % (msg['src_tag'])
+            else:
+                log_src_tag = 'unknown';
+
+            if log_tgid is not None:
+                log_line =  ('%s,' % log_freq)
+                log_line += ('%s,' % log_tgid)
+                log_line += ('%s,' % log_tag)
+                log_line += ('%s,' % self.log_src)
+                log_line += ('%s'  % log_src_tag)
+
+                # only log a new line if there is a change
+                if log_line != self.log_old_line:
+                    if self.have_logging:
+                        logging.info(log_line)
+
+                self.log_old_line = log_line
+
         elif msg['json_type'] == 'channel_update': # from multi_rx.py trunking
             if ('channels' not in msg) or (len(msg['channels']) == 0):
                 return
@@ -510,6 +563,22 @@ class curses_terminal(threading.Thread):
     def run(self):
         try:
             self.setup_curses()
+
+            # check for optional imports
+            if logging:
+                self.have_logging = True
+            else:
+                self.have_logging = False
+
+            # initialize logging (lol hardcoded filename)
+            # and print column labels
+            if self.have_logging == True:
+                logging.basicConfig(filename='op25-scanner.log', level=logging.INFO, datefmt='%Y-%m-%d,%H:%M:%S', format='%(asctime)s,%(message)s')
+                logging.info('"frequency MHz(tuning Hz)","talkgroup ID","talkgroup name","source ID","source name"')
+            self.log_old_line = ''
+            # log_src has to be at this level, because it gets set and
+            # read in two different parts of process_json
+            self.log_src = '';
 
             while(self.keep_running):
                 if self.process_terminal_events():
