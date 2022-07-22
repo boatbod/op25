@@ -36,6 +36,7 @@
 namespace gr {
     namespace op25_repeater {
 
+        enum ldu_type { LDU1 = 1, LDU2 };
         static const int SND_FRAME = 160;   // pcm samples per frame
 
         class p25p1_fdma
@@ -58,12 +59,14 @@ namespace gr {
                 void process_TDU3();
                 void process_TSBK(const bit_vector& fr, uint32_t fr_len);
                 void process_PDU(const bit_vector& fr, uint32_t fr_len);
-                void process_voice(const bit_vector& A);
+                void process_voice(const bit_vector& A, const ldu_type ldu );
                 int  process_blocks(const bit_vector& fr, uint32_t& fr_len, block_vector& dbuf);
                 void process_frame();
                 void check_timeout();
                 inline bool encrypted() { return (ess_algid != 0x80); }
                 void send_msg(const std::string msg_str, long msg_type);
+                void adp_keystream_gen();
+                void adp_swap(uint8_t *S, uint32_t i, uint32_t j);
 
                 // internal instance variables and state
                 int write_bufp;
@@ -93,6 +96,7 @@ namespace gr {
                 uint8_t ess_algid;
                 uint8_t  ess_mi[9] = {0};
                 uint16_t vf_tgid;
+                uint8_t adp_keystream[469];
 
             public:
                 void set_debug(int debug);

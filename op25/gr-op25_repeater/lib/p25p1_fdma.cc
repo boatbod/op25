@@ -303,11 +303,15 @@ namespace gr {
             process_LLDU(A, HB);
             process_LCW(HB);
 
+            if (encrypted() && ess_algid == 0xaa) {
+                adp_keystream_gen();
+            }
+
             if (d_debug >= 10) {
                 fprintf (stderr, "\n");
             }
 
-            process_voice(A);
+            process_voice(A, LDU1);
         }
 
         void p25p1_fdma::process_LDU2(const bit_vector& A) {
@@ -317,6 +321,10 @@ namespace gr {
 
             std::vector<uint8_t> HB(63,0); // hexbit vector
             process_LLDU(A, HB);
+
+            if (encrypted() && ess_algid == 0xaa) {
+                adp_keystream_gen();
+            }
 
             int i, j, ec;
             ec = rs8.decode(HB); // Reed Solomon (24,16,9) error correction
@@ -338,7 +346,7 @@ namespace gr {
                             ec); 
                 }
             }
-            process_voice(A);
+            process_voice(A, LDU2);
         }
 
         void p25p1_fdma::process_TTDU() {
@@ -526,7 +534,7 @@ namespace gr {
             return (bl_cnt > 0) ? 0 : -1;
         }
 
-        void p25p1_fdma::process_voice(const bit_vector& A) {
+        void p25p1_fdma::process_voice(const bit_vector& A, const ldu_type ldu) {
             if (d_do_imbe || d_do_audio_output) {
                 for(size_t i = 0; i < nof_voice_codewords; ++i) {
                     voice_codeword cw(voice_codeword_sz);
@@ -546,8 +554,64 @@ namespace gr {
                                 p_cw[6], p_cw[7], p_cw[8], p_cw[9], p_cw[10]);
                         fprintf(stderr, "%s IMBE %s errs %lu\n", logts.get(d_msgq_id), s, errs); // print to log in one operation
                     }
+
+                    if (encrypted() && ess_algid == 0xaa) {
+                        size_t adp_offset = (ldu == LDU1) ? 0 : 101;
+                        uint8_t plaintext[11];
+                        packed_codeword ciphertext;
+                        imbe_pack(ciphertext, u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7]);
+                        switch (i) {
+                            case 0:
+                                for (size_t j = 0; j < 11; ++j) {
+                                    plaintext[j] = adp_keystream[j + 267 + adp_offset] ^ ciphertext[j];
+                                }
+                                break;
+                            case 1:
+                                for (size_t j = 0; j < 11; ++j) {
+                                    plaintext[j] = adp_keystream[j + 278 + adp_offset] ^ ciphertext[j];
+                                }
+                                break;
+                            case 2:
+                                for (size_t j = 0; j < 11; ++j) {
+                                    plaintext[j] = adp_keystream[j + 289 + adp_offset] ^ ciphertext[j];
+                                }
+                                break;
+                            case 3:
+                                for (size_t j = 0; j < 11; ++j) {
+                                    plaintext[j] = adp_keystream[j + 300 + adp_offset] ^ ciphertext[j];
+                                }
+                                break;
+                            case 4:
+                                for (size_t j = 0; j < 11; ++j) {
+                                    plaintext[j] = adp_keystream[j + 311 + adp_offset] ^ ciphertext[j];
+                                }
+                                break;
+                            case 5:
+                                for (size_t j = 0; j < 11; ++j) {
+                                    plaintext[j] = adp_keystream[j + 322 + adp_offset] ^ ciphertext[j];
+                                }
+                                break;
+                            case 6:
+                                for (size_t j = 0; j < 11; ++j) {
+                                    plaintext[j] = adp_keystream[j + 333 + adp_offset] ^ ciphertext[j];
+                                }
+                                break;
+                            case 7:
+                                for (size_t j = 0; j < 11; ++j) {
+                                    plaintext[j] = adp_keystream[j + 344 + adp_offset] ^ ciphertext[j];
+                                }
+                                break;
+                            case 8:
+                                for (size_t j = 0; j < 11; ++j) {
+                                    plaintext[j] = adp_keystream[j + 357 + adp_offset] ^ ciphertext[j];
+                                }
+                                break;
+                        }
+                        imbe_unpack(plaintext, u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7]);
+                    }
+
                     if (d_do_audio_output) {
-                        if (!d_do_nocrypt || !encrypted()) {
+                        if (!d_do_nocrypt) {
                             std::string encr = "{\"encrypted\": " + std::to_string(0) + ", \"algid\": " + std::to_string(ess_algid) + ", \"keyid\": " + std::to_string(ess_keyid) + "}";
                             send_msg(encr, M_P25_JSON_DATA);
                             software_decoder.decode_fullrate(u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7], E0, ET);
@@ -695,6 +759,44 @@ namespace gr {
                     d_msg_queue->insert_tail(msg);
                 }
             }
+        }
+
+        void p25p1_fdma::adp_keystream_gen() {
+            uint8_t adp_key[13] = {0x00, 0x00, 0x00, 0x00, 0x00},
+                    S[256], K[256];
+            uint32_t i, j = 0, k;
+
+            for (i = 5; i < 13; ++i) {
+                adp_key[i] = ess_mi[i - 5];
+            }
+
+            for (i = 0; i < 256; ++i) {
+                K[i] = adp_key[i % 13];
+            }
+
+            for (i = 0; i < 256; ++i) {
+                S[i] = i;
+            }
+
+            for (i = 0; i < 256; ++i) {
+                j = (j + S[i] + K[i]) & 0xFF;
+                adp_swap(S, i, j);
+            }
+
+            i = j = 0;
+
+            for (k = 0; k < 469; ++k) {
+                i = (i + 1) & 0xFF;
+                j = (j + S[i]) & 0xFF;
+                adp_swap(S, i, j);
+                adp_keystream[k] = S[(S[i] + S[j]) & 0xFF];
+            }
+        }
+
+        void p25p1_fdma::adp_swap(uint8_t *S, uint32_t i, uint32_t j) {
+            uint8_t temp = S[i];
+            S[i] = S[j];
+            S[j] = temp;
         }
 
     }  // namespace
