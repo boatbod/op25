@@ -25,7 +25,7 @@
 #ifndef INCLUDED_OP25_REPEATER_GARDNER_CC_IMPL_H
 #define INCLUDED_OP25_REPEATER_GARDNER_CC_IMPL_H
 
-#include <op25_repeater/gardner_cc.h>
+#include <gnuradio/op25_repeater/gardner_cc.h>
 
 #include <gnuradio/gr_complex.h>
 #include <gnuradio/math.h>

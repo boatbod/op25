@@ -35,6 +35,7 @@
 #include <sys/types.h>
 #include <cstdio>
 #include <stdexcept>
+#include <boost/format.hpp>
 
 #ifdef _MSC_VER
 #define GR_FSEEK _fseeki64

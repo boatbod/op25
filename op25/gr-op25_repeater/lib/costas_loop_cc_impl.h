@@ -24,7 +24,7 @@
 #ifndef INCLUDED_OP25_REPEATER_COSTAS_LOOP_CC_IMPL_H
 #define INCLUDED_OP25_REPEATER_COSTAS_LOOP_CC_IMPL_H
 
-#include <op25_repeater/costas_loop_cc.h>
+#include <gnuradio/op25_repeater/costas_loop_cc.h>
 
 namespace gr {
 namespace op25_repeater {
