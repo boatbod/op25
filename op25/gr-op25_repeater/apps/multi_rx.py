@@ -60,7 +60,6 @@ from optparse import OptionParser
 import gnuradio.op25 as op25
 import gnuradio.op25_repeater as op25_repeater
 import p25_demodulator
-import p25_decoder
 import op25_nbfm
 import op25_iqsrc
 import op25_wavsrc
@@ -71,7 +70,7 @@ from gr_gnuplot import fft_sink_c
 from gr_gnuplot import symbol_sink_f
 from gr_gnuplot import eye_sink_f
 from gr_gnuplot import mixer_sink_c
-from gr_gnuplot import tuner_sink_f
+from gr_gnuplot import fll_sink_c
 
 sys.path.append('tdma')
 import lfsr
@@ -183,15 +182,15 @@ class channel(object):
         self.throttle = None
         self.nbfm = None
         self.nbfm_mode = 0
-        self.auto_tracking      = bool(from_dict(config, "cqpsk_tracking", True))
-        self.tracking_threshold = int(from_dict(config, "tracking_threshold", 30))
+        self.auto_tracking      = bool(from_dict(config, "cqpsk_tracking", False))
+        self.tracking_threshold = int(from_dict(config, "tracking_threshold", 120))
         self.tracking_limit     = int(from_dict(config, "tracking_limit", 2400))
         self.tracking_feedback  = float(from_dict(config, "tracking_feedback", 0.85))
-        if str(from_dict(config, "demod_type", "")).lower() != "cqpsk":
-            self.auto_tracking = False
+        #if str(from_dict(config, "demod_type", "")).lower() != "cqpsk":
+        #    self.auto_tracking = False
         self.tracking = 0
         self.tracking_cache = {}
-        self.error = 0
+        self.error = None
         self.chan_idle = False
         self.sinks = {}
         self.tdma_state = False
@@ -201,6 +200,8 @@ class channel(object):
         self.channel_rate = self.symbol_rate
         if dev.args == 'wavsrc':
             self.demod = p25_demodulator.p25_demod_fb(
+                             msgq_id = self.msgq_id,
+                             debug = self.verbosity,
                              input_rate=dev.sample_rate,
                              filter_type = config['filter_type'],
                              excess_bw=config['excess_bw'],
@@ -210,6 +211,8 @@ class channel(object):
             if filter_type[:4] != 'fsk2':   # has to be 'fsk2' or derivative such as 'fsk2mm'
                 filter_type = 'fsk2mm'
             self.demod = p25_demodulator.p25_demod_cb(
+                             msgq_id = self.msgq_id,
+                             debug = self.verbosity,
                              input_rate = dev.sample_rate,
                              demod_type = 'fsk4',
                              filter_type = filter_type,
@@ -221,6 +224,8 @@ class channel(object):
                              symbol_rate = self.symbol_rate)
         else:                             # P25, DMR, NXDN and everything else
             self.demod = p25_demodulator.p25_demod_cb(
+                             msgq_id = self.msgq_id,
+                             debug = self.verbosity,
                              input_rate = dev.sample_rate,
                              demod_type = config['demod_type'],
                              filter_type = config['filter_type'],
@@ -270,8 +275,8 @@ class channel(object):
                 self.toggle_constellation_plot()
             elif plot == 'mixer':
                 self.toggle_mixer_plot()
-            elif plot == 'tuner':
-                self.toggle_tuner_plot()
+            elif plot == 'fll':
+                self.toggle_fll_plot()
             else:
                 sys.stderr.write('unrecognized plot type %s\n' % plot)
                 return
@@ -282,6 +287,8 @@ class channel(object):
             self.decoder.set_debug(dbglvl)
         if self.nbfm is not None:
             self.nbfm.set_debug(dbglvl)
+        if self.demod is not None:
+            self.demod.set_debug(dbglvl)
 
     def toggle_capture(self):
         if self.raw_sink is None:   # turn on raw symbol capture
@@ -319,7 +326,7 @@ class channel(object):
         elif plot_type == 5:
             self.toggle_mixer_plot()
         elif plot_type == 6:
-            self.toggle_tuner_plot()
+            self.toggle_fll_plot()
 
     def close_plots(self):
         for plot in list(self.sinks.keys()):
@@ -343,20 +350,19 @@ class channel(object):
             self.tb.unlock()
             sink.kill()
 
-    def toggle_tuner_plot(self):
-        if 'tuner' not in self.sinks:
-            sink = tuner_sink_f(plot_name=("Ch:%s" % self.name), chan=self.msgq_id, out_q=self.tb.ui_in_q)
-            self.sinks['tuner'] = (sink, self.toggle_tuner_plot)
-            self.set_plot_destination('tuner')
+    def toggle_fll_plot(self):
+        if 'fll' not in self.sinks:
+            sink = fll_sink_c(plot_name=("Ch:%s" % self.name), chan=self.msgq_id, out_q=self.tb.ui_in_q)
+            self.sinks['fll'] = (sink, self.toggle_mixer_plot)
+            self.set_plot_destination('fll')
+            sink.set_width(self.config['if_rate'])
             self.tb.lock()
-            self.demod.connect_fm_demod()                   # add fm demod to flowgraph if not already present
-            self.demod.connect_bb_tuner('symbol_filter', sink)
+            self.demod.connect_complex('fll', sink)
             self.tb.unlock()
         else:
-            (sink, fn) = self.sinks.pop('tuner')
+            (sink, fn) = self.sinks.pop('fll')
             self.tb.lock()
-            self.demod.disconnect_bb_tuner(sink)
-            self.demod.disconnect_fm_demod()                # remove fm demod from flowgraph if no longer needed
+            self.demod.disconnect_complex(sink)
             self.tb.unlock()
             sink.kill()
 
@@ -401,7 +407,7 @@ class channel(object):
             self.set_plot_destination('mixer')
             sink.set_width(self.config['if_rate'])
             self.tb.lock()
-            self.demod.connect_complex('cutoff', sink)
+            self.demod.connect_complex('agc', sink)
             self.tb.unlock()
         else:
             (sink, fn) = self.sinks.pop('mixer')
@@ -418,7 +424,7 @@ class channel(object):
             self.sinks['constellation'] = (sink, self.toggle_constellation_plot)
             self.set_plot_destination('constellation')
             self.tb.lock()
-            self.demod.connect_complex('diffdec', sink)
+            self.demod.connect_complex('costas', sink)
             self.tb.unlock()
         else:
             (sink, fn) = self.sinks.pop('constellation')
@@ -519,18 +525,19 @@ class channel(object):
             self.sinks[sink][0].kill()
 
     def error_tracking(self):
-        if self.chan_idle or not self.auto_tracking:
+        #if self.chan_idle or not self.auto_tracking:
+        if self.chan_idle:
+            self.error = None
             return
-        band = self.demod.get_error_band()
-        freq = self.demod.get_freq_error()
-        if self.verbosity >= 10:
-            sys.stderr.write("%s [%d] frequency tracking(%d): band: %d, freq: %d\n" % (log_ts.get(), self.msgq_id, self.tracking, band, freq))
-        self.error = (band * 1200) + freq
-        if abs(self.error) >= self.tracking_threshold:
-            self.tracking += (band * 1200) + (freq * self.tracking_feedback)
-            self.tracking = min(self.tracking_limit, max(-self.tracking_limit, self.tracking))
-            self.tracking_cache[self.frequency] = self.tracking
-            self.demod.set_relative_frequency(self.device.offset + self.device.frequency + self.device.fractional_corr + self.tracking - self.frequency)
+        self.error = self.demod.get_freq_error()
+        #if self.verbosity >= 10:
+        #if self.verbosity >= 1:
+        #    sys.stderr.write("%s [%d] frequency tracking(%d): locked: % d, quality: %f, freq: %d\n" % (log_ts.get(), self.msgq_id, self.tracking, self.demod.locked(), self.demod.quality(), self.error))
+        #if abs(self.error) >= self.tracking_threshold:
+        #    self.tracking += self.error * self.tracking_feedback
+        #    self.tracking = min(self.tracking_limit, max(-self.tracking_limit, self.tracking))
+        #    self.tracking_cache[self.frequency] = self.tracking
+        #    self.demod.set_relative_frequency(self.device.offset + self.device.frequency + self.device.fractional_corr + self.tracking - self.frequency)
 
     def dump_tracking(self):
         sys.stderr.write("%s [%d] Frequency Tracking Cache: ch(%d)\n{\n" % (log_ts.get(), self.msgq_id, self.msgq_id))

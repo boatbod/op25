@@ -90,7 +90,7 @@ from gr_gnuplot import fft_sink_c
 from gr_gnuplot import symbol_sink_f
 from gr_gnuplot import eye_sink_f
 from gr_gnuplot import mixer_sink_c
-from gr_gnuplot import tuner_sink_f
+from gr_gnuplot import fll_sink_c
 
 from terminal import op25_terminal
 from sockaudio  import audio_thread
@@ -128,10 +128,9 @@ class p25_rx_block (gr.top_block):
         self.symbol_sink = None
         self.eye_sink = None
         self.mixer_sink = None
-        self.tuner_sink = None
+        self.fll_sink = None
         self.target_freq = 0.0
         self.last_error_update = 0
-        self.error_band = 0
         self.tuning_error = 0
         self.freq_correction = 0
         self.last_set_freq = 0
@@ -307,7 +306,7 @@ class p25_rx_block (gr.top_block):
         self.corr_i_chan = False
 
         if self.baseband_input:
-            self.demod = p25_demodulator.p25_demod_fb(input_rate=capture_rate, excess_bw=self.options.excess_bw)
+            self.demod = p25_demodulator.p25_demod_fb(msgq_id=0, debug=self.options.verbosity, input_rate=capture_rate, excess_bw=self.options.excess_bw)
         elif self.options.symbols:
             self.demod = None
         else:    # complex input
@@ -315,7 +314,9 @@ class p25_rx_block (gr.top_block):
             self.lo_freq = self.options.offset
             if self.options.audio_if or self.options.ifile or self.options.input:
                 self.lo_freq += self.options.calibration
-            self.demod = p25_demodulator.p25_demod_cb( input_rate = capture_rate,
+            self.demod = p25_demodulator.p25_demod_cb( msgq_id = 0,
+                                                       debug = self.options.verbosity,
+                                                       input_rate = capture_rate,
                                                        demod_type = self.options.demod_type,
                                                        relative_freq = self.lo_freq,
                                                        offset = self.options.offset,
@@ -350,8 +351,8 @@ class p25_rx_block (gr.top_block):
                 self.toggle_eye()
             elif self.options.plot_mode == 'mixer':
                 self.toggle_mixer()
-            elif self.options.plot_mode == 'tuner':
-                self.toggle_tuner()
+            elif self.options.plot_mode == 'fll':
+                self.toggle_fll()
 
             if self.options.raw_symbols:
                 sys.stderr.write("Saving raw symbols to file: %s\n" % self.options.raw_symbols)
@@ -363,7 +364,9 @@ class p25_rx_block (gr.top_block):
             num_ambe = 2
         if self.options.logfile_workers:
             for i in range(self.options.logfile_workers):
-                demod = p25_demodulator.p25_demod_cb(input_rate=capture_rate,
+                demod = p25_demodulator.p25_demod_cb(msgq_id=0,
+                                                     debug=self.options.verbosity,
+                                                     input_rate=capture_rate,
                                                      demod_type=self.options.demod_type,
                                                      offset=self.options.offset)
                 decoder = p25_decoder.p25_decoder_sink_b(debug = self.options.verbosity, do_imbe = self.options.vocoder, num_ambe=num_ambe)
@@ -443,29 +446,24 @@ class p25_rx_block (gr.top_block):
             or self.last_change_freq_at + UPDATE_TIME > time.time():
             return
         self.last_error_update = time.time()
-        band = self.demod.get_error_band()
         freq_error = self.demod.get_freq_error()
-        if band:
-            self.error_band += band
-        if band or abs(freq_error) >= 200: # avoid hunting by only compensating errors over 200hz
+        if abs(freq_error) >= 200: # avoid hunting by only compensating errors over 200hz
             self.freq_correction += freq_error * 0.15
             do_freq_update = 1
         else:
             do_freq_update = 0
         if self.freq_correction > 600:
             self.freq_correction -= 1200
-            self.error_band += 1
         elif self.freq_correction < -600:
             self.freq_correction += 1200
-            self.error_band -= 1
-        self.tuning_error = self.error_band * 1200 + self.freq_correction
+        self.tuning_error = self.freq_correction
         err_hz = 0
         err_ppm = 0
         if self.last_change_freq > 0:
             err_ppm = round((self.tuning_error*1e6) / float(self.last_change_freq))
             err_hz = -int(self.tuning_error - (err_ppm * (self.last_change_freq / 1e6)))
         if self.options.verbosity >= 10:
-            sys.stderr.write('%s frequency_tracking\t%d\t%d\t%d\t%d\t%d\n' % (log_ts.get(), freq_error, self.error_band, self.tuning_error, err_ppm, err_hz))
+            sys.stderr.write('%s frequency_tracking\t%d\t%d\t%d\t%d\n' % (log_ts.get(), freq_error, self.tuning_error, err_ppm, err_hz))
         if do_freq_update:
             corrected_ppm = self.options.freq_corr + err_ppm  # compute new device ppm based on starting point plus adjustment
             if corrected_ppm != self.last_set_ppm:
@@ -484,8 +482,8 @@ class p25_rx_block (gr.top_block):
         freq = params['freq']
         offset = params['offset']
         center_freq = params['center_frequency']
-        if self.options.freq_error_tracking and self.options.demod_type != "fsk4":
-            self.error_tracking()
+        #if self.options.freq_error_tracking:
+        #    self.error_tracking()
         self.last_change_freq = freq
         self.last_change_freq_at = time.time()
 
@@ -522,6 +520,10 @@ class p25_rx_block (gr.top_block):
         params = self.last_freq_params
         params['json_type'] = 'change_freq'
         params['fine_tune'] = self.options.fine_tune
+        error = None
+        if self.demod is not None:
+            error = self.demod.get_freq_error()
+        params['error'] = error
         params['stream_url'] = self.stream_url
         js = json.dumps(params)
         msg = gr.message().make_from_string(js, -4, 0, 0)
@@ -614,6 +616,7 @@ class p25_rx_block (gr.top_block):
     def set_debug(self, dbglvl):
         self.options.verbosity = dbglvl
         self.decoder.set_debug(dbglvl)
+        self.demod.set_debug(dbglvl)
         if self.trunk_rx is not None:
             self.trunk_rx.set_debug(dbglvl)
 
@@ -637,8 +640,8 @@ class p25_rx_block (gr.top_block):
         elif (self.mixer_sink is not None):
             self.toggle_mixer()
             plot_off = 5
-        elif (self.tuner_sink is not None):
-            self.toggle_tuner()
+        elif (self.fll_sink is not None):
+            self.toggle_fll()
             plot_off = 6
 
         if (plot_type == 1) and (plot_off != 1):    # fft
@@ -651,15 +654,15 @@ class p25_rx_block (gr.top_block):
             self.toggle_eye()
         elif (plot_type == 5) and (plot_off != 5):  # mixer output
             self.toggle_mixer()
-        elif (plot_type == 6) and (plot_off != 6):  # mixer output
-            self.toggle_tuner()
+        elif (plot_type == 6) and (plot_off != 6):  # fll output
+            self.toggle_fll()
 
     def toggle_mixer(self):
         if (self.mixer_sink is None):
             self.mixer_sink = mixer_sink_c()
             self.add_plot_sink(self.mixer_sink)
             self.lock()
-            self.demod.connect_complex('cutoff', self.mixer_sink)
+            self.demod.connect_complex('agc', self.mixer_sink)
             self.mixer_sink.set_width(self.basic_rate)
             self.unlock()
         elif (self.mixer_sink is not None):
@@ -692,7 +695,9 @@ class p25_rx_block (gr.top_block):
             self.lock()
             if self.spectrum_decim is not None:
                 self.disconnect(self.spectrum_decim, self.fft_sink)
-            self.demod.disconnect_complex(self.fft_sink)
+                self.demod.disconnect_complex(self.spectrum_decim)
+            else:
+                self.demod.disconnect_complex(self.fft_sink)
             self.unlock()
             self.fft_sink.kill()
             self.remove_plot_sink(self.fft_sink)
@@ -707,7 +712,7 @@ class p25_rx_block (gr.top_block):
             self.constellation_sink = constellation_sink_c()
             self.add_plot_sink(self.constellation_sink)
             self.lock()
-            self.demod.connect_complex('diffdec', self.constellation_sink)
+            self.demod.connect_complex('costas', self.constellation_sink)
             self.unlock()
         elif (self.constellation_sink is not None):
             self.lock()
@@ -749,22 +754,20 @@ class p25_rx_block (gr.top_block):
             self.remove_plot_sink(self.eye_sink)
             self.eye_sink = None
 
-    def toggle_tuner(self):
-        if (self.tuner_sink is None):
-            self.tuner_sink = tuner_sink_f()
-            self.add_plot_sink(self.tuner_sink)
+    def toggle_fll(self):
+        if (self.fll_sink is None):
+            self.fll_sink = fll_sink_c()
+            self.add_plot_sink(self.fll_sink)
             self.lock()
-            self.demod.connect_fm_demod()       # make sure fm demod exists in flowgraph
-            self.demod.connect_bb_tuner('symbol_filter', self.tuner_sink)
+            self.demod.connect_complex('fll', self.fll_sink)
+            self.fll_sink.set_width(self.basic_rate)
             self.unlock()
-        elif (self.tuner_sink is not None):
+        elif (self.fll_sink is not None):
             self.lock()
-            self.demod.disconnect_bb_tuner(self.tuner_sink)
-            self.demod.disconnect_fm_demod()    # attempt to remove fm demod if not needed
             self.unlock()
-            self.tuner_sink.kill()
-            self.remove_plot_sink(self.tuner_sink)
-            self.tuner_sink = None
+            self.fll_sink.kill()
+            self.remove_plot_sink(self.fll_sink)
+            self.fll_sink = None
 
     def add_plot_sink(self, plot):
         if plot not in self.plot_sinks:
@@ -903,7 +906,7 @@ class p25_rx_block (gr.top_block):
             return
         filenames = [sink.gnuplot.filename for sink in self.plot_sinks if sink.gnuplot.filename]
         error = None
-        if self.options.demod_type == 'cqpsk' and self.demod is not None:
+        if self.demod is not None:
             error = self.demod.get_freq_error()
         d = {'json_type': 'rx_update', 'error': error, 'fine_tune': self.options.fine_tune, 'files': filenames}
         msg = gr.message().make_from_string(json.dumps(d), -4, 0, 0)
@@ -1022,9 +1025,9 @@ class rx_main(object):
         parser.add_option("-i", "--input", default=None, help="input file name")
         parser.add_option("-b", "--excess-bw", type="eng_float", default=0.2, help="for RRC filter", metavar="Hz")
         parser.add_option("-c", "--calibration", type="eng_float", default=0.0, help="USRP offset or audio IF frequency", metavar="Hz")
-        parser.add_option("-C", "--costas-alpha", type="eng_float", default=0.04, help="value of alpha for Costas loop", metavar="Hz")
+        parser.add_option("-C", "--costas-alpha", type="eng_float", default=0.001, help="value of alpha for Costas loop", metavar="Hz")
         parser.add_option("-D", "--demod-type", type="choice", default="cqpsk", choices=('cqpsk', 'fsk4'), help="cqpsk | fsk4")
-        parser.add_option("-P", "--plot-mode", type="choice", default=None, choices=(None, 'constellation', 'fft', 'symbol', 'datascope', 'mixer', 'tuner'), help="constellation | fft | symbol | datascope | mixer | tuner")
+        parser.add_option("-P", "--plot-mode", type="choice", default=None, choices=(None, 'constellation', 'fft', 'symbol', 'datascope', 'mixer', 'fll'), help="constellation | fft | symbol | datascope | mixer | tuner")
         parser.add_option("-f", "--frequency", type="eng_float", default=0.0, help="USRP center frequency", metavar="Hz")
         parser.add_option("-F", "--ifile", type="string", default=None, help="read input from complex capture file")
         parser.add_option("-H", "--hamlib-model", type="int", default=None, help="specify model for hamlib")

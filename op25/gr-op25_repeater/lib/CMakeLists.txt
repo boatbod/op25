@@ -17,7 +17,8 @@ ambe_encoder_sb_impl.cc
     ysf_tx_sb_impl.cc
     dstar_tx_sb_impl.cc
     vocoder_impl.cc
-    gardner_costas_cc_impl.cc
+    gardner_cc_impl.cc
+    costas_loop_cc_impl.cc
     p25_frame_assembler_impl.cc
     frame_assembler_impl.cc
     analog_udp_impl.cc
@@ -61,6 +62,7 @@ if (AMBE_TONES)
 else()
   message(STATUS "AMBE Tone Synthesis Disabled")
   add_definitions(-DDISABLE_AMBE_TONES)
+  target_link_libraries(gnuradio-op25_repeater ${Boost_LIBRARIES} gnuradio::gnuradio-runtime gnuradio-blocks ${GR_FILTER_LIBRARIES} imbe_vocoder)
 endif()
 unset(AMBE_TONES CACHE)
 
