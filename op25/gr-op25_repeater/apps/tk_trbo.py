@@ -403,8 +403,9 @@ class rx_ctl(object):
         self.receivers[msgq_id] = dmr_receiver(msgq_id, self.frequency_set, self.nac_set, self.slot_set, self.chans, self.debug)
 
     def process_qmsg(self, msg):
-        m_proto = ctypes.c_int16(msg.type() >> 16).value  # upper 16 bits of msg.type() is signed protocol
-        if m_proto != 1: # DMR m_proto=1
+        m_proto = ctypes.c_int16(msg.type() >> 16).value    # upper 16 bits of msg.type() is signed protocol
+        m_type = ctypes.c_int16(msg.type() & 0xffff).value  # lower 16 bits of msg.type() is signed message type
+        if (m_proto != 1) and (m_type != -1): # DMR m_proto=1 except for timeout when m_proto=0
             return
 
         self.check_expired_grants()

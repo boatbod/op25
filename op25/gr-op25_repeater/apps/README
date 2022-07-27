@@ -1,5 +1,5 @@
 
-November 2021
+June 2022
 =============
 
 This file contains notes on the current OP25 P25 receiver (rx.py) and
@@ -41,8 +41,8 @@ terminal window there are several keyboard commands:
  2 - toggle constellation plot (cqpsk)
  3 - toggle symbol plot
  4 - toggle datascope plot
- 5 - toggle mixer plot
- 6 - toggle tuner plot
+ 5 - toggle raw mixer plot
+ 6 - toggle tuned mixer plot
  <cursor left> / <cursor right> - cycle through avaiable receivers (multi_rx only)
 
 REMOTE TERMINAL
@@ -95,7 +95,7 @@ Six types of plotting are currently implemented, via the -P parameter:
  * symbol
  * datascope
  * mixer
- * tuner
+ * fll
 The symbol and datascope mode is allowed both in fsk4 and cqpsk modes.
 The constellation mode only works when the cqpsk demod mode is selected
 (or defaulted).
@@ -133,8 +133,7 @@ Options:
   -D DEMOD_TYPE, --demod-type=DEMOD_TYPE
                         cqpsk | fsk4
   -P PLOT_MODE, --plot-mode=PLOT_MODE
-                        constellation | fft | symbol | datascope | mixer |
-                        tuner
+                        constellation | fft | symbol | datascope | mixer | fll                      
   -f Hz, --frequency=Hz
                         USRP center frequency
   -F IFILE, --ifile=IFILE
@@ -183,8 +182,6 @@ Options:
                         audio output device name
   -x AUDIO_GAIN, --audio-gain=AUDIO_GAIN
                         audio gain (default = 1.0)
-  -X, --freq-error-tracking
-                        enable experimental frequency error tracking
   -U, --udp-player      enable built-in udp audio player
   -q FREQ_CORR, --freq-corr=FREQ_CORR
                         frequency correction
@@ -236,7 +233,7 @@ demod_type:     'cqpsk' for qpsk p25 only
 filter_type:    'rc' for p25; 'rrc' for dmr and ysf; 'gmsk' for d-star
                 'fsk' for Smartnet/Smartzone control channel
                 'widepulse' for Smartnet/Smartzone P25CAI voice
-plot:           'fft', 'constellation', 'datascope', 'symbol', 'mixer', 'tuner'
+plot:           'fft', 'constellation', 'datascope', 'symbol', 'mixer', 'fll'
                 [if more than one plot desired, provide a comma-separated list]
 destination:    'udp://host:port' or 'file://<filename>'
 name:           arbitrary string used to identify channels and devices

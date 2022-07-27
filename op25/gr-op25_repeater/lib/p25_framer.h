@@ -13,29 +13,14 @@
 #define INCLUDED_P25_FRAMER_H
 
 #include "log_ts.h"
-#include "frame_sync_magics.h"
 
 class p25_framer
 {
-    static const uint8_t  fs_table_len           = 5;
-    const uint64_t fs_table[fs_table_len]        = {P25_FRAME_SYNC_MAGIC,
-                                                    P25_FRAME_SYNC_REV_P,
-                                                    P25_FRAME_SYNC_X2400,
-                                                    P25_FRAME_SYNC_N1200,
-                                                    P25_FRAME_SYNC_P1200};
-
-    const uint8_t  fs_dibit_map[fs_table_len][4] = {{0,1,2,3},
-                                                    {2,3,0,1},
-                                                    {3,2,1,0},
-                                                    {1,3,0,2},
-                                                    {2,0,3,1}};
     private:
         typedef std::vector<bool> bit_vector;
         // internal functions
         bool nid_codeword(uint64_t acc);
-        void update_fs_index(const uint64_t fs);
         // internal instance variables and state
-        uint8_t fs_map_idx;
         int nid_syms;
         uint32_t next_bit;
         uint64_t nid_accum;

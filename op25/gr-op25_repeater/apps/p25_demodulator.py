@@ -35,6 +35,7 @@ from gnuradio.eng_option import eng_option
 import gnuradio.op25 as op25
 import gnuradio.op25_repeater as op25_repeater
 from gnuradio.fft import window
+import rms_agc
 from math import pi
 
 sys.path.append('tx')
@@ -44,7 +45,7 @@ import op25_c4fm_mod
 _def_output_sample_rate = 48000
 _def_if_rate = 24000
 _def_gain_mu = 0.025
-_def_costas_alpha = 0.04
+_def_costas_alpha = 0.008
 _def_symbol_rate = 4800
 _def_symbol_deviation = 600.0
 _def_bb_gain = 1.0
@@ -54,6 +55,8 @@ _def_gmsk_mu = None
 _def_mu = 0.5
 _def_freq_error = 0.0
 _def_omega_relative_limit = 0.005
+
+TWO_PI = 2.0 * pi
 
 # /////////////////////////////////////////////////////////////////////////////
 #                           demodulator
@@ -79,6 +82,8 @@ def get_decim(speed):
 
 class p25_demod_base(gr.hier_block2):
     def __init__(self,
+                 msgq_id = 0,
+                 debug = 0,
                  if_rate     = None,
                  filter_type = None,
                  excess_bw   = _def_excess_bw,
@@ -89,6 +94,8 @@ class p25_demod_base(gr.hier_block2):
         @param if_rate: sample rate of complex input channel
         @type if_rate: int
         """
+        self.msgq_id = msgq_id
+        self.debug = debug
         self.if_rate = if_rate
         self.symbol_rate = symbol_rate
         self.bb_sink = {}
@@ -135,7 +142,7 @@ class p25_demod_base(gr.hier_block2):
                                                            _mu, _gain_mu,
                                                            _def_omega_relative_limit)
             levels = [ -2.0, 0.0, 2.0, 4.0 ]
-            self.slicer = op25_repeater.fsk4_slicer_fb(levels)
+            self.slicer = op25_repeater.fsk4_slicer_fb(self.msgq_id, self.debug, levels)
         elif filter_type == 'fsk2mm':
             ntaps = 7 * sps
             if ntaps & 1 == 0:
@@ -161,16 +168,23 @@ class p25_demod_base(gr.hier_block2):
             autotuneq = gr.msg_queue(2)
             self.fsk4_demod = op25.fsk4_demod_ff(autotuneq, self.if_rate, self.symbol_rate)
             levels = [ -2.0, 0.0, 2.0, 4.0 ]
-            self.slicer = op25_repeater.fsk4_slicer_fb(levels)
+            self.slicer = op25_repeater.fsk4_slicer_fb(self.msgq_id, self.debug, levels)
         else:
             self.symbol_filter = filter.fir_filter_fff(1, coeffs)
             autotuneq = gr.msg_queue(2)
             self.fsk4_demod = op25.fsk4_demod_ff(autotuneq, self.if_rate, self.symbol_rate)
             levels = [ -2.0, 0.0, 2.0, 4.0 ]
-            self.slicer = op25_repeater.fsk4_slicer_fb(levels)
+            self.slicer = op25_repeater.fsk4_slicer_fb(self.msgq_id, self.debug, levels)
+
+    def set_debug(self, debug):
+        self.slicer.set_debug(debug)
 
     def set_symbol_rate(self, rate):
         self.symbol_rate = rate
+        if callable(getattr(self.fsk4_demod, 'set_rate', None)):       # op25.fsk4_demod_ff
+            self.fsk4_demod.set_rate(self.if_rate, self.symbol_rate)
+        elif callable(getattr(self.fsk4_demod, 'set_omega', None)):    # digital.clock_recovery_mm_ff
+            self.fsk4_demod.set_omega(self.if_rate // self.symbol_rate)
 
     def set_baseband_gain(self, k):
         self.baseband_amp.set_k(k)
@@ -208,7 +222,10 @@ class p25_demod_base(gr.hier_block2):
     def reset(self):
         pass
 
-    def get_error_band(self):
+    def locked(self):
+        return -1
+
+    def quality(self):
         return 0
 
     def get_freq_error(self):
@@ -217,6 +234,8 @@ class p25_demod_base(gr.hier_block2):
 class p25_demod_fb(p25_demod_base):
 
     def __init__(self,
+                 msgq_id = 0,
+                 debug = 0,
                  input_rate  = None,
                  filter_type = None,
                  excess_bw   = _def_excess_bw,
@@ -228,13 +247,14 @@ class p25_demod_fb(p25_demod_base):
         @param input_rate: sample rate of complex input channel
         @type input_rate: int
         """
-
+        self.msgq_id = msgq_id
+        self.debug = debug
         sys.stderr.write("p25_demod_fb: input_rate=%d, symbol_rate=%d\n" % (input_rate, symbol_rate))
         gr.hier_block2.__init__(self, "p25_demod_fb",
                                 gr.io_signature(1, 1, gr.sizeof_float), # Input signature
                                 gr.io_signature(1, 1, gr.sizeof_char))  # Output signature
 
-        p25_demod_base.__init__(self, if_rate=input_rate, symbol_rate=symbol_rate, filter_type=filter_type, excess_bw = excess_bw)
+        p25_demod_base.__init__(self, msgq_id=msgq_id, debug=debug, if_rate=input_rate, symbol_rate=symbol_rate, filter_type=filter_type, excess_bw = excess_bw)
 
         self.input_rate = input_rate
         self.float_sink = {}
@@ -283,6 +303,8 @@ class p25_demod_fb(p25_demod_base):
 class p25_demod_cb(p25_demod_base):
 
     def __init__(self,
+                 msgq_id = 0,
+                 debug = 0,
                  input_rate     = None,
                  demod_type     = 'cqpsk',
                  filter_type    = None,
@@ -301,11 +323,12 @@ class p25_demod_cb(p25_demod_base):
         @param input_rate: sample rate of complex input channel
         @type input_rate: int
         """
-
+        self.msgq_id = msgq_id
+        self.debug = debug
         gr.hier_block2.__init__(self, "p25_demod_cb",
                                 gr.io_signature(1, 1, gr.sizeof_gr_complex),  # Input signature
                                 gr.io_signature(1, 1, gr.sizeof_char))        # Output signature
-        p25_demod_base.__init__(self, if_rate=if_rate, symbol_rate=symbol_rate, filter_type=filter_type, excess_bw = excess_bw)
+        p25_demod_base.__init__(self, msgq_id=msgq_id, debug=debug, if_rate=if_rate, symbol_rate=symbol_rate, filter_type=filter_type, excess_bw = excess_bw)
 
         self.usable_bw = usable_bw
         self.input_rate = input_rate
@@ -315,7 +338,7 @@ class p25_demod_cb(p25_demod_base):
         self.aux_fm_connected = 0
         self.nbfm = None
         self.offset = 0
-        self.sps = 0.0
+        self.sps = if_rate / float(symbol_rate)
         self.lo_freq = 0
         self.float_sink = {}
         self.complex_sink = {}
@@ -370,22 +393,21 @@ class p25_demod_cb(p25_demod_base):
         else:
             self.if_out = self.lpf
 
+        #fa = 7250
+        #fb = fa + 1450
         fa = 6250
-        fb = fa + 625
-        cutoff_coeffs = filter.firdes.low_pass(1.0, self.if_rate, (fb+fa)/2, fb-fa, window.WIN_HANN)
+        fb = fa + 1250
+        cutoff_coeffs = filter.firdes.low_pass(1.0, self.if_rate, (fb+fa)/2, fb-fa, filter.firdes.WIN_HANN)
         self.cutoff = filter.fir_filter_ccf(1, cutoff_coeffs)
 
         omega = float(self.if_rate) / float(self.symbol_rate)
+        sps = self.if_rate // self.symbol_rate
         gain_omega = 0.1  * gain_mu * gain_mu
 
-        alpha = costas_alpha
-        beta = 0.125 * alpha * alpha
-        fmax = 2400 # Hz
-        fmax = 2*pi * fmax / float(self.if_rate)
-
-        self.clock = op25_repeater.gardner_costas_cc(omega, gain_mu, gain_omega, alpha,  beta, fmax, -fmax)
-
-        self.agc = analog.feedforward_agc_cc(16, 1.0)
+        self.agc = rms_agc.rms_agc(0.45, 0.85)
+        self.fll = digital.fll_band_edge_cc(sps, excess_bw, 2*sps+1, TWO_PI/sps/250) # automatic frequency correction
+        self.clock = op25_repeater.gardner_cc(omega, gain_mu, gain_omega)            # timing recovery
+        self.costas = op25_repeater.costas_loop_cc(costas_alpha, 4, TWO_PI/4)        # phase stabilization, range-limited to +/-90deg
 
         # Perform Differential decoding on the constellation
         self.diffdec = digital.diff_phasor_cc()
@@ -398,9 +420,9 @@ class p25_demod_cb(p25_demod_base):
 
         # fm demodulator (needed in fsk4 case)
         if filter_type is not None and filter_type[:4] == 'fsk2':
-            fm_demod_gain = if_rate / (2.0 * pi * 3600)
+            fm_demod_gain = if_rate / (TWO_PI * 3600)
         else:
-            fm_demod_gain = if_rate / (2.0 * pi * _def_symbol_deviation)
+            fm_demod_gain = if_rate / (TWO_PI * _def_symbol_deviation)
         self.fm_demod = analog.quadrature_demod_cf(fm_demod_gain)
 
         self.connect_chain(demod_type)
@@ -408,11 +430,14 @@ class p25_demod_cb(p25_demod_base):
 
         self.set_relative_frequency(relative_freq)
 
-    def get_error_band(self):
-        return int(self.clock.get_error_band())
+    def locked(self):
+        return 1 if self.clock.locked() else 0
 
-    def get_freq_error(self):   # get error in Hz (approx).
-        return int(self.clock.get_freq_error() * self.symbol_rate)
+    def quality(self):
+        return self.clock.quality()
+
+    def get_freq_error(self):   # get frequency error from FLL and convert to Hz
+        return int((self.fll.get_frequency() / TWO_PI) * self.if_rate)
 
     def set_omega(self, rate):
         self.set_symbol_rate(rate)
@@ -421,10 +446,11 @@ class p25_demod_cb(p25_demod_base):
             return
         self.sps = sps
         self.clock.set_omega(self.sps)
+        self.fll.set_samples_per_symbol(sps)
+        self.costas_reset()
 
     def reset(self):
-        if callable(getattr(self.clock, 'reset', None)):
-            self.clock.reset()
+        self.costas_reset()
         if callable(getattr(self.fsk4_demod, 'reset', None)):
             self.fsk4_demod.reset()
 
@@ -456,7 +482,7 @@ class p25_demod_cb(p25_demod_base):
             self.nbfm = None
         if self.connect_state == 'cqpsk':
             self.disconnect_fm_demod()
-            self.disconnect(self.if_out, self.cutoff, self.agc, self.clock, self.diffdec, self.to_float, self.rescale, self.slicer)
+            self.disconnect(self.if_out, self.cutoff, self.agc, self.fll, self.clock, self.diffdec, self.costas, self.to_float, self.rescale, self.slicer)
         elif self.connect_state == 'fsk4':
             self.disconnect(self.if_out, self.cutoff, self.fm_demod, self.baseband_amp, self.symbol_filter, self.fsk4_demod, self.slicer)
         self.connect_state = None
@@ -468,9 +494,9 @@ class p25_demod_cb(p25_demod_base):
         self.disconnect_chain()
         self.connect_state = demod_type
         if demod_type == 'fsk4':
-            self.connect(self.if_out, self.cutoff, self.fm_demod, self.baseband_amp, self.symbol_filter, self.fsk4_demod, self.slicer)
+            self.connect(self.if_out, self.cutoff, self.agc, self.fll, self.fm_demod, self.baseband_amp, self.symbol_filter, self.fsk4_demod, self.slicer)
         elif demod_type == 'cqpsk':
-            self.connect(self.if_out, self.cutoff, self.agc, self.clock, self.diffdec, self.to_float, self.rescale, self.slicer)
+            self.connect(self.if_out, self.cutoff, self.agc, self.fll, self.clock, self.diffdec, self.costas, self.to_float, self.rescale, self.slicer)
         else:
             sys.stderr.write("connect_chain failed, type: %s\n" % demod_type)
             assert 0 == 1
@@ -480,7 +506,8 @@ class p25_demod_cb(p25_demod_base):
         if self.connect_state != 'cqpsk':   # only valid for cqpsk demod type
             return
         if self.aux_fm_connected == 0:
-            self.connect(self.cutoff, self.fm_demod, self.baseband_amp, self.symbol_filter, self.null_sink)
+            self.connect(self.fll, self.fm_demod, self.baseband_amp, self.symbol_filter, self.null_sink)
+            #self.connect(self.agc, self.fm_demod, self.baseband_amp, self.symbol_filter, self.null_sink)
         self.aux_fm_connected += 1          # increment refcount
 
     # assumes lock held or init
@@ -490,7 +517,8 @@ class p25_demod_cb(p25_demod_base):
             return
         self.aux_fm_connected -= 1          # decrement refcount
         if self.aux_fm_connected == 0:
-            self.disconnect(self.cutoff, self.fm_demod, self.baseband_amp, self.symbol_filter, self.null_sink)
+            self.disconnect(self.fll, self.fm_demod, self.baseband_amp, self.symbol_filter, self.null_sink)
+            #self.disconnect(self.agc, self.fm_demod, self.baseband_amp, self.symbol_filter, self.null_sink)
 
     def disconnect_float(self, sink):
         # assumes lock held or init
@@ -528,12 +556,18 @@ class p25_demod_cb(p25_demod_base):
         elif src == 'diffdec':
             self.connect(self.diffdec, sink)
             self.complex_sink[sink] = self.diffdec
+        elif src == 'costas':
+            self.connect(self.costas, sink)
+            self.complex_sink[sink] = self.costas
         elif src == 'mixer':
             self.connect(self.mixer, sink)
             self.complex_sink[sink] = self.mixer
         elif src == 'cutoff':
             self.connect(self.cutoff, sink)
             self.complex_sink[sink] = self.cutoff
+        elif src == 'fll':
+            self.connect(self.fll, sink)
+            self.complex_sink[sink] = self.fll
         elif src == 'src':
             self.connect(self, sink)
             self.complex_sink[sink] = self
@@ -554,3 +588,7 @@ class p25_demod_cb(p25_demod_base):
             return True
         else:
             return False
+
+    def costas_reset(self):
+        self.costas.set_frequency(0)
+        self.costas.set_phase(0)
