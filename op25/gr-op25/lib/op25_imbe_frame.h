@@ -363,16 +363,16 @@ imbe_pack(packed_codeword& cw, uint32_t u0, uint32_t u1, uint32_t u2, uint32_t u
 }
 
 static inline void
-imbe_unpack(uint8_t *A, uint32_t& u0, uint32_t& u1, uint32_t& u2, uint32_t& u3, uint32_t& u4, uint32_t& u5, uint32_t& u6, uint32_t& u7)
+imbe_unpack(packed_codeword& cw, uint32_t& u0, uint32_t& u1, uint32_t& u2, uint32_t& u3, uint32_t& u4, uint32_t& u5, uint32_t& u6, uint32_t& u7)
 {
-    u0 = (A[0] << 4) | ((A[1] & 0xf0) >> 4);
-    u1 = ((A[1] & 0xf) << 8) | (A[2]);
-    u2 = (A[3] << 4) | ((A[4] & 0xf0) >> 4);
-    u3 = ((A[4] & 0xf) << 8) | (A[5]);
-    u4 = (A[6] << 3) | ((A[7] & 0xe0) >> 5);
-    u5 = ((A[7] & 0x1f) << 6) | (A[8] >> 2);
-    u6 = ((A[8] & 0x3) << 9) | (A[9] << 1) | ((A[10] & 0x80) >> 7);
-    u7 = (A[10] & 0x7f);
+    u0 = (cw[0] << 4) | ((cw[1] & 0xf0) >> 4);
+    u1 = ((cw[1] & 0xf) << 8) | (cw[2]);
+    u2 = (cw[3] << 4) | ((cw[4] & 0xf0) >> 4);
+    u3 = ((cw[4] & 0xf) << 8) | (cw[5]);
+    u4 = (cw[6] << 3) | ((cw[7] & 0xe0) >> 5);
+    u5 = ((cw[7] & 0x1f) << 6) | (cw[8] >> 2);
+    u6 = ((cw[8] & 0x3) << 9) | (cw[9] << 1) | ((cw[10] & 0x80) >> 7);
+    u7 = (cw[10] & 0x7f);
 }
 
 /* APCO IMBE header encoder.
