@@ -313,6 +313,11 @@ namespace gr {
         }
 
         void p25p1_fdma::process_LDU2(const bit_vector& A) {
+            uint16_t next_keyid;
+            uint8_t  next_algid;
+            uint8_t  next_mi[9] = {0};
+            bool next_ess_valid = false;
+
             if (d_debug >= 10) {
                 fprintf (stderr, "%s NAC 0x%03x LDU2: ", logts.get(d_msgq_id), framer->nac);
             }
@@ -323,25 +328,33 @@ namespace gr {
             int i, j, ec;
             ec = rs8.decode(HB); // Reed Solomon (24,16,9) error correction
             if ((ec >= 0) && (ec <= 4)) {	// upper limit of 4 corrections
-                j = 39;												// 72 bit MI
+                j = 39;                                                             // 72 bit MI
                 for (i = 0; i < 9;) {
-                    ess_mi[i++] = (uint8_t)  (HB[j  ]         << 2) + (HB[j+1] >> 4);
-                    ess_mi[i++] = (uint8_t) ((HB[j+1] & 0x0f) << 4) + (HB[j+2] >> 2);
-                    ess_mi[i++] = (uint8_t) ((HB[j+2] & 0x03) << 6) +  HB[j+3];
+                    next_mi[i++] = (uint8_t)  (HB[j  ]         << 2) + (HB[j+1] >> 4);
+                    next_mi[i++] = (uint8_t) ((HB[j+1] & 0x0f) << 4) + (HB[j+2] >> 2);
+                    next_mi[i++] = (uint8_t) ((HB[j+2] & 0x03) << 6) +  HB[j+3];
                     j += 4;
                 }
-                ess_algid =  (HB[j  ]         <<  2) + (HB[j+1] >> 4);					// 8 bit AlgId
-                ess_keyid = ((HB[j+1] & 0x0f) << 12) + (HB[j+2] << 6) + HB[j+3];			// 16 bit KeyId
+                next_algid =  (HB[j  ]         <<  2) + (HB[j+1] >> 4);             //  8 bit AlgId
+                next_keyid = ((HB[j+1] & 0x0f) << 12) + (HB[j+2] << 6) + HB[j+3];   // 16 bit KeyId
+                next_ess_valid = true;
 
                 if (d_debug >= 10) {
                     fprintf (stderr, "ESS: algid=%x, keyid=%x, mi=%02x %02x %02x %02x %02x %02x %02x %02x %02x, rs_errs=%d\n",
-                            ess_algid, ess_keyid,
-                            ess_mi[0], ess_mi[1], ess_mi[2], ess_mi[3], ess_mi[4], ess_mi[5],ess_mi[6], ess_mi[7], ess_mi[8],
+                            next_algid, next_keyid,
+                            next_mi[0], next_mi[1], next_mi[2], next_mi[3], next_mi[4], next_mi[5], next_mi[6], next_mi[7], next_mi[8],
                             ec); 
                 }
             }
 
             process_voice(A, FT_LDU2);
+
+            // replace existing ess with newly received data now that voice processing is complete
+            if (next_ess_valid) {
+                ess_algid = next_algid;
+                ess_keyid = next_keyid;
+                memcpy(ess_mi, next_mi, sizeof(next_mi));
+            }
         }
 
         void p25p1_fdma::process_TTDU() {
@@ -539,7 +552,7 @@ namespace gr {
                     uint32_t E0, ET;
                     uint32_t u[8];
                     char s[128];
-                    bool playable = !encrypted();
+                    bool audio_valid = !encrypted();
                     size_t errs = 0;
                     imbe_deinterleave(A, cw, i);
 
@@ -557,42 +570,30 @@ namespace gr {
                     if (encrypted()) {
                         packed_codeword ciphertext;
                         imbe_pack(ciphertext, u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7]);
-                        playable = crypt_algs.process(ciphertext);
+                        audio_valid = crypt_algs.process(ciphertext);
                         imbe_unpack(ciphertext, u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7]);
                     }
-                    if (d_debug >= 9 && playable) {
-                        packed_codeword p_cw;
-                        imbe_pack(p_cw, u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7]);
-                        sprintf(s,"%02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x",
-                                p_cw[0], p_cw[1], p_cw[2], p_cw[3], p_cw[4], p_cw[5],
-                                p_cw[6], p_cw[7], p_cw[8], p_cw[9], p_cw[10]);
-                        fprintf(stderr, "%s iMBE %s errs %lu\n", logts.get(d_msgq_id), s, errs); // print to log in one operation
-                    }
 
-                    if (d_do_audio_output) {
-                        if (playable) {
-                            std::string encr = "{\"encrypted\": " + std::to_string(encrypted() ? 1 : 0) + ", \"algid\": " + std::to_string(ess_algid) + ", \"keyid\": " + std::to_string(ess_keyid) + "}";
-                            send_msg(encr, M_P25_JSON_DATA);
-                            software_decoder.decode_fullrate(u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7], E0, ET);
-                            audio_samples *samples = software_decoder.audio();
-                            for (int i=0; i < SND_FRAME; i++) {
-                           	    if (samples->size() > 0) {
-                       		        snd[i] = (int16_t)(samples->front());
-                                    samples->pop_front();
-                                } else {
-                                    snd[i] = 0;
-                                }
+                    std::string encr = "{\"encrypted\": " + std::to_string(encrypted() ? 1 : 0) + ", \"algid\": " + std::to_string(ess_algid) + ", \"keyid\": " + std::to_string(ess_keyid) + "}";
+                    send_msg(encr, M_P25_JSON_DATA);
+
+                    if (d_do_audio_output && audio_valid) {
+                        software_decoder.decode_fullrate(u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7], E0, ET);
+                        audio_samples *samples = software_decoder.audio();
+                        for (int i=0; i < SND_FRAME; i++) {
+                       	    if (samples->size() > 0) {
+                    	        snd[i] = (int16_t)(samples->front());
+                                samples->pop_front();
+                            } else {
+                                snd[i] = 0;
                             }
-                            if (op25audio.enabled()) {      // decoded audio goes out via UDP (normal code path)
-                                op25audio.send_audio(snd, SND_FRAME * sizeof(int16_t));
-                            } else {                        // decoded audio back to gnuradio (still supported?)
-                                for (int i = 0; i < SND_FRAME; i++) {
-                                    output_queue.push_back(snd[i]);
-                                }
+                        }
+                        if (op25audio.enabled()) {      // decoded audio goes out via UDP (normal code path)
+                            op25audio.send_audio(snd, SND_FRAME * sizeof(int16_t));
+                        } else {                        // decoded audio back to gnuradio (still supported?)
+                            for (int i = 0; i < SND_FRAME; i++) {
+                                output_queue.push_back(snd[i]);
                             }
-                        } else {
-                            std::string encr = "{\"encrypted\": " + std::to_string(encrypted() ? 1 : 0) + ", \"algid\": " + std::to_string(ess_algid) + ", \"keyid\": " + std::to_string(ess_keyid) + "}";
-                            send_msg(encr, M_P25_JSON_DATA);
                         }
                     }
 

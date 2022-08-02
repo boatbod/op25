@@ -586,19 +586,16 @@ int p25p2_tdma::handle_packet(uint8_t dibits[], const uint64_t fs)
 	if (burst_type == 0 || burst_type == 6)	{       // 4V or 2V burst
                 track_vb(burst_type);
                 handle_4V2V_ess(&xored_burst[84]);
-                if ( !d_do_nocrypt || !encrypted() ) {
-                        std::string s = "{\"encrypted\": " + std::to_string(0) + ", \"algid\": " + std::to_string(ess_algid) + ", \"keyid\": " + std::to_string(ess_keyid) + "}";
-                        send_msg(s, M_P25_JSON_DATA);
-                        handle_voice_frame(&xored_burst[11]);
-                        handle_voice_frame(&xored_burst[48]);
-                        if (burst_type == 0) {
-                                handle_voice_frame(&xored_burst[96]);
-                                handle_voice_frame(&xored_burst[133]);
-                        }
-                } else {
-                        std::string s = "{\"encrypted\": " + std::to_string(1) + ", \"algid\": " + std::to_string(ess_algid) + ", \"keyid\": " + std::to_string(ess_keyid) + "}";
-                        send_msg(s, M_P25_JSON_DATA);
+                std::string s = "{\"encrypted\": " + std::to_string((encrypted()) ? 1 : 0) + ", \"algid\": " + std::to_string(ess_algid) + ", \"keyid\": " + std::to_string(ess_keyid) + "}";
+                send_msg(s, M_P25_JSON_DATA);
+                //if ( !d_do_nocrypt || !encrypted() ) {
+                handle_voice_frame(&xored_burst[11]);
+                handle_voice_frame(&xored_burst[48]);
+                if (burst_type == 0) {
+                        handle_voice_frame(&xored_burst[96]);
+                        handle_voice_frame(&xored_burst[133]);
                 }
+                //}
 		return -1;
 	} else if (burst_type == 3) {                   // scrambled sacch
 		rc = handle_acch_frame(xored_burst, 0, false);

@@ -24,6 +24,7 @@
 
 #include "p25_crypt_algs.h"
 
+// constructor
 p25_crypt_algs::p25_crypt_algs(int debug, int msgq_id) :
     d_debug(debug),
     d_msgq_id(msgq_id),
@@ -33,9 +34,11 @@ p25_crypt_algs::p25_crypt_algs(int debug, int msgq_id) :
     d_adp_position(0) {
 }
 
+// destructor
 p25_crypt_algs::~p25_crypt_algs() {
 }
 
+// generic entry point to prepare for decryption
 void p25_crypt_algs::prepare(uint8_t algid, uint16_t keyid, frame_type fr_type, uint8_t *MI) {
     d_algid = algid;
     switch (algid) {
@@ -51,6 +54,7 @@ void p25_crypt_algs::prepare(uint8_t algid, uint16_t keyid, frame_type fr_type, 
     }
 }
 
+// generic entry point to perform decryption
 bool p25_crypt_algs::process(packed_codeword& PCW) {
     bool rc = false;
 
@@ -66,6 +70,7 @@ bool p25_crypt_algs::process(packed_codeword& PCW) {
     return rc;
 }
 
+// ADP RC4 decryption
 bool p25_crypt_algs::adp_process(packed_codeword& PCW) {
     bool rc = true;
     size_t offset = 0;
@@ -82,21 +87,28 @@ bool p25_crypt_algs::adp_process(packed_codeword& PCW) {
             rc = false;
             break;
     }
-    offset += (d_adp_position * 11) + 267 + ((d_adp_position < 8) ? 0 : 2);
-    d_adp_position = (d_adp_position + 1) % 9;
-    for (int j = 0; j < 11; ++j) {
-        PCW[j] = adp_keystream[j + offset] ^ PCW[j];
+    if ((d_fr_type == FT_LDU1) || (d_fr_type == FT_LDU2)) {
+        //FDMA
+        offset += (d_adp_position * 11) + 267 + ((d_adp_position < 8) ? 0 : 2); // voice only; skip LCW and LSD
+        d_adp_position = (d_adp_position + 1) % 9;
+        for (int j = 0; j < 11; ++j) {
+            PCW[j] = adp_keystream[j + offset] ^ PCW[j];
+        }
+    } else {
+        //TDMA
     }
 
     return rc;
 }
 
+// ADP RC4 helper routine to swap two bytes
 void p25_crypt_algs::adp_swap(uint8_t *S, uint32_t i, uint32_t j) {
     uint8_t temp = S[i];
     S[i] = S[j];
     S[j] = temp;
 }
 
+// ADP RC4 create keystream using supplied key and message_indicator
 void p25_crypt_algs::adp_keystream_gen(uint8_t keyid, uint8_t *MI) {
     //TODO: multi-key support and loadable configuration
     uint8_t adp_key[13] = {0x70, 0x70, 0x70, 0x70, 0x70},
