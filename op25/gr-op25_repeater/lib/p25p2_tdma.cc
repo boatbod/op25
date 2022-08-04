@@ -110,6 +110,8 @@ p25p2_tdma::p25p2_tdma(const op25_audio& udp, int slotid, int debug, bool do_msg
 	ESS_B(16,0),
 	ess_keyid(0),
 	ess_algid(0x80),
+	next_keyid(0),
+	next_algid(0x80),
 	p2framer()
 {
 	assert (slotid == 0 || slotid == 1);
@@ -588,6 +590,11 @@ int p25p2_tdma::handle_packet(uint8_t dibits[], const uint64_t fs)
                 handle_4V2V_ess(&xored_burst[84]);
                 std::string s = "{\"encrypted\": " + std::to_string((encrypted()) ? 1 : 0) + ", \"algid\": " + std::to_string(ess_algid) + ", \"keyid\": " + std::to_string(ess_keyid) + "}";
                 send_msg(s, M_P25_JSON_DATA);
+                if (sync.is_first_frame()) {     // promote next set of encryption parameters if this is the first frame of a superframe 
+                    ess_algid = next_algid;
+                    ess_keyid = next_keyid;
+                    memcpy(ess_mi, next_mi, sizeof(ess_keyid));
+                }
                 //if ( !d_do_nocrypt || !encrypted() ) {
                 handle_voice_frame(&xored_burst[11]);
                 handle_voice_frame(&xored_burst[48]);
@@ -644,14 +651,14 @@ void p25p2_tdma::handle_4V2V_ess(const uint8_t dibits[])
                 ec = rs28.decode(ESS_B, ESS_A);
 
                 if ((ec >= 0) && (ec <= 14)) { // upper limit 14 corrections
-                        ess_algid = (ESS_B[0] << 2) + (ESS_B[1] >> 4);
-                        ess_keyid = ((ESS_B[1] & 15) << 12) + (ESS_B[2] << 6) + ESS_B[3]; 
+                        next_algid = (ESS_B[0] << 2) + (ESS_B[1] >> 4);
+                        next_keyid = ((ESS_B[1] & 15) << 12) + (ESS_B[2] << 6) + ESS_B[3]; 
 
                         j = 0;
                         for (i = 0; i < 9;) {
-                                 ess_mi[i++] = (uint8_t)  (ESS_B[j+4]         << 2) + (ESS_B[j+5] >> 4);
-                                 ess_mi[i++] = (uint8_t) ((ESS_B[j+5] & 0x0f) << 4) + (ESS_B[j+6] >> 2);
-                                 ess_mi[i++] = (uint8_t) ((ESS_B[j+6] & 0x03) << 6) +  ESS_B[j+7];
+                                 next_mi[i++] = (uint8_t)  (ESS_B[j+4]         << 2) + (ESS_B[j+5] >> 4);
+                                 next_mi[i++] = (uint8_t) ((ESS_B[j+5] & 0x0f) << 4) + (ESS_B[j+6] >> 2);
+                                 next_mi[i++] = (uint8_t) ((ESS_B[j+6] & 0x03) << 6) +  ESS_B[j+7];
                                  j += 4;
                         }
                 }
@@ -659,8 +666,8 @@ void p25p2_tdma::handle_4V2V_ess(const uint8_t dibits[])
 
         if (d_debug >= 10) {
                 fprintf(stderr, "ESS: algid=%x, keyid=%x, mi=%02x %02x %02x %02x %02x %02x %02x %02x %02x, rs_errs=%d\n",
-			ess_algid, ess_keyid,
-			ess_mi[0], ess_mi[1], ess_mi[2], ess_mi[3], ess_mi[4], ess_mi[5],ess_mi[6], ess_mi[7], ess_mi[8],
+			next_algid, next_keyid,
+			next_mi[0], next_mi[1], next_mi[2], next_mi[3], next_mi[4], next_mi[5],next_mi[6], next_mi[7], next_mi[8],
 			ec);        
         }
 }

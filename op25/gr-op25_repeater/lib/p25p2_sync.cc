@@ -28,7 +28,8 @@
 p25p2_sync::p25p2_sync(void) :	// constructor
 	sync_confidence(0),
 	_tdma_slotid(0),
-	packets(0)
+	packets(0),
+    sf_loc(0)
 {
 }
 
@@ -56,7 +57,12 @@ void p25p2_sync::check_confidence (const uint8_t dibits[])
 		rc = rc >> 2;
 		chn = rc & 3;
 		checkval = loc*4 + chn;
-	}
+        sf_loc = loc;
+	} else if (rc == -2) {
+		sf_loc = 3;
+	} else {
+        sf_loc = (sf_loc + 1) % 4;
+    }
 	if (expected_sync[_tdma_slotid] != checkval && checkval != -1)
 		sync_confidence = 0;
 	if (chn >= 0) {

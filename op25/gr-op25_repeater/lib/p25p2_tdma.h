@@ -89,6 +89,9 @@ private:
 	uint16_t ess_keyid;
 	uint8_t ess_algid;
 	uint8_t ess_mi[9] = {0};
+	uint16_t next_keyid;
+	uint8_t next_algid;
+	uint8_t next_mi[9] = {0};
 
 	p25p2_framer p2framer;
 
