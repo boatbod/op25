@@ -45,8 +45,7 @@ void p25_crypt_algs::prepare(uint8_t algid, uint16_t keyid, frame_type fr_type, 
         case 0xaa: // ADP RC4
             d_adp_position = 0;
             d_fr_type = fr_type;
-            if (fr_type == FT_LDU1)
-                adp_keystream_gen(keyid, MI);
+            adp_keystream_gen(keyid, MI);
             break;
     
         default:
@@ -82,7 +81,10 @@ bool p25_crypt_algs::adp_process(packed_codeword& PCW) {
         case FT_LDU2:
             offset = 101;
             break;
-        //TODO: TDMA 2V 4V bursts
+        case FT_2V:
+        case FT_4V:
+            offset = 0;
+            break;
         default:
             rc = false;
             break;
@@ -94,8 +96,14 @@ bool p25_crypt_algs::adp_process(packed_codeword& PCW) {
         for (int j = 0; j < 11; ++j) {
             PCW[j] = adp_keystream[j + offset] ^ PCW[j];
         }
-    } else {
+    } else if ((d_fr_type == FT_2V) || (d_fr_type == FT_4V)) {
         //TDMA
+        fprintf(stderr, "p25_crypt_algs::process: position=%d\n", d_adp_position);
+        offset += (d_adp_position * 7);
+        d_adp_position = (d_adp_position + 1) % 18;
+        for (int j = 0; j < 7; ++j) {
+            PCW[j] = adp_keystream[j + offset] ^ PCW[j];
+        }
     }
 
     return rc;
@@ -111,7 +119,8 @@ void p25_crypt_algs::adp_swap(uint8_t *S, uint32_t i, uint32_t j) {
 // ADP RC4 create keystream using supplied key and message_indicator
 void p25_crypt_algs::adp_keystream_gen(uint8_t keyid, uint8_t *MI) {
     //TODO: multi-key support and loadable configuration
-    uint8_t adp_key[13] = {0x70, 0x70, 0x70, 0x70, 0x70},
+    //uint8_t adp_key[13] = {0x70, 0x70, 0x70, 0x70, 0x70},
+    uint8_t adp_key[13] = {0x31, 0x31, 0x31, 0x31, 0x31},
                           S[256], K[256];
     uint32_t i, j, k;
     j = 0;

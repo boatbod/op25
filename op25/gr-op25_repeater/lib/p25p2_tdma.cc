@@ -32,6 +32,7 @@
 #include "p25p2_sync.h"
 #include "p25p2_tdma.h"
 #include "p25p2_vf.h"
+#include "p25_crypt_algs.h"
 #include "mbelib.h"
 #include "ambe.h"
 #include "crc16.h"
@@ -112,7 +113,8 @@ p25p2_tdma::p25p2_tdma(const op25_audio& udp, int slotid, int debug, bool do_msg
 	ess_algid(0x80),
 	next_keyid(0),
 	next_algid(0x80),
-	p2framer()
+	p2framer(),
+    crypt_algs(debug, msgq_id)
 {
 	assert (slotid == 0 || slotid == 1);
 	mbe_initMbeParms (&cur_mp, &prev_mp, &enh_mp);
@@ -470,6 +472,8 @@ void p25p2_tdma::handle_voice_frame(const uint8_t dibits[])
 {
 	static const int NSAMP_OUTPUT=160;
 	audio_samples *samples = NULL;
+	packed_codeword p_cw;
+    bool audio_valid = !encrypted();
 	int u[4];
 	int b[9];
 	size_t errs;
@@ -481,7 +485,6 @@ void p25p2_tdma::handle_voice_frame(const uint8_t dibits[])
 	errs = vf.process_vcw(&errs_mp, dibits, b, u);
 	if (d_debug >= 9) {
 		char log_str[40];
-		packed_codeword p_cw;
 		vf.pack_cw(p_cw, u);
 		strcpy(log_str, logts.get(d_msgq_id)); // param eval order not guaranteed; force timestamp computation first
 		fprintf(stderr, "%s AMBE %02x %02x %02x %02x %02x %02x %02x errs %lu err_rate %f, dt %f\n",
@@ -490,6 +493,16 @@ void p25p2_tdma::handle_voice_frame(const uint8_t dibits[])
 				logts.get_tdiff());            // dt is time in seconds since last AMBE frame processed
 		logts.mark_ts();
 	}
+
+	// Pass encrypted traffic through the decryption algorithms
+	if (encrypted()) {
+		vf.pack_cw(p_cw, u);
+		audio_valid = crypt_algs.process(p_cw);
+		if (!audio_valid)
+			return;
+        vf.unpack_cw(p_cw, u);
+	}
+
 	rc = mbe_dequantizeAmbeTone(&tone_mp, &errs_mp, u);
 	if (rc >= 0) {					// Tone Frame
 		if (rc == 0) {                  // Valid Tone
@@ -586,23 +599,24 @@ int p25p2_tdma::handle_packet(uint8_t dibits[], const uint64_t fs)
 		xored_burst[i] = burstp[i] ^ tdma_xormask[sync.tdma_slotid() * BURST_SIZE + i];
 	}
 	if (burst_type == 0 || burst_type == 6)	{       // 4V or 2V burst
-                track_vb(burst_type);
-                handle_4V2V_ess(&xored_burst[84]);
-                std::string s = "{\"encrypted\": " + std::to_string((encrypted()) ? 1 : 0) + ", \"algid\": " + std::to_string(ess_algid) + ", \"keyid\": " + std::to_string(ess_keyid) + "}";
-                send_msg(s, M_P25_JSON_DATA);
-                if (sync.is_first_frame()) {     // promote next set of encryption parameters if this is the first frame of a superframe 
-                    ess_algid = next_algid;
-                    ess_keyid = next_keyid;
-                    memcpy(ess_mi, next_mi, sizeof(ess_keyid));
-                }
-                //if ( !d_do_nocrypt || !encrypted() ) {
-                handle_voice_frame(&xored_burst[11]);
-                handle_voice_frame(&xored_burst[48]);
-                if (burst_type == 0) {
-                        handle_voice_frame(&xored_burst[96]);
-                        handle_voice_frame(&xored_burst[133]);
-                }
-                //}
+		track_vb(burst_type);
+		handle_4V2V_ess(&xored_burst[84]);
+		std::string s = "{\"encrypted\": " + std::to_string((encrypted()) ? 1 : 0) + ", \"algid\": " + std::to_string(ess_algid) + ", \"keyid\": " + std::to_string(ess_keyid) + "}";
+		send_msg(s, M_P25_JSON_DATA);
+		if (sync.is_first_frame()) {     // promote next set of encryption parameters if this is the first frame of a superframe 
+			ess_algid = next_algid;
+			ess_keyid = next_keyid;
+			memcpy(ess_mi, next_mi, sizeof(ess_keyid));
+		    if (encrypted()) {
+			    crypt_algs.prepare(ess_algid, ess_keyid, ((burst_type == 0) ? FT_4V : FT_2V), ess_mi);
+		    }
+		}
+		handle_voice_frame(&xored_burst[11]);
+		handle_voice_frame(&xored_burst[48]);
+		if (burst_type == 0) {
+			handle_voice_frame(&xored_burst[96]);
+			handle_voice_frame(&xored_burst[133]);
+		}
 		return -1;
 	} else if (burst_type == 3) {                   // scrambled sacch
 		rc = handle_acch_frame(xored_burst, 0, false);
