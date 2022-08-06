@@ -98,8 +98,7 @@ bool p25_crypt_algs::adp_process(packed_codeword& PCW) {
         }
     } else if ((d_fr_type == FT_2V) || (d_fr_type == FT_4V)) {
         //TDMA
-        fprintf(stderr, "p25_crypt_algs::process: position=%d\n", d_adp_position);
-        offset += (d_adp_position * 7);
+        offset += (d_adp_position * 7) + 256;
         d_adp_position = (d_adp_position + 1) % 18;
         for (int j = 0; j < 7; ++j) {
             PCW[j] = adp_keystream[j + offset] ^ PCW[j];
