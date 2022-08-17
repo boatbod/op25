@@ -65,6 +65,16 @@ namespace gr {
                 d_sync->sync_reset();
         }
 
+        void frame_assembler_impl::crypt_reset() {
+            if (d_sync)
+                d_sync->crypt_reset();
+        }
+
+        void frame_assembler_impl::crypt_key(uint16_t keyid, uint8_t algid, const std::vector<uint8_t> &key) {
+            if (d_sync)
+                d_sync->crypt_key(keyid, algid, key);
+        }
+
         void frame_assembler_impl::set_debug(int debug) {
             if (d_sync)
                 d_sync->set_debug(debug);

@@ -114,7 +114,7 @@ p25p2_tdma::p25p2_tdma(const op25_audio& udp, int slotid, int debug, bool do_msg
 	next_keyid(0),
 	next_algid(0x80),
 	p2framer(),
-    crypt_algs(debug, msgq_id)
+    crypt_algs(debug, queue, msgq_id)
 {
 	assert (slotid == 0 || slotid == 1);
 	mbe_initMbeParms (&cur_mp, &prev_mp, &enh_mp);
@@ -132,6 +132,14 @@ void p25p2_tdma::set_slotid(int slotid)
 {
 	assert (slotid == 0 || slotid == 1);
 	d_slotid = slotid;
+}
+
+void p25p2_tdma::crypt_reset() {
+	crypt_algs.reset();
+}
+
+void p25p2_tdma::crypt_key(uint16_t keyid, uint8_t algid, const std::vector<uint8_t> &key) {
+	crypt_algs.key(keyid, algid, key);
 }
 
 p25p2_tdma::~p25p2_tdma()	// destructor

@@ -100,6 +100,8 @@ namespace gr {
                 void set_debug(int debug);
                 void set_nac(int nac);
                 void reset_timer();
+                void crypt_reset();
+                void crypt_key(uint16_t keyid, uint8_t algid, const std::vector<uint8_t> &key);
                 void rx_sym (const uint8_t *syms, int nsyms);
                 p25p1_fdma(const op25_audio& udp, int debug, bool do_imbe, bool do_output, bool do_msgq, gr::msg_queue::sptr queue, std::deque<int16_t> &output_queue, bool do_audio_output, bool do_nocrypt, int msgq_id = 0);
                 ~p25p1_fdma();

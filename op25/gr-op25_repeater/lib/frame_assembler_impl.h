@@ -46,7 +46,6 @@ namespace gr {
                 rx_base* d_sync;
 
                 // internal functions
-
                 void queue_msg(int duid);
                 void set_xormask(const char* p);
                 void set_nac(int nac);
@@ -54,6 +53,8 @@ namespace gr {
                 void set_slotkey(int key);
                 void set_debug(int debug);
                 void sync_reset();
+                void crypt_reset();
+                void crypt_key(uint16_t keyid, uint8_t algid, const std::vector<uint8_t> &key);
 
             public:
 

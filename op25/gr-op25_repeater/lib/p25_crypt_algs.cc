@@ -22,15 +22,38 @@
 #include "config.h"
 #endif
 
+#include <vector>
+#include <string>
+
 #include "p25_crypt_algs.h"
+#include "op25_msg_types.h"
+
+// helper
+std::string uint8_vector_to_hex(const std::vector<uint8_t>& v)
+{
+    std::string result;
+    result.reserve(v.size() * 2);   // two digits per character
+
+    static constexpr char hex[] = "0123456789ABCDEF";
+
+    for (uint8_t c : v)
+    {
+        result.push_back(hex[c / 16]);
+        result.push_back(hex[c % 16]);
+    }
+
+    return result;
+}
 
 // constructor
-p25_crypt_algs::p25_crypt_algs(int debug, int msgq_id) :
+p25_crypt_algs::p25_crypt_algs(int debug, gr::msg_queue::sptr queue, int msgq_id) :
     d_debug(debug),
+    d_msg_queue(queue),
     d_msgq_id(msgq_id),
     d_fr_type(FT_UNK),
     d_algid(0x80),
     d_keyid(0),
+    d_mi{0},
     d_adp_position(0) {
 }
 
@@ -38,14 +61,35 @@ p25_crypt_algs::p25_crypt_algs(int debug, int msgq_id) :
 p25_crypt_algs::~p25_crypt_algs() {
 }
 
+// remove all stored keys
+void p25_crypt_algs::reset(void) {
+    d_keys.clear();
+}
+
+// add or update a key
+void p25_crypt_algs::key(uint16_t keyid, uint8_t algid, const std::vector<uint8_t> &key) {
+    if ((keyid == 0) || (algid == 0x80))
+        return;
+
+    if (d_debug >= 10) {
+        std::string k_str = uint8_vector_to_hex(key);
+        fprintf(stderr, "%s p25_crypt_algs:key: setting keyid(0x%x), algid(0x%x), key(0x%s)\n", logts.get(d_msgq_id), keyid, algid, k_str.c_str());
+    }
+
+    d_keys[keyid] = key_info(algid, key);
+}
+
 // generic entry point to prepare for decryption
 void p25_crypt_algs::prepare(uint8_t algid, uint16_t keyid, frame_type fr_type, uint8_t *MI) {
     d_algid = algid;
+    d_keyid = keyid;
+    memcpy(d_mi, MI, sizeof(d_mi));
+
     switch (algid) {
         case 0xaa: // ADP RC4
             d_adp_position = 0;
             d_fr_type = fr_type;
-            adp_keystream_gen(keyid, MI);
+            adp_keystream_gen(d_keyid, d_mi);
             break;
     
         default:
@@ -119,7 +163,8 @@ void p25_crypt_algs::adp_swap(uint8_t *S, uint32_t i, uint32_t j) {
 void p25_crypt_algs::adp_keystream_gen(uint8_t keyid, uint8_t *MI) {
     //TODO: multi-key support and loadable configuration
     //uint8_t adp_key[13] = {0x70, 0x70, 0x70, 0x70, 0x70},
-    uint8_t adp_key[13] = {0x31, 0x31, 0x31, 0x31, 0x31},
+    //uint8_t adp_key[13] = {0x31, 0x31, 0x31, 0x31, 0x31},
+    uint8_t adp_key[13] = {0x12, 0x34, 0x56, 0x78, 0x90},
                           S[256], K[256];
     uint32_t i, j, k;
     j = 0;

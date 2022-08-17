@@ -1,4 +1,4 @@
-# Smartnet trunking module
+# P25 trunking module
 #
 # Copyright 2020, 2021 Graham J. Norbury - gnorbury@bondcar.com
 # 
@@ -257,6 +257,7 @@ class p25_system(object):
         self.blacklist = {}
         self.whitelist = None
         self.crypt_behavior = 1
+        self.crypt_keys = {}
         self.cc_rate = 4800
         self.cc_list = []
         self.cc_index = -1
@@ -306,6 +307,9 @@ class p25_system(object):
             self.cc_rate = 6000
 
         self.crypt_behavior = int(from_dict(self.config, 'crypt_behavior', 1))
+        #if 'crypt_keys' in self.config and self.config['crypt_keys'] != "":
+        #    sys.stderr.write("%s [%s] reading system crypt_keys file: %s\n" % (log_ts.get(), self.sysname, self.config['crypt_keys']))
+        #    self.crypt_keys = get_key_dict(self.config['crypt_keys'], self.sysname)
 
         cc_list = from_dict(self.config, 'control_channel_list', "")
         if cc_list == "":

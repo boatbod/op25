@@ -212,7 +212,7 @@ namespace gr {
             framer(new p25_framer(debug, msgq_id)),
             qtimer(op25_timer(TIMEOUT_THRESHOLD)),
             op25audio(udp),
-            crypt_algs(debug, msgq_id),
+            crypt_algs(debug, queue, msgq_id),
             ess_keyid(0),
             ess_algid(0x80),
             vf_tgid(0)
@@ -609,6 +609,14 @@ namespace gr {
 
         void p25p1_fdma::reset_timer() {
             qtimer.reset();
+        }
+
+        void p25p1_fdma::crypt_reset() {
+            crypt_algs.reset();
+        }
+
+        void p25p1_fdma::crypt_key(uint16_t keyid, uint8_t algid, const std::vector<uint8_t> &key) {
+            crypt_algs.key(keyid, algid, key);
         }
 
         void p25p1_fdma::send_msg(const std::string msg_str, long msg_type) {
