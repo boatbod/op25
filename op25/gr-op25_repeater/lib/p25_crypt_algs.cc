@@ -28,7 +28,7 @@
 #include "p25_crypt_algs.h"
 #include "op25_msg_types.h"
 
-// helper
+// helper for logging support
 std::string uint8_vector_to_hex(const std::vector<uint8_t>& v)
 {
     std::string result;
@@ -54,6 +54,7 @@ p25_crypt_algs::p25_crypt_algs(int debug, gr::msg_queue::sptr queue, int msgq_id
     d_algid(0x80),
     d_keyid(0),
     d_mi{0},
+    d_key_iter(d_keys.end()),
     d_adp_position(0) {
 }
 
@@ -80,26 +81,40 @@ void p25_crypt_algs::key(uint16_t keyid, uint8_t algid, const std::vector<uint8_
 }
 
 // generic entry point to prepare for decryption
-void p25_crypt_algs::prepare(uint8_t algid, uint16_t keyid, frame_type fr_type, uint8_t *MI) {
+bool p25_crypt_algs::prepare(uint8_t algid, uint16_t keyid, frame_type fr_type, uint8_t *MI) {
+    bool rc = false;
     d_algid = algid;
     d_keyid = keyid;
     memcpy(d_mi, MI, sizeof(d_mi));
+
+    d_key_iter = d_keys.find(keyid);
+    if (d_key_iter == d_keys.end()) {
+        if (d_debug >= 10) {
+            fprintf(stderr, "%s p25_crypt_algs::prepare: keyid[0x%x] not found\n", logts.get(d_msgq_id), keyid);
+        }
+        return rc;
+    }
 
     switch (algid) {
         case 0xaa: // ADP RC4
             d_adp_position = 0;
             d_fr_type = fr_type;
-            adp_keystream_gen(d_keyid, d_mi);
+            adp_keystream_gen();
+            rc = true;
             break;
     
         default:
             break;
     }
+    return rc;
 }
 
 // generic entry point to perform decryption
 bool p25_crypt_algs::process(packed_codeword& PCW) {
     bool rc = false;
+
+    if (d_key_iter == d_keys.end())
+        return false;
 
     switch (d_algid) {
         case 0xaa: // ADP RC4
@@ -117,6 +132,9 @@ bool p25_crypt_algs::process(packed_codeword& PCW) {
 bool p25_crypt_algs::adp_process(packed_codeword& PCW) {
     bool rc = true;
     size_t offset = 0;
+
+    if (d_key_iter == d_keys.end())
+        return false;
 
     switch (d_fr_type) {
         case FT_LDU1:
@@ -160,17 +178,25 @@ void p25_crypt_algs::adp_swap(uint8_t *S, uint32_t i, uint32_t j) {
 }
 
 // ADP RC4 create keystream using supplied key and message_indicator
-void p25_crypt_algs::adp_keystream_gen(uint8_t keyid, uint8_t *MI) {
-    //TODO: multi-key support and loadable configuration
-    //uint8_t adp_key[13] = {0x70, 0x70, 0x70, 0x70, 0x70},
-    //uint8_t adp_key[13] = {0x31, 0x31, 0x31, 0x31, 0x31},
-    uint8_t adp_key[13] = {0x12, 0x34, 0x56, 0x78, 0x90},
-                          S[256], K[256];
+void p25_crypt_algs::adp_keystream_gen() {
+    uint8_t adp_key[13], S[256], K[256];
     uint32_t i, j, k;
-    j = 0;
 
+    if (d_key_iter == d_keys.end())
+        return;
+
+    // Find key value from keyid and set up to create keystream
+    std::vector<uint8_t>::const_iterator kval_iter = d_key_iter->second.key.begin();
+    for (i = 0; i < std::max(5-(int)(d_key_iter->second.key.size()), 0); i++) {
+        adp_key[i] = 0;             // pad with leading 0 if supplied key too short 
+    }
+    for ( ; i < 5; i++) {
+        adp_key[i] = *kval_iter++;  // copy up to 5 bytes into key array
+    }
+
+    j = 0;
     for (i = 5; i < 13; ++i) {
-        adp_key[i] = MI[i - 5];
+        adp_key[i] = d_mi[i - 5];   // append MI bytes
     }
 
     for (i = 0; i < 256; ++i) {

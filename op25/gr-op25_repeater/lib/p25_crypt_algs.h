@@ -50,11 +50,12 @@ class p25_crypt_algs
         uint16_t d_keyid;
         uint8_t d_mi[9];
         std::unordered_map<uint16_t, key_info> d_keys;
+        std::unordered_map<uint16_t, key_info>::const_iterator d_key_iter;
         uint8_t adp_keystream[469];
         int d_adp_position;
 
         bool adp_process(packed_codeword& PCW);
-        void adp_keystream_gen(uint8_t keyid, uint8_t *MI);
+        void adp_keystream_gen();
         void adp_swap(uint8_t *S, uint32_t i, uint32_t j);
 
     public:
@@ -62,7 +63,7 @@ class p25_crypt_algs
         ~p25_crypt_algs();
 
         void key(uint16_t keyid, uint8_t algid, const std::vector<uint8_t> &key);
-        void prepare(uint8_t algid, uint16_t keyid, frame_type fr_type, uint8_t *MI);
+        bool prepare(uint8_t algid, uint16_t keyid, frame_type fr_type, uint8_t *MI);
         bool process(packed_codeword& PCW);
         void reset(void);
         inline void set_debug(int debug) {d_debug = debug;}
