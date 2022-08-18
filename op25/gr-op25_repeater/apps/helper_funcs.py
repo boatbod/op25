@@ -22,6 +22,7 @@
 
 import sys
 import json
+import ast
 from log_ts import log_ts
 
 #################
@@ -59,7 +60,17 @@ def add_unique_freq(freq_list, freq):
 
 def get_key_dict(keys_file, _id = 0):      # used to read crypt keys files
     #TODO: error handling for borked .json files
-    keys_config = json.loads(open(keys_file).read())
+    keys_config = {}
+    raw_config = json.loads(open(keys_file).read())
+    for dict_key in raw_config.keys():     # iterate through dict and convert strings to integers
+        keyid = int(ast.literal_eval(str(dict_key)))
+        algid = int(ast.literal_eval(str(from_dict(raw_config[dict_key], "algid", "0"))))
+        keys_config[keyid] = {}
+        keys_config[keyid]['algid'] = algid
+        keys_config[keyid]['key'] = []
+        raw_kval = from_dict(raw_config[dict_key], "key", [])
+        for kval in raw_kval:
+            keys_config[keyid]['key'].append(int(ast.literal_eval(str(kval))))
     return keys_config
 
 def get_int_dict(s, _id = 0):      # used to read blacklist/whitelist files

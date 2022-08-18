@@ -26,6 +26,7 @@ import ctypes
 import time
 import json
 import codecs
+import ast
 from helper_funcs import *
 from log_ts import log_ts
 from gnuradio import gr
@@ -279,7 +280,7 @@ class p25_system(object):
         self.rx_cc_freq = None
         self.rx_sys_id = None
         self.sysname = config['sysname']
-        self.nac = int(eval(from_dict(config, "nac", "0")))
+        self.nac = int(ast.literal_eval(from_dict(config, "nac", "0")))
         self.last_expiry_check = 0.0
         self.stats = {}
         self.stats['tsbk_count'] = 0
