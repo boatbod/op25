@@ -18,7 +18,8 @@
             "symbol_rate": 4800,
             "enable_analog": "off",
             "blacklist": "",
-            "whitelist": "first-dorc.wlist"
+            "whitelist": "first-dorc.wlist",
+            "crypt_keys": "example_keys.json"
         },
         {
             "name": "Voice_ch2",
@@ -39,6 +40,7 @@
             "enable_analog": "off",
             "blacklist": "",
             "whitelist": "talbot-fire.wlist"
+            "crypt_keys": "example_keys.json"
         },
         {
             "name": "Voice_ch3",
@@ -59,6 +61,7 @@
             "enable_analog": "off",
             "blacklist": "",
             "whitelist": "qa.wlist"
+            "crypt_keys": "example_keys.json"
         }
     ], 
     "devices": [
