@@ -31,6 +31,7 @@
 #include <deque>
 
 #include "rx_base.h"
+#include "log_ts.h"
 
 typedef std::deque<uint8_t> dibit_queue;
 
@@ -42,6 +43,7 @@ namespace gr {
             private:
                 int d_debug;
                 int d_msgq_id;
+                log_ts logts;
                 gr::msg_queue::sptr d_msg_queue;
                 rx_base* d_sync;
 
