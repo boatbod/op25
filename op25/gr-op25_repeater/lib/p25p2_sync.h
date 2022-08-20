@@ -32,6 +32,7 @@ public:
 	void check_confidence (const uint8_t dibits[]);
 	bool in_sync(void);
     bool is_first_frame(void) { return (sf_loc == 0); }
+    uint8_t sf_id() { return sf_loc; }
 	uint32_t tdma_slotid(void) { return _tdma_slotid; }
 private:
 	int32_t	sync_confidence;

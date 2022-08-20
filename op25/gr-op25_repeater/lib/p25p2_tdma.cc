@@ -654,7 +654,7 @@ void p25p2_tdma::handle_4V2V_ess(const uint8_t dibits[])
 	int ec = 0;
 
         if (d_debug >= 10) {
-		fprintf(stderr, "%s %s_BURST ", logts.get(d_msgq_id), (burst_id < 4) ? "4V" : "2V");
+		fprintf(stderr, "%s %s_BURST(%u) ", logts.get(d_msgq_id), (burst_id < 4) ? "4V" : "2V", sync.sf_id());
 	}
 
         if (burst_id < 4) {
