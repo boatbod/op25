@@ -614,7 +614,7 @@ int p25p2_tdma::handle_packet(uint8_t dibits[], const uint64_t fs)
 		if (sync.is_first_frame()) {     // promote next set of encryption parameters if this is the first frame of a superframe 
 			ess_algid = next_algid;
 			ess_keyid = next_keyid;
-			memcpy(ess_mi, next_mi, sizeof(ess_keyid));
+			memcpy(ess_mi, next_mi, sizeof(ess_mi));
 		    if (encrypted()) {
 			    crypt_algs.prepare(ess_algid, ess_keyid, ((burst_type == 0) ? FT_4V : FT_2V), ess_mi);
 		    }
