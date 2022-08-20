@@ -143,6 +143,7 @@ bool p25_crypt_algs::adp_process(packed_codeword& PCW) {
         for (int j = 0; j < 7; ++j) {
             PCW[j] = adp_keystream[j + offset] ^ PCW[j];
         }
+        PCW[6] &= 0x80; // mask everything except the MSB of the final codeword
     }
 
     return rc;
