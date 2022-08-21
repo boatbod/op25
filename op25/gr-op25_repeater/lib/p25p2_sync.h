@@ -31,13 +31,13 @@ public:
 	p25p2_isch isch;
 	void check_confidence (const uint8_t dibits[]);
 	bool in_sync(void);
-    bool is_first_frame(void) { return (sf_loc == 0); }
-    uint8_t sf_id() { return sf_loc; }
+    bool is_first_frame(void) { return ((fr_pos == 0) || (fr_pos == 1)); }
+    uint8_t frame_pos() { return fr_pos; }
 	uint32_t tdma_slotid(void) { return _tdma_slotid; }
 private:
 	int32_t	sync_confidence;
 	uint32_t _tdma_slotid;
 	uint32_t packets;
-    uint8_t sf_loc;
+    uint8_t fr_pos;
 };
 #endif /* INCLUDED_P25P2_SYNC_H */

@@ -653,45 +653,45 @@ void p25p2_tdma::handle_4V2V_ess(const uint8_t dibits[])
 {
 	int ec = 0;
 
-        if (d_debug >= 10) {
-		fprintf(stderr, "%s %s_BURST(%u) ", logts.get(d_msgq_id), (burst_id < 4) ? "4V" : "2V", sync.sf_id());
+	if (d_debug >= 10) {
+		fprintf(stderr, "%s %s_BURST(%u) ", logts.get(d_msgq_id), (burst_id < 4) ? "4V" : "2V", sync.frame_pos());
 	}
 
-        if (burst_id < 4) {
-                for (int i=0; i < 12; i += 3) { // ESS-B is 4 hexbits / 12 dibits
-                        ESS_B[(4 * burst_id) + (i / 3)] = (uint8_t) ((dibits[i] << 4) + (dibits[i+1] << 2) + dibits[i+2]);
-                }
-        } else {
-                int i, j;
+	if (burst_id < 4) {
+		for (int i=0; i < 12; i += 3) { // ESS-B is 4 hexbits / 12 dibits
+			ESS_B[(4 * burst_id) + (i / 3)] = (uint8_t) ((dibits[i] << 4) + (dibits[i+1] << 2) + dibits[i+2]);
+		}
+	} else {
+		int i, j;
 
-                j = 0;
-                for (i = 0; i < 28; i++) { // ESS-A is 28 hexbits / 84 dibits
-                        ESS_A[i] = (uint8_t) ((dibits[j] << 4) + (dibits[j+1] << 2) + dibits[j+2]);
-                        j = (i == 15) ? (j + 4) : (j + 3);  // skip dibit containing DUID#3
-                }
+		j = 0;
+		for (i = 0; i < 28; i++) { // ESS-A is 28 hexbits / 84 dibits
+			ESS_A[i] = (uint8_t) ((dibits[j] << 4) + (dibits[j+1] << 2) + dibits[j+2]);
+			j = (i == 15) ? (j + 4) : (j + 3);  // skip dibit containing DUID#3
+		}
 
-                ec = rs28.decode(ESS_B, ESS_A);
+		ec = rs28.decode(ESS_B, ESS_A);
 
-                if ((ec >= 0) && (ec <= 14)) { // upper limit 14 corrections
-                        next_algid = (ESS_B[0] << 2) + (ESS_B[1] >> 4);
-                        next_keyid = ((ESS_B[1] & 15) << 12) + (ESS_B[2] << 6) + ESS_B[3]; 
+		if ((ec >= 0) && (ec <= 14)) { // upper limit 14 corrections
+			next_algid = (ESS_B[0] << 2) + (ESS_B[1] >> 4);
+			next_keyid = ((ESS_B[1] & 15) << 12) + (ESS_B[2] << 6) + ESS_B[3]; 
 
-                        j = 0;
-                        for (i = 0; i < 9;) {
-                                 next_mi[i++] = (uint8_t)  (ESS_B[j+4]         << 2) + (ESS_B[j+5] >> 4);
-                                 next_mi[i++] = (uint8_t) ((ESS_B[j+5] & 0x0f) << 4) + (ESS_B[j+6] >> 2);
-                                 next_mi[i++] = (uint8_t) ((ESS_B[j+6] & 0x03) << 6) +  ESS_B[j+7];
-                                 j += 4;
-                        }
-                }
-        }     
+			j = 0;
+			for (i = 0; i < 9;) {
+				next_mi[i++] = (uint8_t)  (ESS_B[j+4]         << 2) + (ESS_B[j+5] >> 4);
+				next_mi[i++] = (uint8_t) ((ESS_B[j+5] & 0x0f) << 4) + (ESS_B[j+6] >> 2);
+				next_mi[i++] = (uint8_t) ((ESS_B[j+6] & 0x03) << 6) +  ESS_B[j+7];
+				j += 4;
+			}
+		}
+	}     
 
-        if (d_debug >= 10) {
-                fprintf(stderr, "ESS: algid=%x, keyid=%x, mi=%02x %02x %02x %02x %02x %02x %02x %02x %02x, rs_errs=%d\n",
-			next_algid, next_keyid,
-			next_mi[0], next_mi[1], next_mi[2], next_mi[3], next_mi[4], next_mi[5],next_mi[6], next_mi[7], next_mi[8],
-			ec);        
-        }
+	if (d_debug >= 10) {
+		fprintf(stderr, "ESS: algid=%x, keyid=%x, mi=%02x %02x %02x %02x %02x %02x %02x %02x %02x, rs_errs=%d\n",
+			    next_algid, next_keyid,
+			    next_mi[0], next_mi[1], next_mi[2], next_mi[3], next_mi[4], next_mi[5],next_mi[6], next_mi[7], next_mi[8],
+			    ec);        
+	}
 }
 
 void p25p2_tdma::send_msg(const std::string msg_str, long msg_type)

@@ -72,6 +72,9 @@ bool p25_crypt_algs::prepare(uint8_t algid, uint16_t keyid, frame_type fr_type, 
         }
         return rc;
     }
+    if (d_debug >= 10) {
+        fprintf(stderr, "%s p25_crypt_algs::prepare: keyid[0x%x] found\n", logts.get(d_msgq_id), keyid);
+    }
 
     switch (algid) {
         case 0xaa: // ADP RC4
