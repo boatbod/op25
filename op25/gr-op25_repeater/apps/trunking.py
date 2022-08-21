@@ -24,6 +24,7 @@ import ctypes
 import time
 import collections
 import json
+import ast
 sys.path.append('tdma')
 import lfsr
 from helper_funcs import *
@@ -1384,7 +1385,7 @@ class rx_ctl (object):
     def build_config_chans(self, config):
         configs = {}
         for cfg in config:
-            nac = eval(cfg['nac'])
+            nac = ast.literal_eval(cfg['nac'])
             configs[nac] = cfg
         self.setup_config(configs)
 

@@ -16,7 +16,8 @@
             "symbol_rate": 4800,
             "enable_analog": "off",
             "blacklist": "",
-            "whitelist": ""
+            "whitelist": "",
+            "crypt_keys": "example_keys.json"
         },
         {
             "name": "Voice_chB",

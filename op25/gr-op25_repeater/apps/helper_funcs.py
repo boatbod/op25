@@ -21,6 +21,8 @@
 #
 
 import sys
+import json
+import ast
 from log_ts import log_ts
 
 #################
@@ -55,6 +57,21 @@ def add_unique_freq(freq_list, freq):
     normalized_freq = get_frequency(freq)
     if normalized_freq not in freq_list:
         freq_list.append(normalized_freq)
+
+def get_key_dict(keys_file, _id = 0):      # used to read crypt keys files
+    #TODO: error handling for borked .json files
+    keys_config = {}
+    raw_config = json.loads(open(keys_file).read())
+    for dict_key in raw_config.keys():     # iterate through dict and convert strings to integers
+        keyid = int(ast.literal_eval(str(dict_key)))
+        algid = int(ast.literal_eval(str(from_dict(raw_config[dict_key], "algid", "0"))))
+        keys_config[keyid] = {}
+        keys_config[keyid]['algid'] = algid
+        keys_config[keyid]['key'] = []
+        raw_kval = from_dict(raw_config[dict_key], "key", [])
+        for kval in raw_kval:
+            keys_config[keyid]['key'].append(int(ast.literal_eval(str(kval))))
+    return keys_config
 
 def get_int_dict(s, _id = 0):      # used to read blacklist/whitelist files
     d = {}
@@ -140,3 +157,6 @@ def read_tsv_file(tsv_filename, key):
             tsv_obj[key_val] = fields
 
     return tsv_obj
+
+def get_fractional_ppm(tuned_freq, adj_val):
+    return (adj_val * 1e6 / tuned_freq)

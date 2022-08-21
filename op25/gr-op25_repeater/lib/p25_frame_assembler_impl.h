@@ -33,6 +33,7 @@
 #include "p25p1_fdma.h"
 #include "p25p2_tdma.h"
 #include "op25_audio.h"
+#include "log_ts.h"
 
 typedef std::deque<uint8_t> dibit_queue;
 
@@ -42,6 +43,8 @@ namespace gr {
     class p25_frame_assembler_impl : public p25_frame_assembler
     {
      private:
+    int d_debug;
+    log_ts logts;
 	bool d_do_imbe;
 	bool d_do_output;
 	p25p1_fdma p1fdma;
@@ -60,13 +63,13 @@ namespace gr {
     void set_slotkey(int key) ;
     void set_debug(int debug) ;
     void reset_timer() ;
+    void crypt_reset();
+    void crypt_key(uint16_t keyid, uint8_t algid, const std::vector<uint8_t> &key);
+
 	typedef std::vector<bool> bit_vector;
 	std::deque<int16_t> output_queue;
 
  public:
-#if 0
-   virtual void forecast(int nof_output_items, gr_vector_int &nof_input_items_reqd);
-#endif
       // Nothing to declare in this block.
 
      public:
@@ -78,9 +81,9 @@ namespace gr {
       // Where all the action really happens
 
       int general_work(int noutput_items,
-		       gr_vector_int &ninput_items,
-		       gr_vector_const_void_star &input_items,
-		       gr_vector_void_star &output_items);
+                       gr_vector_int &ninput_items,
+                       gr_vector_const_void_star &input_items,
+                       gr_vector_void_star &output_items);
     };
 
   } // namespace op25_repeater

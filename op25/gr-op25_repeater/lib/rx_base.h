@@ -27,6 +27,8 @@ namespace gr{
             public:
                 virtual void rx_sym(const uint8_t sym) = 0;
                 virtual void sync_reset(void) = 0;
+                virtual void crypt_reset(void) = 0;
+                virtual void crypt_key(uint16_t keyid, uint8_t algid, const std::vector<uint8_t> &key) = 0;
                 virtual void reset_timer(void) = 0;
                 virtual void set_slot_mask(int mask) = 0;
                 virtual void set_slot_key(int mask) = 0;

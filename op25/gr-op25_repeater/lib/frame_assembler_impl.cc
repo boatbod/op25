@@ -65,6 +65,21 @@ namespace gr {
                 d_sync->sync_reset();
         }
 
+        void frame_assembler_impl::crypt_reset() {
+            if (d_sync)
+                d_sync->crypt_reset();
+        }
+
+        void frame_assembler_impl::crypt_key(uint16_t keyid, uint8_t algid, const std::vector<uint8_t> &key) {
+            if (d_sync) {
+                if (d_debug >= 10) {
+                    std::string k_str = uint8_vector_to_hex_string(key);
+                    fprintf(stderr, "%s frame_assembler_impl::crypt_key: setting keyid(0x%x), algid(0x%x), key(0x%s)\n", logts.get(d_msgq_id), keyid, algid, k_str.c_str());
+                }
+                d_sync->crypt_key(keyid, algid, key);
+            }
+        }
+
         void frame_assembler_impl::set_debug(int debug) {
             if (d_sync)
                 d_sync->set_debug(debug);
@@ -96,6 +111,7 @@ namespace gr {
             : gr::block("frame_assembler",
                     gr::io_signature::make (MIN_IN, MAX_IN, sizeof (char)),
                     gr::io_signature::make (0, 0, 0)),
+            d_debug(debug),
             d_msgq_id(msgq_id),
             d_msg_queue(queue),
             d_sync(NULL)

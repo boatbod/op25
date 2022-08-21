@@ -1,5 +1,5 @@
 // P25 Decoder (C) Copyright 2013, 2014, 2015, 2016, 2017 Max H. Parke KA1RBI
-//             (C) Copyright 2019, 2020 Graham J. Norbury (DMR & P25 additions)
+//             (C) Copyright 2019, 2020, 2021, 2022 Graham J. Norbury (DMR & P25 additions)
 // 
 // This file is part of OP25
 // 
@@ -93,6 +93,16 @@ void rx_sync::sync_reset(void) {
 
 	// Timers reset
 	reset_timer();
+}
+
+void rx_sync::crypt_reset(void) {
+	p25fdma.crypt_reset();
+	p25tdma.crypt_reset();
+}
+
+void rx_sync::crypt_key(uint16_t keyid, uint8_t algid, const std::vector<uint8_t> &key) {
+	p25fdma.crypt_key(keyid, algid, key);
+	p25tdma.crypt_key(keyid, algid, key);
 }
 
 void rx_sync::set_nac(int nac) {

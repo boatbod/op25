@@ -32,6 +32,7 @@
 #include "p25p2_sync.h"
 #include "p25p2_tdma.h"
 #include "p25p2_vf.h"
+#include "p25_crypt_algs.h"
 #include "mbelib.h"
 #include "ambe.h"
 #include "crc16.h"
@@ -110,7 +111,10 @@ p25p2_tdma::p25p2_tdma(const op25_audio& udp, int slotid, int debug, bool do_msg
 	ESS_B(16,0),
 	ess_keyid(0),
 	ess_algid(0x80),
-	p2framer()
+	next_keyid(0),
+	next_algid(0x80),
+	p2framer(),
+    crypt_algs(debug, queue, msgq_id)
 {
 	assert (slotid == 0 || slotid == 1);
 	mbe_initMbeParms (&cur_mp, &prev_mp, &enh_mp);
@@ -128,6 +132,14 @@ void p25p2_tdma::set_slotid(int slotid)
 {
 	assert (slotid == 0 || slotid == 1);
 	d_slotid = slotid;
+}
+
+void p25p2_tdma::crypt_reset() {
+	crypt_algs.reset();
+}
+
+void p25p2_tdma::crypt_key(uint16_t keyid, uint8_t algid, const std::vector<uint8_t> &key) {
+	crypt_algs.key(keyid, algid, key);
 }
 
 p25p2_tdma::~p25p2_tdma()	// destructor
@@ -225,8 +237,11 @@ void p25p2_tdma::handle_mac_ptt(const uint8_t byte_buf[], const unsigned int len
 			ess_mi[0], ess_mi[1], ess_mi[2], ess_mi[3], ess_mi[4], ess_mi[5],ess_mi[6], ess_mi[7], ess_mi[8],
 			rs_errs);
         }
+		if (encrypted()) {
+			crypt_algs.prepare(ess_algid, ess_keyid, FT_4V, ess_mi); // likely not necessary because prepare() called by handle_packet() when burst_id==0
+		}
 
-        reset_vb();
+		reset_vb();
 }
 
 void p25p2_tdma::handle_mac_end_ptt(const uint8_t byte_buf[], const unsigned int len, const int rs_errs) 
@@ -468,6 +483,8 @@ void p25p2_tdma::handle_voice_frame(const uint8_t dibits[])
 {
 	static const int NSAMP_OUTPUT=160;
 	audio_samples *samples = NULL;
+	packed_codeword p_cw;
+    bool audio_valid = !encrypted();
 	int u[4];
 	int b[9];
 	size_t errs;
@@ -479,7 +496,6 @@ void p25p2_tdma::handle_voice_frame(const uint8_t dibits[])
 	errs = vf.process_vcw(&errs_mp, dibits, b, u);
 	if (d_debug >= 9) {
 		char log_str[40];
-		packed_codeword p_cw;
 		vf.pack_cw(p_cw, u);
 		strcpy(log_str, logts.get(d_msgq_id)); // param eval order not guaranteed; force timestamp computation first
 		fprintf(stderr, "%s AMBE %02x %02x %02x %02x %02x %02x %02x errs %lu err_rate %f, dt %f\n",
@@ -488,6 +504,17 @@ void p25p2_tdma::handle_voice_frame(const uint8_t dibits[])
 				logts.get_tdiff());            // dt is time in seconds since last AMBE frame processed
 		logts.mark_ts();
 	}
+
+	// Pass encrypted traffic through the decryption algorithms
+	if (encrypted()) {
+		vf.pack_cw(p_cw, u);
+		audio_valid = crypt_algs.process(p_cw);
+		if (!audio_valid)
+			return;
+        vf.unpack_cw(p_cw, u);  // unpack plaintext codewords
+        vf.unpack_b(b, u);      // for unencrypted traffic this is done inside vf.process_vcw()
+	}
+
 	rc = mbe_dequantizeAmbeTone(&tone_mp, &errs_mp, u);
 	if (rc >= 0) {					// Tone Frame
 		if (rc == 0) {                  // Valid Tone
@@ -584,21 +611,24 @@ int p25p2_tdma::handle_packet(uint8_t dibits[], const uint64_t fs)
 		xored_burst[i] = burstp[i] ^ tdma_xormask[sync.tdma_slotid() * BURST_SIZE + i];
 	}
 	if (burst_type == 0 || burst_type == 6)	{       // 4V or 2V burst
-                track_vb(burst_type);
-                handle_4V2V_ess(&xored_burst[84]);
-                if ( !d_do_nocrypt || !encrypted() ) {
-                        std::string s = "{\"encrypted\": " + std::to_string(0) + ", \"algid\": " + std::to_string(ess_algid) + ", \"keyid\": " + std::to_string(ess_keyid) + "}";
-                        send_msg(s, M_P25_JSON_DATA);
-                        handle_voice_frame(&xored_burst[11]);
-                        handle_voice_frame(&xored_burst[48]);
-                        if (burst_type == 0) {
-                                handle_voice_frame(&xored_burst[96]);
-                                handle_voice_frame(&xored_burst[133]);
-                        }
-                } else {
-                        std::string s = "{\"encrypted\": " + std::to_string(1) + ", \"algid\": " + std::to_string(ess_algid) + ", \"keyid\": " + std::to_string(ess_keyid) + "}";
-                        send_msg(s, M_P25_JSON_DATA);
-                }
+		track_vb(burst_type);
+		handle_4V2V_ess(&xored_burst[84]);
+		std::string s = "{\"encrypted\": " + std::to_string((encrypted()) ? 1 : 0) + ", \"algid\": " + std::to_string(ess_algid) + ", \"keyid\": " + std::to_string(ess_keyid) + "}";
+		send_msg(s, M_P25_JSON_DATA);
+		if ((burst_type == 0) && (burst_id == 0)) {  // promote next set of encryption parameters if this is first 4V after a 2V
+			ess_algid = next_algid;
+			ess_keyid = next_keyid;
+			memcpy(ess_mi, next_mi, sizeof(ess_mi));
+		    if (encrypted()) {
+			    crypt_algs.prepare(ess_algid, ess_keyid, ((burst_type == 0) ? FT_4V : FT_2V), ess_mi);
+		    }
+		}
+		handle_voice_frame(&xored_burst[11]);
+		handle_voice_frame(&xored_burst[48]);
+		if (burst_type == 0) {
+			handle_voice_frame(&xored_burst[96]);
+			handle_voice_frame(&xored_burst[133]);
+		}
 		return -1;
 	} else if (burst_type == 3) {                   // scrambled sacch
 		rc = handle_acch_frame(xored_burst, 0, false);
@@ -627,45 +657,45 @@ void p25p2_tdma::handle_4V2V_ess(const uint8_t dibits[])
 {
 	int ec = 0;
 
-        if (d_debug >= 10) {
-		fprintf(stderr, "%s %s_BURST ", logts.get(d_msgq_id), (burst_id < 4) ? "4V" : "2V");
+	if (d_debug >= 10) {
+		fprintf(stderr, "%s %s_BURST(%d) ", logts.get(d_msgq_id), (burst_id < 4) ? "4V" : "2V", burst_id);
 	}
 
-        if (burst_id < 4) {
-                for (int i=0; i < 12; i += 3) { // ESS-B is 4 hexbits / 12 dibits
-                        ESS_B[(4 * burst_id) + (i / 3)] = (uint8_t) ((dibits[i] << 4) + (dibits[i+1] << 2) + dibits[i+2]);
-                }
-        } else {
-                int i, j;
+	if (burst_id < 4) {
+		for (int i=0; i < 12; i += 3) { // ESS-B is 4 hexbits / 12 dibits
+			ESS_B[(4 * burst_id) + (i / 3)] = (uint8_t) ((dibits[i] << 4) + (dibits[i+1] << 2) + dibits[i+2]);
+		}
+	} else {
+		int i, j;
 
-                j = 0;
-                for (i = 0; i < 28; i++) { // ESS-A is 28 hexbits / 84 dibits
-                        ESS_A[i] = (uint8_t) ((dibits[j] << 4) + (dibits[j+1] << 2) + dibits[j+2]);
-                        j = (i == 15) ? (j + 4) : (j + 3);  // skip dibit containing DUID#3
-                }
+		j = 0;
+		for (i = 0; i < 28; i++) { // ESS-A is 28 hexbits / 84 dibits
+			ESS_A[i] = (uint8_t) ((dibits[j] << 4) + (dibits[j+1] << 2) + dibits[j+2]);
+			j = (i == 15) ? (j + 4) : (j + 3);  // skip dibit containing DUID#3
+		}
 
-                ec = rs28.decode(ESS_B, ESS_A);
+		ec = rs28.decode(ESS_B, ESS_A);
 
-                if ((ec >= 0) && (ec <= 14)) { // upper limit 14 corrections
-                        ess_algid = (ESS_B[0] << 2) + (ESS_B[1] >> 4);
-                        ess_keyid = ((ESS_B[1] & 15) << 12) + (ESS_B[2] << 6) + ESS_B[3]; 
+		if ((ec >= 0) && (ec <= 14)) { // upper limit 14 corrections
+			next_algid = (ESS_B[0] << 2) + (ESS_B[1] >> 4);
+			next_keyid = ((ESS_B[1] & 15) << 12) + (ESS_B[2] << 6) + ESS_B[3]; 
 
-                        j = 0;
-                        for (i = 0; i < 9;) {
-                                 ess_mi[i++] = (uint8_t)  (ESS_B[j+4]         << 2) + (ESS_B[j+5] >> 4);
-                                 ess_mi[i++] = (uint8_t) ((ESS_B[j+5] & 0x0f) << 4) + (ESS_B[j+6] >> 2);
-                                 ess_mi[i++] = (uint8_t) ((ESS_B[j+6] & 0x03) << 6) +  ESS_B[j+7];
-                                 j += 4;
-                        }
-                }
-        }     
+			j = 0;
+			for (i = 0; i < 9;) {
+				next_mi[i++] = (uint8_t)  (ESS_B[j+4]         << 2) + (ESS_B[j+5] >> 4);
+				next_mi[i++] = (uint8_t) ((ESS_B[j+5] & 0x0f) << 4) + (ESS_B[j+6] >> 2);
+				next_mi[i++] = (uint8_t) ((ESS_B[j+6] & 0x03) << 6) +  ESS_B[j+7];
+				j += 4;
+			}
+		}
+	}     
 
-        if (d_debug >= 10) {
-                fprintf(stderr, "ESS: algid=%x, keyid=%x, mi=%02x %02x %02x %02x %02x %02x %02x %02x %02x, rs_errs=%d\n",
-			ess_algid, ess_keyid,
-			ess_mi[0], ess_mi[1], ess_mi[2], ess_mi[3], ess_mi[4], ess_mi[5],ess_mi[6], ess_mi[7], ess_mi[8],
-			ec);        
-        }
+	if (d_debug >= 10) {
+		fprintf(stderr, "ESS: algid=%x, keyid=%x, mi=%02x %02x %02x %02x %02x %02x %02x %02x %02x, rs_errs=%d\n",
+			    next_algid, next_keyid,
+			    next_mi[0], next_mi[1], next_mi[2], next_mi[3], next_mi[4], next_mi[5],next_mi[6], next_mi[7], next_mi[8],
+			    ec);        
+	}
 }
 
 void p25p2_tdma::send_msg(const std::string msg_str, long msg_type)

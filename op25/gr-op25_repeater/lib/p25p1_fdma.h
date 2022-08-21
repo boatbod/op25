@@ -32,6 +32,7 @@
 #include "op25_audio.h"
 #include "p25_framer.h"
 #include "software_imbe_decoder.h"
+#include "p25_crypt_algs.h"
 
 namespace gr {
     namespace op25_repeater {
@@ -58,7 +59,7 @@ namespace gr {
                 void process_TDU3();
                 void process_TSBK(const bit_vector& fr, uint32_t fr_len);
                 void process_PDU(const bit_vector& fr, uint32_t fr_len);
-                void process_voice(const bit_vector& A);
+                void process_voice(const bit_vector& A, const frame_type fr_type );
                 int  process_blocks(const bit_vector& fr, uint32_t& fr_len, block_vector& dbuf);
                 void process_frame();
                 void check_timeout();
@@ -84,6 +85,7 @@ namespace gr {
 				int16_t snd[SND_FRAME];
                 const op25_audio& op25audio;
                 log_ts logts;
+                p25_crypt_algs crypt_algs;
 
                 ezpwd::RS<63,55> rs8;  // Reed-Solomon decoders for 8, 12 and 16 bit parity
                 ezpwd::RS<63,51> rs12;
@@ -98,6 +100,8 @@ namespace gr {
                 void set_debug(int debug);
                 void set_nac(int nac);
                 void reset_timer();
+                void crypt_reset();
+                void crypt_key(uint16_t keyid, uint8_t algid, const std::vector<uint8_t> &key);
                 void rx_sym (const uint8_t *syms, int nsyms);
                 p25p1_fdma(const op25_audio& udp, int debug, bool do_imbe, bool do_output, bool do_msgq, gr::msg_queue::sptr queue, std::deque<int16_t> &output_queue, bool do_audio_output, bool do_nocrypt, int msgq_id = 0);
                 ~p25p1_fdma();
