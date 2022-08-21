@@ -155,3 +155,11 @@ class p25_decoder_sink_b(gr.hier_block2):
         self.debug = dbglvl
         for decoder in self.p25_decoders:
             decoder.set_debug(dbglvl)
+
+    def crypt_key(self, keyid, algid, keyval):
+        for decoder in self.p25_decoders:
+            decoder.crypt_key(keyid, algid, keyval)
+
+    def crypt_reset(self):
+        for decoder in self.p25_decoders:
+            decoder.crypt_reset()

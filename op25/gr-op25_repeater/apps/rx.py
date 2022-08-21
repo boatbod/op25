@@ -95,6 +95,7 @@ from gr_gnuplot import fll_sink_c
 from terminal import op25_terminal
 from sockaudio  import audio_thread
 from log_ts import log_ts
+from helper_funcs import *
 
 #speeds = [300, 600, 900, 1200, 1440, 1800, 1920, 2400, 2880, 3200, 3600, 3840, 4000, 4800, 6000, 6400, 7200, 8000, 9600, 14400, 19200]
 speeds = [4800, 6000]
@@ -377,6 +378,13 @@ class p25_rx_block (gr.top_block):
 
         self.du_watcher = du_queue_watcher(self.rx_q, self.trunk_rx.process_qmsg)
 
+        # Dowload encryption keys if provided
+        if self.options.crypt_keys is not None:
+            sys.stderr.write("%s reading crypt_keys file: %s\n" % (log_ts.get(), self.options.crypt_keys))
+            crypt_keys = get_key_dict(self.options.crypt_keys, 0)
+            for keyid in crypt_keys.keys():
+                self.decoder.crypt_key(int(keyid), int(crypt_keys[keyid]['algid']), crypt_keys[keyid]['key'])
+
     # Connect up the flow graph
     #
     def __connect(self, cnxns):
@@ -616,7 +624,8 @@ class p25_rx_block (gr.top_block):
     def set_debug(self, dbglvl):
         self.options.verbosity = dbglvl
         self.decoder.set_debug(dbglvl)
-        self.demod.set_debug(dbglvl)
+        if callable(getattr(self.demod, 'set_debug', None)):
+            self.demod.set_debug(dbglvl)
         if self.trunk_rx is not None:
             self.trunk_rx.set_debug(dbglvl)
 
@@ -1041,7 +1050,8 @@ class rx_main(object):
         parser.add_option("-v", "--verbosity", type="int", default=0, help="message debug level")
         parser.add_option("-V", "--vocoder", action="store_true", default=False, help="voice codec")
         parser.add_option("-n", "--nocrypt", action="store_true", default=False, help="silence encrypted traffic")
-        parser.add_option("--crypt-behavior", type="int", default=1, help="encrypted traffic behavior: 0=allow, 1=silence, 2=skip")
+        parser.add_option("--crypt-behavior", type="int", default=2, help="encrypted traffic behavior: 0=allow, 1=silence, 2=skip")
+        parser.add_option("-k", "--crypt-keys", type="string", default=None, help="decryption keys file (in json format)")
         parser.add_option("-o", "--offset", type="eng_float", default=0.0, help="tuning offset frequency [to circumvent DC offset]", metavar="Hz")
         parser.add_option("-p", "--pause", action="store_true", default=False, help="block on startup")
         parser.add_option("-w", "--wireshark", action="store_true", default=False, help="output data to Wireshark")

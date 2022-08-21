@@ -1,5 +1,5 @@
 
-June 2022
+August 2022
 =============
 
 This file contains notes on the current OP25 P25 receiver (rx.py) and
@@ -252,3 +252,10 @@ Options:
   -v VERBOSITY, --verbosity=VERBOSITY
                         message debug level
   -p, --pause           block on startup
+
+ENCRYPTION
+==========
+P25 ADP/RC4 (algid 0xAA) decryption with a known key is now supported by both rx.py and multi_rx.py.
+See the example configurations: p25_rtl_example.json, p25_conventional_example.json and also the
+example json formatting of the keys file: example_keys.json
+
