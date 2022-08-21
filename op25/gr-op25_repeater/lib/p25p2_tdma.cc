@@ -237,8 +237,11 @@ void p25p2_tdma::handle_mac_ptt(const uint8_t byte_buf[], const unsigned int len
 			ess_mi[0], ess_mi[1], ess_mi[2], ess_mi[3], ess_mi[4], ess_mi[5],ess_mi[6], ess_mi[7], ess_mi[8],
 			rs_errs);
         }
+		if (encrypted()) {
+			crypt_algs.prepare(ess_algid, ess_keyid, FT_4V, ess_mi); // likely not necessary because prepare() called by handle_packet() when burst_id==0
+		}
 
-        reset_vb();
+		reset_vb();
 }
 
 void p25p2_tdma::handle_mac_end_ptt(const uint8_t byte_buf[], const unsigned int len, const int rs_errs) 
@@ -508,7 +511,8 @@ void p25p2_tdma::handle_voice_frame(const uint8_t dibits[])
 		audio_valid = crypt_algs.process(p_cw);
 		if (!audio_valid)
 			return;
-        vf.unpack_cw(p_cw, u);
+        vf.unpack_cw(p_cw, u);  // unpack plaintext codewords
+        vf.unpack_b(b, u);      // for unencrypted traffic this is done inside vf.process_vcw()
 	}
 
 	rc = mbe_dequantizeAmbeTone(&tone_mp, &errs_mp, u);
@@ -611,7 +615,7 @@ int p25p2_tdma::handle_packet(uint8_t dibits[], const uint64_t fs)
 		handle_4V2V_ess(&xored_burst[84]);
 		std::string s = "{\"encrypted\": " + std::to_string((encrypted()) ? 1 : 0) + ", \"algid\": " + std::to_string(ess_algid) + ", \"keyid\": " + std::to_string(ess_keyid) + "}";
 		send_msg(s, M_P25_JSON_DATA);
-		if (sync.is_first_frame()) {     // promote next set of encryption parameters if this is the first frame of a superframe 
+		if ((burst_type == 0) && (burst_id == 0)) {  // promote next set of encryption parameters if this is first 4V after a 2V
 			ess_algid = next_algid;
 			ess_keyid = next_keyid;
 			memcpy(ess_mi, next_mi, sizeof(ess_mi));
@@ -654,7 +658,7 @@ void p25p2_tdma::handle_4V2V_ess(const uint8_t dibits[])
 	int ec = 0;
 
 	if (d_debug >= 10) {
-		fprintf(stderr, "%s %s_BURST(%u) ", logts.get(d_msgq_id), (burst_id < 4) ? "4V" : "2V", sync.frame_pos());
+		fprintf(stderr, "%s %s_BURST(%d) ", logts.get(d_msgq_id), (burst_id < 4) ? "4V" : "2V", burst_id);
 	}
 
 	if (burst_id < 4) {

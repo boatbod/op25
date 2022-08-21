@@ -28,8 +28,7 @@
 p25p2_sync::p25p2_sync(void) :	// constructor
 	sync_confidence(0),
 	_tdma_slotid(0),
-	packets(0),
-    fr_pos(0)
+	packets(0)
 {
 }
 
@@ -48,7 +47,7 @@ void p25p2_sync::check_confidence (const uint8_t dibits[])
 	int rc, cnt, fr, loc, chn, checkval;
 	rc = isch.isch_lookup(dibits);
 	checkval = cnt = fr = loc = chn = rc;
-	if (rc >= 0) {                      // I-ISCH
+	if (rc >= 0) {                      // I-ISCH (informational)
 		cnt = rc & 3;
 		rc = rc >> 2;
 		fr = rc & 1;
@@ -57,14 +56,10 @@ void p25p2_sync::check_confidence (const uint8_t dibits[])
 		rc = rc >> 2;
 		chn = rc & 3;
 		checkval = loc*4 + chn;
-        if ((loc == 0) && (chn == 0))
-            fr_pos = 0;
-        else
-		    fr_pos = (fr_pos + 1) % 12;
-	} else if (rc == -2) {              // S-ISCH
-		fr_pos = (fr_pos + 1) % 12;
+	} else if (rc == -2) {              // S-ISCH (synchronization)
+        // pass
 	} else {                            // Decode Error
-        fr_pos = (fr_pos + 1) % 4;
+        // pass
     }
 	if (expected_sync[_tdma_slotid] != checkval && checkval != -1)
 		sync_confidence = 0;
