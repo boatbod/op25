@@ -212,7 +212,7 @@ namespace gr {
             framer(new p25_framer(debug, msgq_id)),
             qtimer(op25_timer(TIMEOUT_THRESHOLD)),
             op25audio(udp),
-            crypt_algs(debug, queue, msgq_id),
+            crypt_algs(debug, msgq_id),
             ess_keyid(0),
             ess_algid(0x80),
             vf_tgid(0)

@@ -29,9 +29,8 @@
 #include "op25_msg_types.h"
 
 // constructor
-p25_crypt_algs::p25_crypt_algs(int debug, gr::msg_queue::sptr queue, int msgq_id) :
+p25_crypt_algs::p25_crypt_algs(int debug, int msgq_id) :
     d_debug(debug),
-    d_msg_queue(queue),
     d_msgq_id(msgq_id),
     d_fr_type(FT_UNK),
     d_algid(0x80),
@@ -169,7 +168,7 @@ void p25_crypt_algs::adp_keystream_gen() {
 
     // Find key value from keyid and set up to create keystream
     std::vector<uint8_t>::const_iterator kval_iter = d_key_iter->second.key.begin();
-    for (i = 0; i < std::max(5-(int)(d_key_iter->second.key.size()), 0); i++) {
+    for (i = 0; i < (uint32_t)std::max(5-(int)(d_key_iter->second.key.size()), 0); i++) {
         adp_key[i] = 0;             // pad with leading 0 if supplied key too short 
     }
     for ( ; i < 5; i++) {
