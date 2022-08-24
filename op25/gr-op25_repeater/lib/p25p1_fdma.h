@@ -75,7 +75,6 @@ namespace gr {
                 bool d_do_msgq;
                 int  d_msgq_id;
                 bool d_do_audio_output;
-                bool d_do_nocrypt;
                 int d_nac;
                 gr::msg_queue::sptr d_msg_queue;
                 std::deque<int16_t> &output_queue;
@@ -84,7 +83,7 @@ namespace gr {
 				software_imbe_decoder software_decoder;
 				int16_t snd[SND_FRAME];
                 const op25_audio& op25audio;
-                log_ts logts;
+                log_ts& logts;
                 p25_crypt_algs crypt_algs;
 
                 ezpwd::RS<63,55> rs8;  // Reed-Solomon decoders for 8, 12 and 16 bit parity
@@ -103,7 +102,7 @@ namespace gr {
                 void crypt_reset();
                 void crypt_key(uint16_t keyid, uint8_t algid, const std::vector<uint8_t> &key);
                 void rx_sym (const uint8_t *syms, int nsyms);
-                p25p1_fdma(const op25_audio& udp, int debug, bool do_imbe, bool do_output, bool do_msgq, gr::msg_queue::sptr queue, std::deque<int16_t> &output_queue, bool do_audio_output, bool do_nocrypt, int msgq_id = 0);
+                p25p1_fdma(const op25_audio& udp, log_ts& logger, int debug, bool do_imbe, bool do_output, bool do_msgq, gr::msg_queue::sptr queue, std::deque<int16_t> &output_queue, bool do_audio_output, int msgq_id = 0);
                 ~p25p1_fdma();
                 uint32_t load_nid(const uint8_t *syms, int nsyms, const uint64_t fs);
                 bool load_body(const uint8_t * syms, int nsyms);

@@ -29,7 +29,8 @@
 #include "op25_msg_types.h"
 
 // constructor
-p25_crypt_algs::p25_crypt_algs(int debug, int msgq_id) :
+p25_crypt_algs::p25_crypt_algs(log_ts& logger, int debug, int msgq_id) :
+    logts(logger),
     d_debug(debug),
     d_msgq_id(msgq_id),
     d_fr_type(FT_UNK),

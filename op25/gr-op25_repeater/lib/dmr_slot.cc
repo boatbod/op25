@@ -42,7 +42,7 @@
 
 #define _CRC_CHECK_ 0
 
-dmr_slot::dmr_slot(const int chan, const int debug, int msgq_id, gr::msg_queue::sptr queue) :
+dmr_slot::dmr_slot(const int chan, log_ts& logger, const int debug, int msgq_id, gr::msg_queue::sptr queue) :
 	d_rc(0),
 	d_sb(0),
 	d_pdp_bf(0),
@@ -61,6 +61,7 @@ dmr_slot::dmr_slot(const int chan, const int debug, int msgq_id, gr::msg_queue::
 	d_debug(debug),
 	d_chan(chan),
 	d_slot_mask(3),
+	logts(logger),
 	d_msg_queue(queue)
 {
 	memset(d_slot, 0, sizeof(d_slot));

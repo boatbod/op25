@@ -89,7 +89,7 @@ static const uint8_t mac_msg_len[256] = {
 	28,  0,  0, 14, 17, 14,  0,  0, 16,  8, 11,  0, 13, 19,  0,  0, 
 	 0,  0, 16, 14,  0,  0, 12,  0, 22,  0, 11, 13, 11,  0, 15,  0 };
 
-p25p2_tdma::p25p2_tdma(const op25_audio& udp, int slotid, int debug, bool do_msgq, gr::msg_queue::sptr queue, std::deque<int16_t> &qptr, bool do_audio_output, bool do_nocrypt, int msgq_id) :	// constructor
+p25p2_tdma::p25p2_tdma(const op25_audio& udp, log_ts& logger, int slotid, int debug, bool do_msgq, gr::msg_queue::sptr queue, std::deque<int16_t> &qptr, bool do_audio_output, int msgq_id) :	// constructor
 	tdma_xormask(new uint8_t[SUPERFRAME_SIZE]),
 	symbols_received(0),
 	packets(0),
@@ -102,8 +102,8 @@ p25p2_tdma::p25p2_tdma(const op25_audio& udp, int slotid, int debug, bool do_msg
 	d_do_msgq(do_msgq),
 	d_msgq_id(msgq_id),
 	d_do_audio_output(do_audio_output),
-	d_do_nocrypt(do_nocrypt),
 	op25audio(udp),
+    logts(logger),
 	d_nac(0),
 	d_debug(debug),
 	burst_id(-1),
@@ -114,7 +114,7 @@ p25p2_tdma::p25p2_tdma(const op25_audio& udp, int slotid, int debug, bool do_msg
 	next_keyid(0),
 	next_algid(0x80),
 	p2framer(),
-    crypt_algs(debug, msgq_id)
+    crypt_algs(logger, debug, msgq_id)
 {
 	assert (slotid == 0 || slotid == 1);
 	mbe_initMbeParms (&cur_mp, &prev_mp, &enh_mp);

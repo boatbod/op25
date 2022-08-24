@@ -34,7 +34,7 @@ static const int max_frame_lengths[16] = {
 };
 
 // constructor
-p25_framer::p25_framer(int debug, int msgq_id) :
+p25_framer::p25_framer(log_ts& logger, int debug, int msgq_id) :
     nid_syms(0),
     next_bit(0),
     nid_accum(0),
@@ -43,6 +43,7 @@ p25_framer::p25_framer(int debug, int msgq_id) :
     d_msgq_id(msgq_id),
     d_expected_nac(0),
     d_unexpected_nac(0),
+    logts(logger),
     symbols_received(0),
     nac(0),
     duid(0),

@@ -197,7 +197,7 @@ namespace gr {
                 fprintf(stderr, "%s p25p1_fdma::set_nac: 0x%03x\n", logts.get(d_msgq_id), d_nac);
         }
 
-        p25p1_fdma::p25p1_fdma(const op25_audio& udp, int debug, bool do_imbe, bool do_output, bool do_msgq, gr::msg_queue::sptr queue, std::deque<int16_t> &output_queue, bool do_audio_output, bool do_nocrypt, int msgq_id) :
+        p25p1_fdma::p25p1_fdma(const op25_audio& udp, log_ts& logger, int debug, bool do_imbe, bool do_output, bool do_msgq, gr::msg_queue::sptr queue, std::deque<int16_t> &output_queue, bool do_audio_output, int msgq_id) :
             write_bufp(0),
             d_debug(debug),
             d_do_imbe(do_imbe),
@@ -205,14 +205,14 @@ namespace gr {
             d_do_msgq(do_msgq),
             d_msgq_id(msgq_id),
             d_do_audio_output(do_audio_output),
-            d_do_nocrypt(do_nocrypt),
             d_nac(0),
             d_msg_queue(queue),
             output_queue(output_queue),
-            framer(new p25_framer(debug, msgq_id)),
+            framer(new p25_framer(logger, debug, msgq_id)),
             qtimer(op25_timer(TIMEOUT_THRESHOLD)),
             op25audio(udp),
-            crypt_algs(debug, msgq_id),
+            logts(logger),
+            crypt_algs(logger, debug, msgq_id),
             ess_keyid(0),
             ess_algid(0x80),
             vf_tgid(0)

@@ -100,15 +100,11 @@ namespace gr {
             gr::io_signature::make (MIN_IN, MAX_IN, sizeof (char)),
             gr::io_signature::make ((do_output) ? 1 : 0, (do_output) ? 1 : 0, (do_audio_output && do_output) ? sizeof(int16_t) : ((do_output) ? sizeof(char) : 0 ))),
             d_debug(debug),
-        	d_do_imbe(do_imbe),
         	d_do_output(do_output),
-        	p1fdma(op25audio, debug, do_imbe, do_output, do_msgq, queue, output_queue, do_audio_output, do_nocrypt),
+        	p1fdma(op25audio, logts, debug, do_imbe, do_output, do_msgq, queue, output_queue, do_audio_output),
         	d_do_audio_output(do_audio_output),
-        	d_do_phase2_tdma(do_phase2_tdma),
-        	d_do_nocrypt(do_nocrypt),
-        	p2tdma(op25audio, 0, debug, do_msgq, queue, output_queue, do_audio_output, do_nocrypt),
+        	p2tdma(op25audio, logts, 0, debug, do_msgq, queue, output_queue, do_audio_output),
         	d_do_msgq(do_msgq),
-        	d_msg_queue(queue),
         	output_queue(),
         	op25audio(udp_host, port, debug)
         {
@@ -124,13 +120,11 @@ namespace gr {
             const uint8_t *in = (const uint8_t *) input_items[0];
 
             p1fdma.rx_sym(in, ninput_items[0]);
-            if(d_do_phase2_tdma) {
-                for (int i = 0; i < ninput_items[0]; i++) {
-                    if(p2tdma.rx_sym(in[i])) {
-                        int rc = p2tdma.handle_frame();
-                        if (rc > -1) {
-                            p1fdma.reset_timer(); // prevent P1 timeouts due to long TDMA transmissions
-                        }
+            for (int i = 0; i < ninput_items[0]; i++) {
+                if(p2tdma.rx_sym(in[i])) {
+                    int rc = p2tdma.handle_frame();
+                    if (rc > -1) {
+                        p1fdma.reset_timer(); // prevent P1 timeouts due to long TDMA transmissions
                     }
                 }
             }

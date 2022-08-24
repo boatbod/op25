@@ -41,8 +41,8 @@ enum frame_type { FT_UNK = 0, FT_LDU1, FT_LDU2, FT_2V, FT_4V };
 class p25_crypt_algs
 {
     private:
+        log_ts& logts;
         int d_debug;
-        log_ts logts;
         int d_msgq_id;
         frame_type d_fr_type;
         uint8_t d_algid;
@@ -58,7 +58,7 @@ class p25_crypt_algs
         void adp_swap(uint8_t *S, uint32_t i, uint32_t j);
 
     public:
-        p25_crypt_algs(int debug, int msgq_id);
+        p25_crypt_algs(log_ts& logger, int debug, int msgq_id);
         ~p25_crypt_algs();
 
         void key(uint16_t keyid, uint8_t algid, const std::vector<uint8_t> &key);

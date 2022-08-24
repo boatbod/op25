@@ -20,6 +20,8 @@
 #ifndef INCLUDED_RX_BASE_H
 #define INCLUDED_RX_BASE_H
 
+#include "log_ts.h"
+
 namespace gr{
     namespace op25_repeater{
 
@@ -35,7 +37,7 @@ namespace gr{
                 virtual void set_nac(int nac) = 0;
                 virtual void set_debug(int debug) = 0;
                 virtual void set_xormask(const char* p) = 0;
-                rx_base(const char * options, int debug, int msgq_id, gr::msg_queue::sptr queue) { };
+                rx_base(const char * options, log_ts& logger, int debug, int msgq_id, gr::msg_queue::sptr queue) { };
                 rx_base() {}; // default constructor called by derived classes
                 virtual ~rx_base() {};
         };
