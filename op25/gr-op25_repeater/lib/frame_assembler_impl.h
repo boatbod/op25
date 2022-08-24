@@ -43,7 +43,6 @@ namespace gr {
             private:
                 int d_debug;
                 int d_msgq_id;
-                log_ts logts;
                 gr::msg_queue::sptr d_msg_queue;
                 rx_base* d_sync;
 
@@ -59,6 +58,7 @@ namespace gr {
                 void crypt_key(uint16_t keyid, uint8_t algid, const std::vector<uint8_t> &key);
 
             public:
+                log_ts logts;
 
             public:
                 frame_assembler_impl(const char* options, int debug, int msgq_id, gr::msg_queue::sptr queue);

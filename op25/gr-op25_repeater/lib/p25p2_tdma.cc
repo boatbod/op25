@@ -89,7 +89,7 @@ static const uint8_t mac_msg_len[256] = {
 	28,  0,  0, 14, 17, 14,  0,  0, 16,  8, 11,  0, 13, 19,  0,  0, 
 	 0,  0, 16, 14,  0,  0, 12,  0, 22,  0, 11, 13, 11,  0, 15,  0 };
 
-p25p2_tdma::p25p2_tdma(const op25_audio& udp, int slotid, int debug, bool do_msgq, gr::msg_queue::sptr queue, std::deque<int16_t> &qptr, bool do_audio_output, bool do_nocrypt, int msgq_id) :	// constructor
+p25p2_tdma::p25p2_tdma(const op25_audio& udp, log_ts& logger, int slotid, int debug, bool do_msgq, gr::msg_queue::sptr queue, std::deque<int16_t> &qptr, bool do_audio_output, int msgq_id) :	// constructor
 	tdma_xormask(new uint8_t[SUPERFRAME_SIZE]),
 	symbols_received(0),
 	packets(0),
@@ -102,8 +102,8 @@ p25p2_tdma::p25p2_tdma(const op25_audio& udp, int slotid, int debug, bool do_msg
 	d_do_msgq(do_msgq),
 	d_msgq_id(msgq_id),
 	d_do_audio_output(do_audio_output),
-	d_do_nocrypt(do_nocrypt),
 	op25audio(udp),
+    logts(logger),
 	d_nac(0),
 	d_debug(debug),
 	burst_id(-1),
@@ -114,7 +114,7 @@ p25p2_tdma::p25p2_tdma(const op25_audio& udp, int slotid, int debug, bool do_msg
 	next_keyid(0),
 	next_algid(0x80),
 	p2framer(),
-    crypt_algs(debug, queue, msgq_id)
+    crypt_algs(logger, debug, msgq_id)
 {
 	assert (slotid == 0 || slotid == 1);
 	mbe_initMbeParms (&cur_mp, &prev_mp, &enh_mp);
@@ -156,7 +156,6 @@ p25p2_tdma::set_xormask(const char*p) {
 int p25p2_tdma::process_mac_pdu(const uint8_t byte_buf[], const unsigned int len, const int rs_errs) 
 {
 	unsigned int opcode = (byte_buf[0] >> 5) & 0x7;
-	unsigned int offset = (byte_buf[0] >> 2) & 0x7;
 
 #if 0
         if (d_debug >= 10) {
@@ -197,11 +196,8 @@ int p25p2_tdma::process_mac_pdu(const uint8_t byte_buf[], const unsigned int len
 
 void p25p2_tdma::handle_mac_signal(const uint8_t byte_buf[], const unsigned int len, const int rs_errs) 
 {
-        char nac_color[2];
         int nac;
         nac = (byte_buf[19] << 4) + ((byte_buf[20] >> 4) & 0xf);
-        nac_color[0] = nac >> 8;
-        nac_color[1] = nac & 0xff;
         if (d_debug >= 10) {
                 fprintf(stderr, "%s MAC_SIGNAL: colorcd=0x%03x, ", logts.get(d_msgq_id), nac);
         }
@@ -215,7 +211,7 @@ void p25p2_tdma::handle_mac_ptt(const uint8_t byte_buf[], const unsigned int len
 	    std::string pdu;
 		pdu.assign(len+2, 0);
 		pdu[0] = 0xff; pdu[1] = 0xff;
-		for (int i = 0; i < len; i++) {
+		for (unsigned int i = 0; i < len; i++) {
 			pdu[2 + i] = byte_buf[1 + i];
 		}
 		send_msg(pdu, M_P25_MAC_PTT);
@@ -249,7 +245,7 @@ void p25p2_tdma::handle_mac_end_ptt(const uint8_t byte_buf[], const unsigned int
 	    std::string pdu;
 		pdu.assign(len+2, 0);
 		pdu[0] = 0xff; pdu[1] = 0xff;
-		for (int i = 0; i < len; i++) {
+		for (unsigned int i = 0; i < len; i++) {
 			pdu[2 + i] = byte_buf[1 + i];
 		}
 		send_msg(pdu, M_P25_MAC_END_PTT);
@@ -304,9 +300,8 @@ void p25p2_tdma::decode_mac_msg(const uint8_t byte_buf[], const unsigned int len
 {
 	std::string s;
 	std::string pdu;
-	uint8_t b1b2, mco, op, mfid, svcopts[3], msg_ptr, msg_len, len_remaining;
-    uint16_t chan[3], ch_t[2], ch_r[2], colorcd, grpaddr[3], sys_id;
-    uint32_t srcaddr, wacn_id;
+	uint8_t b1b2, mco, op, mfid, msg_ptr, msg_len, len_remaining;
+    uint16_t colorcd;
 
 	colorcd = nac;
 	for (msg_ptr = 1; msg_ptr < len; )
@@ -468,7 +463,7 @@ int p25p2_tdma::handle_acch_frame(const uint8_t dibits[], bool fast, bool is_lcc
 	}
 
 	bool crc_ok = (is_lcch) ? (crc16(bits, len) == 0) : crc12_ok(bits, len);
-	int olen = (is_lcch) ? 23 : len/8;
+	unsigned int olen = (is_lcch) ? 23 : len/8;
 	rc = -1;
 	if (crc_ok) { // TODO: rewrite crc12 so we don't have to do so much bit manipulation
 		for (i=0; i<olen; i++) {

@@ -122,7 +122,7 @@ public:
 	void set_xormask(const char* p);
 	void set_nac(int nac);
 	void set_debug(int debug);
-	rx_sync(const char * options, int debug, int msgq_id, gr::msg_queue::sptr queue);
+	rx_sync(const char * options, log_ts& logger, int debug, int msgq_id, gr::msg_queue::sptr queue);
 	~rx_sync();
 
 private:
@@ -167,7 +167,7 @@ private:
 	bool d_stereo;
 	int d_debug;
 	op25_audio d_audio;
-	log_ts logts;
+	log_ts& logts;
 };
 
     } // end namespace op25_repeater

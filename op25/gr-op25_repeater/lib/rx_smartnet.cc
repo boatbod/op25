@@ -26,12 +26,13 @@ namespace gr{
     namespace op25_repeater{
 
         // constructor
-        rx_smartnet::rx_smartnet(const char * options, int debug, int msgq_id, gr::msg_queue::sptr queue) :
+        rx_smartnet::rx_smartnet(const char * options, log_ts& logger, int debug, int msgq_id, gr::msg_queue::sptr queue) :
             d_debug(debug),
             d_msgq_id(msgq_id),
             d_msg_queue(queue),
             sync_timer(op25_timer(1000000)),
-            d_cbuf_idx(0)
+            d_cbuf_idx(0),
+            logts(logger)
         {
             sync_reset();
         }

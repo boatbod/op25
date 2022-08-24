@@ -214,7 +214,7 @@ void rx_sync::ysf_sync(const uint8_t dibitbuf[], bool& ysf_fullrate, bool& unmut
 		fprintf(stderr, "%s ysf_sync: muting audio: dt: %d, rc: %d\n", logts.get(d_msgq_id), d_shift_reg, rc);
 }
 
-rx_sync::rx_sync(const char * options, int debug, int msgq_id, gr::msg_queue::sptr queue) :	// constructor
+rx_sync::rx_sync(const char * options, log_ts& logger, int debug, int msgq_id, gr::msg_queue::sptr queue) :	// constructor
 	sync_timer(op25_timer(1000000)),
 	d_symbol_count(0),
 	d_sync_reg(0),
@@ -225,14 +225,15 @@ rx_sync::rx_sync(const char * options, int debug, int msgq_id, gr::msg_queue::sp
 	d_expires(0),
 	d_slot_mask(3),
 	d_slot_key(0),
-	p25fdma(d_audio, debug, true, false, true, queue, d_output_queue[0], true, true, msgq_id),
-	p25tdma(d_audio, 0, debug, true, queue, d_output_queue[0], true, true, msgq_id),
-	dmr(debug, msgq_id, queue),
+	p25fdma(d_audio, logger, debug, true, false, true, queue, d_output_queue[0], true, msgq_id),
+	p25tdma(d_audio, logger, 0, debug, true, queue, d_output_queue[0], true, msgq_id),
+	dmr(logger, debug, msgq_id, queue),
 	d_msgq_id(msgq_id),
 	d_msg_queue(queue),
 	d_stereo(true),
 	d_debug(debug),
-	d_audio(options, debug)
+	d_audio(options, debug),
+    logts(logger)
 {
 	if (msgq_id >= 0)
 		d_stereo = false; // single channel audio for trunking
