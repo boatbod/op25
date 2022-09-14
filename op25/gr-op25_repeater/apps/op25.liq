@@ -27,7 +27,7 @@ input = mksafe(input.external(buffer=0.25, channels=2, samplerate=8000, restart_
 #input = filter.iir.butterworth.low(frequency = 3250.0, order = 4, input)
 
 # Compression
-input = compress(input, attack = 2.0, gain = 0.0, knee = 13.0, ratio = 2.0, release = 12.3, threshold = -18.0, rms_window = 1.0)
+input = compress(input, attack = 2.0, gain = 0.0, knee = 13.0, ratio = 2.0, release = 12.3, threshold = -18.0)
 
 # Normalization
 input = normalize(input, gain_max = 6.0, gain_min = -6.0, target = -16.0, threshold = -65.0)

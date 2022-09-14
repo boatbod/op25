@@ -61,6 +61,9 @@ class meta_server(threading.Thread):
         self.fmt_tag = from_dict(self.cfg, 'meta_format_tag', '[%TGID%] %TAG%')
         self.start()
 
+    def set_debug(self, dbglvl):
+        self.logging = dbglvl
+
     def load_json(self, metacfg):
         try:
             with open(metacfg) as json_file:

@@ -145,7 +145,7 @@ macro(GR_SWIG_MAKE name)
     list(APPEND SWIG_MODULE_${name}_EXTRA_DEPS ${tag_file})
 
     #setup the swig flags with flags and include directories
-    set(CMAKE_SWIG_FLAGS -fvirtual -modern -keyword -w511 -module ${name} ${GR_SWIG_FLAGS})
+    set(CMAKE_SWIG_FLAGS -fvirtual -keyword -w511 -module ${name} ${GR_SWIG_FLAGS})
     foreach(dir ${GR_SWIG_INCLUDE_DIRS})
         list(APPEND CMAKE_SWIG_FLAGS "-I${dir}")
     endforeach(dir)

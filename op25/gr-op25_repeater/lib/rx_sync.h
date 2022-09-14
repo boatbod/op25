@@ -1,5 +1,5 @@
 // P25 Decoder (C) Copyright 2013, 2014, 2015, 2016, 2017 Max H. Parke KA1RBI
-//             (C) Copyright 2019, 2020 Graham J. Norbury
+//             (C) Copyright 2019, 2020, 2021, 2022 Graham J. Norbury
 // 
 // This file is part of OP25
 // 
@@ -81,15 +81,12 @@ static const struct _mode_data {
 	{"YSF",    40,0,480,480*2}
 };   // index order must match rx_types enum
 
-static const int KNOWN_MAGICS = 16;
+static const int KNOWN_MAGICS = 13;
 static const struct _sync_magic {
 	int type;
 	uint64_t magic;
 } SYNC_MAGIC[KNOWN_MAGICS] = {
 	{RX_TYPE_P25P1, P25_FRAME_SYNC_MAGIC},
-	{RX_TYPE_P25P1, P25_FRAME_SYNC_N1200},
-	{RX_TYPE_P25P1, P25_FRAME_SYNC_X2400},
-	{RX_TYPE_P25P1, P25_FRAME_SYNC_P1200},
 	{RX_TYPE_P25P2, P25P2_FRAME_SYNC_MAGIC},
 	{RX_TYPE_DMR, DMR_BS_VOICE_SYNC_MAGIC},
 	{RX_TYPE_DMR, DMR_BS_DATA_SYNC_MAGIC},
@@ -118,12 +115,14 @@ public:
 	void rx_sym(const uint8_t sym);
 	void sync_reset(void);
 	void reset_timer(void);
+	void crypt_reset(void);
+	void crypt_key(uint16_t keyid, uint8_t algid, const std::vector<uint8_t> &key);
 	void set_slot_mask(int mask);
 	void set_slot_key(int mask);
 	void set_xormask(const char* p);
 	void set_nac(int nac);
 	void set_debug(int debug);
-	rx_sync(const char * options, int debug, int msgq_id, gr::msg_queue::sptr queue);
+	rx_sync(const char * options, log_ts& logger, int debug, int msgq_id, gr::msg_queue::sptr queue);
 	~rx_sync();
 
 private:
@@ -139,6 +138,7 @@ private:
 	op25_timer sync_timer;
 	unsigned int d_symbol_count;
 	uint64_t d_sync_reg;
+	uint64_t d_fs;
 	uint8_t d_cbuf[CBUF_SIZE*2];
 	unsigned int d_cbuf_idx;
 	enum rx_types d_current_type;
@@ -167,7 +167,7 @@ private:
 	bool d_stereo;
 	int d_debug;
 	op25_audio d_audio;
-	log_ts logts;
+	log_ts& logts;
 };
 
     } // end namespace op25_repeater

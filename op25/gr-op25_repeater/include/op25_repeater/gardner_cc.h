@@ -19,8 +19,8 @@
  */
 
 
-#ifndef INCLUDED_OP25_REPEATER_GARDNER_COSTAS_CC_H
-#define INCLUDED_OP25_REPEATER_GARDNER_COSTAS_CC_H
+#ifndef INCLUDED_OP25_REPEATER_GARDNER_CC_H
+#define INCLUDED_OP25_REPEATER_GARDNER_CC_H
 
 #include <op25_repeater/api.h>
 #include <gnuradio/block.h>
@@ -33,28 +33,31 @@ namespace gr {
      * \ingroup op25_repeater
      *
      */
-    class OP25_REPEATER_API gardner_costas_cc : virtual public gr::block
+    class OP25_REPEATER_API gardner_cc : virtual public gr::block
     {
      public:
-      typedef boost::shared_ptr<gardner_costas_cc> sptr;
+      typedef boost::shared_ptr<gardner_cc> sptr;
 
       /*!
-       * \brief Return a shared_ptr to a new instance of op25_repeater::gardner_costas_cc.
+       * \brief Return a shared_ptr to a new instance of op25_repeater::gardner_cc.
        *
-       * To avoid accidental use of raw pointers, op25_repeater::gardner_costas_cc's
+       * To avoid accidental use of raw pointers, op25_repeater::gardner_cc's
        * constructor is in a private implementation
-       * class. op25_repeater::gardner_costas_cc::make is the public interface for
+       * class. op25_repeater::gardner_cc::make is the public interface for
        * creating new instances.
        */
-      static sptr make(float samples_per_symbol, float gain_mu, float gain_omega, float alpha, float beta, float max_freq, float min_freq);
+      static sptr make(float samples_per_symbol,
+                       float gain_mu,
+                       float gain_omega,
+                       float lock_threshold = 0.28);
       virtual void set_omega(float omega) {}
-      virtual float get_freq_error(void) { return 0; }
-      virtual int get_error_band(void) { return 0; }
       virtual void reset() {}
+      virtual bool locked() { return false; }
+      virtual float quality() { return 0; }
     };
 
   } // namespace op25_repeater
 } // namespace gr
 
-#endif /* INCLUDED_OP25_REPEATER_GARDNER_COSTAS_CC_H */
+#endif /* INCLUDED_OP25_REPEATER_GARDNER_CC_H */
 

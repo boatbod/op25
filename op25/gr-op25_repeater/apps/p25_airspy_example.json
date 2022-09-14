@@ -6,6 +6,9 @@
             "trunking_sysname": "FiRST Talbot",
             "meta_stream_name": "stream_0",
             "demod_type": "cqpsk", 
+            "cqpsk_tracking": true,
+            "tracking_threshold": 120,
+            "tracking_feedback": 0.75,
             "destination": "udp://127.0.0.1:23466",
             "excess_bw": 0.2,
             "filter_type": "rc",
@@ -15,7 +18,8 @@
             "symbol_rate": 4800,
             "enable_analog": "off",
             "blacklist": "",
-            "whitelist": "first-dorc.wlist"
+            "whitelist": "first-dorc.wlist",
+            "crypt_keys": "example_keys.json"
         },
         {
             "name": "Voice_ch2",
@@ -23,6 +27,9 @@
             "trunking_sysname": "FiRST Talbot",
             "meta_stream_name": "stream_1",
             "demod_type": "cqpsk", 
+            "cqpsk_tracking": true,
+            "tracking_threshold": 120,
+            "tracking_feedback": 0.75,
             "destination": "udp://127.0.0.1:23466",
             "excess_bw": 0.2,
             "filter_type": "rc",
@@ -33,6 +40,7 @@
             "enable_analog": "off",
             "blacklist": "",
             "whitelist": "talbot-fire.wlist"
+            "crypt_keys": "example_keys.json"
         },
         {
             "name": "Voice_ch3",
@@ -40,6 +48,9 @@
             "trunking_sysname": "FiRST Talbot",
             "meta_stream_name": "",
             "demod_type": "cqpsk",
+            "cqpsk_tracking": true,
+            "tracking_threshold": 120,
+            "tracking_feedback": 0.75,
             "destination": "udp://127.0.0.1:23466",
             "excess_bw": 0.2,
             "filter_type": "rc",
@@ -50,6 +61,7 @@
             "enable_analog": "off",
             "blacklist": "",
             "whitelist": "qa.wlist"
+            "crypt_keys": "example_keys.json"
         }
     ], 
     "devices": [

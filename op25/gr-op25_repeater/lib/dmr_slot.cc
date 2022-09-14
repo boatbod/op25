@@ -40,7 +40,9 @@
 #include "trellis.h"
 #include "crc16.h"
 
-dmr_slot::dmr_slot(const int chan, const int debug, int msgq_id, gr::msg_queue::sptr queue) :
+#define _CRC_CHECK_ 0
+
+dmr_slot::dmr_slot(const int chan, log_ts& logger, const int debug, int msgq_id, gr::msg_queue::sptr queue) :
 	d_rc(0),
 	d_sb(0),
 	d_pdp_bf(0),
@@ -59,6 +61,7 @@ dmr_slot::dmr_slot(const int chan, const int debug, int msgq_id, gr::msg_queue::
 	d_debug(debug),
 	d_chan(chan),
 	d_slot_mask(3),
+	logts(logger),
 	d_msg_queue(queue)
 {
 	memset(d_slot, 0, sizeof(d_slot));
@@ -247,8 +250,10 @@ dmr_slot::decode_csbk(uint8_t* csbk) {
 	// Apply mask and validate CRC
 	for (int i = 0; i < 16; i++)
 		csbk[i+80] ^= CSBK_CRC_MASK[i];
+#if _CRC_CHECK_
 	if (crc16(csbk, 96) != 0)
 		return false;
+#endif
 
 	// pack and send up the stack
 	std::string csbk_msg(10,0);
@@ -306,10 +311,12 @@ dmr_slot::decode_mbc_header(uint8_t* mbc) {
 	// Apply mask and validate CRC
 	for (int i = 0; i < 16; i++)
 		mbc[i+80] ^= MBC_HEADER_CRC_MASK[i];
+#if _CRC_CHECK_
 	if (crc16(mbc, 96) != 0) {
 		fprintf(stderr, "%s MBC Header CRC failure\n", logts.get(d_msgq_id));
 		return false;
 	}
+#endif
 
 	// Extract parameters
 	uint8_t  mbc_lb   = mbc[0] & 0x1;
@@ -350,11 +357,19 @@ dmr_slot::decode_mbc_continue(uint8_t* mbc) {
 		}
 	} else {
 		// Validate CRC, excluding first 80 bits of header
+#if _CRC_CHECK_
 		if ((d_mbc.size() < 175) || 
 		    (crc16((uint8_t*)(d_mbc.data() + 80), d_mbc.size() - 80) != 0)) {
 			d_mbc_state = DATA_INVALID;
 			return false;
 		}
+#else
+		if (d_mbc.size() < 175) {
+			d_mbc_state = DATA_INVALID;
+			return false;
+		}
+#endif
+
 		d_mbc.resize(d_mbc.size()-16); // discard trailing CRC
 		d_mbc_state = DATA_VALID;
 
@@ -388,10 +403,12 @@ dmr_slot::decode_pdp_header(uint8_t* dhdr) {
 	// Apply mask and validate CRC
 	for (int i = 0; i < 16; i++)
 		dhdr[i+80] ^= DATA_HEADER_CRC_MASK[i];
+#if _CRC_CHECK_
 	if (crc16(dhdr, 96) != 0) {
 		fprintf(stderr, "%s PDP Header CRC failure\n", logts.get(d_msgq_id));
 		return false;
 	}
+#endif
 
 	if (d_dhdr_state == DATA_INVALID) { // first data header received is always standard format
 		// Extract parameters
@@ -617,10 +634,12 @@ dmr_slot::decode_pinf(uint8_t* pinf) {
 	// Apply PI mask and validate CRC
 	for (int i = 0; i < 16; i++)
 		pinf[i+80] ^= PI_HEADER_CRC_MASK[i];
+#if _CRC_CHECK_
 	if (crc16(pinf, 96) != 0) {
 		d_pi_valid = false;
 		return false;
 	}
+#endif
 
 	// Convert bits to bytes and save PI information
 	d_pi.assign(10,0);
@@ -766,7 +785,11 @@ dmr_slot::decode_embedded_lc() {
 
 	// Calculate LC CRC and compare with received value
 	uint16_t calc_crc = (d_lc[0] + d_lc[1] + d_lc[2] + d_lc[3] + d_lc[4] + d_lc[5] + d_lc[6] + d_lc[7] + d_lc[8]) % 31;
+#if _CRC_CHECK_
 	if (rxd_crc == calc_crc) {
+#else
+    if (true) {
+#endif
 		d_lc_valid = true;
 
 		// send up the stack
@@ -817,9 +840,11 @@ dmr_slot::decode_embedded_sbrc(bool _pi) {
 				return false;
 			}
 		}
+#if _CRC_CHECK_
 		if (crc7((uint8_t*)data, 11) != 0) {
 			return false;
 		}
+#endif
 		d_rc = 0;
 		for (int i = 0; i < 4; i++)
 			d_rc = (d_rc << 1) + data[i];

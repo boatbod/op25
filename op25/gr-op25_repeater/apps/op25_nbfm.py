@@ -50,6 +50,7 @@ class op25_nbfm_c(gr.hier_block2):
         self.debug = debug
         self.config = config
         self.msgq_id = msgq_id
+        self.subchannel_framer = None
 
         sys.stderr.write("%s [%d] Enabling nbfm analog audio\n" % (log_ts.get(), msgq_id))
 
@@ -142,5 +143,6 @@ class op25_nbfm_c(gr.hier_block2):
 
     def set_debug(self, dbglvl):
         self.debug = dbglvl
-        self.subchannel_framer.set_debug(dbglvl)
+        if self.subchannel_framer is not None:
+            self.subchannel_framer.set_debug(dbglvl)
 

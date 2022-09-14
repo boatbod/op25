@@ -1,0 +1,10 @@
+# Airspy Mini
+ACTION=="remove", SUBSYSTEM=="usb", ENV{PRODUCT}=="1d50/60a1/100", RUN+="/bin/bash /home/pi/op25/op25/gr-op25_repeater/apps/sdrhw_removed.sh"
+#
+# RTL 2830
+ACTION=="remove", SUBSYSTEM=="usb", ENV{PRODUCT}=="4b4/2830/100", RUN+="/bin/bash /home/pi/op25/op25/gr-op25_repeater/apps/sdrhw_removed.sh"
+# RTL 2832
+ACTION=="remove", SUBSYSTEM=="usb", ENV{PRODUCT}=="bda/2832/100", RUN+="/bin/bash /home/pi/op25/op25/gr-op25_repeater/apps/sdrhw_removed.sh"
+# RTL 2838
+ACTION=="remove", SUBSYSTEM=="usb", ENV{PRODUCT}=="bda/2838/100", RUN+="/bin/bash /home/pi/op25/op25/gr-op25_repeater/apps/sdrhw_removed.sh"
+ACTION=="remove", SUBSYSTEM=="usb", ENV{PRODUCT}=="5da/2838/100", RUN+="/bin/bash /home/pi/op25/op25/gr-op25_repeater/apps/sdrhw_removed.sh"

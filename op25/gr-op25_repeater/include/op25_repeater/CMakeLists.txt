@@ -23,7 +23,7 @@
 install(FILES
     api.h
     vocoder.h
-    gardner_costas_cc.h
+    gardner_cc.h
     p25_frame_assembler.h
     frame_assembler.h
     analog_udp.h

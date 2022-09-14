@@ -1,6 +1,6 @@
 #!/bin/sh
 # Copyright 2011, 2012, 2013, 2014, 2015, 2016, 2017 Max H. Parke KA1RBI
-# Copyright 2020 Graham J. Norbury - gnorbury@bondcar.com
+# Copyright 2020, 2021 Graham J. Norbury - gnorbury@bondcar.com
 # 
 # This file is part of OP25
 # 
@@ -60,18 +60,18 @@ from optparse import OptionParser
 import op25
 import op25_repeater
 import p25_demodulator
-import p25_decoder
 import op25_nbfm
 import op25_iqsrc
 import op25_wavsrc
 from log_ts import log_ts
+from helper_funcs import *
 
 from gr_gnuplot import constellation_sink_c
 from gr_gnuplot import fft_sink_c
 from gr_gnuplot import symbol_sink_f
 from gr_gnuplot import eye_sink_f
 from gr_gnuplot import mixer_sink_c
-from gr_gnuplot import tuner_sink_f
+from gr_gnuplot import fll_sink_c
 
 sys.path.append('tdma')
 import lfsr
@@ -80,17 +80,6 @@ os.environ['IMBE'] = 'soft'
 
 _def_symbol_rate = 4800
 _def_capture_file = "capture.bin"
-
-# Helper functions
-#
-def from_dict(d, key, def_val):
-    if key in d and d[key] != "":
-        return d[key]
-    else:
-        return def_val
-
-def get_fractional_ppm(tuned_freq, adj_val):
-    return (adj_val * 1e6 / tuned_freq)
 
 # The P25 receiver
 #
@@ -117,6 +106,7 @@ class device(object):
                 self.sample_rate = config['rate']
                 self.offset = int(from_dict(config, 'offset', 0))
             self.fractional_corr = int((int(round(self.ppm)) - self.ppm) * (self.frequency/1e6))
+            self.usable_bw = float(from_dict(config, 'usable_bw_pct', 1.0))
 
         elif config['args'] == 'wavsrc':
             self.src = op25_wavsrc.op25_wavsrc_f(str(config['name']), config)
@@ -174,10 +164,7 @@ class channel(object):
         ch_name = str(from_dict(config, 'name', ""))
         self.name = ("[%d] %s" % (msgq_id, ch_name)) if ch_name != "" else ("[%d]" % msgq_id) 
         self.device = dev
-        if 'frequency' in config and (config['frequency'] != ""):
-            self.frequency = config['frequency']
-        else:
-            self.frequency = self.device.frequency
+        self.frequency = int(from_dict(config, "frequency", dev.frequency))
         self.msgq_id = msgq_id
         self.tb = tb
         self.raw_sink = None
@@ -185,6 +172,16 @@ class channel(object):
         self.throttle = None
         self.nbfm = None
         self.nbfm_mode = 0
+        self.auto_tracking      = bool(from_dict(config, "cqpsk_tracking", False))
+        self.tracking_threshold = int(from_dict(config, "tracking_threshold", 120))
+        self.tracking_limit     = int(from_dict(config, "tracking_limit", 2400))
+        self.tracking_feedback  = float(from_dict(config, "tracking_feedback", 0.85))
+        self.tracking = 0
+        self.tracking_cache = {}
+        self.crypt_keys_file    = str(from_dict(config, "crypt_keys", ""))
+        self.crypt_keys = {}
+        self.error = None
+        self.chan_idle = False
         self.sinks = {}
         self.tdma_state = False
         self.xor_cache = {}
@@ -193,6 +190,8 @@ class channel(object):
         self.channel_rate = self.symbol_rate
         if dev.args == 'wavsrc':
             self.demod = p25_demodulator.p25_demod_fb(
+                             msgq_id = self.msgq_id,
+                             debug = self.verbosity,
                              input_rate=dev.sample_rate,
                              filter_type = config['filter_type'],
                              excess_bw=config['excess_bw'],
@@ -202,27 +201,43 @@ class channel(object):
             if filter_type[:4] != 'fsk2':   # has to be 'fsk2' or derivative such as 'fsk2mm'
                 filter_type = 'fsk2mm'
             self.demod = p25_demodulator.p25_demod_cb(
+                             msgq_id = self.msgq_id,
+                             debug = self.verbosity,
                              input_rate = dev.sample_rate,
                              demod_type = 'fsk4',
                              filter_type = filter_type,
                              usable_bw = self.device.usable_bw,
                              excess_bw = float(from_dict(config, 'excess_bw', 0.2)),
-                             relative_freq = (dev.frequency + dev.offset + dev.fractional_corr) - self.frequency,
+                             relative_freq = (dev.frequency + dev.offset + dev.fractional_corr),
                              offset = dev.offset,
                              if_rate = config['if_rate'],
                              symbol_rate = self.symbol_rate)
         else:                             # P25, DMR, NXDN and everything else
             self.demod = p25_demodulator.p25_demod_cb(
+                             msgq_id = self.msgq_id,
+                             debug = self.verbosity,
                              input_rate = dev.sample_rate,
                              demod_type = config['demod_type'],
                              filter_type = config['filter_type'],
                              usable_bw = self.device.usable_bw,
                              excess_bw = float(from_dict(config, 'excess_bw', 0.2)),
-                             relative_freq = (dev.frequency + dev.offset + dev.fractional_corr) - self.frequency,
+                             relative_freq = (dev.frequency + dev.offset + dev.fractional_corr),
                              offset = dev.offset,
                              if_rate = config['if_rate'],
                              symbol_rate = self.symbol_rate)
         self.decoder = op25_repeater.frame_assembler(str(config['destination']), verbosity, msgq_id, rx_q)
+
+        # Load crypt keys if present
+        if self.crypt_keys_file != "":
+            sys.stderr.write("%s [%d] reading channel crypt_keys file: %s\n" % (log_ts.get(), self.msgq_id, self.crypt_keys_file))
+            self.crypt_keys = get_key_dict(self.crypt_keys_file, self.msgq_id)
+            for keyid in self.crypt_keys.keys():
+                self.decoder.crypt_key(int(keyid), int(self.crypt_keys[keyid]['algid']), self.crypt_keys[keyid]['key'])
+
+        # Relative-tune the demodulator
+        if not self.demod.set_relative_frequency((dev.frequency + dev.offset + dev.fractional_corr) - self.frequency):
+            sys.stderr.write("%s [%d] Unable to initialize demod to freq: %d, using device freq: %d\n" % (log_ts.get(), self.msgq_id, self.frequency, dev.frequency))
+            self.frequency = dev.frequency
 
         if 'key' in config and (config['key'] != ""):
             self.set_key(int(config['key'], 0))
@@ -257,8 +272,8 @@ class channel(object):
                 self.toggle_constellation_plot()
             elif plot == 'mixer':
                 self.toggle_mixer_plot()
-            elif plot == 'tuner':
-                self.toggle_tuner_plot()
+            elif plot == 'fll':
+                self.toggle_fll_plot()
             else:
                 sys.stderr.write('unrecognized plot type %s\n' % plot)
                 return
@@ -269,6 +284,8 @@ class channel(object):
             self.decoder.set_debug(dbglvl)
         if self.nbfm is not None:
             self.nbfm.set_debug(dbglvl)
+        if self.demod is not None:
+            self.demod.set_debug(dbglvl)
 
     def toggle_capture(self):
         if self.raw_sink is None:   # turn on raw symbol capture
@@ -306,7 +323,7 @@ class channel(object):
         elif plot_type == 5:
             self.toggle_mixer_plot()
         elif plot_type == 6:
-            self.toggle_tuner_plot()
+            self.toggle_fll_plot()
 
     def close_plots(self):
         for plot in list(self.sinks.keys()):
@@ -314,7 +331,7 @@ class channel(object):
 
     def toggle_eye_plot(self):
         if 'eye' not in self.sinks:
-            sink = eye_sink_f(plot_name=("Ch:%s" % self.name), chan=self.msgq_id)
+            sink = eye_sink_f(plot_name=("Ch:%s" % self.name), chan=self.msgq_id, out_q=self.tb.ui_in_q)
             sink.set_sps(self.config['if_rate'] / self.symbol_rate)
             self.sinks['eye'] = (sink, self.toggle_eye_plot)
             self.set_plot_destination('eye')
@@ -330,26 +347,25 @@ class channel(object):
             self.tb.unlock()
             sink.kill()
 
-    def toggle_tuner_plot(self):
-        if 'tuner' not in self.sinks:
-            sink = tuner_sink_f(plot_name=("Ch:%s" % self.name), chan=self.msgq_id)
-            self.sinks['tuner'] = (sink, self.toggle_tuner_plot)
-            self.set_plot_destination('tuner')
+    def toggle_fll_plot(self):
+        if 'fll' not in self.sinks:
+            sink = fll_sink_c(plot_name=("Ch:%s" % self.name), chan=self.msgq_id, out_q=self.tb.ui_in_q)
+            self.sinks['fll'] = (sink, self.toggle_mixer_plot)
+            self.set_plot_destination('fll')
+            sink.set_width(self.config['if_rate'])
             self.tb.lock()
-            self.demod.connect_fm_demod()                   # add fm demod to flowgraph if not already present
-            self.demod.connect_bb_tuner('symbol_filter', sink)
+            self.demod.connect_complex('fll', sink)
             self.tb.unlock()
         else:
-            (sink, fn) = self.sinks.pop('tuner')
+            (sink, fn) = self.sinks.pop('fll')
             self.tb.lock()
-            self.demod.disconnect_bb_tuner(sink)
-            self.demod.disconnect_fm_demod()                # remove fm demod from flowgraph if no longer needed
+            self.demod.disconnect_complex(sink)
             self.tb.unlock()
             sink.kill()
 
     def toggle_symbol_plot(self):
         if 'symbol' not in self.sinks:
-            sink = symbol_sink_f(plot_name=("Ch:%s" % self.name), chan=self.msgq_id)
+            sink = symbol_sink_f(plot_name=("Ch:%s" % self.name), chan=self.msgq_id, out_q=self.tb.ui_in_q)
             self.sinks['symbol'] = (sink, self.toggle_symbol_plot)
             self.set_plot_destination('symbol')
             self.tb.lock()
@@ -364,7 +380,7 @@ class channel(object):
 
     def toggle_fft_plot(self):
         if 'fft' not in self.sinks:
-            sink = fft_sink_c(plot_name=("Ch:%s" % self.name), chan=self.msgq_id)
+            sink = fft_sink_c(plot_name=("Ch:%s" % self.name), chan=self.msgq_id, out_q=self.tb.ui_in_q)
             self.sinks['fft'] = (sink, self.toggle_fft_plot)
             self.set_plot_destination('fft')
             sink.set_offset(self.device.offset)
@@ -383,12 +399,12 @@ class channel(object):
 
     def toggle_mixer_plot(self):
         if 'mixer' not in self.sinks:
-            sink = mixer_sink_c(plot_name=("Ch:%s" % self.name), chan=self.msgq_id)
+            sink = mixer_sink_c(plot_name=("Ch:%s" % self.name), chan=self.msgq_id, out_q=self.tb.ui_in_q)
             self.sinks['mixer'] = (sink, self.toggle_mixer_plot)
             self.set_plot_destination('mixer')
             sink.set_width(self.config['if_rate'])
             self.tb.lock()
-            self.demod.connect_complex('cutoff', sink)
+            self.demod.connect_complex('agc', sink)
             self.tb.unlock()
         else:
             (sink, fn) = self.sinks.pop('mixer')
@@ -401,11 +417,11 @@ class channel(object):
         if str(self.config['demod_type']).lower() != "cqpsk":
             return
         if 'constellation' not in self.sinks:
-            sink = constellation_sink_c(plot_name=("Ch:%s" % self.name), chan=self.msgq_id)
+            sink = constellation_sink_c(plot_name=("Ch:%s" % self.name), chan=self.msgq_id, out_q=self.tb.ui_in_q)
             self.sinks['constellation'] = (sink, self.toggle_constellation_plot)
             self.set_plot_destination('constellation')
             self.tb.lock()
-            self.demod.connect_complex('diffdec', sink)
+            self.demod.connect_complex('costas', sink)
             self.tb.unlock()
         else:
             (sink, fn) = self.sinks.pop('constellation')
@@ -417,25 +433,32 @@ class channel(object):
     def set_freq(self, freq):
         if self.frequency == freq:
             return True
+
         old_freq = self.frequency
+        old_track = self.tracking
         self.frequency = freq
-        if not self.demod.set_relative_frequency(self.device.offset + self.device.frequency + self.device.fractional_corr - freq): # First attempt relative tune
+        self.tracking_cache[old_freq] = old_track
+        if self.frequency in self.tracking_cache:
+            self.tracking = self.tracking_cache[self.frequency]     # if cached value available use it otherwise continue with existing
+
+        if not self.demod.set_relative_frequency(self.device.offset + self.device.frequency + self.device.fractional_corr + self.tracking - freq): # First attempt relative tune
             if self.device.tunable:                                                                  # then hard tune if allowed
                 self.device.frequency = self.frequency
                 self.device.src.set_center_freq(self.frequency + self.device.offset)
                 self.device.fractional_corr = int((int(round(self.device.ppm)) - self.device.ppm) * (self.device.frequency/1e6))        # Calc frac ppm using new freq
-                self.demod.set_relative_frequency(self.device.offset + self.device.frequency + self.device.fractional_corr - freq)
+                self.demod.set_relative_frequency(self.device.offset + self.device.frequency + self.device.fractional_corr + self.tracking - freq)
                 if self.verbosity >= 9:
-                    sys.stderr.write("%s [%d] Hardware tune: dev_freq(%d), dev_off(%d), dev_frac(%d), tune_freq(%d)\n" % (log_ts.get(), self.msgq_id, self.device.frequency, self.device.offset, self.device.fractional_corr, (self.device.frequency - (self.device.offset + self.device.frequency + self.device.fractional_corr - freq))))
+                    sys.stderr.write("%s [%d] Hardware tune: dev_freq(%d), dev_off(%d), dev_frac(%d), tune_freq(%d), tracking(%d)\n" % (log_ts.get(), self.msgq_id, self.device.frequency, self.device.offset, self.device.fractional_corr, (self.device.frequency - (self.device.offset + self.device.frequency + self.device.fractional_corr - freq)), self.tracking))
             else:                                                                                    # otherwise fail and reset to prev freq
-                self.demod.set_relative_frequency(self.device.offset + self.device.frequency + self.device.fractional_corr - old_freq)
+                self.tracking = old_track
+                self.demod.set_relative_frequency(self.device.offset + self.device.frequency + self.device.fractional_corr + self.tracking - old_freq)
                 self.frequency = old_freq
                 if self.verbosity:
                     sys.stderr.write("%s [%d] Unable to tune %s to frequency %f\n" % (log_ts.get(), self.msgq_id, self.name, (freq/1e6)))
                 return False
         else:
             if self.verbosity >= 9:
-                sys.stderr.write("%s [%d] Relative tune: dev_freq(%d), dev_off(%d), dev_frac(%d), tune_freq(%d)\n" % (log_ts.get(), self.msgq_id, self.device.frequency, self.device.offset, self.device.fractional_corr, (self.device.frequency - (self.device.offset + self.device.frequency + self.device.fractional_corr - freq))))
+                sys.stderr.write("%s [%d] Relative tune: dev_freq(%d), dev_off(%d), dev_frac(%d), tune_freq(%d), tracking(%d)\n" % (log_ts.get(), self.msgq_id, self.device.frequency, self.device.offset, self.device.fractional_corr, (self.device.frequency - (self.device.offset + self.device.frequency + self.device.fractional_corr + self.tracking - freq)), self.tracking))
         if 'fft' in self.sinks:
                 self.sinks['fft'][0].set_center_freq(self.device.frequency)
                 self.sinks['fft'][0].set_relative_freq(self.device.frequency - freq)
@@ -446,11 +469,12 @@ class channel(object):
         return True
 
     def adj_tune(self, adjustment): # ideally this would all be done at the device level but the demod belongs to the channel object
+        self.tracking = 0
         self.device.ppm -= get_fractional_ppm(self.device.frequency, adjustment)
         self.device.src.set_freq_corr(int(round(self.device.ppm)))
         self.device.src.set_center_freq(self.device.frequency + self.device.offset)
         self.device.fractional_corr = int((int(round(self.device.ppm)) - self.device.ppm) * (self.device.frequency/1e6))
-        self.demod.set_relative_frequency(self.device.offset + self.device.frequency + self.device.fractional_corr - self.frequency)
+        self.demod.set_relative_frequency(self.device.offset + self.device.frequency + self.device.fractional_corr + self.tracking - self.frequency)
         self.demod.reset()          # reset gardner-costas tracking loop
 
     def configure_p25_tdma(self, params):
@@ -487,6 +511,7 @@ class channel(object):
         self.decoder.set_nac(nac)
 
     def set_slot(self, slot):
+        self.chan_idle = True if (slot == 4) else False
         self.decoder.set_slotid(slot)
 
     def set_key(self, key):
@@ -495,6 +520,38 @@ class channel(object):
     def kill(self):
         for sink in self.sinks:
             self.sinks[sink][0].kill()
+
+    def error_tracking(self):
+        if self.chan_idle:
+            self.error = None
+            return
+        self.error = self.demod.get_freq_error()
+
+    def dump_tracking(self):
+        sys.stderr.write("%s [%d] Frequency Tracking Cache: ch(%d)\n{\n" % (log_ts.get(), self.msgq_id, self.msgq_id))
+        for freq in sorted(self.tracking_cache):
+            sys.stderr.write("%f : %d\n" % ((freq/1e6), self.tracking_cache[freq]))
+        sys.stderr.write("}\n")
+
+    def set_tracking(self, tracking):
+        if tracking > 0:
+            self.auto_tracking = True
+        elif tracking == 0:
+            self.auto_tracking = False
+        else:
+            self.auto_tracking = not self.auto_tracking
+        if self.verbosity >= 10:
+            sys.stderr.write("%s [%d] set auto_tracking:%s\n" % (log_ts.get(), self.msgq_id, ("on" if self.auto_tracking else "off")))
+
+    def get_error(self):
+        return self.error
+
+    def get_tracking(self):
+        return self.tracking
+
+    def get_auto_tracking(self):
+        return self.auto_tracking
+
 
 class rx_block (gr.top_block):
 
@@ -516,8 +573,8 @@ class rx_block (gr.top_block):
         self.trunking = None
         self.du_watcher = None
         self.rx_q = gr.msg_queue(100)
-        self.ui_in_q = gr.msg_queue(10)
-        self.ui_out_q = gr.msg_queue(10)
+        self.ui_in_q = gr.msg_queue(100)
+        self.ui_out_q = gr.msg_queue(100)
         self.ui_timeout = 5.0
         self.ui_last_update = 0.0
 
@@ -550,6 +607,9 @@ class rx_block (gr.top_block):
             dev.set_debug(dbglvl)
         if self.trunking is not None and self.trunk_rx is not None:
             self.trunk_rx.set_debug(dbglvl)
+        if self.metadata is not None:
+            for stream in self.meta_streams:
+                self.meta_streams[stream][0].set_debug(dbglvl)
 
     def set_interactive(self, session_type):
         self.interactive = session_type
@@ -833,6 +893,13 @@ class rx_block (gr.top_block):
             pass
         elif s == 'dump_tgids':
             self.trunk_rx.dump_tgids()
+        elif s == 'dump_tracking':
+            msgq_id = int(msg.arg2())
+            self.channels[msgq_id].dump_tracking()
+        elif s == 'set_tracking':
+            tracking = msg.arg1()
+            msgq_id = int(msg.arg2())
+            self.find_channel(msgq_id).set_tracking(tracking)
         elif s == 'capture':
             if not self.get_interactive():
                 sys.stderr.write("%s Cannot start capture for non-realtime (replay) sessions\n" % log_ts.get())
@@ -845,6 +912,10 @@ class rx_block (gr.top_block):
                 sys.stderr.write("%s UI Timeout\n" % log_ts.get())
                 for chan in self.channels:
                     chan.close_plots()
+            # Experimental automatic fine tuning 
+            # TODO: find a better way to invoke
+            for chan in self.channels:
+                chan.error_tracking()
         elif s in RX_COMMANDS:
             if self.trunking is not None and self.trunk_rx is not None:
                 self.trunk_rx.ui_command(s, msg.arg1(), msg.arg2())
@@ -857,6 +928,9 @@ class rx_block (gr.top_block):
         for rx_id in params['channels']:                       # iterate and convert stream name to url
             params[rx_id]['ppm'] = self.find_channel(int(rx_id)).device.get_ppm()
             params[rx_id]['capture'] = False if self.find_channel(int(rx_id)).raw_sink is None else True
+            params[rx_id]['error'] = self.find_channel(int(rx_id)).get_error() if self.find_channel(int(rx_id)).auto_tracking else None
+            params[rx_id]['auto_tracking'] = self.find_channel(int(rx_id)).get_auto_tracking()
+            params[rx_id]['tracking'] = self.find_channel(int(rx_id)).get_tracking()
             s_name = params[rx_id]['stream']
             if s_name not in self.meta_streams:
                 continue
@@ -977,7 +1051,7 @@ class rx_main(object):
             self.tb.start()
             if self.tb.get_interactive():
                 while self.keep_running:
-                    time.sleep(1)
+                    time.sleep(1.0)
                     msg = gr.message().make_from_string("watchdog", -2, 0, 0)
                     self.tb.ui_out_q.insert_tail(msg)
             else:

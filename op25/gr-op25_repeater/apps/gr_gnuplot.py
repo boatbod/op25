@@ -21,6 +21,7 @@ import sys
 import os
 import time
 import subprocess
+import json
 
 from gnuradio import gr, gru, eng_notation
 from gnuradio import blocks, audio
@@ -43,7 +44,7 @@ FFT_FREQ = 0.05   # time interval between fft updates
 MIX_FREQ = 0.02   # time interval between mixer updates
 
 class wrap_gp(object):
-    def __init__(self, sps=_def_sps, plot_name="", chan = 0):
+    def __init__(self, sps=_def_sps, plot_name="", chan = 0, out_q = None):
         self.sps = sps
         self.center_freq = 0.0
         self.relative_freq = 0.0
@@ -52,7 +53,6 @@ class wrap_gp(object):
         self.ffts = ()
         self.freqs = ()
         self.avg_pwr = np.zeros(FFT_BINS)
-        self.avg_sum_pwr = 0.0
         self.min_y = -100.0
         self.buf = []
         self.plot_count = 0
@@ -62,6 +62,7 @@ class wrap_gp(object):
         self.output_dir = None
         self.filename = None
         self.chan = chan
+        self.out_q = out_q
         if plot_name == "":
             self.plot_name = ""
         else:
@@ -82,6 +83,9 @@ class wrap_gp(object):
             self.gp.stdin.close()   # closing pipe should cause subprocess to exit
         except IOError:
             pass
+        if self.out_q is not None:
+            self.out_q.flush()
+        self.out_q = None
         sleep_count = 0
         while True:                     # wait politely, but only for so long
             self.gp.poll()
@@ -111,6 +115,7 @@ class wrap_gp(object):
             self.buf = np.array([])
             return consumed
 
+        plot_data = { "json_type": "plot", "chan": self.chan, "mode": mode, "data": [] }
         plots = []
         s = ''
         while(len(self.buf)):
@@ -119,27 +124,27 @@ class wrap_gp(object):
                     break
                 for i in range(self.sps):
                     s += '%f\n' % self.buf[i]
+                    plot_data['data'].append( (i, self.buf[i]) )
                 s += 'e\n'
                 self.buf=self.buf[self.sps:]
                 plots.append('"-" with lines')
-            elif mode == 'tuner':
-                s += '%f\n' % self.buf[0] # we only care about 1 data point
-                s += 'e\n'
-                self.buf=self.buf[self.sps:]
-                plots.append('"-" with boxes')
             elif mode == 'constellation':
                 for b in self.buf:
                     s += '%f\t%f\n' % (b.real, b.imag)
+                    plot_data['data'].append( (b.real, b.imag) )
                 s += 'e\n'
                 self.buf = []
                 plots.append('"-" with points')
             elif mode == 'symbol':
+                idx = 0
                 for b in self.buf:
                     s += '%f\n' % (b)
+                    plot_data['data'].append( (idx, b) )
+                    idx += 1
                 s += 'e\n'
                 self.buf = []
                 plots.append('"-" with points')
-            elif mode == 'fft' or mode == 'mixer':
+            elif mode == 'fft' or mode == 'mixer' or mode == 'fll':
                 sum_pwr = 0.0
                 self.ffts = np.fft.fft((self.buf * np.blackman(BUFSZ)), BUFSZ , 0) / (0.42 * BUFSZ)
                 self.ffts = np.fft.fftshift(self.ffts)
@@ -157,13 +162,14 @@ class wrap_gp(object):
                         self.avg_pwr[i] = ((1.0 - MIX_AVG) * self.avg_pwr[i]) + (MIX_AVG * np.abs(self.ffts[i]))
                     if self.avg_pwr[i] == 0: # guard against divide by zero
                         break
-                    s += '%f\t%f\n' % (self.freqs[i], 20 * np.log10(self.avg_pwr[i]))
-                    if (mode == 'mixer') and (self.avg_pwr[i] > 1e-5):
+                    y_val = 20 * np.log10(self.avg_pwr[i])
+                    s += '%f\t%f\n' % (self.freqs[i], y_val)
+                    plot_data['data'].append( (self.freqs[i], y_val) )
+                    if ((mode == 'mixer') or (mode == 'fll')) and (self.avg_pwr[i] > 1e-5):
                         if (self.freqs[i] - self.center_freq) < 0:
                             sum_pwr -= self.avg_pwr[i]
                         elif (self.freqs[i] - self.center_freq) > 0:
                             sum_pwr += self.avg_pwr[i]
-                        self.avg_sum_pwr = ((1.0 - BAL_AVG) * self.avg_sum_pwr) + (BAL_AVG * sum_pwr)
                 s += 'e\n'
                 self.buf = []
                 plots.append('"-" with lines')
@@ -191,6 +197,7 @@ class wrap_gp(object):
             h += 'set output "%s/%s"\n' % (self.output_dir, filename)
         else:
             h= 'set terminal x11 noraise\n'
+
         #background = 'set object 1 circle at screen 0,0 size screen 1 fillcolor rgb"black"\n' #FIXME!
         background = ''
         h+= 'set key off\n'
@@ -200,36 +207,47 @@ class wrap_gp(object):
             h+= 'set xrange [-1:1]\n'
             h+= 'set yrange [-1:1]\n'
             h+= 'set title "%sConstellation"\n' % self.plot_name
+            plot_data['xrange'] = (-1,1)
+            plot_data['yrange'] = (-1,1)
+            plot_data['title'] = "%sConstellation" % self.plot_name
         elif mode == 'eye':
             h+= background
             h+= 'set yrange [-4:4]\n'
             h+= 'set title "%sDatascope"\n' % self.plot_name
-        elif mode == 'tuner':
-            h+= 'set xrange [-1:1]\n'
-            h+= 'set xzeroaxis\n'
-            h+= 'set yrange [-1:1]\n'
-            h+= 'set boxwidth 0.25\n'
-            h+= 'set style fill solid\n'
-            h+= 'set title "%sTuner"\n' % self.plot_name
+            plot_data['xrange'] = (0,len(plot_data['data']))
+            plot_data['yrange'] = (-4,4)
+            plot_data['title'] = "%sDatascope" % self.plot_name
         elif mode == 'symbol':
             h+= background
             h+= 'set yrange [-4:4]\n'
             h+= 'set title "%sSymbol"\n' % self.plot_name
-        elif mode == 'fft' or mode == 'mixer':
+            plot_data['xrange'] = (0,len(plot_data['data']))
+            plot_data['yrange'] = (-4,4)
+            plot_data['title'] = "%sSymbol" % self.plot_name
+        elif mode == 'fft' or mode == 'mixer' or mode =='fll':
             h+= 'unset arrow; unset title\n'
             h+= 'set xrange [%f:%f]\n' % (self.freqs[0], self.freqs[len(self.freqs)-1])
             h+= 'set xlabel "Frequency"\n'
             h+= 'set ylabel "Power(dB)"\n'
             h+= 'set grid\n'
             h+= 'set yrange [%d:0]\n' % ((self.min_y // 20) * 20)
-            if mode == 'mixer': # mixer
-                                h+= 'set title "%sMixer: balance %3.0f (smaller is better)"\n' % (self.plot_name, (np.abs(self.avg_sum_pwr * 1000)))
-            else:           # fft
-                h+= 'set title "%sSpectrum"\n' % self.plot_name
+            plot_data['xrange'] = (self.freqs[0], self.freqs[len(self.freqs)-1])
+            plot_data['yrange'] = (((self.min_y // 20) * 20), 0)
+            if mode == 'mixer':
+                h+= 'set title "%sRaw Mixer\n' % self.plot_name
+                plot_data['title'] = "%sRaw Mixer" % self.plot_name
+            elif mode == 'fll':
+                h+= 'set title "%sTuned Mixer"\n' % self.plot_name
+                plot_data['title'] = "%sTuned Mixer" % self.plot_name
+            else:               # fft
                 if self.center_freq:
                     arrow_pos = (self.center_freq - self.relative_freq) / 1e6
                     h+= 'set arrow from %f, graph 0 to %f, graph 1 nohead\n' % (arrow_pos, arrow_pos)
                     h+= 'set title "%sSpectrum: tuned to %f Mhz"\n' % (self.plot_name, arrow_pos)
+                    plot_data['title'] = "%sSpectrum: tuned to %f Mhz" % (self.plot_name, arrow_pos)
+                else:
+                    h+= 'set title "%sSpectrum"\n' % self.plot_name
+                    plot_data['title'] = "%sSpectrum" % self.plot_name
         dat = '%splot %s\n%s' % (h, ','.join(plots), s)
         if sys.version[0] != '2':
             dat = bytes(dat, 'utf8')
@@ -241,6 +259,11 @@ class wrap_gp(object):
                 pass
         if filename:
             self.filename = filename
+
+        if self.out_q is not None and not self.out_q.full_p():      # if configured, send raw plot data to UI
+            msg = gr.message().make_from_string(json.dumps(plot_data), -4, 0, 0)
+            self.out_q.insert_tail(msg)
+
         return consumed
 
     def set_center_freq(self, f):
@@ -258,14 +281,14 @@ class wrap_gp(object):
 class eye_sink_f(gr.sync_block):
     """
     """
-    def __init__(self, debug = _def_debug, sps = _def_sps, plot_name = "", chan = 0):
+    def __init__(self, debug = _def_debug, sps = _def_sps, plot_name = "", chan = 0, out_q = None):
         gr.sync_block.__init__(self,
             name="eye_sink_f",
             in_sig=[np.float32],
             out_sig=None)
         self.debug = debug
         self.sps = sps * _def_sps_mult
-        self.gnuplot = wrap_gp(sps=self.sps, plot_name=plot_name, chan=chan)
+        self.gnuplot = wrap_gp(sps=self.sps, plot_name=plot_name, chan=chan, out_q=out_q)
 
     def set_sps(self, sps):
         self.sps = sps * _def_sps_mult
@@ -279,35 +302,16 @@ class eye_sink_f(gr.sync_block):
     def kill(self):
         self.gnuplot.kill()
 
-class tuner_sink_f(gr.sync_block):
-    """
-    """
-    def __init__(self, debug = _def_debug, plot_name = "", chan = 0):
-        gr.sync_block.__init__(self,
-            name="tuner_sink_f",
-            in_sig=[np.float32],
-            out_sig=None)
-        self.debug = debug
-        self.gnuplot = wrap_gp(plot_name=plot_name, chan=chan)
-
-    def work(self, input_items, output_items):
-        in0 = input_items[0]
-        self.gnuplot.plot(in0, 1, mode='tuner')
-        return len(input_items[0])
-
-    def kill(self):
-        self.gnuplot.kill()
-
 class constellation_sink_c(gr.sync_block):
     """
     """
-    def __init__(self, debug = _def_debug, plot_name = "", chan = 0):
+    def __init__(self, debug = _def_debug, plot_name = "", chan = 0, out_q = None):
         gr.sync_block.__init__(self,
             name="constellation_sink_c",
             in_sig=[np.complex64],
             out_sig=None)
         self.debug = debug
-        self.gnuplot = wrap_gp(plot_name=plot_name, chan=chan)
+        self.gnuplot = wrap_gp(plot_name=plot_name, chan=chan, out_q=out_q)
 
     def work(self, input_items, output_items):
         in0 = input_items[0]
@@ -320,13 +324,13 @@ class constellation_sink_c(gr.sync_block):
 class fft_sink_c(gr.sync_block):
     """
     """
-    def __init__(self, debug = _def_debug, plot_name = "", chan = 0):
+    def __init__(self, debug = _def_debug, plot_name = "", chan = 0, out_q = None):
         gr.sync_block.__init__(self,
             name="fft_sink_c",
             in_sig=[np.complex64],
             out_sig=None)
         self.debug = debug
-        self.gnuplot = wrap_gp(plot_name=plot_name, chan=chan)
+        self.gnuplot = wrap_gp(plot_name=plot_name, chan=chan, out_q=out_q)
         self.next_due = time.time()
 
     def work(self, input_items, output_items):
@@ -355,13 +359,13 @@ class fft_sink_c(gr.sync_block):
 class mixer_sink_c(gr.sync_block):
     """
     """
-    def __init__(self, debug = _def_debug, plot_name = "", chan = 0):
+    def __init__(self, debug = _def_debug, plot_name = "", chan = 0, out_q = None):
         gr.sync_block.__init__(self,
             name="mixer_sink_c",
             in_sig=[np.complex64],
             out_sig=None)
         self.debug = debug
-        self.gnuplot = wrap_gp(plot_name=plot_name, chan=chan)
+        self.gnuplot = wrap_gp(plot_name=plot_name, chan=chan, out_q=out_q)
         self.next_due = time.time()
 
     def work(self, input_items, output_items):
@@ -377,16 +381,41 @@ class mixer_sink_c(gr.sync_block):
     def set_width(self, w):
         self.gnuplot.set_width(w)
 
+class fll_sink_c(gr.sync_block):
+    """
+    """
+    def __init__(self, debug = _def_debug, plot_name = "", chan = 0, out_q = None):
+        gr.sync_block.__init__(self,
+            name="fll_sink_c",
+            in_sig=[np.complex64],
+            out_sig=None)
+        self.debug = debug
+        self.gnuplot = wrap_gp(plot_name=plot_name, chan=chan, out_q=out_q)
+        self.next_due = time.time()
+
+    def work(self, input_items, output_items):
+        if time.time() > self.next_due:
+            self.next_due = time.time() + MIX_FREQ
+            in0 = input_items[0]
+            self.gnuplot.plot(in0, FFT_BINS, mode='fll')
+        return len(input_items[0])
+
+    def kill(self):
+        self.gnuplot.kill()
+
+    def set_width(self, w):
+        self.gnuplot.set_width(w)
+
 class symbol_sink_f(gr.sync_block):
     """
     """
-    def __init__(self, debug = _def_debug, plot_name = "", chan = 0):
+    def __init__(self, debug = _def_debug, plot_name = "", chan = 0, out_q = None):
         gr.sync_block.__init__(self,
             name="symbol_sink_f",
             in_sig=[np.float32],
             out_sig=None)
         self.debug = debug
-        self.gnuplot = wrap_gp(plot_name=plot_name, chan=chan)
+        self.gnuplot = wrap_gp(plot_name=plot_name, chan=chan, out_q=out_q)
 
     def work(self, input_items, output_items):
         in0 = input_items[0]

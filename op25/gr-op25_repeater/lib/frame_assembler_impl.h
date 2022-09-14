@@ -31,6 +31,7 @@
 #include <deque>
 
 #include "rx_base.h"
+#include "log_ts.h"
 
 typedef std::deque<uint8_t> dibit_queue;
 
@@ -46,7 +47,6 @@ namespace gr {
                 rx_base* d_sync;
 
                 // internal functions
-
                 void queue_msg(int duid);
                 void set_xormask(const char* p);
                 void set_nac(int nac);
@@ -54,8 +54,11 @@ namespace gr {
                 void set_slotkey(int key);
                 void set_debug(int debug);
                 void sync_reset();
+                void crypt_reset();
+                void crypt_key(uint16_t keyid, uint8_t algid, const std::vector<uint8_t> &key);
 
             public:
+                log_ts logts;
 
             public:
                 frame_assembler_impl(const char* options, int debug, int msgq_id, gr::msg_queue::sptr queue);

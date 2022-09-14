@@ -303,6 +303,10 @@ class curses_terminal(threading.Thread):
             self.send_command('toggle_plot', (c - ord('0')), int(self.current_msgqid))
         elif c == ord('d'):
             self.send_command('dump_tgids', 0, int(self.current_msgqid))
+        elif c == ord('D'):
+            self.send_command('dump_tracking', 0, int(self.current_msgqid))
+        elif c == ord('T'):
+            self.send_command('set_tracking', -1, int(self.current_msgqid))
         elif c == ord('x'):
             assert 1 == 0
         elif c == curses.KEY_UP:
@@ -383,6 +387,8 @@ class curses_terminal(threading.Thread):
             s = 'Frequency %f' % (msg['freq'] / 1000000.0)
             if msg['fine_tune'] is not None:
                 s +='(%d)' % msg['fine_tune']
+            if msg['error'] is not None:
+                s += '(%dHz)' % (msg['error'])
             if msg['tgid'] is not None:
                 s += ' Talkgroup ID %s' % (msg['tgid'])
                 if msg['tdma'] is not None:
@@ -410,6 +416,8 @@ class curses_terminal(threading.Thread):
             s += 'Frequency %f' % (msg[c_id]['freq'] / 1000000.0)
             if msg[c_id]['ppm'] is not None:
                 s += '(%.3f)' % (msg[c_id]['ppm'])
+            if msg[c_id]['error'] is not None:
+                s += '(%dHz)' % (msg[c_id]['error'])
             if msg[c_id]['capture'] is not None:
                 if msg[c_id]['capture'] != self.capture_active:
                     self.capture_active = msg[c_id]['capture']

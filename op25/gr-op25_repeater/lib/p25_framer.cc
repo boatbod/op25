@@ -34,8 +34,7 @@ static const int max_frame_lengths[16] = {
 };
 
 // constructor
-p25_framer::p25_framer(int debug, int msgq_id) :
-    reverse_p(0),
+p25_framer::p25_framer(log_ts& logger, int debug, int msgq_id) :
     nid_syms(0),
     next_bit(0),
     nid_accum(0),
@@ -44,6 +43,7 @@ p25_framer::p25_framer(int debug, int msgq_id) :
     d_msgq_id(msgq_id),
     d_expected_nac(0),
     d_unexpected_nac(0),
+    logts(logger),
     symbols_received(0),
     nac(0),
     duid(0),
@@ -142,8 +142,6 @@ bool p25_framer::nid_codeword(uint64_t acc) {
 bool p25_framer::rx_sym(uint8_t dibit) {
     symbols_received++;
     bool rc = false;
-    dibit ^= reverse_p;
-    // FIXME assert(dibit >= 0 && dibit <= 3)
     nid_accum <<= 2;
     nid_accum |= dibit;
     if (nid_syms == 12) {
@@ -160,7 +158,10 @@ bool p25_framer::rx_sym(uint8_t dibit) {
                 // size isn't known a priori -
                 // fall back to max. size and wait for next FS
                 frame_size_limit = P25_VOICE_FRAME_SIZE;
-        }
+        } else {
+            if (d_debug >= 10)
+                fprintf(stderr, "%s p25_framer::rx_sym() error check failed, frame discarded, nid=%012lx\n", logts.get(d_msgq_id), nid_accum);  
+            }
     }
     if (nid_syms > 0) // if nid accumulation in progress
         nid_syms++; // count symbols in nid
@@ -168,20 +169,7 @@ bool p25_framer::rx_sym(uint8_t dibit) {
     if(check_frame_sync((nid_accum & P25_FRAME_SYNC_MASK) ^ P25_FRAME_SYNC_MAGIC, 6, 48)) {
         nid_syms = 1;
     }
-    if(check_frame_sync((nid_accum & P25_FRAME_SYNC_MASK) ^ P25_FRAME_SYNC_REV_P, 0, 48)) {
-        nid_syms = 1;
-        reverse_p ^= 0x02;   // auto flip polarity reversal
-        fprintf(stderr, "%s p25_framer::rx_sym() Reversed FS polarity detected - autocorrecting\n", logts.get(d_msgq_id));
-    }
-    if(check_frame_sync((nid_accum & P25_FRAME_SYNC_MASK) ^ P25_FRAME_SYNC_N1200, 0, 48)) {
-        fprintf(stderr, "%s p25_framer::rx_sym() tuning error -1200\n", logts.get(d_msgq_id));
-    }
-    if(check_frame_sync((nid_accum & P25_FRAME_SYNC_MASK) ^ P25_FRAME_SYNC_P1200, 0, 48)) {
-        fprintf(stderr, "%s p25_framer::rx_sym() tuning error +1200\n", logts.get(d_msgq_id));
-    }
-    if(check_frame_sync((nid_accum & P25_FRAME_SYNC_MASK) ^ P25_FRAME_SYNC_X2400, 0, 48)) {
-        fprintf(stderr, "%s p25_framer::rx_sym() tuning error +/- 2400\n", logts.get(d_msgq_id));
-    }
+
     if (next_bit > 0) {
         frame_body[next_bit++] = (dibit >> 1) & 1;
         frame_body[next_bit++] =  dibit       & 1;
@@ -202,51 +190,22 @@ bool p25_framer::rx_sym(uint8_t dibit) {
 
 /*
  * load_nid: called by framer when SYNC + NID have been received (first 57 symbols)
- * 1. validates sync flags sequences
- * 2. do BCH check on completed NID
- * 3. after valid BCH check accumulate frame data bits
- *
+ * Perform BCH check on received NID
  * Returns number of symbols required to complete the frame, else 0 upon error
  */
-uint32_t p25_framer::load_nid(const uint8_t *syms, int nsyms) {
+uint32_t p25_framer::load_nid(const uint8_t *syms, int nsyms, const uint64_t fs) {
     if (nsyms < 57)
         return 0;
 
     uint8_t dibit;
     next_bit = 0;
     for (int i = 0; i < nsyms; i++) {
-        dibit = syms[i] ^ reverse_p;
+        dibit = syms[i] & 0x3;
         frame_body[next_bit++] = (dibit >> 1) & 1;
         frame_body[next_bit++] =  dibit       & 1;
     }
 
-    bool sync_valid = false;
     uint64_t accum = 0;
-    for (int i = 0; i < 48; i++) {
-        accum <<= 1;
-        accum |= frame_body[i];
-    }
-    if(check_frame_sync((accum & P25_FRAME_SYNC_MASK) ^ P25_FRAME_SYNC_MAGIC, 6, 48)) {
-        sync_valid = true;
-    }
-    if(check_frame_sync((accum & P25_FRAME_SYNC_MASK) ^ P25_FRAME_SYNC_REV_P, 0, 48)) {
-        reverse_p ^= 0x02;   // auto flip polarity reversal
-        fprintf(stderr, "%s p25_framer::load_nid() Reversed FS polarity detected - autocorrecting\n", logts.get(d_msgq_id));
-    }
-    if(check_frame_sync((accum & P25_FRAME_SYNC_MASK) ^ P25_FRAME_SYNC_N1200, 0, 48)) {
-        fprintf(stderr, "%s p25_framer::load_nid() tuning error -1200\n", logts.get(d_msgq_id));
-    }
-    if(check_frame_sync((accum & P25_FRAME_SYNC_MASK) ^ P25_FRAME_SYNC_P1200, 0, 48)) {
-        fprintf(stderr, "%s p25_framer::load_nid() tuning error +1200\n", logts.get(d_msgq_id));
-    }
-    if(check_frame_sync((accum & P25_FRAME_SYNC_MASK) ^ P25_FRAME_SYNC_X2400, 0, 48)) {
-        fprintf(stderr, "%s p25_framer::load_nid() tuning error +/- 2400\n", logts.get(d_msgq_id));
-    }
-
-    if (!sync_valid)
-        return 0;
-
-    accum = 0;
     for (int i = 48; i < 114; i++) {
         if ((i == 70) || (i == 71))
             continue;
@@ -256,13 +215,14 @@ uint32_t p25_framer::load_nid(const uint8_t *syms, int nsyms) {
     bool bch_rc = nid_codeword(accum);
     if (!bch_rc) {
         if (d_debug >= 10)
-            fprintf(stderr, "%s p25_framer::load_nid() error check failed, frame discarded\n", logts.get(d_msgq_id));  
+            fprintf(stderr, "%s p25_framer::load_nid() error check failed, frame discarded, nid=%012lx\n", logts.get(d_msgq_id), accum);  
         return 0;
     }
 
     frame_size_limit = max_frame_lengths[duid];
     if (frame_size_limit == 0)
         frame_size_limit = P25_VOICE_FRAME_SIZE;
+
     return (frame_size_limit >> 1) - nsyms;
 }
 
@@ -273,7 +233,7 @@ uint32_t p25_framer::load_nid(const uint8_t *syms, int nsyms) {
 bool p25_framer::load_body(const uint8_t * syms, int nsyms) {
     uint8_t dibit;
     for (int i = 0; i < nsyms; i++) {
-        dibit = syms[i] ^ reverse_p;
+        dibit = syms[i] & 0x3;
         frame_body[next_bit++] = (dibit >> 1) & 1;
         frame_body[next_bit++] =  dibit       & 1;
     }

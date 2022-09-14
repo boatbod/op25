@@ -1,5 +1,5 @@
 // P25 Decoder (C) Copyright 2013, 2014, 2015, 2016, 2017 Max H. Parke KA1RBI
-//             (C) Copyright 2019, 2020 Graham J. Norbury (DMR & P25 additions)
+//             (C) Copyright 2019, 2020, 2021, 2022 Graham J. Norbury (DMR & P25 additions)
 // 
 // This file is part of OP25
 // 
@@ -75,6 +75,7 @@ void rx_sync::sync_reset(void) {
 	d_threshold = 0;
 	d_shift_reg = 0;
 	d_sync_reg = 0;
+	d_fs = 0;
 	d_expires = 0;
 	d_current_type = RX_TYPE_NONE;
 	d_fragment_len = MODE_DATA[d_current_type].fragment_len;
@@ -92,6 +93,16 @@ void rx_sync::sync_reset(void) {
 
 	// Timers reset
 	reset_timer();
+}
+
+void rx_sync::crypt_reset(void) {
+	p25fdma.crypt_reset();
+	p25tdma.crypt_reset();
+}
+
+void rx_sync::crypt_key(uint16_t keyid, uint8_t algid, const std::vector<uint8_t> &key) {
+	p25fdma.crypt_key(keyid, algid, key);
+	p25tdma.crypt_key(keyid, algid, key);
 }
 
 void rx_sync::set_nac(int nac) {
@@ -203,24 +214,26 @@ void rx_sync::ysf_sync(const uint8_t dibitbuf[], bool& ysf_fullrate, bool& unmut
 		fprintf(stderr, "%s ysf_sync: muting audio: dt: %d, rc: %d\n", logts.get(d_msgq_id), d_shift_reg, rc);
 }
 
-rx_sync::rx_sync(const char * options, int debug, int msgq_id, gr::msg_queue::sptr queue) :	// constructor
+rx_sync::rx_sync(const char * options, log_ts& logger, int debug, int msgq_id, gr::msg_queue::sptr queue) :	// constructor
 	sync_timer(op25_timer(1000000)),
 	d_symbol_count(0),
 	d_sync_reg(0),
+	d_fs(0),
 	d_cbuf_idx(0),
 	d_current_type(RX_TYPE_NONE),
 	d_rx_count(0),
 	d_expires(0),
 	d_slot_mask(3),
 	d_slot_key(0),
-	p25fdma(d_audio, debug, true, false, true, queue, d_output_queue[0], true, true, msgq_id),
-	p25tdma(d_audio, 0, debug, true, queue, d_output_queue[0], true, true, msgq_id),
-	dmr(debug, msgq_id, queue),
+	p25fdma(d_audio, logger, debug, true, false, true, queue, d_output_queue[0], true, msgq_id),
+	p25tdma(d_audio, logger, 0, debug, true, queue, d_output_queue[0], true, msgq_id),
+	dmr(logger, debug, msgq_id, queue),
 	d_msgq_id(msgq_id),
 	d_msg_queue(queue),
 	d_stereo(true),
 	d_debug(debug),
-	d_audio(options, debug)
+	d_audio(options, debug),
+    logts(logger)
 {
 	if (msgq_id >= 0)
 		d_stereo = false; // single channel audio for trunking
@@ -453,6 +466,7 @@ void rx_sync::rx_sym(const uint8_t sym)
 	for (int i = 0; i < KNOWN_MAGICS; i++) {
 		if (check_frame_sync(SYNC_MAGIC[i].magic ^ d_sync_reg, (SYNC_MAGIC[i].type == d_current_type) ? d_threshold : 0, MODE_DATA[SYNC_MAGIC[i].type].sync_len)) {
 			sync_detected = (enum rx_types) SYNC_MAGIC[i].type;
+            d_fs = SYNC_MAGIC[i].magic;
 			break;
 		}
 	}
@@ -511,7 +525,7 @@ void rx_sync::rx_sym(const uint8_t sym)
 		break;
 	case RX_TYPE_P25P1:
         if (d_fragment_len == MODE_DATA[d_current_type].fragment_len) {
-		    int frame_len = p25fdma.load_nid(symbol_ptr, MODE_DATA[d_current_type].fragment_len);
+		    int frame_len = p25fdma.load_nid(symbol_ptr, MODE_DATA[d_current_type].fragment_len, d_fs);
             if (frame_len > 0) {
                 d_fragment_len = frame_len;                             // expected length of remainder of this frame
             } else {
@@ -523,8 +537,8 @@ void rx_sync::rx_sym(const uint8_t sym)
         }
 		break;
 	case RX_TYPE_P25P2:
-		p25tdma.handle_packet(symbol_ptr); // passing 180 dibit packets is faster than bit-shuffling via p25tdma::rx_sym()
-        p25fdma.reset_timer();             // reset FDMA timer in case of long TDMA transmissions
+		p25tdma.handle_packet(symbol_ptr, d_fs); // passing 180 dibit packets is faster than bit-shuffling via p25tdma::rx_sym()
+        p25fdma.reset_timer();                   // reset FDMA timer in case of long TDMA transmissions
 		break;
 	case RX_TYPE_DMR:
 		// frame with explicit sync resets expiration counter
