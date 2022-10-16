@@ -2,7 +2,7 @@
 
 /*
  * Copyright 2008 Steve Glass
- * Copyright 2018 Matt Ames
+ * Copyright 2022 Matt Ames
  * 
  * This file is part of OP25.
  * 
@@ -72,7 +72,7 @@ const value_string ALGIDS[] = {
    { 0x9F, "Motorola DES-XL 56-bit key" },
    { 0xA0, "Motorola DVI-XL" },
    { 0xA1, "Motorola DVP-XL" },
-   { 0xA2, "Motorola DVI-SPFL"},
+   { 0xA2, "Motorola DVI-XL-SPFL"},
    { 0xA3, "Motorola HAYSTACK" },
    { 0xA4, "Motorola Assigned - Unknown" },
    { 0xA5, "Motorola Assigned - Unknown" },
@@ -82,11 +82,12 @@ const value_string ALGIDS[] = {
    { 0xA9, "Motorola Assigned - Unknown" },
    { 0xAA, "Motorola ADP (40 bit RC4)" },
    { 0xAB, "Motorola CFX-256" },
-   { 0xAC, "Motorola Assigned - Unknown" },
-   { 0xAD, "Motorola Assigned - Unknown" },
+   { 0xAC, "Motorola GOST 28147-89 (RFC 5830)" },
+   { 0xAD, "Motorola Assigned - LOCALIZED" },
    { 0xAE, "Motorola Assigned - Unknown" },
-   { 0xAF, "Motorola AES-256-GCM (possibly)" },
+   { 0xAF, "Motorola AES+" },
    { 0xB0, "Motorola DVP"},
+   { 0xD0, "Motorola LOCAL_BR"}
 };
 const size_t ALGIDS_SZ = sizeof(ALGIDS) / sizeof(ALGIDS[0]);
 
