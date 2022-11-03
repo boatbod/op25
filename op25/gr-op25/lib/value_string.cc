@@ -2,7 +2,7 @@
 
 /*
  * Copyright 2008 Steve Glass
- * Copyright 2018 Matt Ames
+ * Copyright 2022 Matt Ames
  * 
  * This file is part of OP25.
  * 
@@ -82,7 +82,7 @@ const value_string ALGIDS[] = {
    { 0xA9, "Motorola Assigned - Unknown" },
    { 0xAA, "Motorola ADP (40 bit RC4)" },
    { 0xAB, "Motorola CFX-256" },
-   { 0xAC, "Motorola Assigned - Unknown" },
+   { 0xAC, "Motorola GOST 28147-89 (RFC 5830)" },
    { 0xAD, "Motorola Assigned - LOCALIZED" },
    { 0xAE, "Motorola Assigned - Unknown" },
    { 0xAF, "Motorola AES+" },
