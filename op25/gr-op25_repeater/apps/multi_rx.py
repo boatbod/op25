@@ -52,13 +52,13 @@ import traceback
 import osmosdr
 import importlib
 
-from gnuradio import audio, eng_notation, gr, gru, filter, blocks, fft, analog, digital
+from gnuradio import audio, eng_notation, gr, filter, blocks, fft, analog, digital
 from gnuradio.eng_option import eng_option
 from math import pi
 from optparse import OptionParser
 
-import op25
-import op25_repeater
+import gnuradio.op25 as op25
+import gnuradio.op25_repeater as op25_repeater
 import p25_demodulator
 import op25_nbfm
 import op25_iqsrc
@@ -572,9 +572,9 @@ class rx_block (gr.top_block):
         self.meta_streams = {}
         self.trunking = None
         self.du_watcher = None
-        self.rx_q = gr.msg_queue(100)
-        self.ui_in_q = gr.msg_queue(100)
-        self.ui_out_q = gr.msg_queue(100)
+        self.rx_q = op25_repeater.msg_queue(100)
+        self.ui_in_q = op25_repeater.msg_queue(100)
+        self.ui_out_q = op25_repeater.msg_queue(100)
         self.ui_timeout = 5.0
         self.ui_last_update = 0.0
 
@@ -706,7 +706,7 @@ class rx_block (gr.top_block):
                     sys.stderr.write("Ignoring duplicate metadata stream #%d [%s]\n" % (idx, stream_name))
                     break
                 try:
-                    meta_q = gr.msg_queue(10)
+                    meta_q = op25_repeater.msg_queue(10)
                     meta_s = self.metadata.meta_server(meta_q, stream, debug=self.verbosity)
                     self.meta_streams[stream_name] = (meta_s, meta_q)
                     sys.stderr.write("Configuring metadata stream #%d [%s]: %s\n" % (idx, stream_name, stream['icecastServerAddress'] + "/" + stream['icecastMountpoint']))
@@ -858,7 +858,7 @@ class rx_block (gr.top_block):
             if self.trunking is None or self.trunk_rx is None:
                 return False
             js = self.trunk_rx.to_json()    # extract data from trunking module
-            msg = gr.message().make_from_string(js, -4, 0, 0)
+            msg = op25_repeater.message().make_from_string(js, -4, 0, 0)
             self.ui_in_q.insert_tail(msg)   # send info back to UI
             self.ui_plot_update()
         elif s == 'toggle_plot':
@@ -879,7 +879,7 @@ class rx_block (gr.top_block):
             if self.terminal is not None and self.terminal_config is not None:
                 self.terminal_config['json_type'] = "terminal_config"
                 js = json.dumps(self.terminal_config)
-                msg = gr.message().make_from_string(js, -4, 0, 0)
+                msg = op25_repeater.message().make_from_string(js, -4, 0, 0)
                 self.ui_in_q.insert_tail(msg)
             else:
                 return False
@@ -887,7 +887,7 @@ class rx_block (gr.top_block):
             cfg = self.config
             cfg['json_type'] = "full_config"
             js = json.dumps(cfg)
-            msg = gr.message().make_from_string(js, -4, 0, 0)
+            msg = op25_repeater.message().make_from_string(js, -4, 0, 0)
             self.ui_in_q.insert_tail(msg)
         elif s == 'set_full_config':
             pass
@@ -937,7 +937,7 @@ class rx_block (gr.top_block):
             meta_s, meta_q = self.meta_streams[s_name]
             params[rx_id]['stream_url'] = meta_s.get_url()
         js = json.dumps(params)
-        msg = gr.message().make_from_string(js, -4, 0, 0)
+        msg = op25_repeater.message().make_from_string(js, -4, 0, 0)
         self.ui_in_q.insert_tail(msg)
 
     def ui_plot_update(self):
@@ -950,7 +950,7 @@ class rx_block (gr.top_block):
                 if chan.sinks[sink][0].gnuplot.filename is not None:
                     filenames.append(chan.sinks[sink][0].gnuplot.filename)
         d = {'json_type': 'rx_update', 'files': filenames}
-        msg = gr.message().make_from_string(json.dumps(d), -4, 0, 0)
+        msg = op25_repeater.message().make_from_string(json.dumps(d), -4, 0, 0)
         self.ui_in_q.insert_tail(msg)
 
     def kill(self):
@@ -1052,7 +1052,7 @@ class rx_main(object):
             if self.tb.get_interactive():
                 while self.keep_running:
                     time.sleep(1.0)
-                    msg = gr.message().make_from_string("watchdog", -2, 0, 0)
+                    msg = op25_repeater.message().make_from_string("watchdog", -2, 0, 0)
                     self.tb.ui_out_q.insert_tail(msg)
             else:
                 self.tb.wait() # curiously wait() matures when a flowgraph gets locked

@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 
-from gnuradio import gr, gru, audio, eng_notation, analog, blocks, filter
+from gnuradio import gr, audio, eng_notation, analog, blocks, filter
 from gnuradio.eng_option import eng_option
 from optparse import OptionParser
 import numpy as np
 
-import op25_repeater
+import gnuradio.op25_repeater as op25_repeater
 import lfsr
 
 class app_top_block(gr.top_block):

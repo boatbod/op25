@@ -24,7 +24,7 @@
 #ifndef INCLUDED_OP25_REPEATER_RMSAGC_FF_IMPL_H
 #define INCLUDED_OP25_REPEATER_RMSAGC_FF_IMPL_H
 
-#include <op25_repeater/rmsagc_ff.h>
+#include <gnuradio/op25_repeater/rmsagc_ff.h>
 
 namespace gr {
     namespace op25_repeater {

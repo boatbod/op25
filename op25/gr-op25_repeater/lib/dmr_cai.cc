@@ -36,7 +36,7 @@
 #include "hamming.h"
 #include "crc16.h"
 
-dmr_cai::dmr_cai(log_ts& logger, int debug, int msgq_id, gr::msg_queue::sptr queue) :
+dmr_cai::dmr_cai(log_ts& logger, int debug, int msgq_id, gr::op25::msg_queue::sptr queue) :
 	d_slot{dmr_slot(0, logger, debug, msgq_id, queue), dmr_slot(1, logger, debug, msgq_id, queue)},
 	d_slot_mask(3),
 	d_chan(0),
@@ -72,7 +72,7 @@ dmr_cai::send_msg(const std::string& m_buf, const int m_type) {
 	if ((d_msgq_id < 0) || (d_msg_queue->full_p()))
 		return;
 
-	gr::message::sptr msg = gr::message::make_from_string(m_buf, get_msg_type(PROTOCOL_DMR, m_type), (d_msgq_id << 1), logts.get_ts());
+	gr::op25::message::sptr msg = gr::op25::message::make_from_string(m_buf, get_msg_type(PROTOCOL_DMR, m_type), (d_msgq_id << 1), logts.get_ts());
 	d_msg_queue->insert_tail(msg);
 }
 

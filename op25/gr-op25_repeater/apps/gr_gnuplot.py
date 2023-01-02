@@ -23,11 +23,13 @@ import time
 import subprocess
 import json
 
-from gnuradio import gr, gru, eng_notation
+from gnuradio import gr, eng_notation
 from gnuradio import blocks, audio
 from gnuradio.eng_option import eng_option
 import numpy as np
 from gnuradio import gr
+
+import gnuradio.op25_repeater as op25_repeater
 
 _def_debug = 0
 _def_sps = 5
@@ -261,7 +263,7 @@ class wrap_gp(object):
             self.filename = filename
 
         if self.out_q is not None and not self.out_q.full_p():      # if configured, send raw plot data to UI
-            msg = gr.message().make_from_string(json.dumps(plot_data), -4, 0, 0)
+            msg = op25_repeater.message().make_from_string(json.dumps(plot_data), -4, 0, 0)
             self.out_q.insert_tail(msg)
 
         return consumed

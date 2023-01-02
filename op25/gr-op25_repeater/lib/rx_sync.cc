@@ -214,7 +214,7 @@ void rx_sync::ysf_sync(const uint8_t dibitbuf[], bool& ysf_fullrate, bool& unmut
 		fprintf(stderr, "%s ysf_sync: muting audio: dt: %d, rc: %d\n", logts.get(d_msgq_id), d_shift_reg, rc);
 }
 
-rx_sync::rx_sync(const char * options, log_ts& logger, int debug, int msgq_id, gr::msg_queue::sptr queue) :	// constructor
+rx_sync::rx_sync(const char * options, log_ts& logger, int debug, int msgq_id, gr::op25::msg_queue::sptr queue) :	// constructor
 	sync_timer(op25_timer(1000000)),
 	d_symbol_count(0),
 	d_sync_reg(0),
@@ -260,16 +260,16 @@ void rx_sync::sync_timeout(rx_types proto)
 	}
 	if ((d_msgq_id >= 0) && (!d_msg_queue->full_p())) {
 		std::string m_buf;
-		gr::message::sptr msg;
+		gr::op25::message::sptr msg;
 		switch(proto) {
 		case RX_TYPE_NONE:
 		case RX_TYPE_P25P1:
 		case RX_TYPE_P25P2:
-			msg = gr::message::make_from_string(m_buf, get_msg_type(PROTOCOL_P25, M_P25_TIMEOUT), (d_msgq_id << 1), logts.get_ts());
+			msg = gr::op25::message::make_from_string(m_buf, get_msg_type(PROTOCOL_P25, M_P25_TIMEOUT), (d_msgq_id << 1), logts.get_ts());
 			d_msg_queue->insert_tail(msg);
 			break;
 		case RX_TYPE_DMR:
-			msg = gr::message::make_from_string(m_buf, get_msg_type(PROTOCOL_DMR, M_DMR_TIMEOUT), (d_msgq_id << 1), logts.get_ts());
+			msg = gr::op25::message::make_from_string(m_buf, get_msg_type(PROTOCOL_DMR, M_DMR_TIMEOUT), (d_msgq_id << 1), logts.get_ts());
 			d_msg_queue->insert_tail(msg);
 			break;
 		default:
@@ -286,13 +286,13 @@ void rx_sync::sync_established(rx_types proto)
 	}
 	if ((d_msgq_id >= 0) && (!d_msg_queue->full_p())) {
 		std::string m_buf;
-		gr::message::sptr msg;
+		gr::op25::message::sptr msg;
 		switch(proto) {
 		case RX_TYPE_NONE:
             break;
 		case RX_TYPE_P25P1:
 		case RX_TYPE_P25P2:
-			msg = gr::message::make_from_string(m_buf, get_msg_type(PROTOCOL_P25, M_P25_SYNC_ESTAB), (d_msgq_id << 1), logts.get_ts());
+			msg = gr::op25::message::make_from_string(m_buf, get_msg_type(PROTOCOL_P25, M_P25_SYNC_ESTAB), (d_msgq_id << 1), logts.get_ts());
 			d_msg_queue->insert_tail(msg);
 			break;
 		case RX_TYPE_DMR:

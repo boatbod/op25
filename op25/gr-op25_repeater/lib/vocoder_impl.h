@@ -21,7 +21,7 @@
 #ifndef INCLUDED_OP25_REPEATER_VOCODER_IMPL_H
 #define INCLUDED_OP25_REPEATER_VOCODER_IMPL_H
 
-#include <op25_repeater/vocoder.h>
+#include <gnuradio/op25_repeater/vocoder.h>
 
 #include <sys/time.h>
 #include <netinet/in.h>

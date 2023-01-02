@@ -45,7 +45,7 @@ snapshot_du_handler::handle(data_unit_sptr du)
       string snapshot(du->snapshot());
       if(snapshot.size() > 0) {
          const size_t snapshot_sz = snapshot.size() + 1;
-	 gr::message::sptr msg = gr::message::make(/*type*/0, /*arg1*/++d_data_units, /*arg2*/0, snapshot_sz);
+	 gr::op25::message::sptr msg = gr::op25::message::make(/*type*/0, /*arg1*/++d_data_units, /*arg2*/0, snapshot_sz);
          char *snapshot_data = reinterpret_cast<char*>(msg->msg());
          memcpy(snapshot_data, snapshot.c_str(), snapshot_sz);
          d_msgq->handle(msg);
@@ -54,14 +54,14 @@ snapshot_du_handler::handle(data_unit_sptr du)
    data_unit_handler::handle(du);
 }
 
-gr::msg_queue::sptr
+gr::op25::msg_queue::sptr
 snapshot_du_handler::get_msgq() const
 {
    return d_msgq;
 }
 
 void
-snapshot_du_handler::set_msgq(gr::msg_queue::sptr msgq)
+snapshot_du_handler::set_msgq(gr::op25::msg_queue::sptr msgq)
 {
    d_msgq = msgq;
 }

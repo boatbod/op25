@@ -21,7 +21,7 @@
 #ifndef INCLUDED_OP25_REPEATER_FSK4_SLICER_FB_IMPL_H
 #define INCLUDED_OP25_REPEATER_FSK4_SLICER_FB_IMPL_H
 
-#include <op25_repeater/fsk4_slicer_fb.h>
+#include <gnuradio/op25_repeater/fsk4_slicer_fb.h>
 #include "p25_dibit.h"
 
 namespace gr {

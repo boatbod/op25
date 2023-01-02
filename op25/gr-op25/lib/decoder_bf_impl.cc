@@ -85,14 +85,14 @@ namespace gr {
 	   nsamples_reqd);
     }
 
-    gr::msg_queue::sptr
+    gr::op25::msg_queue::sptr
     decoder_bf_impl::get_msgq() const
     {
       return d_snapshot_du_handler->get_msgq();
     }
 
     void
-    decoder_bf_impl::set_msgq(gr::msg_queue::sptr msgq)
+    decoder_bf_impl::set_msgq(gr::op25::msg_queue::sptr msgq)
     {
       d_snapshot_du_handler->set_msgq(msgq);
     }

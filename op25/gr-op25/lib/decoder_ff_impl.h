@@ -23,7 +23,7 @@
 #ifndef INCLUDED_OP25_DECODER_FF_IMPL_H
 #define INCLUDED_OP25_DECODER_FF_IMPL_H
 
-#include <op25/decoder_ff.h>
+#include <gnuradio/op25/decoder_ff.h>
 #include "data_unit.h"
 #include "data_unit_handler.h"
 #include "imbe_decoder.h"
@@ -129,7 +129,7 @@ namespace gr {
        * \return A (possibly NULL) gr_msg_queue_sptr pointing to the
        * message queue.
        */
-      gr::msg_queue::sptr get_msgq() const;
+      gr::op25::msg_queue::sptr get_msgq() const;
 
       /**
        * Accessor for the msgq attribute. Sets the msgq to point to
@@ -138,7 +138,7 @@ namespace gr {
        * \return A (possibly NULL) gr_msg_queue_sptr pointing to the
        * message queue.
        */
-      void set_msgq(gr::msg_queue::sptr msgq);
+      void set_msgq(gr::op25::msg_queue::sptr msgq);
     };
   } // namespace op25
 } // namespace gr

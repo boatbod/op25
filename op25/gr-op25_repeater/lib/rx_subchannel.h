@@ -28,7 +28,7 @@
 #include <iostream>
 #include <deque>
 #include <assert.h>
-#include <gnuradio/msg_queue.h>
+#include <gnuradio/op25_repeater/msg_queue.h>
 
 #include "bit_utils.h"
 #include "log_ts.h"
@@ -54,7 +54,7 @@ namespace gr{
                 void set_slot_key(int mask) { };
                 void set_xormask(const char* p) { };
                 void set_debug(int debug);
-                rx_subchannel(const char * options, log_ts& logger, int debug, int msgq_id, gr::msg_queue::sptr queue);
+                rx_subchannel(const char * options, log_ts& logger, int debug, int msgq_id, gr::op25::msg_queue::sptr queue);
                 ~rx_subchannel();
 
             private:
@@ -62,7 +62,7 @@ namespace gr{
 
                 int d_debug;
                 int d_msgq_id;
-                gr::msg_queue::sptr d_msg_queue;
+                gr::op25::msg_queue::sptr d_msg_queue;
 
                 uint16_t d_flag_reg;
                 log_ts& logts;

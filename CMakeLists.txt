@@ -11,6 +11,8 @@ cmake_policy(SET CMP0012 NEW)
 cmake_policy(SET CMP0026 OLD)
 cmake_policy(SET CMP0045 OLD)
 
+set_property(GLOBAL PROPERTY ALLOW_DUPLICATE_CUSTOM_TARGETS 1)
+
 #select the release build type by default to get optimization flags
 if(NOT CMAKE_BUILD_TYPE)
    set(CMAKE_BUILD_TYPE "Release")

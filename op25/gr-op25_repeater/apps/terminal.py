@@ -54,6 +54,8 @@ import socket
 
 from gnuradio import gr
 
+import gnuradio.op25_repeater as op25_repeater
+
 KEEPALIVE_TIME = 3.0   # no data received in (seconds)
 
 class q_watcher(threading.Thread):
@@ -503,7 +505,7 @@ class curses_terminal(threading.Thread):
                     js = js.encode()
             self.sock.send(js)
         else:
-            msg = gr.message().make_from_string(command, -2, arg1, arg2)
+            msg = op25_repeater.message().make_from_string(command, -2, arg1, arg2)
             self.output_q.insert_tail(msg)
 
     def run(self):
@@ -586,7 +588,7 @@ class udp_terminal(threading.Thread):
             if data['command'] == 'quit':
                 self.keepalive_until = 0
                 continue
-            msg = gr.message().make_from_string(str(data['command']), -2, data['arg1'], data['arg2'])
+            msg = op25_repeater.message().make_from_string(str(data['command']), -2, data['arg1'], data['arg2'])
             self.output_q.insert_tail(msg)
             self.remote_ip = addr[0]
             self.remote_port = addr[1]
@@ -606,7 +608,7 @@ def op25_terminal(input_q,  output_q, terminal_type):
 
 class terminal_client(object):
     def __init__(self):
-        self.input_q = gr.msg_queue(10)
+        self.input_q = op25_repeater.msg_queue(10)
         self.keep_running = True
         self.terminal = None
 
@@ -623,7 +625,7 @@ class terminal_client(object):
         while self.keep_running:
             try:
                 js, addr = self.sock.recvfrom(2048)
-                msg = gr.message().make_from_string(js, -4, 0, 0)
+                msg = op25_repeater.message().make_from_string(js, -4, 0, 0)
                 self.input_q.insert_tail(msg)
             except socket.timeout:
                 pass

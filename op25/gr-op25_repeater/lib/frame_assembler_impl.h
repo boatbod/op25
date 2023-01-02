@@ -21,7 +21,7 @@
 #ifndef INCLUDED_OP25_REPEATER_FRAME_ASSEMBLER_IMPL_H
 #define INCLUDED_OP25_REPEATER_FRAME_ASSEMBLER_IMPL_H
 
-#include <op25_repeater/frame_assembler.h>
+#include <gnuradio/op25_repeater/frame_assembler.h>
 
 #include <gnuradio/msg_queue.h>
 #include <sys/socket.h>
@@ -43,7 +43,7 @@ namespace gr {
             private:
                 int d_debug;
                 int d_msgq_id;
-                gr::msg_queue::sptr d_msg_queue;
+                gr::op25::msg_queue::sptr d_msg_queue;
                 rx_base* d_sync;
 
                 // internal functions
@@ -61,7 +61,7 @@ namespace gr {
                 log_ts logts;
 
             public:
-                frame_assembler_impl(const char* options, int debug, int msgq_id, gr::msg_queue::sptr queue);
+                frame_assembler_impl(const char* options, int debug, int msgq_id, gr::op25::msg_queue::sptr queue);
                 ~frame_assembler_impl();
 
                 // Where all the action really happens

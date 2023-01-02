@@ -38,7 +38,7 @@ namespace gr {
     namespace op25_repeater {
 
         analog_udp::sptr
-            analog_udp::make(const char* options, int debug, int msgq_id, gr::msg_queue::sptr queue)
+            analog_udp::make(const char* options, int debug, int msgq_id, gr::op25::msg_queue::sptr queue)
             {
                 return gnuradio::get_initial_sptr
                     (new analog_udp_impl(options, debug, msgq_id, queue));
@@ -57,7 +57,7 @@ namespace gr {
         /*
          * The private constructor
          */
-        analog_udp_impl::analog_udp_impl(const char* options, int debug, int msgq_id, gr::msg_queue::sptr queue)
+        analog_udp_impl::analog_udp_impl(const char* options, int debug, int msgq_id, gr::op25::msg_queue::sptr queue)
             : gr::block("analog_udp",
                     gr::io_signature::make (MIN_IN, MAX_IN, sizeof (float)),
                     gr::io_signature::make (0, 0, 0)),

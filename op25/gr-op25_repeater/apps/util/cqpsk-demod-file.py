@@ -16,12 +16,13 @@
 import sys
 import os
 import math
-from gnuradio import gr, gru, audio, eng_notation
+from gnuradio import gr, audio, eng_notation
 from gnuradio import filter, blocks, analog, digital
 from gnuradio.eng_option import eng_option
+from gnuradio.fft import window
 from optparse import OptionParser
 
-import op25_repeater
+import gnuradio.op25_repeater as op25_repeater
 
 from math import pi
 
@@ -71,7 +72,7 @@ class my_top_block(gr.top_block):
         else:
             AMP = blocks.multiply_const_cc(options.gain)
 
-        lpf_taps = filter.firdes.low_pass(1.0, sample_rate, options.low_pass, options.low_pass * 0.1, filter.firdes.WIN_HANN)
+        lpf_taps = filter.firdes.low_pass(1.0, sample_rate, options.low_pass, options.low_pass * 0.1, window.WIN_HANN)
 
         decim_amt = 1
         if options.tone_detect:

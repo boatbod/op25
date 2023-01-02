@@ -21,7 +21,7 @@
 #ifndef INCLUDED_OP25_REPEATER_ANALOG_UDP_IMPL_H
 #define INCLUDED_OP25_REPEATER_ANALOG_UDP_IMPL_H
 
-#include <op25_repeater/analog_udp.h>
+#include <gnuradio/op25_repeater/analog_udp.h>
 
 #include <gnuradio/msg_queue.h>
 #include <sys/socket.h>
@@ -45,7 +45,7 @@ namespace gr {
             private:
                 int d_debug;
                 int d_msgq_id;
-                gr::msg_queue::sptr d_msg_queue;
+                gr::op25::msg_queue::sptr d_msg_queue;
                 op25_audio d_audio;
                 pcm_samples d_pcm;
                 log_ts logts;
@@ -54,7 +54,7 @@ namespace gr {
                 void set_debug(int debug);
 
             public:
-                analog_udp_impl(const char* options, int debug, int msgq_id, gr::msg_queue::sptr queue);
+                analog_udp_impl(const char* options, int debug, int msgq_id, gr::op25::msg_queue::sptr queue);
                 ~analog_udp_impl();
 
                 // Where all the action really happens

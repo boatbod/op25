@@ -21,9 +21,9 @@
 #ifndef INCLUDED_OP25_REPEATER_P25_FRAME_ASSEMBLER_IMPL_H
 #define INCLUDED_OP25_REPEATER_P25_FRAME_ASSEMBLER_IMPL_H
 
-#include <op25_repeater/p25_frame_assembler.h>
+#include <gnuradio/op25_repeater/p25_frame_assembler.h>
 
-#include <gnuradio/msg_queue.h>
+#include <gnuradio/op25_repeater/msg_queue.h>
 #include <sys/socket.h>
 #include <sys/time.h>
 #include <netinet/in.h>
@@ -67,7 +67,7 @@ namespace gr {
             op25_audio op25audio;
 
         public:
-            p25_frame_assembler_impl(const char* udp_host, int port, int debug, bool do_imbe, bool do_output, bool do_msgq, gr::msg_queue::sptr queue, bool do_audio_output, bool do_phase2_tdma, bool do_nocrypt);
+            p25_frame_assembler_impl(const char* udp_host, int port, int debug, bool do_imbe, bool do_output, bool do_msgq, gr::op25::msg_queue::sptr queue, bool do_audio_output, bool do_phase2_tdma, bool do_nocrypt);
             ~p25_frame_assembler_impl();
 
             // Where all the action really happens

@@ -23,7 +23,7 @@
 #ifndef INCLUDED_OP25_REPEATER_DMR_BS_TX_BB_IMPL_H
 #define INCLUDED_OP25_REPEATER_DMR_BS_TX_BB_IMPL_H
 
-#include <op25_repeater/dmr_bs_tx_bb.h>
+#include <gnuradio/op25_repeater/dmr_bs_tx_bb.h>
 
 #include <sys/time.h>
 #include <netinet/in.h>

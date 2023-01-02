@@ -25,10 +25,11 @@ OP25 Analog Narrowband FM Demodulator Block
 """
 
 import sys
-from gnuradio import gr, gru, eng_notation
+from gnuradio import gr, eng_notation
 from gnuradio import filter, analog, digital, blocks
+from gnuradio.fft import window
 from math import pi
-import op25_repeater
+import gnuradio.op25_repeater as op25_repeater
 from log_ts import log_ts
 
 _PCM_RATE       = 8000   # PCM is 8kHz S16LE format
@@ -83,12 +84,12 @@ class op25_nbfm_c(gr.hier_block2):
                                           input_rate,     # sampling rate
                                           3000.0,         # Audio high cutoff (remove aliasing)
                                           200.0,          # transition
-                                          filter.firdes.WIN_HAMMING)  # filter type
+                                          window.WIN_HAMMING)  # filter type
         hpf_taps = filter.firdes.high_pass(1.0,           # gain
                                           _PCM_RATE,      # sampling rate
                                           200.0,          # Audio low cutoff  (remove sub-audio signaling)
                                           10.0,           # Sharp transition band
-                                          filter.firdes.WIN_HAMMING)  # filter type
+                                          window.WIN_HAMMING)  # filter type
         self.lp_filter = filter.fir_filter_fff(audio_decim, lpf_taps)
         self.hp_filter = filter.fir_filter_fff(1, hpf_taps)
 
@@ -121,7 +122,7 @@ class op25_nbfm_c(gr.hier_block2):
         if subchannel_enabled:
             self.subchannel_decimation = 25
             self.subchannel_gain = 10
-            self.subchannelfilttaps = filter.firdes.low_pass(self.subchannel_gain, input_rate, 200, 40, filter.firdes.WIN_HANN)
+            self.subchannelfilttaps = filter.firdes.low_pass(self.subchannel_gain, input_rate, 200, 40, window.WIN_HANN)
             self.subchannelfilt = filter.fir_filter_fff(self.subchannel_decimation, self.subchannelfilttaps)
             self.subchannel_syms_per_sec = 150
             self.subchannel_samples_per_symbol = (input_rate / self.subchannel_decimation) / self.subchannel_syms_per_sec

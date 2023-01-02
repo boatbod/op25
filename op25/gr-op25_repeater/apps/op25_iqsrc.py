@@ -25,9 +25,9 @@ OP25 IQ File Source Block
 """
 
 import sys
-from gnuradio import gr, gru
+from gnuradio import gr
 from gnuradio import blocks
-import op25_repeater
+import gnuradio.op25_repeater as op25_repeater
 from log_ts import log_ts
 
 

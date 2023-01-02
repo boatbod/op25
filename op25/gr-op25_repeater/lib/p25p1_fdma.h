@@ -22,7 +22,7 @@
 #ifndef INCLUDED_OP25_REPEATER_P25P1_FDMA_H
 #define INCLUDED_OP25_REPEATER_P25P1_FDMA_H
 
-#include <gnuradio/msg_queue.h>
+#include <gnuradio/op25_repeater/msg_queue.h>
 #include <deque>
 
 #include "ezpwd/rs"
@@ -76,7 +76,7 @@ namespace gr {
                 int  d_msgq_id;
                 bool d_do_audio_output;
                 int d_nac;
-                gr::msg_queue::sptr d_msg_queue;
+                gr::op25::msg_queue::sptr d_msg_queue;
                 std::deque<int16_t> &output_queue;
                 p25_framer* framer;
                 op25_timer qtimer;
@@ -102,7 +102,7 @@ namespace gr {
                 void crypt_reset();
                 void crypt_key(uint16_t keyid, uint8_t algid, const std::vector<uint8_t> &key);
                 void rx_sym (const uint8_t *syms, int nsyms);
-                p25p1_fdma(const op25_audio& udp, log_ts& logger, int debug, bool do_imbe, bool do_output, bool do_msgq, gr::msg_queue::sptr queue, std::deque<int16_t> &output_queue, bool do_audio_output, int msgq_id = 0);
+                p25p1_fdma(const op25_audio& udp, log_ts& logger, int debug, bool do_imbe, bool do_output, bool do_msgq, gr::op25::msg_queue::sptr queue, std::deque<int16_t> &output_queue, bool do_audio_output, int msgq_id = 0);
                 ~p25p1_fdma();
                 uint32_t load_nid(const uint8_t *syms, int nsyms, const uint64_t fs);
                 bool load_body(const uint8_t * syms, int nsyms);

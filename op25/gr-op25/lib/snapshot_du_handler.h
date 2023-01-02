@@ -26,7 +26,7 @@
 
 #include "data_unit_handler.h"
 
-#include <gnuradio/msg_queue.h>
+#include <gnuradio/op25/msg_queue.h>
 #include <boost/noncopyable.hpp>
 
 /**
@@ -66,7 +66,7 @@ public:
     *
     * \return A (possibly NULL) gr_msg_queue_sptr pointing to the message queue.
     */
-   gr::msg_queue::sptr get_msgq() const;
+   gr::op25::msg_queue::sptr get_msgq() const;
 
    /**
     * Accessor for the msgq attribute. Sets the msgq to point to the
@@ -74,7 +74,7 @@ public:
     *
     * \return A (possibly NULL) gr_msg_queue_sptr pointing to the message queue.
     */
-   void set_msgq(gr::msg_queue::sptr msgq);
+   void set_msgq(gr::op25::msg_queue::sptr msgq);
 
 private:
 
@@ -86,7 +86,7 @@ private:
    /**
     * The msg_queue to which decoded frames are written.
     */
-   gr::msg_queue::sptr d_msgq;
+   gr::op25::msg_queue::sptr d_msgq;
 
 };
 

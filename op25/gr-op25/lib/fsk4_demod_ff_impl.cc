@@ -172,7 +172,7 @@ namespace gr {
   namespace op25 {
 
     fsk4_demod_ff::sptr
-    fsk4_demod_ff::make(gr::msg_queue::sptr queue, float sample_rate_Hz, float symbol_rate_Hz, bool bfsk)
+    fsk4_demod_ff::make(gr::op25::msg_queue::sptr queue, float sample_rate_Hz, float symbol_rate_Hz, bool bfsk)
     {
       return gnuradio::get_initial_sptr
         (new fsk4_demod_ff_impl(queue, sample_rate_Hz, symbol_rate_Hz, bfsk));
@@ -181,7 +181,7 @@ namespace gr {
     /*
      * The private constructor
      */
-    fsk4_demod_ff_impl::fsk4_demod_ff_impl(gr::msg_queue::sptr queue, float sample_rate_Hz, float symbol_rate_Hz, bool bfsk)
+    fsk4_demod_ff_impl::fsk4_demod_ff_impl(gr::op25::msg_queue::sptr queue, float sample_rate_Hz, float symbol_rate_Hz, bool bfsk)
       : gr::block("fsk4_demod_ff",
 		  gr::io_signature::make(1, 1, sizeof(float)),
 		  gr::io_signature::make(1, 1, sizeof(float))),
@@ -281,7 +281,7 @@ namespace gr {
       coarse_frequency_correction = 0.0;
       
       // build & send a message
-      gr::message::sptr msg = gr::message::make(0, arg1, arg2, 0); // vlen() * sizeof(float));
+      gr::op25::message::sptr msg = gr::op25::message::make(0, arg1, arg2, 0); // vlen() * sizeof(float));
       d_queue->insert_tail(msg);
       msg.reset();
     }

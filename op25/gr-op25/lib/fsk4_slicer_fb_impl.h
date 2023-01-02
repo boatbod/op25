@@ -23,7 +23,7 @@
 #ifndef INCLUDED_OP25_FSK4_SLICER_FB_IMPL_H
 #define INCLUDED_OP25_FSK4_SLICER_FB_IMPL_H
 
-#include <op25/fsk4_slicer_fb.h>
+#include <gnuradio/op25/fsk4_slicer_fb.h>
 
 namespace gr {
   namespace op25 {
