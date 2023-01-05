@@ -39,7 +39,7 @@ snapshot_du_handler::~snapshot_du_handler()
 }
 
 void
-snapshot_du_handler::handle(data_unit_sptr du)
+snapshot_du_handler::handle(data_unit::data_unit_sptr du)
 {
    if(d_msgq) {
       string snapshot(du->snapshot());

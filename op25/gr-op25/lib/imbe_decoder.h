@@ -25,14 +25,13 @@
 #define INCLUDED_IMBE_DECODER_H 
 
 #include <boost/noncopyable.hpp>
-#include <boost/shared_ptr.hpp>
 #include <deque>
 #include <vector>
+#include <memory>
 
 typedef std::deque<float> audio_samples;
 typedef std::vector<bool> voice_codeword;
 
-typedef boost::shared_ptr<class imbe_decoder> imbe_decoder_sptr;
 
 /**
  * imbe_decoder is the interface to the various mechanisms for
@@ -40,6 +39,7 @@ typedef boost::shared_ptr<class imbe_decoder> imbe_decoder_sptr;
  */
 class imbe_decoder : public boost::noncopyable {
 public:
+   typedef std::shared_ptr<imbe_decoder> imbe_decoder_sptr;
 
    /**
     * imbe_decoder (virtual) constructor. The exact subclass

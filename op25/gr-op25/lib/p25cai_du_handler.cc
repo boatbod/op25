@@ -76,7 +76,7 @@ p25cai_du_handler::destination() const
 }
 
 void
-p25cai_du_handler::handle(data_unit_sptr du)
+p25cai_du_handler::handle(data_unit::data_unit_sptr du)
 {
    if(-1 != d_cai) {
       const size_t CAI_SZ = du->size();

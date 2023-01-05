@@ -28,7 +28,7 @@
 
 using namespace std;
 
-voice_du_handler::voice_du_handler(data_unit_handler_sptr next, imbe_decoder_sptr decoder) :
+voice_du_handler::voice_du_handler(data_unit_handler::data_unit_handler_sptr next, imbe_decoder::imbe_decoder_sptr decoder) :
    data_unit_handler(next),
    d_decoder(decoder)
 {
@@ -40,7 +40,7 @@ voice_du_handler::~voice_du_handler()
 }
 
 void
-voice_du_handler::handle(data_unit_sptr du)
+voice_du_handler::handle(data_unit::data_unit_sptr du)
 {
    du->decode_audio(*d_decoder);
    data_unit_handler::handle(du);

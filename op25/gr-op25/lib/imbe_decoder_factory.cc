@@ -7,7 +7,7 @@
 #include <cstdlib>
 #include <cstring>
 
-imbe_decoder_sptr
+imbe_decoder::imbe_decoder_sptr
 imbe_decoder::make()
 {
    imbe_decoder_sptr imbe;

@@ -56,7 +56,7 @@ namespace gr {
        * \return A data_unit_sptr pointing to an appropriate data_unit
        * instance or NULL if the frame header is unrecognized.
        */
-      data_unit_sptr identified();
+      data_unit::data_unit_sptr identified();
 
       /**
        * Handle a received symbol.
@@ -70,12 +70,12 @@ namespace gr {
        * When d_state == READING the current data unit, otherwise
        * null.
        */
-      data_unit_sptr d_data_unit;
+      data_unit::data_unit_sptr d_data_unit;
 
       /**
        * The head of a chain of data_unit_handler instances.
        */
-      data_unit_handler_sptr d_data_unit_handler;
+      data_unit_handler::data_unit_handler_sptr d_data_unit_handler;
 
       /**
        * A bit_queue used to correlate the FS.
@@ -85,7 +85,7 @@ namespace gr {
       /**
        * The IMBE decoder to use.
        */
-      imbe_decoder_sptr d_imbe;
+      imbe_decoder::imbe_decoder_sptr d_imbe;
 
       /**
        * Valid states for the decoder state model.

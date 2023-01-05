@@ -55,7 +55,7 @@ public:
     *
     * \param next The next data_unit_handler in this chain.
     */
-   virtual void handle(data_unit_sptr du);
+   virtual void handle(data_unit::data_unit_sptr du);
 
 private:
 

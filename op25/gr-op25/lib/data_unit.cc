@@ -32,7 +32,7 @@
 
 using namespace std;
 
-data_unit_sptr
+data_unit::data_unit_sptr
 data_unit::make_data_unit(const_bit_queue& frame_body)
 {
    data_unit_sptr d;

@@ -27,9 +27,8 @@
 #include "data_unit.h"
 
 #include <boost/noncopyable.hpp>
-#include <boost/shared_ptr.hpp>
+#include <memory>
 
-typedef boost::shared_ptr<class data_unit_handler> data_unit_handler_sptr;
 
 /**
  * P25 data_unit_handler interface.
@@ -38,6 +37,7 @@ class data_unit_handler : public boost::noncopyable
 {
 
 public:
+   typedef std::shared_ptr<data_unit_handler> data_unit_handler_sptr;
 
    /**
     * data_unit_handler virtual destructor.
@@ -49,7 +49,7 @@ public:
     *
     * \param du A non-null data_unit_sptr to handle.
     */
-   virtual void handle(data_unit_sptr du) = 0;
+   virtual void handle(data_unit::data_unit_sptr du) = 0;
 
 protected:
 

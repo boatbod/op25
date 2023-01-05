@@ -59,7 +59,7 @@ public:
     *
     * \param du A non-null data_unit_sptr to handle.
     */
-   virtual void handle(data_unit_sptr du);
+   virtual void handle(data_unit::data_unit_sptr du);
 
    /**
     * Return a pointer to a string identifying the destination address.

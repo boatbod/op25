@@ -58,7 +58,7 @@ public:
     *
     * \param du A non-null data_unit_sptr to handle.
     */
-   virtual void handle(data_unit_sptr du);
+   virtual void handle(data_unit::data_unit_sptr du);
 
    /**
     * Accessor for the msgq attribute. Returns a pointer to the msgq

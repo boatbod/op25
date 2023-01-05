@@ -5,14 +5,14 @@ data_unit_handler::~data_unit_handler()
 }
 
 void
-data_unit_handler::handle(data_unit_sptr du)
+data_unit_handler::handle(data_unit::data_unit_sptr du)
 {
    if(d_next) {
       d_next->handle(du);
    }
 }
 
-data_unit_handler::data_unit_handler(data_unit_handler_sptr next) :
+data_unit_handler::data_unit_handler(data_unit_handler::data_unit_handler_sptr next) :
    d_next(next)
 {
 }

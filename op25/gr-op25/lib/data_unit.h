@@ -26,10 +26,10 @@
 
 #include "imbe_decoder.h"
 
-#include <boost/shared_ptr.hpp>
 #include <boost/noncopyable.hpp>
 #include <deque>
 #include <iosfwd>
+#include <memory>
 #include <stdint.h>
 
 typedef std::deque<bool> bit_queue;
@@ -39,7 +39,6 @@ typedef uint8_t dibit;
 
 typedef std::deque<float> float_queue;
 
-typedef boost::shared_ptr<class data_unit> data_unit_sptr;
 
 /**
  * A P25 data unit.
@@ -47,6 +46,7 @@ typedef boost::shared_ptr<class data_unit> data_unit_sptr;
 class data_unit : public boost::noncopyable
 {
 public:
+   typedef std::shared_ptr<data_unit> data_unit_sptr;
 
    /**
     * data_unit (virtual) constructor. Returns a pointer to an

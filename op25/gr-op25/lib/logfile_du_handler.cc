@@ -41,7 +41,7 @@ logfile_du_handler::~logfile_du_handler()
 }
 
 void
-logfile_du_handler::handle(data_unit_sptr du)
+logfile_du_handler::handle(data_unit::data_unit_sptr du)
 {
    du->dump(d_log);
    data_unit_handler::handle(du);

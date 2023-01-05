@@ -60,10 +60,10 @@ namespace gr {
     {
       d_p25cai_du_handler = new p25cai_du_handler(d_data_unit_handler,
 						    "224.0.0.1", 23456);
-      d_data_unit_handler = data_unit_handler_sptr(d_p25cai_du_handler);
+      d_data_unit_handler = data_unit_handler::data_unit_handler_sptr(d_p25cai_du_handler);
       d_snapshot_du_handler = new snapshot_du_handler(d_data_unit_handler);
-      d_data_unit_handler = data_unit_handler_sptr(d_snapshot_du_handler);
-      d_data_unit_handler = data_unit_handler_sptr(new voice_du_handler(d_data_unit_handler, d_imbe));
+      d_data_unit_handler = data_unit_handler::data_unit_handler_sptr(d_snapshot_du_handler);
+      d_data_unit_handler = data_unit_handler::data_unit_handler_sptr(new voice_du_handler(d_data_unit_handler, d_imbe));
     }
 
     decoder_bf_impl::~decoder_bf_impl()
@@ -162,7 +162,7 @@ namespace gr {
       return (errs <= 4);
     }
 
-    data_unit_sptr
+    data_unit::data_unit_sptr
     decoder_bf_impl::identified()
     {
       static const size_t NID[] = {
@@ -186,7 +186,7 @@ namespace gr {
 	yank_back(b, 0, d_frame_hdr, NID, NID_SZ);
 	d_data_unit = data_unit::make_data_unit(d_frame_hdr);
       } else {
-	data_unit_sptr null;
+	data_unit::data_unit_sptr null;
 	d_data_unit = null;
       }
       return d_data_unit;
@@ -222,7 +222,7 @@ namespace gr {
 	if(d_data_unit->is_complete()) {
 	  d_data_unit->correct_errors();
 	  d_data_unit_handler->handle(d_data_unit);
-	  data_unit_sptr null;
+	  data_unit::data_unit_sptr null;
 	  d_data_unit = null;
 	  d_state = SYNCHRONIZING;
 	}

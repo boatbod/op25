@@ -76,6 +76,9 @@ from gr_gnuplot import fll_sink_c
 sys.path.append('tdma')
 import lfsr
 
+import faulthandler
+faulthandler.enable()
+
 os.environ['IMBE'] = 'soft'
 
 _def_symbol_rate = 4800
@@ -1071,6 +1074,6 @@ class rx_main(object):
 
 if __name__ == "__main__":
     if sys.version[0] > '2':
-        sys.stderr = io.TextIOWrapper(sys.stderr.detach().detach(), write_through=True) # disable stderr buffering
+        sys.stderr = io.TextIOWrapper(sys.stderr.detach(), write_through=True) # disable stderr buffering
     rx = rx_main()
     rx.run()

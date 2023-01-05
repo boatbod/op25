@@ -43,7 +43,7 @@ public:
     * \param next The next data_unit_handler in the chain.
     * \param decoder An imbe_decoder_sptr to the IMBE decoder to use.
     */
-   voice_du_handler(data_unit_handler_sptr next, imbe_decoder_sptr decoder);
+   voice_du_handler(data_unit_handler::data_unit_handler_sptr next, imbe_decoder::imbe_decoder_sptr decoder);
 
    /**
     * voice_du_handler virtual destructor.
@@ -55,14 +55,14 @@ public:
     *
     * \param next The next data_unit_handler in this chain.
     */
-   virtual void handle(data_unit_sptr du);
+   virtual void handle(data_unit::data_unit_sptr du);
 
 private:
 
    /**
     * The IMBE decder to use.
     */
-   imbe_decoder_sptr d_decoder;
+   imbe_decoder::imbe_decoder_sptr d_decoder;
 
 };
 
