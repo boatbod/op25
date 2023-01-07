@@ -348,7 +348,7 @@ imbe_header_decode(const voice_codeword& cw, uint32_t& u0, uint32_t& u1, uint32_
 static inline void
 imbe_pack(packed_codeword& cw, uint32_t u0, uint32_t u1, uint32_t u2, uint32_t u3, uint32_t u4, uint32_t u5, uint32_t u6, uint32_t u7)
 {
-	cw.empty();
+	cw.clear();
 	cw.push_back(u0 >> 4);
 	cw.push_back(((u0 & 0xf) << 4) + (u1 >> 8));
 	cw.push_back(u1 & 0xff);
