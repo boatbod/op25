@@ -55,6 +55,7 @@ if(NOT CMAKE_BUILD_TYPE STREQUAL "Release" AND
     add_definitions(-Wno-unused-parameter)
     add_definitions(-Wno-unused-function)
     add_definitions(-Wno-missing-field-initializers)
+    add_definitions(-Werror=return-type)
     #add_definitions(-Wconversion)
     #add_definitions(-pedantic)
     #add_definitions(-ansi)
@@ -119,7 +120,7 @@ endif()
 # Find gnuradio build dependencies
 ########################################################################
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake/Modules)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
 find_package(CppUnit)
 if(NOT CPPUNIT_FOUND)
     message(FATAL_ERROR "CppUnit required to compile op25")
