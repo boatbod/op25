@@ -16,7 +16,7 @@
 #include <string>
 
 namespace gr {
-namespace op25 {
+namespace op25_repeater {
 
 /*!
  * \brief Message class.

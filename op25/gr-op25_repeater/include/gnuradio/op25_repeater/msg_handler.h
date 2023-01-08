@@ -15,7 +15,7 @@
 #include <gnuradio/op25_repeater/message.h>
 
 namespace gr {
-namespace op25 {
+namespace op25_repeater {
 
 class msg_handler;
 typedef std::shared_ptr<msg_handler> msg_handler_sptr;
