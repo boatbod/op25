@@ -448,7 +448,7 @@ class p25_demod_cb(p25_demod_base):
             return
         self.sps = sps
         self.clock.set_omega(self.sps)
-        self.fll.set_samples_per_symbol(sps)
+        #self.fll.set_samples_per_symbol(sps) # gnuradio fll_band_edge_cc block is not currently thread-safe 01/8/2023
         self.costas_reset()
 
     def reset(self):

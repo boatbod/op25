@@ -1676,7 +1676,7 @@ class p25_receiver(object):
             updated += 1
             if self.current_tgid is None:
                 if self.system.has_cc(self.msgq_id):
-                    if self.debug > 0:
+                    if ((self.debug > 0) and (self.system.cc_retries == 0)) or (self.debug > 10):  # only log once per timeout unless log level > 10
                         sys.stderr.write("%s [%d] control channel timeout, freq(%f)\n" % (log_ts.get(), self.msgq_id, (self.tuned_frequency/1e6)))
                     self.tune_cc(self.system.timeout_cc(self.msgq_id))
             else:
