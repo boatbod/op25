@@ -1301,7 +1301,7 @@ class rx_ctl (object):
         d = {'json_type': 'meta_update'}
         d['tgid'] = tgid
         d['tag'] = tag
-        msg = op25_repeater.message().make_from_string(json.dumps(d), -2, time.time(), 0)
+        msg = gr.message().make_from_string(json.dumps(d), -2, time.time(), 0)
         self.meta_q.insert_tail(msg)
 
     def post_init(self):

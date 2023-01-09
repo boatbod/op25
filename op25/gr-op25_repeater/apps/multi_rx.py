@@ -858,7 +858,7 @@ class rx_block (gr.top_block):
             if self.trunking is None or self.trunk_rx is None:
                 return False
             js = self.trunk_rx.to_json()    # extract data from trunking module
-            msg = op25_repeater.message().make_from_string(js, -4, 0, 0)
+            msg = gr.message().make_from_string(js, -4, 0, 0)
             self.ui_in_q.insert_tail(msg)   # send info back to UI
             self.ui_plot_update()
         elif s == 'toggle_plot':
@@ -879,7 +879,7 @@ class rx_block (gr.top_block):
             if self.terminal is not None and self.terminal_config is not None:
                 self.terminal_config['json_type'] = "terminal_config"
                 js = json.dumps(self.terminal_config)
-                msg = op25_repeater.message().make_from_string(js, -4, 0, 0)
+                msg = gr.message().make_from_string(js, -4, 0, 0)
                 self.ui_in_q.insert_tail(msg)
             else:
                 return False
@@ -887,7 +887,7 @@ class rx_block (gr.top_block):
             cfg = self.config
             cfg['json_type'] = "full_config"
             js = json.dumps(cfg)
-            msg = op25_repeater.message().make_from_string(js, -4, 0, 0)
+            msg = gr.message().make_from_string(js, -4, 0, 0)
             self.ui_in_q.insert_tail(msg)
         elif s == 'set_full_config':
             pass
@@ -937,7 +937,7 @@ class rx_block (gr.top_block):
             meta_s, meta_q = self.meta_streams[s_name]
             params[rx_id]['stream_url'] = meta_s.get_url()
         js = json.dumps(params)
-        msg = op25_repeater.message().make_from_string(js, -4, 0, 0)
+        msg = gr.message().make_from_string(js, -4, 0, 0)
         self.ui_in_q.insert_tail(msg)
 
     def ui_plot_update(self):
@@ -950,7 +950,7 @@ class rx_block (gr.top_block):
                 if chan.sinks[sink][0].gnuplot.filename is not None:
                     filenames.append(chan.sinks[sink][0].gnuplot.filename)
         d = {'json_type': 'rx_update', 'files': filenames}
-        msg = op25_repeater.message().make_from_string(json.dumps(d), -4, 0, 0)
+        msg = gr.message().make_from_string(json.dumps(d), -4, 0, 0)
         self.ui_in_q.insert_tail(msg)
 
     def kill(self):
@@ -978,7 +978,7 @@ class du_queue_watcher(threading.Thread):
 
     def __init__(self, msgq,  callback, **kwds):
         threading.Thread.__init__ (self, **kwds)
-        self.setDaemon(1)
+        self.daemon = 1
         self.msgq = msgq
         self.callback = callback
         self.keep_running = True
@@ -987,11 +987,14 @@ class du_queue_watcher(threading.Thread):
     def run(self):
         try:
             while(self.keep_running):
-                msg = self.msgq.delete_head()
-                if msg is not None:
-                    self.callback(msg)
-                else:
-                    self.keep_running = False
+                if not self.msgq.empty_p():
+                    msg = self.msgq.delete_head()
+                    if msg is not None:
+                        self.callback(msg)
+                    else:
+                        self.keep_running = False
+                else: # empty queue
+                    pass
         except KeyboardInterrupt:
             self.keep_running = False
 
@@ -1052,7 +1055,7 @@ class rx_main(object):
             if self.tb.get_interactive():
                 while self.keep_running:
                     time.sleep(1.0)
-                    msg = op25_repeater.message().make_from_string("watchdog", -2, 0, 0)
+                    msg = gr.message().make_from_string("watchdog", -2, 0, 0)
                     self.tb.ui_out_q.insert_tail(msg)
             else:
                 self.tb.wait() # curiously wait() matures when a flowgraph gets locked
@@ -1071,6 +1074,7 @@ class rx_main(object):
 
 if __name__ == "__main__":
     if sys.version[0] > '2':
-        sys.stderr = io.TextIOWrapper(sys.stderr.detach().detach(), write_through=True) # disable stderr buffering
+        pass
+        #sys.stderr = io.TextIOWrapper(sys.stderr.detach().detach(), write_through=True) # disable stderr buffering
     rx = rx_main()
     rx.run()

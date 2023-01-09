@@ -70,7 +70,7 @@ def post_req(environ, start_response, postdata):
     try:
         data = json.loads(postdata)
         for d in data:
-            msg = op25_repeater.message().make_from_string(str(d['command']), -2, d['arg1'], d['arg2'])
+            msg = gr.message().make_from_string(str(d['command']), -2, d['arg1'], d['arg2'])
             my_output_q.insert_tail(msg)
         valid_req = True
         time.sleep(0.2)

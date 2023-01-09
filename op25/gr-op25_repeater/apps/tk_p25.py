@@ -53,7 +53,7 @@ def meta_update(meta_q, tgid = None, tag = None, msgq_id = 0, ts = time.time()):
     d = {'json_type': 'meta_update'}
     d['tgid'] = tgid
     d['tag'] = tag
-    msg = op25_repeater.message().make_from_string(json.dumps(d), -2, ts, 0)
+    msg = gr.message().make_from_string(json.dumps(d), -2, ts, 0)
     meta_q.insert_tail(msg)
 
 def add_default_tgid(tgs, tgid):

@@ -534,7 +534,7 @@ class p25_rx_block (gr.top_block):
         params['error'] = error
         params['stream_url'] = self.stream_url
         js = json.dumps(params)
-        msg = op25_repeater.message().make_from_string(js, -4, 0, 0)
+        msg = gr.message().make_from_string(js, -4, 0, 0)
         self.input_q.insert_tail(msg)
 
     def meta_update(self, tgid, tag):
@@ -543,7 +543,7 @@ class p25_rx_block (gr.top_block):
         d = {'json_type': 'meta_update'}
         d['tgid'] = tgid
         d['tag'] = tag
-        msg = op25_repeater.message().make_from_string(json.dumps(d), -2, time.time(), 0)
+        msg = gr.message().make_from_string(json.dumps(d), -2, time.time(), 0)
         self.meta_q.insert_tail(msg)
 
     def hamlib_attach(self, model):
@@ -556,7 +556,7 @@ class p25_rx_block (gr.top_block):
         self.hamlib.open ()
 
     def q_action(self, action):
-        msg = op25_repeater.message().make_from_string(action, -2, 0, 0)
+        msg = gr.message().make_from_string(action, -2, 0, 0)
         self.rx_q.insert_tail(msg)
 
     def set_gain(self, gain):
@@ -918,7 +918,7 @@ class p25_rx_block (gr.top_block):
         if self.demod is not None:
             error = self.demod.get_freq_error()
         d = {'json_type': 'rx_update', 'error': error, 'fine_tune': self.options.fine_tune, 'files': filenames}
-        msg = op25_repeater.message().make_from_string(json.dumps(d), -4, 0, 0)
+        msg = gr.message().make_from_string(json.dumps(d), -4, 0, 0)
         self.input_q.insert_tail(msg)
 
     def process_qmsg(self, msg):
@@ -935,7 +935,7 @@ class p25_rx_block (gr.top_block):
             if self.trunk_rx is None:
                 return False    ## possible race cond - just ignore
             js = self.trunk_rx.to_json()
-            msg = op25_repeater.message().make_from_string(js, -4, 0, 0)
+            msg = gr.message().make_from_string(js, -4, 0, 0)
             self.input_q.insert_tail(msg)
             self.process_ajax()
         elif s == 'set_debug':
@@ -1007,7 +1007,7 @@ class rx_main(object):
             else:
                 while self.keep_running:
                     time.sleep(1)
-                    msg = op25_repeater.message().make_from_string("watchdog", -2, 0, 0)
+                    msg = gr.message().make_from_string("watchdog", -2, 0, 0)
                     self.tb.output_q.insert_tail(msg)
             sys.stderr.write('Flowgraph completed. Exiting\n')
         except:
