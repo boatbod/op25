@@ -138,7 +138,7 @@ class http_server(object):
         my_output_q = output_q
         my_port = int(port)
 
-        my_recv_q = op25_repeater.msg_queue(10)
+        my_recv_q = gr.msg_queue(10)
         self.q_watcher = queue_watcher(my_input_q, process_qmsg)
 
         try:

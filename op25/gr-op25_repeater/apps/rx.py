@@ -230,9 +230,9 @@ class p25_rx_block (gr.top_block):
             else:
                 raw_input("Press 'Enter' to continue...")
 
-        self.input_q = op25_repeater.msg_queue(10)
-        self.output_q = op25_repeater.msg_queue(10)
-        self.meta_q = op25_repeater.msg_queue(10)
+        self.input_q = gr.msg_queue(10)
+        self.output_q = gr.msg_queue(10)
+        self.meta_q = gr.msg_queue(10)
  
         # configure specified data source
         if options.input:
@@ -282,7 +282,7 @@ class p25_rx_block (gr.top_block):
         global speeds
         global WIRESHARK_PORT
 
-        self.rx_q = op25_repeater.msg_queue(100)
+        self.rx_q = gr.msg_queue(100)
         udp_port = 0
 
         if self.options.udp_player:

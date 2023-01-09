@@ -572,9 +572,9 @@ class rx_block (gr.top_block):
         self.meta_streams = {}
         self.trunking = None
         self.du_watcher = None
-        self.rx_q = op25_repeater.msg_queue(100)
-        self.ui_in_q = op25_repeater.msg_queue(100)
-        self.ui_out_q = op25_repeater.msg_queue(100)
+        self.rx_q = gr.msg_queue(100)
+        self.ui_in_q = gr.msg_queue(100)
+        self.ui_out_q = gr.msg_queue(100)
         self.ui_timeout = 5.0
         self.ui_last_update = 0.0
 
@@ -706,7 +706,7 @@ class rx_block (gr.top_block):
                     sys.stderr.write("Ignoring duplicate metadata stream #%d [%s]\n" % (idx, stream_name))
                     break
                 try:
-                    meta_q = op25_repeater.msg_queue(10)
+                    meta_q = gr.msg_queue(10)
                     meta_s = self.metadata.meta_server(meta_q, stream, debug=self.verbosity)
                     self.meta_streams[stream_name] = (meta_s, meta_q)
                     sys.stderr.write("Configuring metadata stream #%d [%s]: %s\n" % (idx, stream_name, stream['icecastServerAddress'] + "/" + stream['icecastMountpoint']))

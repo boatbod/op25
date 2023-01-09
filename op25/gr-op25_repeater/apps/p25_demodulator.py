@@ -158,7 +158,7 @@ class p25_demod_base(gr.hier_block2):
             if ntaps & 1 == 0:
                 ntaps += 1
             coeffs = filter.firdes.root_raised_cosine(1.0, self.if_rate, self.symbol_rate, excess_bw, ntaps)
-            autotuneq = op25_repeater.msg_queue(2)
+            autotuneq = gr.msg_queue(2)
             self.fsk4_demod = op25.fsk4_demod_ff(autotuneq, self.if_rate, self.symbol_rate, True)
             self.baseband_amp = op25_repeater.rmsagc_ff(alpha=0.01, k=1.0)
             self.symbol_filter = filter.fir_filter_fff(1, coeffs)
@@ -166,13 +166,13 @@ class p25_demod_base(gr.hier_block2):
         elif filter_type == "widepulse":
             coeffs = op25_c4fm_mod.c4fm_taps(sample_rate=self.if_rate, span=9, generator=op25_c4fm_mod.transfer_function_rx).generate(rate_multiplier = 2.0)
             self.symbol_filter = filter.fir_filter_fff(1, coeffs)
-            autotuneq = op25_repeater.msg_queue(2)
+            autotuneq = gr.msg_queue(2)
             self.fsk4_demod = op25.fsk4_demod_ff(autotuneq, self.if_rate, self.symbol_rate)
             levels = [ -2.0, 0.0, 2.0, 4.0 ]
             self.slicer = op25_repeater.fsk4_slicer_fb(self.msgq_id, self.debug, levels)
         else:
             self.symbol_filter = filter.fir_filter_fff(1, coeffs)
-            autotuneq = op25_repeater.msg_queue(2)
+            autotuneq = gr.msg_queue(2)
             self.fsk4_demod = op25.fsk4_demod_ff(autotuneq, self.if_rate, self.symbol_rate)
             levels = [ -2.0, 0.0, 2.0, 4.0 ]
             self.slicer = op25_repeater.fsk4_slicer_fb(self.msgq_id, self.debug, levels)
