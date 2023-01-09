@@ -24,7 +24,7 @@
 
 #include <gnuradio/op25_repeater/api.h>
 #include <gnuradio/block.h>
-#include <gnuradio/op25_repeater/msg_queue.h>
+#include <gnuradio/msg_queue.h>
 
 namespace gr {
     namespace op25_repeater {
@@ -47,7 +47,7 @@ namespace gr {
                  * class. op25_repeater::analog_udp::make is the public interface for
                  * creating new instances.
                  */
-                static sptr make(const char* options, int debug, int msgq_id, gr::op25_repeater::msg_queue::sptr queue);
+                static sptr make(const char* options, int debug, int msgq_id, gr::msg_queue::sptr queue);
                 virtual void set_debug(int debug) {}
         };
 

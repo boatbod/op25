@@ -34,9 +34,6 @@ namespace py = pybind11;
     void bind_rmsagc_ff(py::module& m);
     void bind_vocoder(py::module& m);
     void bind_ysf_tx_sb(py::module& m);
-    void bind_message(py::module&);
-    void bind_msg_queue(py::module&);
-    void bind_msg_handler(py::module&);
 // ) END BINDING_FUNCTION_PROTOTYPES
 
 
@@ -78,8 +75,5 @@ PYBIND11_MODULE(op25_repeater_python, m)
         bind_rmsagc_ff(m);
         bind_vocoder(m);
         bind_ysf_tx_sb(m);
-        bind_message(m);
-        bind_msg_handler(m);
-        bind_msg_queue(m);
     // ) END BINDING_FUNCTION_CALLS
 }

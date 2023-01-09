@@ -28,7 +28,7 @@
 #include <iostream>
 #include <deque>
 #include <assert.h>
-#include <gnuradio/op25_repeater/msg_queue.h>
+#include <gnuradio/msg_queue.h>
 
 #include "bit_utils.h"
 #include "check_frame_sync.h"
@@ -38,8 +38,8 @@
 
 #include "rx_base.h"
 
-namespace gr{
-    namespace op25_repeater{
+namespace gr {
+    namespace op25_repeater {
 
         static const int SMARTNET_SYNC_LENGTH    =  8;
         static const int SMARTNET_FRAME_LENGTH   = 84;
@@ -70,7 +70,7 @@ namespace gr{
                 void set_slot_key(int mask) { };
                 void set_xormask(const char* p) { };
                 void set_debug(int debug);
-                rx_smartnet(const char * options, log_ts& logger, int debug, int msgq_id, gr::op25_repeater::msg_queue::sptr queue);
+                rx_smartnet(const char * options, log_ts& logger, int debug, int msgq_id, gr::msg_queue::sptr queue);
                 ~rx_smartnet();
 
             private:
@@ -83,7 +83,7 @@ namespace gr{
 
                 int d_debug;
                 int d_msgq_id;
-                gr::op25_repeater::msg_queue::sptr d_msg_queue;
+                gr::msg_queue::sptr d_msg_queue;
 
                 op25_timer sync_timer;
                 bool d_in_sync;

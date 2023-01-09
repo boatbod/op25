@@ -55,9 +55,6 @@ list(APPEND op25_repeater_sources
     op25_audio.cc
     op25_timer
     CCITTChecksumReverse.cpp
-    message.cc
-    msg_queue.cc
-    msg_handler.cc
 )
 
 add_subdirectory(imbe_vocoder)

@@ -43,7 +43,7 @@ namespace gr {
             private:
                 int d_debug;
                 int d_msgq_id;
-                gr::op25_repeater::msg_queue::sptr d_msg_queue;
+                gr::msg_queue::sptr d_msg_queue;
                 rx_base* d_sync;
 
                 // internal functions
@@ -61,7 +61,7 @@ namespace gr {
                 log_ts logts;
 
             public:
-                frame_assembler_impl(const char* options, int debug, int msgq_id, gr::op25_repeater::msg_queue::sptr queue);
+                frame_assembler_impl(const char* options, int debug, int msgq_id, gr::msg_queue::sptr queue);
                 ~frame_assembler_impl();
 
                 // Where all the action really happens

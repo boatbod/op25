@@ -22,11 +22,11 @@
 #include "rx_subchannel.h"
 #include "op25_msg_types.h"
 
-namespace gr{
-    namespace op25_repeater{
+namespace gr {
+    namespace op25_repeater {
 
         // constructor
-        rx_subchannel::rx_subchannel(const char * options, log_ts& logger, int debug, int msgq_id, gr::op25_repeater::msg_queue::sptr queue) :
+        rx_subchannel::rx_subchannel(const char * options, log_ts& logger, int debug, int msgq_id, gr::msg_queue::sptr queue) :
             d_debug(debug),
             d_msgq_id(msgq_id),
             d_msg_queue(queue),
@@ -65,7 +65,7 @@ namespace gr{
             std::string msg_str = "";
             if ((d_msgq_id >= 0) && (!d_msg_queue->full_p())) {
 
-                gr::op25_repeater::message::sptr msg = gr::op25_repeater::message::make_from_string(msg_str, get_msg_type(PROTOCOL_SMARTNET, M_SMARTNET_END_PTT), (d_msgq_id<<1), logts.get_ts());
+                gr::message::sptr msg = gr::message::make_from_string(msg_str, get_msg_type(PROTOCOL_SMARTNET, M_SMARTNET_END_PTT), (d_msgq_id<<1), logts.get_ts());
                 d_msg_queue->insert_tail(msg);
             }
         }

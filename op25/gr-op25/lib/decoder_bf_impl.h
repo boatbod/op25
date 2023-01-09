@@ -129,7 +129,7 @@ namespace gr {
        * \return A (possibly NULL) gr_msg_queue_sptr pointing to the
        * message queue.
        */
-      gr::op25::msg_queue::sptr get_msgq() const;
+      gr::msg_queue::sptr get_msgq() const;
 
       /**
        * Accessor for the msgq attribute. Sets the msgq to point to
@@ -138,7 +138,7 @@ namespace gr {
        * \return A (possibly NULL) gr_msg_queue_sptr pointing to the
        * message queue.
        */
-      void set_msgq(gr::op25::msg_queue::sptr msgq);
+      void set_msgq(gr::msg_queue::sptr msgq);
     };
   } // namespace op25
 } // namespace gr

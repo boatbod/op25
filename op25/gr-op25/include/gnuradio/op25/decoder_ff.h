@@ -24,7 +24,7 @@
 
 #include <gnuradio/op25/api.h>
 #include <gnuradio/block.h>
-#include <gnuradio/op25/msg_queue.h>
+#include <gnuradio/msg_queue.h>
 
 namespace gr {
   namespace op25 {
@@ -65,7 +65,7 @@ namespace gr {
        * \return A (possibly NULL) gr_op25_msg_queue_sptr pointing to the
        * message queue.
        */
-      virtual gr::op25::msg_queue::sptr get_msgq() const = 0;
+      virtual gr::msg_queue::sptr get_msgq() const = 0;
 
       /**
        * Accessor for the msgq attribute. Sets the msgq to point to
@@ -74,7 +74,7 @@ namespace gr {
        * \return A (possibly NULL) gr_op25_msg_queue_sptr pointing to the
        * message queue.
        */
-      virtual void set_msgq(gr::op25::msg_queue::sptr msgq) = 0;
+      virtual void set_msgq(gr::msg_queue::sptr msgq) = 0;
     };
 
   } // namespace op25

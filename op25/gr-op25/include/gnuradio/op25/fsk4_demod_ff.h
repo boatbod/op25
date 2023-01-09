@@ -24,7 +24,7 @@
 
 #include <gnuradio/op25/api.h>
 #include <gnuradio/block.h>
-#include <gnuradio/op25/msg_queue.h>
+#include <gnuradio/msg_queue.h>
 
 namespace gr {
   namespace op25 {
@@ -54,7 +54,7 @@ namespace gr {
        *
        * Nominal levels are -3, -1, +1, and +3.
        */
-      static sptr make(gr::op25::msg_queue::sptr queue, float sample_rate_Hz, float symbol_rate_Hz, bool bfsk = false);
+      static sptr make(gr::msg_queue::sptr queue, float sample_rate_Hz, float symbol_rate_Hz, bool bfsk = false);
       virtual void reset() {}
       virtual void set_rate(const float sample_rate_Hz, const float symbol_rate_Hz) {}
     };

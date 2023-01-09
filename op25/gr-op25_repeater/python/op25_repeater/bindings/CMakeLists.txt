@@ -42,9 +42,6 @@ list(APPEND op25_repeater_python_files
     rmsagc_ff_python.cc
     vocoder_python.cc
     ysf_tx_sb_python.cc
-    msg_queue_python.cc
-    msg_handler_python.cc
-    message_python.cc
     python_bindings.cc)
 
 GR_PYBIND_MAKE_OOT(op25_repeater

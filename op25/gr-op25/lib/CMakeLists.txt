@@ -40,9 +40,6 @@ list(APPEND op25_sources
     value_string.cc
     pickle.cc
     pcap_source_b_impl.cc
-    message.cc
-    msg_queue.cc
-    msg_handler.cc
 )
 
 set(op25_sources "${op25_sources}" PARENT_SCOPE)
