@@ -987,14 +987,14 @@ class du_queue_watcher(threading.Thread):
     def run(self):
         try:
             while(self.keep_running):
-                if not self.msgq.empty_p():
+                if not self.msgq.empty_p(): # check queue before trying to read a message to avoid deadlock at startup
                     msg = self.msgq.delete_head()
                     if msg is not None:
                         self.callback(msg)
                     else:
                         self.keep_running = False
                 else: # empty queue
-                    pass
+                    time.sleep(0.01)
         except KeyboardInterrupt:
             self.keep_running = False
 
