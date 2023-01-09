@@ -17,7 +17,7 @@
 #include <cstring>
 
 namespace gr {
-namespace op25 {
+namespace op25_repeater {
 
 static long s_ncurrently_allocated = 0;
 

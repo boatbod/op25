@@ -16,7 +16,7 @@
 #include <stdexcept>
 
 namespace gr {
-namespace op25 {
+namespace op25_repeater {
 
 msg_queue::sptr msg_queue::make(unsigned int limit)
 {
@@ -36,7 +36,7 @@ msg_queue::~msg_queue() { flush(); }
 void msg_queue::insert_tail(message::sptr msg)
 {
     if (msg->d_next)
-        throw std::invalid_argument("gr::op25::msg_queue::insert_tail: msg already in queue");
+        throw std::invalid_argument("gr::op25_repeater::msg_queue::insert_tail: msg already in queue");
 
     gr::thread::scoped_lock guard(d_mutex);
 

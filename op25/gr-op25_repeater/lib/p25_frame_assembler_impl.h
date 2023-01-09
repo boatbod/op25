@@ -67,7 +67,7 @@ namespace gr {
             op25_audio op25audio;
 
         public:
-            p25_frame_assembler_impl(const char* udp_host, int port, int debug, bool do_imbe, bool do_output, bool do_msgq, gr::op25::msg_queue::sptr queue, bool do_audio_output, bool do_phase2_tdma, bool do_nocrypt);
+            p25_frame_assembler_impl(const char* udp_host, int port, int debug, bool do_imbe, bool do_output, bool do_msgq, gr::op25_repeater::msg_queue::sptr queue, bool do_audio_output, bool do_phase2_tdma, bool do_nocrypt);
             ~p25_frame_assembler_impl();
 
             // Where all the action really happens

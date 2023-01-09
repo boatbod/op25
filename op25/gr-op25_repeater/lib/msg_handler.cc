@@ -15,7 +15,7 @@
 #include <gnuradio/op25_repeater/msg_handler.h>
 
 namespace gr {
-namespace op25 {
+namespace op25_repeater {
 
 msg_handler::~msg_handler() {}
 
