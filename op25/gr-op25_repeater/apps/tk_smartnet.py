@@ -52,7 +52,8 @@ def meta_update(meta_q, tgid = None, tag = None):
     d['tgid'] = tgid
     d['tag'] = tag
     msg = gr.message().make_from_string(json.dumps(d), -2, time.time(), 0)
-    meta_q.insert_tail(msg)
+    if not meta_q.full_p():
+        meta_q.insert_tail(msg)
 
 #################
 # Main trunking class

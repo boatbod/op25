@@ -852,14 +852,15 @@ class rx_block (gr.top_block):
             s = s.decode()
         if s == 'quit':
             return True
-        elif s == 'update':                 # UI initiated update request
+        elif s == 'update':                     # UI initiated update request
             self.ui_last_update = time.time()
             self.ui_freq_update()
             if self.trunking is None or self.trunk_rx is None:
                 return False
-            js = self.trunk_rx.to_json()    # extract data from trunking module
+            js = self.trunk_rx.to_json()        # extract data from trunking module
             msg = gr.message().make_from_string(js, -4, 0, 0)
-            self.ui_in_q.insert_tail(msg)   # send info back to UI
+            if not self.ui_in_q.full_p():
+                self.ui_in_q.insert_tail(msg)   # send info back to UI as long asa queue not full
             self.ui_plot_update()
         elif s == 'toggle_plot':
             if not self.get_interactive():
@@ -880,7 +881,8 @@ class rx_block (gr.top_block):
                 self.terminal_config['json_type'] = "terminal_config"
                 js = json.dumps(self.terminal_config)
                 msg = gr.message().make_from_string(js, -4, 0, 0)
-                self.ui_in_q.insert_tail(msg)
+                if not self.ui_in_q.full_p():
+                    self.ui_in_q.insert_tail(msg)
             else:
                 return False
         elif s == 'get_full_config':
@@ -888,7 +890,8 @@ class rx_block (gr.top_block):
             cfg['json_type'] = "full_config"
             js = json.dumps(cfg)
             msg = gr.message().make_from_string(js, -4, 0, 0)
-            self.ui_in_q.insert_tail(msg)
+            if not self.ui_in_q.full_p():
+                self.ui_in_q.insert_tail(msg)
         elif s == 'set_full_config':
             pass
         elif s == 'dump_tgids':
@@ -938,7 +941,8 @@ class rx_block (gr.top_block):
             params[rx_id]['stream_url'] = meta_s.get_url()
         js = json.dumps(params)
         msg = gr.message().make_from_string(js, -4, 0, 0)
-        self.ui_in_q.insert_tail(msg)
+        if not self.ui_in_q.full_p():
+            self.ui_in_q.insert_tail(msg)
 
     def ui_plot_update(self):
         if self.terminal_type is None or self.terminal_type != "http":
@@ -951,7 +955,8 @@ class rx_block (gr.top_block):
                     filenames.append(chan.sinks[sink][0].gnuplot.filename)
         d = {'json_type': 'rx_update', 'files': filenames}
         msg = gr.message().make_from_string(json.dumps(d), -4, 0, 0)
-        self.ui_in_q.insert_tail(msg)
+        if not self.ui_in_q.full_p():
+            self.ui_in_q.insert_tail(msg)
 
     def kill(self):
         for chan in self.channels:
@@ -1056,7 +1061,8 @@ class rx_main(object):
                 while self.keep_running:
                     time.sleep(1.0)
                     msg = gr.message().make_from_string("watchdog", -2, 0, 0)
-                    self.tb.ui_out_q.insert_tail(msg)
+                    if not self.tb.ui_out_q.full_p():
+                       self.tb.ui_out_q.insert_tail(msg)
             else:
                 self.tb.wait() # curiously wait() matures when a flowgraph gets locked
             sys.stderr.write('Flowgraph complete. Exiting\n')

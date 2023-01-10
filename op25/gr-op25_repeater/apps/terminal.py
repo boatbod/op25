@@ -512,7 +512,8 @@ class curses_terminal(threading.Thread):
             self.sock.send(js)
         else:
             msg = gr.message().make_from_string(command, -2, arg1, arg2)
-            self.output_q.insert_tail(msg)
+            if not self.output_q.full_p():
+                self.output_q.insert_tail(msg)
 
     def run(self):
         try:
@@ -594,7 +595,8 @@ class udp_terminal(threading.Thread):
                 self.keepalive_until = 0
                 continue
             msg = gr.message().make_from_string(str(data['command']), -2, data['arg1'], data['arg2'])
-            self.output_q.insert_tail(msg)
+            if not self.output_q.full_p():
+                self.output_q.insert_tail(msg)
             self.remote_ip = addr[0]
             self.remote_port = addr[1]
             self.keepalive_until = time.time() + KEEPALIVE_TIME
@@ -631,7 +633,8 @@ class terminal_client(object):
             try:
                 js, addr = self.sock.recvfrom(2048)
                 msg = gr.message().make_from_string(js, -4, 0, 0)
-                self.input_q.insert_tail(msg)
+                if not self.input_q.full_p():
+                    self.input_q.insert_tail(msg)
             except socket.timeout:
                 pass
             except:
