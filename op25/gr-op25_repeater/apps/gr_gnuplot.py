@@ -262,7 +262,8 @@ class wrap_gp(object):
 
         if self.out_q is not None and not self.out_q.full_p():      # if configured, send raw plot data to UI
             msg = gr.message().make_from_string(json.dumps(plot_data), -4, 0, 0)
-            self.out_q.insert_tail(msg)
+            if not self.out_q.full_p():
+                self.out_q.insert_tail(msg)
 
         return consumed
 

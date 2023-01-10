@@ -535,7 +535,8 @@ class p25_rx_block (gr.top_block):
         params['stream_url'] = self.stream_url
         js = json.dumps(params)
         msg = gr.message().make_from_string(js, -4, 0, 0)
-        self.input_q.insert_tail(msg)
+        if not self.input_q.full_p():
+            self.input_q.insert_tail(msg)
 
     def meta_update(self, tgid, tag):
         if self.meta_server is None:
@@ -544,7 +545,8 @@ class p25_rx_block (gr.top_block):
         d['tgid'] = tgid
         d['tag'] = tag
         msg = gr.message().make_from_string(json.dumps(d), -2, time.time(), 0)
-        self.meta_q.insert_tail(msg)
+        if not self.meta_q.full_p():
+            self.meta_q.insert_tail(msg)
 
     def hamlib_attach(self, model):
         Hamlib.rig_set_debug (Hamlib.RIG_DEBUG_NONE)    # RIG_DEBUG_TRACE
@@ -557,7 +559,8 @@ class p25_rx_block (gr.top_block):
 
     def q_action(self, action):
         msg = gr.message().make_from_string(action, -2, 0, 0)
-        self.rx_q.insert_tail(msg)
+        if not self.rx_q.full_p():
+            self.rx_q.insert_tail(msg)
 
     def set_gain(self, gain):
         if self.rtl_found:
@@ -919,7 +922,8 @@ class p25_rx_block (gr.top_block):
             error = self.demod.get_freq_error()
         d = {'json_type': 'rx_update', 'error': error, 'fine_tune': self.options.fine_tune, 'files': filenames}
         msg = gr.message().make_from_string(json.dumps(d), -4, 0, 0)
-        self.input_q.insert_tail(msg)
+        if not self.input_q.full_p():
+            self.input_q.insert_tail(msg)
 
     def process_qmsg(self, msg):
         # return true = end top block
@@ -936,7 +940,8 @@ class p25_rx_block (gr.top_block):
                 return False    ## possible race cond - just ignore
             js = self.trunk_rx.to_json()
             msg = gr.message().make_from_string(js, -4, 0, 0)
-            self.input_q.insert_tail(msg)
+            if not self.input_q.full_p():
+                self.input_q.insert_tail(msg)
             self.process_ajax()
         elif s == 'set_debug':
             self.set_debug(int(msg.arg1()))
@@ -964,7 +969,8 @@ class p25_rx_block (gr.top_block):
                 self.toggle_plot(0)
 
         elif s in RX_COMMANDS:
-            self.rx_q.insert_tail(msg)
+            if not self.rx_q.full_p():
+                self.rx_q.insert_tail(msg)
         return False
 
 ############################################################################
@@ -1014,7 +1020,8 @@ class rx_main(object):
                 while self.keep_running:
                     time.sleep(1)
                     msg = gr.message().make_from_string("watchdog", -2, 0, 0)
-                    self.tb.output_q.insert_tail(msg)
+                    if not self.tb.output_q.full_p():
+                        self.tb.output_q.insert_tail(msg)
             sys.stderr.write('Flowgraph completed. Exiting\n')
         except:
             sys.stderr.write('main: exception occurred\n')

@@ -1301,7 +1301,8 @@ class rx_ctl (object):
         d['tgid'] = tgid
         d['tag'] = tag
         msg = gr.message().make_from_string(json.dumps(d), -2, time.time(), 0)
-        self.meta_q.insert_tail(msg)
+        if not self.meta_q.full_p():
+            self.meta_q.insert_tail(msg)
 
     def post_init(self):
         self.nacs = list(self.configs.keys())
