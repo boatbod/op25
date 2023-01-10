@@ -67,8 +67,14 @@ class q_watcher(threading.Thread):
 
     def run(self):
         while(self.keep_running):
-            msg = self.msgq.delete_head()
-            self.callback(msg)
+            if not self.msgq.empty_p():
+                msg = self.msgq.delete_head()
+                if msg is not None:
+                    self.callback(msg)
+                else:
+                    self.keep_running = False
+            else:
+                time.sleep(0.1)
 
 class curses_terminal(threading.Thread):
     def __init__(self, input_q,  output_q, sock=None, **kwds):
@@ -534,7 +540,6 @@ class http_terminal(threading.Thread):
         self.endpoint = endpoint
         self.keep_running = True
         self.server = http_server(self.input_q, self.output_q, self.endpoint)
-
         self.start()
 
     def get_terminal_type(self):

@@ -159,5 +159,11 @@ class queue_watcher(threading.Thread):
 
     def run(self):
         while(self.keep_running):
-            msg = self.msgq.delete_head()
-            self.callback(msg)
+            if not self.msgq.empty_p(): # check queue before trying to read a message to avoid deadlock at startup
+                msg = self.msgq.delete_head()
+                if msg is not None:
+                    self.callback(msg)
+                else:
+                    self.keep_running = False
+            else: # empty queue
+                time.sleep(0.01)
