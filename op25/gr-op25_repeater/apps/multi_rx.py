@@ -978,7 +978,7 @@ class du_queue_watcher(threading.Thread):
 
     def __init__(self, msgq,  callback, **kwds):
         threading.Thread.__init__ (self, **kwds)
-        self.daemon = 1
+        self.daemon = True
         self.msgq = msgq
         self.callback = callback
         self.keep_running = True
