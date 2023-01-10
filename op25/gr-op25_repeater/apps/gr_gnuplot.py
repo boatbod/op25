@@ -176,7 +176,7 @@ class wrap_gp(object):
                 self.buf = []
                 plots.append('"-" with lines')
                 if min(self.avg_pwr) == 0: # plot is broken, probably because source device was missing
-                    return
+                    return consumed
                 min_y = 20 * np.log10(min(self.avg_pwr))
                 self.min_y = ((1.0 - Y_AVG) * self.min_y) + (Y_AVG * min_y) 
         self.buf = []
@@ -298,8 +298,8 @@ class eye_sink_f(gr.sync_block):
 
     def work(self, input_items, output_items):
         in0 = input_items[0]
-        consumed = self.gnuplot.plot(in0, 100 * self.sps, mode='eye')
-        return consumed ### len(input_items[0])
+        self.gnuplot.plot(in0, 100 * self.sps, mode='eye')
+        return len(input_items[0])
 
     def kill(self):
         self.gnuplot.kill()
