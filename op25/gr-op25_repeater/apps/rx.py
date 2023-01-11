@@ -868,7 +868,7 @@ class p25_rx_block (gr.top_block):
             rc = source.seek(file_seek*4800, 0) # Seek in seconds (4800sps)
             assert rc == True
         throttle = blocks.throttle(gr.sizeof_char, symbol_rate)
-        throttle.set_max_noutput_items(symbol_rate/50);
+        throttle.set_max_noutput_items(int(symbol_rate/50));
         self.connect(source, throttle)
         self.__build_graph(throttle, symbol_rate)
 
