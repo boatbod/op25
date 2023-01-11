@@ -224,8 +224,6 @@ namespace gr {
             int p = 0;
             if (!d_do_msgq)
                 return;
-            if (d_msg_queue->full_p())
-                return;
             assert (len+2 <= (int)sizeof(wbuf));
             wbuf[p++] = (nac >> 8) & 0xff;
             wbuf[p++] = nac & 0xff;
@@ -620,11 +618,12 @@ namespace gr {
         }
 
         void p25p1_fdma::send_msg(const std::string msg_str, long msg_type) {
-            if (!d_do_msgq || d_msg_queue->full_p())
+            if (!d_do_msgq)
                 return;
 
             gr::message::sptr msg = gr::message::make_from_string(msg_str, get_msg_type(PROTOCOL_P25, msg_type), (d_msgq_id << 1), logts.get_ts());
-            d_msg_queue->insert_tail(msg);
+            if (!d_msg_queue->full_p())
+                d_msg_queue->insert_tail(msg);
         }
 
         void p25p1_fdma::process_frame() {
@@ -712,7 +711,7 @@ namespace gr {
 
         // Check for timer expiry
         void p25p1_fdma::check_timeout() {
-            if (d_do_msgq && !d_msg_queue->full_p()) {
+            if (d_do_msgq) {
                 // check for timeout
                 if (qtimer.expired()) {
                     if (d_debug >= 10)
@@ -724,7 +723,8 @@ namespace gr {
 
                     qtimer.reset();
                     gr::message::sptr msg = gr::message::make(get_msg_type(PROTOCOL_P25, M_P25_TIMEOUT), (d_msgq_id << 1), logts.get_ts());
-                    d_msg_queue->insert_tail(msg);
+                    if (!d_msg_queue->full_p())
+                        d_msg_queue->insert_tail(msg);
                 }
             }
         }

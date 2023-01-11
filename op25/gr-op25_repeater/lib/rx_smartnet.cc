@@ -220,7 +220,8 @@ namespace gr{
                 std::string m_buf;
                 gr::message::sptr msg;
                 msg = gr::message::make_from_string(m_buf, get_msg_type(PROTOCOL_SMARTNET, M_SMARTNET_TIMEOUT), (d_msgq_id << 1), logts.get_ts());
-                d_msg_queue->insert_tail(msg);
+                if (!d_msg_queue->full_p())
+                    d_msg_queue->insert_tail(msg);
             }
             if (d_debug >= 10) {
                 fprintf(stderr, "%s rx_smartnet::sync_timeout:\n", logts.get(d_msgq_id));
@@ -233,7 +234,8 @@ namespace gr{
             if ((d_msgq_id >= 0) && (!d_msg_queue->full_p())) {
 
                 gr::message::sptr msg = gr::message::make_from_string(msg_str, get_msg_type(PROTOCOL_SMARTNET, M_SMARTNET_OSW), (d_msgq_id<<1), logts.get_ts());
-                d_msg_queue->insert_tail(msg);
+                if (!d_msg_queue->full_p())
+                    d_msg_queue->insert_tail(msg);
             }
         }
 

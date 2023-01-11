@@ -699,5 +699,6 @@ void p25p2_tdma::send_msg(const std::string msg_str, long msg_type)
 		return;
 
 	gr::message::sptr msg = gr::message::make_from_string(msg_str, get_msg_type(PROTOCOL_P25, msg_type), (d_msgq_id << 1), logts.get_ts());
-	d_msg_queue->insert_tail(msg);
+    if (!d_msg_queue->full_p())
+    	d_msg_queue->insert_tail(msg);
 }
