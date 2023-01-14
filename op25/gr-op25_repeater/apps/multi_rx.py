@@ -776,7 +776,7 @@ class rx_block (gr.top_block):
                 if ("raw_seek" in cfg) and (cfg['raw_seek'] != 0):
                     chan.raw_file.seek(int(cfg['raw_seek']) * 4800, 0)
                 chan.throttle = blocks.throttle(gr.sizeof_char, chan.symbol_rate)
-                chan.throttle.set_max_noutput_items(chan.symbol_rate/50);
+                chan.throttle.set_max_noutput_items(int(chan.symbol_rate/50));
                 self.connect(chan.raw_file, chan.throttle)
                 self.connect(chan.throttle, chan.decoder)
                 self.set_interactive(False) # this is non-interactive 'replay' session 
