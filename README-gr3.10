@@ -1,0 +1,31 @@
+The git branch "gr310" is only designed for building on gnuradio-3.10 and above.  If you are trying to
+build on a gnuradio-3.8 or prior system please "git checkout master" (head).  Note that gnuradio-3.9
+was a transitional release and support is untested on this version of op25.
+
+If you are building op25 on a standard packaged long term supported OS with gcc-11 (e.g. Ubuntu 22.04)
+you should be able to git clone the repo, check out the gr310 branch and execute "install.sh" to build
+and install the app and libraries with minimal pain.
+
+Building op25 on short term testing releases containing all the latest component variations including
+gcc-12 (e.g. Ubuntu 22.10, Debian Bookworm) will likely be an exercise in frustration as you encounter
+fatal errors due to differences in g++ compiler flags between gcc-11 and gcc-12. While there are hacks
+that can be made to the installed gnuradio code to work around this, my recommendation would be to drop
+back to a supported release and wait for fixes to catch up.
+
+Lastly, if you plan on building op25 with a locally built & installed gnuradio (i.e. something other
+than an apt packaged version) you cannot run install.sh.  Under these circumstances you have to make
+sure all dependencies are installed then perform the following steps:
+	cd ~/op25
+	mkdir build
+
+	./build_bindings.sh
+
+	cd build
+	cmake ../
+
+	make
+	make install
+If the bindings fail to build properly this will lead to further errors (missing files) during cmake.
+
+/boatbod
+1/25/2023
