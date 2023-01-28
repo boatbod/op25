@@ -37,7 +37,7 @@ import pmt
 import gnuradio.op25 as op25
 import gnuradio.op25_repeater as op25_repeater
 import rms_agc
-from math import pi
+from math import pi, isnan, isinf
 
 sys.path.append('tx')
 import op25_c4fm_mod
@@ -439,7 +439,10 @@ class p25_demod_cb(p25_demod_base):
         return self.clock.quality()
 
     def get_freq_error(self):   # get frequency error from FLL and convert to Hz
-        return int((self.fll.get_frequency() / TWO_PI) * self.if_rate)
+        fll_err = self.fll.get_frequency()
+        if isnan(fll_err) or isinf(fll_err):
+            return 0
+        return int((fll_err / TWO_PI) * self.if_rate)
 
     def set_omega(self, rate):
         self.set_symbol_rate(rate)
