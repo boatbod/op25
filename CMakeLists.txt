@@ -138,7 +138,7 @@ else()
 endif()
 MESSAGE(STATUS "Configuring for Python ${OP25_PYTHON_VER}")
 if(NOT EXISTS /usr/include/spdlog/fmt/bundled)
-  ADD_DEFINITIONS(-DSPDLOG_FMT_EXTERNAL=ON)
+  ADD_DEFINITIONS(-DSPDLOG_FMT_EXTERNAL=1)
 endif()
 
 execute_process(COMMAND python${OP25_PYTHON_VER} -c "
