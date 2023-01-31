@@ -115,6 +115,9 @@ bool p25_framer::nid_codeword(uint64_t acc) {
     }
     d_unexpected_nac = 0;
 
+#ifdef DISABLE_NID_PARITY_CHECK
+    return true;
+#endif
     // Validate duid and parity bit (TIA-102-BAAC)
     if (((duid == 0) || (duid == 3) || (duid == 7) || (duid == 12) || (duid == 15)) && !parity) {
         return true;

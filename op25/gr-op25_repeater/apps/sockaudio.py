@@ -349,6 +349,7 @@ class stdout_wrapper(object):
         try:
             sys.stdout.flush()
         except IOError: # IOError means listener has terminated
+            sys.stderr.write("stdout_wrapper::drain() broken pipe\n")
             return -1
         return 0
 
@@ -359,12 +360,14 @@ class stdout_wrapper(object):
         try:
             sys.stdout.write(pcm_data)
         except IOError: # IOError means listener has terminated
+            sys.stderr.write("stdout_wrapper::write() broken pipe\n")
             return -1
         return 0
 
     def check(self):
         rc = 0
         if (self.write(self.silence) < 0) or (self.drain() < 0): # write silence to check pipe connectivity 
+            sys.stderr.write("stdout_wrapper::check() broken pipe\n")
             rc = -1
         return rc
 
