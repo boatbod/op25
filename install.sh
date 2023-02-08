@@ -43,9 +43,6 @@ if [ -f /lib/udev/rules.d/60-libairspy0.rules ]; then
     sudo sed -i 's^TAG+="uaccess"^MODE="660", GROUP="plugdev"^g' /lib/udev/rules.d/60-libairspy0.rules
 fi
 
-# build bindings
-./build_bindings.sh
-
 rm -rf build
 mkdir build
 cd build
