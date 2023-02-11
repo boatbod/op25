@@ -1,0 +1,11 @@
+--- parseheader_generic.py	2023-01-28 21:16:40.804833423 -0500
++++ parseheader_generic.py.fix	2023-01-28 21:10:32.909996468 -0500
+@@ -321,7 +321,7 @@
+                 compiler='gcc',
+                 undefine_symbols=['__PIE__'],
+                 define_symbols=self.define_symbols,
+-                cflags='-std=c++17 -fPIC')
++                cflags='-std=c++17 -fPIC -fsized-deallocation')
+             decls = parser.parse(
+                 [self.target_file], xml_generator_config,
+                 compilation_mode=parser.COMPILATION_MODE.ALL_AT_ONCE)
