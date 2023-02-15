@@ -23,5 +23,9 @@ changing interfaces, you should not need to recreate the bindings.
 NOTE that op25 and gnuradio MUST be compiled with the same version of compiler, which normally means the default
 supplied with your distro.  Attempting to mix compilers will be an exercise in frustration...
 
+As of 2/14/2023 I have built and isuccessfully run op25 under the following gnuradio-3.10 distros:
+- Ubuntu 22.04, Mint 21.1, Debian Bookworm (using install.sh script)
+- Arch Linux (manual install)
+- Fedora 37 (manual install)
+
 /boatbod
-2/8/2023
