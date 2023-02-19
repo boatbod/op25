@@ -93,16 +93,17 @@ endif(APPLE)
 ########################################################################
 # Find gnuradio build dependencies
 ########################################################################
-find_package(Doxygen)
+#find_package(Doxygen)
 
 ########################################################################
 # Setup doxygen option
 ########################################################################
-if(DOXYGEN_FOUND)
-    option(ENABLE_DOXYGEN "Build docs using Doxygen" ON)
-else(DOXYGEN_FOUND)
-    option(ENABLE_DOXYGEN "Build docs using Doxygen" OFF)
-endif(DOXYGEN_FOUND)
+option(ENABLE_DOXYGEN "Build docs using Doxygen" OFF)
+#if(DOXYGEN_FOUND)
+#    option(ENABLE_DOXYGEN "Build docs using Doxygen" ON)
+#else(DOXYGEN_FOUND)
+#    option(ENABLE_DOXYGEN "Build docs using Doxygen" OFF)
+#endif(DOXYGEN_FOUND)
 
 ########################################################################
 # Create uninstall target
@@ -122,7 +123,7 @@ add_custom_target(uninstall
 add_subdirectory(include/gnuradio/op25_repeater)
 add_subdirectory(lib)
 add_subdirectory(apps)
-add_subdirectory(docs)
+#add_subdirectory(docs)
 # NOTE: manually update below to use GRC to generate C++ flowgraphs w/o python
 if(ENABLE_PYTHON)
   message(STATUS "PYTHON and GRC components are enabled")
