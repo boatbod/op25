@@ -14,6 +14,13 @@ sudo pacman -S gnuradio gnuradio-osmosdr rtl-sdr libuhd cmake cppunit doxygen bo
 yay -S itpp castxml python-pygccxml
 
 #
+# Check and fix missing libthrift-0.17.0.so (currently required for gnuradio modtool)
+#
+if ! [ -f /usr/lib/libthrift-0.17.0.so ]; then
+	sudo ln /usr/lib/libthrift-0.18.0.so /usr/lib/libthrift-0.17.0.so
+fi
+
+#
 # Build the python/c++ bindings
 #
 ./build_bindings.sh
