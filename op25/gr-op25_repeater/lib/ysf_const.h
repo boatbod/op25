@@ -24,7 +24,7 @@
 
 #include <stdint.h>
 
-static void decode_49bit(int b[9], const uint8_t src[49]) {
+inline void decode_49bit(int b[9], const uint8_t src[49]) {
 	for (int i=0; i<9; i++)
 		b[i] = 0;
 	b[0] |= src[0] << 6;

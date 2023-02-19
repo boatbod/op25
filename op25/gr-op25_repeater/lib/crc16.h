@@ -22,7 +22,7 @@
 
 #include <string.h>
 
-static uint8_t crc7(const uint8_t bits[], unsigned int len) {
+inline uint8_t crc7(const uint8_t bits[], unsigned int len) {
 	uint8_t crc=0;
 	static const unsigned int K = 7;
 	static const uint8_t poly[K+1] = {1,0,1,0,0,1,1,1}; // crc7 poly
@@ -46,7 +46,7 @@ static uint8_t crc7(const uint8_t bits[], unsigned int len) {
 }
 
 
-static uint8_t crc8(const uint8_t bits[], unsigned int len) {
+inline uint8_t crc8(const uint8_t bits[], unsigned int len) {
 	uint8_t crc=0;
 	static const unsigned int K = 8;
 	static const uint8_t poly[K+1] = {1,0,0,0,0,0,1,1,1}; // crc8 poly
@@ -69,7 +69,7 @@ static uint8_t crc8(const uint8_t bits[], unsigned int len) {
 	return crc;
 }
 
-static bool crc8_ok(const uint8_t bits[], unsigned int len) {
+inline bool crc8_ok(const uint8_t bits[], unsigned int len) {
 	uint16_t crc = 0;
 	for (unsigned int i=0; i < 8; i++) {
 		crc = (crc << 1) + bits[len+i];
@@ -77,7 +77,7 @@ static bool crc8_ok(const uint8_t bits[], unsigned int len) {
 	return (crc == crc8(bits,len));
 }
 
-static inline uint16_t crc16(const uint8_t buf[], int len) {
+inline uint16_t crc16(const uint8_t buf[], int len) {
         uint32_t poly = (1<<12) + (1<<5) + (1<<0);
         uint32_t crc = 0;
         for(int i=0; i<len; i++) {
@@ -90,7 +90,7 @@ static inline uint16_t crc16(const uint8_t buf[], int len) {
         return crc & 0xffff;
 }
 
-static inline uint32_t crc32(const uint8_t buf[], size_t len)
+inline uint32_t crc32(const uint8_t buf[], size_t len)
 {
     uint32_t poly = 0xedb88320;
     uint32_t crc  = 0;

@@ -781,12 +781,13 @@ dmr_slot::decode_embedded_lc() {
 		d_lc.push_back((emb_data[i+0] << 7) + (emb_data[i+1] << 6) + (emb_data[i+2] << 5) + (emb_data[i+3] << 4) +
 			       (emb_data[i+4] << 3) + (emb_data[i+5] << 2) + (emb_data[i+6] << 1) +  emb_data[i+7]);
 
+#if _CRC_CHECK_
 	// Extract 5 bit received CRC
 	uint16_t rxd_crc = (data[42] << 4) + (data[58] << 3) + (data[74] << 2) + (data[90] << 1) + data[106];
 
 	// Calculate LC CRC and compare with received value
 	uint16_t calc_crc = (d_lc[0] + d_lc[1] + d_lc[2] + d_lc[3] + d_lc[4] + d_lc[5] + d_lc[6] + d_lc[7] + d_lc[8]) % 31;
-#if _CRC_CHECK_
+
 	if (rxd_crc == calc_crc) {
 #else
     if (true) {

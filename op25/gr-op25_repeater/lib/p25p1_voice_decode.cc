@@ -44,12 +44,6 @@
 namespace gr {
   namespace op25_repeater {
 
-static void clear_bits(bit_vector& v) {
-	for (size_t i=0; i<v.size(); i++) {
-		v[i]=0;
-	}
-}
-
 p25p1_voice_decode::p25p1_voice_decode(bool verbose_flag, const op25_audio& udp, std::deque<int16_t> &_output_queue) :
 	write_bufp(0),
 	rxbufp(0),

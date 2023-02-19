@@ -47,7 +47,7 @@ public:
 	/**
 	 * Decode the compressed audio.
 	 *
-	 * \cw in IMBE codeword (including parity check bits).
+	 * \param cw in IMBE codeword (including parity check bits).
 	 */
 	virtual void decode(const voice_codeword& cw);
 
