@@ -78,10 +78,9 @@ namespace gr {
        * samples/s. That's a work rate of 3/5 or 0.6. If no audio
        * output is available we'll produce silence.
        */
-      const size_t nof_inputs = ninput_items_required.size();
       const int nsamples_reqd = .6 * noutput_items;
-      fill(&ninput_items_required[0],
-	   &ninput_items_required[nof_inputs],
+      fill(ninput_items_required.begin(),
+	   ninput_items_required.end(),
 	   nsamples_reqd);
     }
 
