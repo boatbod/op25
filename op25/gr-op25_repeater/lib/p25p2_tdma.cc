@@ -95,6 +95,7 @@ p25p2_tdma::p25p2_tdma(const op25_audio& udp, log_ts& logger, int slotid, int de
 	packets(0),
 	write_bufp(0),
 	d_slotid(slotid),
+	d_tdma_slot_for_2v(0),
 	mbe_err_cnt(0),
 	tone_frame(false),
 	d_msg_queue(queue),
@@ -219,8 +220,11 @@ void p25p2_tdma::handle_mac_ptt(const uint8_t byte_buf[], const unsigned int len
         uint16_t grpaddr = (byte_buf[16] << 8) + byte_buf[17];
 
         if (d_debug >= 10) {
-                fprintf(stderr, "%s MAC_PTT: srcaddr=%u, grpaddr=%u", logts.get(d_msgq_id), srcaddr, grpaddr);
+                fprintf(stderr, "%s MAC_PTT: srcaddr=%u, grpaddr=%u, TDMA slot ID=%u", logts.get(d_msgq_id), srcaddr, grpaddr, sync.tdma_slotid());
         }
+        // 2V slot is the same as MAC_PTT
+        // we use this later to ensure voice frames are in sync
+        d_tdma_slot_for_2v = sync.tdma_slotid() >> 1;
 
         for (int i = 0; i < 9; i++) {
                 ess_mi[i] = byte_buf[i+1];
@@ -234,7 +238,7 @@ void p25p2_tdma::handle_mac_ptt(const uint8_t byte_buf[], const unsigned int len
 			rs_errs);
         }
 		if (encrypted()) {
-			crypt_algs.prepare(ess_algid, ess_keyid, FT_4V, ess_mi); // likely not necessary because prepare() called by handle_packet() when burst_id==0
+			crypt_algs.prepare(ess_algid, ess_keyid, PT_P25_PHASE2, ess_mi);
 		}
 
 		reset_vb();
@@ -474,7 +478,7 @@ int p25p2_tdma::handle_acch_frame(const uint8_t dibits[], bool fast, bool is_lcc
 	return rc;
 }
 
-void p25p2_tdma::handle_voice_frame(const uint8_t dibits[]) 
+void p25p2_tdma::handle_voice_frame(const uint8_t dibits[], int slot, int voice_subframe)
 {
 	static const int NSAMP_OUTPUT=160;
 	audio_samples *samples = NULL;
@@ -486,6 +490,7 @@ void p25p2_tdma::handle_voice_frame(const uint8_t dibits[])
 	int16_t snd;
 	int K;
 	int rc = -1;
+	frame_type fr_type;
 
 	// Deinterleave and figure out frame type:
 	errs = vf.process_vcw(&errs_mp, dibits, b, u);
@@ -502,8 +507,25 @@ void p25p2_tdma::handle_voice_frame(const uint8_t dibits[])
 
 	// Pass encrypted traffic through the decryption algorithms
 	if (encrypted()) {
+		switch (slot) {
+			case 0:
+				fr_type = FT_4V_0;
+				break;
+			case 1:
+				fr_type = FT_4V_1;
+				break;
+			case 2:
+				fr_type = FT_4V_2;
+				break;
+			case 3:
+				fr_type = FT_4V_3;
+				break;
+			case 4:
+				fr_type = FT_2V;
+				break;
+		}
 		vf.pack_cw(p_cw, u);
-		audio_valid = crypt_algs.process(p_cw);
+		audio_valid = crypt_algs.process(p_cw, fr_type, voice_subframe);
 		if (!audio_valid)
 			return;
         vf.unpack_cw(p_cw, u);  // unpack plaintext codewords
@@ -606,20 +628,38 @@ int p25p2_tdma::handle_packet(uint8_t dibits[], const uint64_t fs)
 		xored_burst[i] = burstp[i] ^ tdma_xormask[sync.tdma_slotid() * BURST_SIZE + i];
 	}
 	if (burst_type == 0 || burst_type == 6)	{       // 4V or 2V burst
+		int current_slot = sync.tdma_slotid() >> 1;
+
 		track_vb(burst_type);
+
+		if (burst_type == 6)
+			d_tdma_slot_for_2v = current_slot;
+
+		if (current_slot <= (int) d_tdma_slot_for_2v)
+			current_slot += 5;
+
+		current_slot -= (d_tdma_slot_for_2v + 1);
+
+		if (current_slot != burst_id && current_slot > burst_id) {
+			int need_to_skip = current_slot - burst_id;
+			// XXX determine if the 2V frame was missed?
+			fprintf(stderr, "%i voice frame(s) missing; expecting %uV_%u but got %uV_%u\n", need_to_skip, (burst_id == 4 ? 2 : 4), burst_id, (current_slot == 4 ? 2 : 4), current_slot);
+			burst_id = current_slot;
+		}
+
 		handle_4V2V_ess(&xored_burst[84]);
-		handle_voice_frame(&xored_burst[11]);
-		handle_voice_frame(&xored_burst[48]);
+		handle_voice_frame(&xored_burst[11], current_slot, 0);
+		handle_voice_frame(&xored_burst[48], current_slot, 1);
 		if (burst_type == 0) {
-			handle_voice_frame(&xored_burst[96]);
-			handle_voice_frame(&xored_burst[133]);
+			handle_voice_frame(&xored_burst[96], current_slot, 2);
+			handle_voice_frame(&xored_burst[133], current_slot, 3);
 		} else /* if (burst_type == 6) */ {
 			// promote next set of encryption parameters AFTER we get the full ESS & process the 2V frame
 			ess_algid = next_algid;
 			ess_keyid = next_keyid;
 			memcpy(ess_mi, next_mi, sizeof(ess_mi));
 			if (encrypted()) {
-				crypt_algs.prepare(ess_algid, ess_keyid, ((burst_type == 0) ? FT_4V : FT_2V), ess_mi);
+				crypt_algs.prepare(ess_algid, ess_keyid, PT_P25_PHASE2, ess_mi);
 			}
 			std::string s = "{\"encrypted\": " + std::to_string((encrypted()) ? 1 : 0) + ", \"algid\": " + std::to_string(ess_algid) + ", \"keyid\": " + std::to_string(ess_keyid) + "}";
 			send_msg(s, M_P25_JSON_DATA);
@@ -653,7 +693,7 @@ void p25p2_tdma::handle_4V2V_ess(const uint8_t dibits[])
 	int ec = 0;
 
 	if (d_debug >= 10) {
-		fprintf(stderr, "%s %s_BURST(%d) ", logts.get(d_msgq_id), (burst_id < 4) ? "4V" : "2V", burst_id);
+		fprintf(stderr, "%s %s_BURST(%d) TDMA slot ID=%u ", logts.get(d_msgq_id), (burst_id < 4) ? "4V" : "2V", burst_id, sync.tdma_slotid());
 	}
 
 	if (burst_id < 4) {

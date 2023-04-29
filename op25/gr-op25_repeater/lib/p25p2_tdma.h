@@ -63,6 +63,7 @@ private:
 	int write_bufp;
 	char write_buf[512];
 	int d_slotid;
+	uint32_t d_tdma_slot_for_2v;
 	mbe_parms cur_mp;
 	mbe_parms prev_mp;
 	mbe_parms enh_mp;
@@ -99,7 +100,7 @@ private:
     p25_crypt_algs crypt_algs;
 
 	int handle_acch_frame(const uint8_t dibits[], bool fast, bool is_lcch) ;
-	void handle_voice_frame(const uint8_t dibits[]) ;
+	void handle_voice_frame(const uint8_t dibits[], int slot, int voice_subframe);
 	int  process_mac_pdu(const uint8_t byte_buf[], const unsigned int len, const int rs_errs) ;
 	void handle_mac_signal(const uint8_t byte_buf[], const unsigned int len, const int rs_errs) ;
 	void handle_mac_ptt(const uint8_t byte_buf[], const unsigned int len, const int rs_errs) ;
