@@ -608,21 +608,21 @@ int p25p2_tdma::handle_packet(uint8_t dibits[], const uint64_t fs)
 	if (burst_type == 0 || burst_type == 6)	{       // 4V or 2V burst
 		track_vb(burst_type);
 		handle_4V2V_ess(&xored_burst[84]);
-		std::string s = "{\"encrypted\": " + std::to_string((encrypted()) ? 1 : 0) + ", \"algid\": " + std::to_string(ess_algid) + ", \"keyid\": " + std::to_string(ess_keyid) + "}";
-		send_msg(s, M_P25_JSON_DATA);
-		if ((burst_type == 0) && (burst_id == 0)) {  // promote next set of encryption parameters if this is first 4V after a 2V
-			ess_algid = next_algid;
-			ess_keyid = next_keyid;
-			memcpy(ess_mi, next_mi, sizeof(ess_mi));
-		    if (encrypted()) {
-			    crypt_algs.prepare(ess_algid, ess_keyid, ((burst_type == 0) ? FT_4V : FT_2V), ess_mi);
-		    }
-		}
 		handle_voice_frame(&xored_burst[11]);
 		handle_voice_frame(&xored_burst[48]);
 		if (burst_type == 0) {
 			handle_voice_frame(&xored_burst[96]);
 			handle_voice_frame(&xored_burst[133]);
+		} else /* if (burst_type == 6) */ {
+			// promote next set of encryption parameters AFTER we get the full ESS & process the 2V frame
+			ess_algid = next_algid;
+			ess_keyid = next_keyid;
+			memcpy(ess_mi, next_mi, sizeof(ess_mi));
+			if (encrypted()) {
+				crypt_algs.prepare(ess_algid, ess_keyid, ((burst_type == 0) ? FT_4V : FT_2V), ess_mi);
+			}
+			std::string s = "{\"encrypted\": " + std::to_string((encrypted()) ? 1 : 0) + ", \"algid\": " + std::to_string(ess_algid) + ", \"keyid\": " + std::to_string(ess_keyid) + "}";
+			send_msg(s, M_P25_JSON_DATA);
 		}
 		return -1;
 	} else if (burst_type == 3) {                   // scrambled sacch
