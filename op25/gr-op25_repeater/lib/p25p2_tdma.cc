@@ -685,11 +685,13 @@ void p25p2_tdma::handle_4V2V_ess(const uint8_t dibits[])
 		}
 	}     
 
-	if (d_debug >= 10) {
+	if (d_debug >= 10 && burst_id == 4) {
 		fprintf(stderr, "ESS: algid=%x, keyid=%x, mi=%02x %02x %02x %02x %02x %02x %02x %02x %02x, rs_errs=%d\n",
 			    next_algid, next_keyid,
 			    next_mi[0], next_mi[1], next_mi[2], next_mi[3], next_mi[4], next_mi[5],next_mi[6], next_mi[7], next_mi[8],
 			    ec);        
+	} else if (d_debug >= 10) {
+		fprintf(stderr, "ESS: (partial)\n");
 	}
 }
 
