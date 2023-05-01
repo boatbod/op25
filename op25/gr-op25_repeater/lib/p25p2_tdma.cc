@@ -643,7 +643,9 @@ int p25p2_tdma::handle_packet(uint8_t dibits[], const uint64_t fs)
 		if (current_slot != burst_id && current_slot > burst_id) {
 			int need_to_skip = current_slot - burst_id;
 			// XXX determine if the 2V frame was missed?
-			fprintf(stderr, "%i voice frame(s) missing; expecting %uV_%u but got %uV_%u\n", need_to_skip, (burst_id == 4 ? 2 : 4), burst_id, (current_slot == 4 ? 2 : 4), current_slot);
+            if (d_debug >= 10) {
+			    fprintf(stderr, "%i voice frame(s) missing; expecting %uV_%u but got %uV_%u\n", need_to_skip, (burst_id == 4 ? 2 : 4), burst_id, (current_slot == 4 ? 2 : 4), current_slot);
+            }
 			burst_id = current_slot;
 		}
 
