@@ -117,6 +117,15 @@ class device(object):
             self.fractional_corr = 0
             self.tunable = False
 
+        elif config['args'] == 'symbols':
+            self.src = None
+            self.sample_rate = config['rate']
+            self.frequency = int(from_dict(config, 'frequency', 800000000))
+            self.usable_bw = float(from_dict(config, 'usable_bw_pct', 1.0))
+            self.offset = int(from_dict(config, 'offset', 0))
+            self.ppm = float(from_dict(config, 'ppm', "0.0"))
+            self.fractional_corr = int((int(round(self.ppm)) - self.ppm) * (self.frequency/1e6))
+
         else:
             if config['args'].startswith('rtl') and config['rate'] not in speeds:
                 sys.stderr.write('WARNING: requested sample rate %d for device %s may not\n' % (config['rate'], config['name']))
