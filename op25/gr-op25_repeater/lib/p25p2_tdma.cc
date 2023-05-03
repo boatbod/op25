@@ -222,6 +222,7 @@ void p25p2_tdma::handle_mac_ptt(const uint8_t byte_buf[], const unsigned int len
         if (d_debug >= 10) {
                 fprintf(stderr, "%s MAC_PTT: srcaddr=%u, grpaddr=%u, TDMA slot ID=%u", logts.get(d_msgq_id), srcaddr, grpaddr, sync.tdma_slotid());
         }
+        // FIXME: this may be an incorrect assumption.  4V_0 follows MAC_PTT per TIA-102-BBAC-8.4.2
         // 2V slot is the same as MAC_PTT
         // we use this later to ensure voice frames are in sync
         d_tdma_slot_for_2v = sync.tdma_slotid() >> 1;
@@ -640,6 +641,8 @@ int p25p2_tdma::handle_packet(uint8_t dibits[], const uint64_t fs)
 
 		current_slot -= (d_tdma_slot_for_2v + 1);
 
+// FIXME: this is not working correctly
+#if 0
 		if (current_slot != burst_id && current_slot > burst_id) {
 			int need_to_skip = current_slot - burst_id;
 			// XXX determine if the 2V frame was missed?
@@ -648,6 +651,7 @@ int p25p2_tdma::handle_packet(uint8_t dibits[], const uint64_t fs)
             }
 			burst_id = current_slot;
 		}
+#endif
 
 		handle_4V2V_ess(&xored_burst[84]);
 		handle_voice_frame(&xored_burst[11], current_slot, 0);
