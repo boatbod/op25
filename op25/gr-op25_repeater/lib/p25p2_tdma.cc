@@ -95,7 +95,7 @@ p25p2_tdma::p25p2_tdma(const op25_audio& udp, log_ts& logger, int slotid, int de
 	packets(0),
 	write_bufp(0),
 	d_slotid(slotid),
-	d_tdma_slot_for_2v(0),
+	d_tdma_slot_first_4v(0),
 	mbe_err_cnt(0),
 	tone_frame(false),
 	d_msg_queue(queue),
@@ -156,11 +156,12 @@ p25p2_tdma::set_xormask(const char*p) {
 
 int p25p2_tdma::process_mac_pdu(const uint8_t byte_buf[], const unsigned int len, const int rs_errs) 
 {
+	unsigned int offset = (byte_buf[0] >> 2) & 0x7;
 	unsigned int opcode = (byte_buf[0] >> 5) & 0x7;
 
-#if 0
+#if 1
         if (d_debug >= 10) {
-                fprintf(stderr, "%s process_mac_pdu: opcode %d len %d\n", logts.get(d_msgq_id), opcode, len);
+                fprintf(stderr, "%s process_mac_pdu: opcode %d offset %d len %d\n", logts.get(d_msgq_id), opcode, offset, len);
         }
 #endif
 
@@ -172,6 +173,11 @@ int p25p2_tdma::process_mac_pdu(const uint8_t byte_buf[], const unsigned int len
 
                 case 1: // MAC_PTT
                         handle_mac_ptt(byte_buf, len, rs_errs);
+                        // capture the offset field
+                        // PT.1 has offset=1, PT.0 has offset=0
+                        // add offset + 1 to the current TDMA slot to get the first 4V position
+                        // normalize TDMA slot 0-9 to ch0/ch1 slot 0-4
+                        d_tdma_slot_first_4v = ((sync.tdma_slotid() >> 1) + offset + 1) % 5;
                         break;
 
                 case 2: // MAC_END_PTT
@@ -184,6 +190,9 @@ int p25p2_tdma::process_mac_pdu(const uint8_t byte_buf[], const unsigned int len
 
                 case 4: // MAC_ACTIVE
                         handle_mac_active(byte_buf, len, rs_errs);
+                        // also capture the offset field here
+                        // it can be captured directly as for non-PTT PDUs it simply stores the offset to the first 4V
+                        d_tdma_slot_first_4v = offset;
                         break;
 
                 case 6: // MAC_HANGTIME
@@ -222,10 +231,6 @@ void p25p2_tdma::handle_mac_ptt(const uint8_t byte_buf[], const unsigned int len
         if (d_debug >= 10) {
                 fprintf(stderr, "%s MAC_PTT: srcaddr=%u, grpaddr=%u, TDMA slot ID=%u", logts.get(d_msgq_id), srcaddr, grpaddr, sync.tdma_slotid());
         }
-        // FIXME: this may be an incorrect assumption.  4V_0 follows MAC_PTT per TIA-102-BBAC-8.4.2
-        // 2V slot is the same as MAC_PTT
-        // we use this later to ensure voice frames are in sync
-        d_tdma_slot_for_2v = sync.tdma_slotid() >> 1;
 
         for (int i = 0; i < 9; i++) {
                 ess_mi[i] = byte_buf[i+1];
@@ -629,29 +634,32 @@ int p25p2_tdma::handle_packet(uint8_t dibits[], const uint64_t fs)
 		xored_burst[i] = burstp[i] ^ tdma_xormask[sync.tdma_slotid() * BURST_SIZE + i];
 	}
 	if (burst_type == 0 || burst_type == 6)	{       // 4V or 2V burst
+		// normalize current TDMA slot from 0-9 to ch0/ch1 slot 0-4
 		int current_slot = sync.tdma_slotid() >> 1;
 
 		track_vb(burst_type);
 
+		// update "first 4V" variable here as well as it always follows 2V
+		// in case we missed both PTTs
 		if (burst_type == 6)
-			d_tdma_slot_for_2v = current_slot;
+			d_tdma_slot_first_4v = (current_slot + 1) % 5;
 
-		if (current_slot <= (int) d_tdma_slot_for_2v)
+		// now let's see if the voice frame received is the one we expected to get.
+		// shift the range from [0, 4] to [first_4V, first_4V+4]
+		if (current_slot < (int) d_tdma_slot_first_4v)
 			current_slot += 5;
 
-		current_slot -= (d_tdma_slot_for_2v + 1);
+		// translate [first_4V, first_4V+1] to the burst_id we would expect to be in this slot
+		current_slot -= d_tdma_slot_first_4v;
 
-// FIXME: this is not working correctly
-#if 0
 		if (current_slot != burst_id && current_slot > burst_id) {
 			int need_to_skip = current_slot - burst_id;
 			// XXX determine if the 2V frame was missed?
-            if (d_debug >= 10) {
-			    fprintf(stderr, "%i voice frame(s) missing; expecting %uV_%u but got %uV_%u\n", need_to_skip, (burst_id == 4 ? 2 : 4), burst_id, (current_slot == 4 ? 2 : 4), current_slot);
-            }
+			if (d_debug >= 10) {
+				fprintf(stderr, "%i voice frame(s) missing; expecting %uV_%u but got %uV_%u\n", need_to_skip, (burst_id == 4 ? 2 : 4), burst_id, (current_slot == 4 ? 2 : 4), current_slot);
+			}
 			burst_id = current_slot;
 		}
-#endif
 
 		handle_4V2V_ess(&xored_burst[84]);
 		handle_voice_frame(&xored_burst[11], current_slot, 0);
