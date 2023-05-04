@@ -63,7 +63,7 @@ private:
 	int write_bufp;
 	char write_buf[512];
 	int d_slotid;
-	uint32_t d_tdma_slot_for_2v;
+	uint32_t d_tdma_slot_first_4v;
 	mbe_parms cur_mp;
 	mbe_parms prev_mp;
 	mbe_parms enh_mp;
