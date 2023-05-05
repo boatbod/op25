@@ -156,49 +156,47 @@ p25p2_tdma::set_xormask(const char*p) {
 
 int p25p2_tdma::process_mac_pdu(const uint8_t byte_buf[], const unsigned int len, const int rs_errs) 
 {
-	unsigned int offset = (byte_buf[0] >> 2) & 0x7;
-	unsigned int opcode = (byte_buf[0] >> 5) & 0x7;
+    unsigned int offset = (byte_buf[0] >> 2) & 0x7;
+    unsigned int opcode = (byte_buf[0] >> 5) & 0x7;
 
-#if 1
-        if (d_debug >= 10) {
-                fprintf(stderr, "%s process_mac_pdu: opcode %d offset %d len %d\n", logts.get(d_msgq_id), opcode, offset, len);
-        }
-#endif
+    if (d_debug >= 10) {
+        fprintf(stderr, "%s process_mac_pdu: opcode %d offset %d len %d\n", logts.get(d_msgq_id), opcode, offset, len);
+    }
 
-        switch (opcode)
-        {
-                case 0: // MAC_SIGNAL
-                        handle_mac_signal(byte_buf, len, rs_errs);
-                        break;
+    switch (opcode)
+    {
+        case 0: // MAC_SIGNAL
+            handle_mac_signal(byte_buf, len, rs_errs);
+            break;
 
-                case 1: // MAC_PTT
-                        handle_mac_ptt(byte_buf, len, rs_errs);
-                        // capture the offset field
-                        // PT.1 has offset=1, PT.0 has offset=0
-                        // add offset + 1 to the current TDMA slot to get the first 4V position
-                        // normalize TDMA slot 0-9 to ch0/ch1 slot 0-4
-                        d_tdma_slot_first_4v = ((sync.tdma_slotid() >> 1) + offset + 1) % 5;
-                        break;
+        case 1: // MAC_PTT
+            handle_mac_ptt(byte_buf, len, rs_errs);
+            // capture the offset field
+            // PT.1 has offset=1, PT.0 has offset=0
+            // add offset + 1 to the current TDMA slot to get the first 4V position
+            // normalize TDMA slot 0-9 to ch0/ch1 slot 0-4
+            d_tdma_slot_first_4v = ((sync.tdma_slotid() >> 1) + offset + 1) % 5; //TODO: handle offset > 4
+            break;
 
-                case 2: // MAC_END_PTT
-                        handle_mac_end_ptt(byte_buf, len, rs_errs);
-                        break;
+        case 2: // MAC_END_PTT
+            handle_mac_end_ptt(byte_buf, len, rs_errs);
+            break;
 
-                case 3: // MAC_IDLE
-                        handle_mac_idle(byte_buf, len, rs_errs);
-                        break;
+        case 3: // MAC_IDLE
+            handle_mac_idle(byte_buf, len, rs_errs);
+            break;
 
-                case 4: // MAC_ACTIVE
-                        handle_mac_active(byte_buf, len, rs_errs);
-                        // also capture the offset field here
-                        // it can be captured directly as for non-PTT PDUs it simply stores the offset to the first 4V
-                        d_tdma_slot_first_4v = offset;
-                        break;
+        case 4: // MAC_ACTIVE
+            handle_mac_active(byte_buf, len, rs_errs);
+            // also capture the offset field here
+            // it can be captured directly as for non-PTT PDUs it simply stores the offset to the first 4V
+            d_tdma_slot_first_4v = (offset > 4) ? 0 : offset;
+            break;
 
-                case 6: // MAC_HANGTIME
-                        handle_mac_hangtime(byte_buf, len, rs_errs);
-                        break;
-        }
+        case 6: // MAC_HANGTIME
+            handle_mac_hangtime(byte_buf, len, rs_errs);
+            break;
+    }
 	// maps sacch opcodes into phase I duid values 
 	static const int opcode_map[8] = {3, 5, 15, 15, 5, 3, 3, 3};
 	return opcode_map[opcode];

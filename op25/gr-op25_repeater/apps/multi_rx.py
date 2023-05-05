@@ -453,7 +453,8 @@ class channel(object):
         if not self.demod.set_relative_frequency(self.device.offset + self.device.frequency + self.device.fractional_corr + self.tracking - freq): # First attempt relative tune
             if self.device.tunable:                                                                  # then hard tune if allowed
                 self.device.frequency = self.frequency
-                self.device.src.set_center_freq(self.frequency + self.device.offset)
+                if self.device.src is not None:
+                    self.device.src.set_center_freq(self.frequency + self.device.offset)
                 self.device.fractional_corr = int((int(round(self.device.ppm)) - self.device.ppm) * (self.device.frequency/1e6))        # Calc frac ppm using new freq
                 self.demod.set_relative_frequency(self.device.offset + self.device.frequency + self.device.fractional_corr + self.tracking - freq)
                 if self.verbosity >= 9:
@@ -480,8 +481,9 @@ class channel(object):
     def adj_tune(self, adjustment): # ideally this would all be done at the device level but the demod belongs to the channel object
         self.tracking = 0
         self.device.ppm -= get_fractional_ppm(self.device.frequency, adjustment)
-        self.device.src.set_freq_corr(int(round(self.device.ppm)))
-        self.device.src.set_center_freq(self.device.frequency + self.device.offset)
+        if self.device.src is not None:
+            self.device.src.set_freq_corr(int(round(self.device.ppm)))
+            self.device.src.set_center_freq(self.device.frequency + self.device.offset)
         self.device.fractional_corr = int((int(round(self.device.ppm)) - self.device.ppm) * (self.device.frequency/1e6))
         self.demod.set_relative_frequency(self.device.offset + self.device.frequency + self.device.fractional_corr + self.tracking - self.frequency)
         self.demod.reset()          # reset gardner-costas tracking loop
