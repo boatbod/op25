@@ -266,6 +266,10 @@ void p25p2_tdma::handle_mac_end_ptt(const uint8_t byte_buf[], const unsigned int
                 fprintf(stderr, "%s MAC_END_PTT: colorcd=0x%03x, srcaddr=%u, grpaddr=%u, rs_errs=%d\n", logts.get(d_msgq_id), colorcd, srcaddr, grpaddr, rs_errs);
 
         op25audio.send_audio_flag(op25_audio::DRAIN);
+
+        // reset crypto parameters
+        ess_algid = 0x80;
+        memset(ess_mi, 0, sizeof(ess_mi));
 }
 
 void p25p2_tdma::handle_mac_idle(const uint8_t byte_buf[], const unsigned int len, const int rs_errs) 
