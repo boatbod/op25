@@ -268,8 +268,7 @@ void p25p2_tdma::handle_mac_end_ptt(const uint8_t byte_buf[], const unsigned int
         op25audio.send_audio_flag(op25_audio::DRAIN);
 
         // reset crypto parameters
-        ess_algid = 0x80;
-        memset(ess_mi, 0, sizeof(ess_mi));
+        reset_ess();
 }
 
 void p25p2_tdma::handle_mac_idle(const uint8_t byte_buf[], const unsigned int len, const int rs_errs) 
