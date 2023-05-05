@@ -112,6 +112,7 @@ private:
     void convert_abbrev_msg(const uint8_t byte_buf[], const uint16_t nac, const uint8_t mfid = 0x00);
 	void handle_4V2V_ess(const uint8_t dibits[]);
 	inline bool encrypted() { return (ess_algid != 0x80); }
+    inline void reset_ess() { ess_algid = 0x80; memset(ess_mi, 0, sizeof(ess_mi)); }
 
 	void send_msg(const std::string msg_str, long msg_type);
 };
