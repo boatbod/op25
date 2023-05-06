@@ -357,6 +357,7 @@ namespace gr {
 
         void p25p1_fdma::process_TTDU() {
             process_duid(framer->duid, framer->nac, NULL, 0);
+            reset_ess();
 
             if ((d_do_imbe || d_do_audio_output) && (framer->duid == 0x3 || framer->duid == 0xf)) {  // voice termination
                 op25audio.send_audio_flag(op25_audio::DRAIN);
@@ -607,6 +608,10 @@ namespace gr {
 
         void p25p1_fdma::reset_timer() {
             qtimer.reset();
+        }
+
+        void p25p1_fdma::ess_reset() {
+            reset_ess();
         }
 
         void p25p1_fdma::crypt_reset() {

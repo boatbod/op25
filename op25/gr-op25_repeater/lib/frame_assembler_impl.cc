@@ -65,6 +65,11 @@ namespace gr {
                 d_sync->sync_reset();
         }
 
+        void frame_assembler_impl::ess_reset() {
+            if (d_sync)
+                d_sync->ess_reset();
+        }
+
         void frame_assembler_impl::crypt_reset() {
             if (d_sync)
                 d_sync->crypt_reset();

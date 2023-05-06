@@ -64,6 +64,11 @@ namespace gr {
             p2tdma.set_debug(debug);
         }
 
+        void p25_frame_assembler_impl::ess_reset() {
+            p1fdma.ess_reset();
+            p2tdma.ess_reset();
+        }
+
         void p25_frame_assembler_impl::crypt_reset() {
             p1fdma.crypt_reset();
             p2tdma.crypt_reset();

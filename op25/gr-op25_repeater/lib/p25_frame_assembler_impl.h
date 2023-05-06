@@ -59,6 +59,7 @@ namespace gr {
             void set_slotkey(int key) ;
             void set_debug(int debug) ;
             void reset_timer() ;
+            void ess_reset();
             void crypt_reset();
             void crypt_key(uint16_t keyid, uint8_t algid, const std::vector<uint8_t> &key);
 

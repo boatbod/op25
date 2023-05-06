@@ -406,7 +406,7 @@ class p25_demod_cb(p25_demod_base):
         gain_omega = 0.1  * gain_mu * gain_mu
 
         self.agc = rms_agc.rms_agc(0.45, 0.85)
-        self.fll = digital.fll_band_edge_cc(sps, excess_bw, 2*sps+1, TWO_PI/sps/250) # automatic frequency correction
+        self.fll = digital.fll_band_edge_cc(sps, excess_bw, 2*sps+1, TWO_PI/sps/350) # automatic frequency correction
         self.clock = op25_repeater.gardner_cc(omega, gain_mu, gain_omega)            # timing recovery
         self.costas = op25_repeater.costas_loop_cc(costas_alpha, 4, TWO_PI/4)        # phase stabilization, range-limited to +/-90deg
 
