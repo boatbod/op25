@@ -135,6 +135,10 @@ void p25p2_tdma::set_slotid(int slotid)
 	d_slotid = slotid;
 }
 
+void p25p2_tdma::ess_reset() {
+	reset_ess();
+}
+
 void p25p2_tdma::crypt_reset() {
 	crypt_algs.reset();
 }
