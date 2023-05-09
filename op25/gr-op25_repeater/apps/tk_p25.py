@@ -98,11 +98,12 @@ def get_tgid(tgid):
 #################
 # Main trunking class
 class rx_ctl(object):
-    def __init__(self, debug=0, frequency_set=None, nac_set=None, slot_set=None, nbfm_ctrl=None, chans={}):
+    def __init__(self, debug=0, frequency_set=None, nac_set=None, slot_set=None, nbfm_ctrl=None, reset_ess=None, chans={}):
         self.frequency_set = frequency_set
         self.nac_set = nac_set
         self.slot_set = slot_set
         self.nbfm_ctrl = nbfm_ctrl
+        self.reset_ess = reset_ess
         self.debug = debug
         self.receivers = {}
         self.systems = {}
@@ -132,6 +133,7 @@ class rx_ctl(object):
                                    frequency_set = self.frequency_set,
                                    nac_set       = self.nac_set,
                                    slot_set      = self.slot_set,
+                                   reset_ess     = self.reset_ess,
                                    system        = rx_sys,
                                    config        = config,
                                    meta_q        = meta_q,
@@ -1507,13 +1509,14 @@ class rid_history(object):
 #################
 # P25 receiver class
 class p25_receiver(object):
-    def __init__(self, debug, msgq_id, frequency_set, nac_set, slot_set, system, config, meta_q = None, freq = 0):
+    def __init__(self, debug, msgq_id, frequency_set, nac_set, slot_set, reset_ess, system, config, meta_q = None, freq = 0):
         self.debug = debug
         self.msgq_id = msgq_id
         self.config = config
         self.frequency_set = frequency_set
         self.nac_set = nac_set
         self.slot_set = slot_set
+        self.reset_ess = reset_ess
         self.system = system
         self.meta_q = meta_q
         self.meta_stream = from_dict(self.config, 'meta_stream_name', "")
@@ -1920,6 +1923,7 @@ class p25_receiver(object):
             self.hold_until = time.time()
         self.current_tgid = None
         self.current_slot = None
+        self.reset_ess(self.msgq_id)                        # Drop any persistent ESS data held in the receiver
 
         if reason == "preempt":                             # Do not retune or update metadata if in middle of tuning to a different tgid
             return
