@@ -370,9 +370,10 @@ class dmr_receiver:
 
 
 class rx_ctl(object):
-    def __init__(self, debug=0, frequency_set=None, nac_set=None, slot_set=None, nbfm_ctrl=None, chans={}):
+    def __init__(self, debug=0, frequency_set=None, nac_set=None, slot_set=None, nbfm_ctrl=None, reset_ess=None, chans={}):
         self.frequency_set = frequency_set
         self.slot_set = slot_set
+        self.reset_ess = reset_ess
         self.nac_set = nac_set
         self.debug = debug
         self.receivers = {}
