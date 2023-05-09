@@ -521,8 +521,8 @@ class channel(object):
     def set_nac(self, nac):
         self.decoder.set_nac(nac)
 
-    def ess_reset(self):
-        self.decoder.ess_reset()
+    def call_end(self):
+        self.decoder.call_end()
 
     def set_slot(self, slot):
         self.chan_idle = True if (slot == 4) else False
@@ -698,7 +698,7 @@ class rx_block (gr.top_block):
             self.trunking = None
 
         if self.trunking is not None:
-            self.trunk_rx = self.trunking.rx_ctl(frequency_set = self.change_freq, nac_set = self.set_nac, slot_set = self.set_slot, nbfm_ctrl = self.nbfm_control, reset_ess = self.ess_reset, debug = self.verbosity, chans = config['chans'])
+            self.trunk_rx = self.trunking.rx_ctl(frequency_set = self.change_freq, nac_set = self.set_nac, slot_set = self.set_slot, nbfm_ctrl = self.nbfm_control, on_call_end = self.call_end, debug = self.verbosity, chans = config['chans'])
             self.du_watcher = du_queue_watcher(self.rx_q, self.trunk_rx.process_qmsg)
             sys.stderr.write("Enabled trunking module: %s\n" % config['module'])
 
@@ -852,9 +852,9 @@ class rx_block (gr.top_block):
         if 'slot' in params:
             chan.set_slot(params['slot'])
 
-    def ess_reset(self, msgq_id):
+    def call_end(self, msgq_id):
         if (msgq_id >= 0 and msgq_id < len(self.channels)):
-            self.channels[msgq_id].ess_reset()
+            self.channels[msgq_id].call_end()
 
     def nbfm_control(self, msgq_id, action):
         if (msgq_id >= 0 and msgq_id < len(self.channels)) and self.channels[msgq_id].nbfm is not None:

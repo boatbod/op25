@@ -135,7 +135,7 @@ void p25p2_tdma::set_slotid(int slotid)
 	d_slotid = slotid;
 }
 
-void p25p2_tdma::ess_reset() {
+void p25p2_tdma::call_end() {
 	reset_ess();
 }
 

@@ -54,7 +54,7 @@ namespace gr {
                 virtual void set_slotkey(int key) {}
                 virtual void set_debug(int debug) {}
                 virtual void sync_reset(void) {}
-                virtual void ess_reset(void) {}
+                virtual void call_end(void) {}
                 virtual void crypt_reset(void) {}
                 virtual void crypt_key(uint16_t keyid, uint8_t algid, const std::vector<uint8_t> &key) {}
         };
