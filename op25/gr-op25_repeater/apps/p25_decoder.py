@@ -160,9 +160,9 @@ class p25_decoder_sink_b(gr.hier_block2):
         for decoder in self.p25_decoders:
             decoder.crypt_key(keyid, algid, keyval)
 
-    def ess_reset(self):
+    def call_end(self):
         for decoder in self.p25_decoders:
-            decoder.ess_reset()
+            decoder.call_end()
 
     def crypt_reset(self):
         for decoder in self.p25_decoders:

@@ -95,7 +95,7 @@ p25p2_tdma::p25p2_tdma(const op25_audio& udp, log_ts& logger, int slotid, int de
 	packets(0),
 	write_bufp(0),
 	d_slotid(slotid),
-	d_tdma_slot_first_4v(0),
+	d_tdma_slot_first_4v(-1),
 	mbe_err_cnt(0),
 	tone_frame(false),
 	d_msg_queue(queue),
@@ -135,8 +135,9 @@ void p25p2_tdma::set_slotid(int slotid)
 	d_slotid = slotid;
 }
 
-void p25p2_tdma::ess_reset() {
+void p25p2_tdma::call_end() {
 	reset_ess();
+	d_tdma_slot_first_4v = -1;
 }
 
 void p25p2_tdma::crypt_reset() {
@@ -649,21 +650,23 @@ int p25p2_tdma::handle_packet(uint8_t dibits[], const uint64_t fs)
 		if (burst_type == 6)
 			d_tdma_slot_first_4v = (current_slot + 1) % 5;
 
-		// now let's see if the voice frame received is the one we expected to get.
-		// shift the range from [0, 4] to [first_4V, first_4V+4]
-		if (current_slot < (int) d_tdma_slot_first_4v)
-			current_slot += 5;
+		if (d_tdma_slot_first_4v >= 0) {
+			// now let's see if the voice frame received is the one we expected to get.
+			// shift the range from [0, 4] to [first_4V, first_4V+4]
+			if (current_slot < (int) d_tdma_slot_first_4v)
+				current_slot += 5;
 
-		// translate [first_4V, first_4V+1] to the burst_id we would expect to be in this slot
-		current_slot -= d_tdma_slot_first_4v;
+			// translate [first_4V, first_4V+1] to the burst_id we would expect to be in this slot
+			current_slot -= d_tdma_slot_first_4v;
 
-		if (current_slot != burst_id && current_slot > burst_id) {
-			int need_to_skip = current_slot - burst_id;
-			// XXX determine if the 2V frame was missed?
-			if (d_debug >= 10) {
-				fprintf(stderr, "%i voice frame(s) missing; expecting %uV_%u but got %uV_%u. ISCH rc=%d\n", need_to_skip, (burst_id == 4 ? 2 : 4), burst_id, (current_slot == 4 ? 2 : 4), current_slot, sync.last_rc());
+			if (current_slot != burst_id && current_slot > burst_id) {
+				int need_to_skip = current_slot - burst_id;
+				// XXX determine if the 2V frame was missed?
+				if (d_debug >= 10) {
+					fprintf(stderr, "%i voice frame(s) missing; expecting %uV_%u but got %uV_%u. ISCH rc=%d\n", need_to_skip, (burst_id == 4 ? 2 : 4), burst_id, (current_slot == 4 ? 2 : 4), current_slot, sync.last_rc());
+				}
+				burst_id = current_slot;
 			}
-			burst_id = current_slot;
 		}
 
 		handle_4V2V_ess(&xored_burst[84]);

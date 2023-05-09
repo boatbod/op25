@@ -95,9 +95,9 @@ void rx_sync::sync_reset(void) {
 	reset_timer();
 }
 
-void rx_sync::ess_reset(void) {
-	p25fdma.ess_reset();
-	p25tdma.ess_reset();
+void rx_sync::call_end(void) {
+	p25fdma.call_end();
+	p25tdma.call_end();
 }
 
 void rx_sync::crypt_reset(void) {

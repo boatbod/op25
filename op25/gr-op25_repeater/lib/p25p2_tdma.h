@@ -45,7 +45,7 @@ public:
 	p25p2_tdma(const op25_audio& udp, log_ts& logger, int slotid, int debug, bool do_msgq, gr::msg_queue::sptr queue, std::deque<int16_t> &qptr, bool do_audio_output, int msgq_id = 0) ;	// constructor
 	int handle_packet(uint8_t dibits[], const uint64_t fs) ;
 	void set_slotid(int slotid);
-	void ess_reset();
+	void call_end();
 	void crypt_reset();
 	void crypt_key(uint16_t keyid, uint8_t algid, const std::vector<uint8_t> &key);
 	uint8_t* tdma_xormask;
@@ -64,7 +64,7 @@ private:
 	int write_bufp;
 	char write_buf[512];
 	int d_slotid;
-	uint32_t d_tdma_slot_first_4v;
+	int d_tdma_slot_first_4v;
 	mbe_parms cur_mp;
 	mbe_parms prev_mp;
 	mbe_parms enh_mp;

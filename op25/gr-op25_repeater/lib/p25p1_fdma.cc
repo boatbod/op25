@@ -610,7 +610,7 @@ namespace gr {
             qtimer.reset();
         }
 
-        void p25p1_fdma::ess_reset() {
+        void p25p1_fdma::call_end() {
             reset_ess();
         }
 
