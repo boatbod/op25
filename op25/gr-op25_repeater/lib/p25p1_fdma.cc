@@ -611,6 +611,8 @@ namespace gr {
         }
 
         void p25p1_fdma::call_end() {
+            if (d_do_audio_output)
+                op25audio.send_audio_flag(op25_audio::DRAIN);
             reset_ess();
         }
 
