@@ -3,7 +3,7 @@
 # 
 # Copyright 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020 Max H. Parke KA1RBI
 # 
-# Copyright 2018-2020 Graham J. Norbury
+# Copyright 2018-2023 Graham J. Norbury
 # 
 # Copyright 2003,2004,2005,2006 Free Software Foundation, Inc.
 #         (from radiorausch)
@@ -383,7 +383,7 @@ class p25_rx_block (gr.top_block):
             sys.stderr.write("%s reading crypt_keys file: %s\n" % (log_ts.get(), self.options.crypt_keys))
             crypt_keys = get_key_dict(self.options.crypt_keys, 0)
             for keyid in crypt_keys.keys():
-                self.decoder.crypt_key(int(keyid), int(crypt_keys[keyid]['algid']), crypt_keys[keyid]['key'])
+                self.decoder.control({'tuner': 0, 'cmd': 'crypt_key', 'keyid': int(keyid), 'algid': int(crypt_keys[keyid]['algid']), 'key': crypt_keys[keyid]['key']})
 
     # Connect up the flow graph
     #

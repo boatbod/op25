@@ -50,7 +50,6 @@ namespace gr {
                  */
                 static sptr make(const char* options, int debug, int msgq_id, gr::msg_queue::sptr queue);
                 virtual void set_debug(int debug) {}
-                virtual void crypt_key(uint16_t keyid, uint8_t algid, const std::vector<uint8_t> &key) {}
                 virtual void control(const std::string& args) {}
         };
 

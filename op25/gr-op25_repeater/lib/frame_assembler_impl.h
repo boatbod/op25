@@ -50,7 +50,6 @@ namespace gr {
                 // internal functions
                 void queue_msg(int duid);
                 void set_debug(int debug);
-                void crypt_key(uint16_t keyid, uint8_t algid, const std::vector<uint8_t> &key);
                 void control(const std::string& args);
 
             public:
