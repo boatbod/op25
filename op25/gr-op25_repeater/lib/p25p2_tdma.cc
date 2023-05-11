@@ -108,6 +108,7 @@ p25p2_tdma::p25p2_tdma(const op25_audio& udp, log_ts& logger, int slotid, int de
 	d_nac(0),
 	d_debug(debug),
 	burst_id(-1),
+	burst_type(-1),
 	ESS_A(28,0),
 	ESS_B(16,0),
 	ess_keyid(0),
@@ -137,7 +138,9 @@ void p25p2_tdma::set_slotid(int slotid)
 
 void p25p2_tdma::call_end() {
 	reset_ess();
+	reset_vb();
 	d_tdma_slot_first_4v = -1;
+	burst_type = -1;
 }
 
 void p25p2_tdma::crypt_reset() {
@@ -633,7 +636,7 @@ int p25p2_tdma::handle_packet(uint8_t dibits[], const uint64_t fs)
 		return -1;
 	const uint8_t* burstp = &dibits[10];
 	uint8_t xored_burst[BURST_SIZE - 10];
-	int burst_type = duid.duid_lookup(duid.extract_duid(burstp));
+	burst_type = duid.duid_lookup(duid.extract_duid(burstp));
 	if ((burst_type != 13) && (which_slot[sync.tdma_slotid()] != d_slotid)) // only permit control channel or active slot
 		return -1;
 	for (int i=0; i<BURST_SIZE - 10; i++) {
@@ -643,14 +646,14 @@ int p25p2_tdma::handle_packet(uint8_t dibits[], const uint64_t fs)
 		// normalize current TDMA slot from 0-9 to ch0/ch1 slot 0-4
 		int current_slot = sync.tdma_slotid() >> 1;
 
-		track_vb(burst_type);
+		track_vb();
 
 		// update "first 4V" variable here as well as it always follows 2V
 		// in case we missed both PTTs
-		if (burst_type == 6)
+		if (burst_type == 6 && sync.last_rc() != -1)
 			d_tdma_slot_first_4v = (current_slot + 1) % 5;
 
-		if (d_tdma_slot_first_4v >= 0) {
+		if (d_tdma_slot_first_4v >= 0 && sync.last_rc() != -1) {
 			// now let's see if the voice frame received is the one we expected to get.
 			// shift the range from [0, 4] to [first_4V, first_4V+4]
 			if (current_slot < (int) d_tdma_slot_first_4v)
@@ -663,7 +666,7 @@ int p25p2_tdma::handle_packet(uint8_t dibits[], const uint64_t fs)
 				int need_to_skip = current_slot - burst_id;
 				// XXX determine if the 2V frame was missed?
 				if (d_debug >= 10) {
-					fprintf(stderr, "%i voice frame(s) missing; expecting %uV_%u but got %uV_%u. ISCH rc=%d\n", need_to_skip, (burst_id == 4 ? 2 : 4), burst_id, (current_slot == 4 ? 2 : 4), current_slot, sync.last_rc());
+					fprintf(stderr, "%i voice frame(s) missing; expecting %uV_%u but got %uV_%u. ISCH rc=%d\n", need_to_skip, (burst_id == 4 ? 2 : 4), burst_id, (burst_type == 6 ? 2 : 4), current_slot, sync.last_rc());
 				}
 				burst_id = current_slot;
 			}
@@ -715,7 +718,7 @@ void p25p2_tdma::handle_4V2V_ess(const uint8_t dibits[])
 	int ec = 0;
 
 	if (d_debug >= 10) {
-		fprintf(stderr, "%s %s_BURST(%d) TDMA slot ID=%u ", logts.get(d_msgq_id), (burst_id < 4) ? "4V" : "2V", burst_id, sync.tdma_slotid());
+		fprintf(stderr, "%s %s_BURST(%d) TDMA slot ID=%u ", logts.get(d_msgq_id), (burst_type == 0) ? "4V" : "2V", burst_id, sync.tdma_slotid());
 	}
 
 	if (burst_id < 4) {
