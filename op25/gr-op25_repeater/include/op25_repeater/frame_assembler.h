@@ -25,6 +25,7 @@
 #include <op25_repeater/api.h>
 #include <gnuradio/block.h>
 #include <gnuradio/msg_queue.h>
+#include <string>
 
 namespace gr {
     namespace op25_repeater {
@@ -54,9 +55,9 @@ namespace gr {
                 virtual void set_slotkey(int key) {}
                 virtual void set_debug(int debug) {}
                 virtual void sync_reset(void) {}
-                virtual void call_end(void) {}
                 virtual void crypt_reset(void) {}
                 virtual void crypt_key(uint16_t keyid, uint8_t algid, const std::vector<uint8_t> &key) {}
+                virtual void control(const std::string& args) {}
         };
 
     } // namespace op25_repeater

@@ -34,44 +34,17 @@
 #include <vector>
 #include <sys/time.h>
 
+#include <nlohmann/json.hpp>
+using json = nlohmann::json;
+
 namespace gr {
     namespace op25_repeater {
-
-        void p25_frame_assembler_impl::set_xormask(const char*p) {
-            p2tdma.set_xormask(p);
-        }
-
-        void p25_frame_assembler_impl::set_slotid(int slotid) {
-            p2tdma.set_slotid(slotid);
-        }
-
-        void p25_frame_assembler_impl::set_slotkey(int key) {
-        }
-
-        void p25_frame_assembler_impl::set_nac(int nac) {
-            p1fdma.set_nac(nac);
-            p2tdma.set_nac(nac);
-        }
-
-        void p25_frame_assembler_impl::reset_timer() {
-            p1fdma.reset_timer();
-        }
 
         void p25_frame_assembler_impl::set_debug(int debug) {
             d_debug = debug;
             op25audio.set_debug(debug);
             p1fdma.set_debug(debug);
             p2tdma.set_debug(debug);
-        }
-
-        void p25_frame_assembler_impl::call_end() {
-            p1fdma.call_end();
-            p2tdma.call_end();
-        }
-
-        void p25_frame_assembler_impl::crypt_reset() {
-            p1fdma.crypt_reset();
-            p2tdma.crypt_reset();
         }
 
         void p25_frame_assembler_impl::crypt_key(uint16_t keyid, uint8_t algid, const std::vector<uint8_t> &key) {
@@ -81,6 +54,42 @@ namespace gr {
             }
             p1fdma.crypt_key(keyid, algid, key);
             p2tdma.crypt_key(keyid, algid, key);
+        }
+
+        // Accept and dispatch JSON formatted commands from python
+        void p25_frame_assembler_impl::control(const std::string& args) {
+            json j = json::parse(args);
+            std::string cmd = j["cmd"].get<std::string>();
+            if (d_debug >= 10) {
+                fprintf(stderr, "%s p25_frame_assembler_impl::control: received cmd(%s), args(%s)\n", logts.get(0), cmd.c_str(), args.c_str());
+            }
+            if        (cmd == "set_xormask") {
+                p2tdma.set_xormask(j["xormask"].get<std::string>().c_str());
+            } else if (cmd == "set_slotid") {
+                p2tdma.set_slotid(j["slotid"].get<int>());
+            } else if (cmd == "set_nac") {
+                int nac = j["nac"].get<int>();
+                p1fdma.set_nac(nac);
+                p2tdma.set_nac(nac);
+            } else if (cmd == "reset_timer") {
+                p1fdma.reset_timer();
+            } else if (cmd == "call_end") {
+                p1fdma.call_end();
+                p2tdma.call_end();
+            } else if (cmd == "crypt_reset") {
+                p1fdma.crypt_reset();
+                p2tdma.crypt_reset();
+            } else if (cmd == "crypt_key") {
+            } else if (cmd == "set_debug") {
+                d_debug = j["debug"].get<int>();
+                op25audio.set_debug(d_debug);
+                p1fdma.set_debug(d_debug);
+                p2tdma.set_debug(d_debug);
+            } else {
+                if (d_debug >= 10) {
+                    fprintf(stderr, "%s p25_frame_assembler_impl::control: unhandled cmd(%s)\n", logts.get(0), cmd.c_str());
+                }
+            }
         }
 
         p25_frame_assembler::sptr
