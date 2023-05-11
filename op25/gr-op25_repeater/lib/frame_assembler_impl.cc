@@ -37,6 +37,9 @@
 #include <vector>
 #include <sys/time.h>
 
+#include <nlohmann/json.hpp>
+using json = nlohmann::json;
+
 namespace gr {
     namespace op25_repeater {
 
@@ -65,11 +68,6 @@ namespace gr {
                 d_sync->sync_reset();
         }
 
-        void frame_assembler_impl::call_end() {
-            if (d_sync)
-                d_sync->call_end();
-        }
-
         void frame_assembler_impl::crypt_reset() {
             if (d_sync)
                 d_sync->crypt_reset();
@@ -82,6 +80,45 @@ namespace gr {
                     fprintf(stderr, "%s frame_assembler_impl::crypt_key: setting keyid(0x%x), algid(0x%x), key(0x%s)\n", logts.get(d_msgq_id), keyid, algid, k_str.c_str());
                 }
                 d_sync->crypt_key(keyid, algid, key);
+            }
+        }
+
+        // Accept and dispatch JSON formatted commands from python
+        void frame_assembler_impl::control(const std::string& args) {
+            json j = json::parse(args);
+            std::string cmd = j["cmd"].get<std::string>();
+            if (d_debug >= 10) {
+                fprintf(stderr, "%s frame_assembler_impl::control: received cmd(%s), args(%s)\n", logts.get(d_msgq_id), cmd.c_str(), args.c_str());
+            }
+            if        (cmd == "set_xormask") {
+                if (d_sync)
+                    d_sync->set_xormask(j["xormask"].get<std::string>().c_str());
+            } else if (cmd == "set_slotid") {
+                if (d_sync)
+                d_sync->set_slot_mask(j["slotid"].get<int>());
+            } else if (cmd == "set_slotkey") {
+                if (d_sync)
+                    d_sync->set_slot_key(j["slotkey"].get<int>());
+            } else if (cmd == "set_nac") {
+                if (d_sync)
+                    d_sync->set_nac(j["nac"].get<int>());
+            } else if (cmd == "sync_reset") {
+                if (d_sync)
+                    d_sync->sync_reset();
+            } else if (cmd == "call_end") {
+                if (d_sync)
+                    d_sync->call_end();
+            } else if (cmd == "crypt_reset") {
+                if (d_sync)
+                    d_sync->crypt_reset();
+            } else if (cmd == "crypt_key") {
+            } else if (cmd == "set_debug") {
+                if (d_sync)
+                    d_sync->set_debug(j["debug"].get<int>());
+            } else {
+                if (d_debug >= 10) {
+                    fprintf(stderr, "%s frame_assembler_impl::control: unhandled cmd(%s)\n", logts.get(d_msgq_id), cmd.c_str());
+                }
             }
         }
 

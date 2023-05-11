@@ -475,7 +475,7 @@ class channel(object):
         if self.verbosity >= 9:
             sys.stderr.write("%s [%d] Tuning to frequency %f\n" % (log_ts.get(), self.msgq_id, (freq/1e6)))
         self.demod.reset()          # reset gardner-costas tracking loop
-        self.decoder.sync_reset()   # reset frame_assembler
+        self.decoder.control(json.dumps({'tuner': self.msgq_id, 'cmd': 'sync_reset'}))
         return True
 
     def adj_tune(self, adjustment): # ideally this would all be done at the device level but the demod belongs to the channel object
@@ -492,7 +492,7 @@ class channel(object):
         set_tdma = False
         if 'tdma' in params and params['tdma'] is not None:
             set_tdma = True
-            self.decoder.set_slotid(params['tdma'])
+            self.decoder.control(json.dumps({'tuner': self.msgq_id, 'cmd': 'set_slotid', 'slotid': params['tdma']}))
         if set_tdma == self.tdma_state:
             return
         self.tdma_state = set_tdma
@@ -502,7 +502,7 @@ class channel(object):
                 self.xor_cache[hash] = lfsr.p25p2_lfsr(params['nac'], params['sysid'], params['wacn']).xor_chars
                 if self.verbosity >= 5:
                     sys.stderr.write("%s [%d] Caching TDMA xor mask for NAC: 0x%x, SYSID: 0x%x, WACN: 0x%x\n" % (log_ts.get(), self.msgq_id, params['nac'], params['sysid'], params['wacn'])) 
-            self.decoder.set_xormask(self.xor_cache[hash])
+            self.decoder.control(json.dumps({'tuner': self.msgq_id, 'cmd': 'set_xormask', 'xormask': self.xor_cache[hash]}))
             rate = 6000
         else:
             rate = self.channel_rate
@@ -518,18 +518,10 @@ class channel(object):
         if 'eye' in self.sinks:
             self.sinks['eye'][0].set_sps(self.config['if_rate'] / rate)
 
-    def set_nac(self, nac):
-        self.decoder.set_nac(nac)
-
-    def call_end(self):
-        self.decoder.call_end()
-
-    def set_slot(self, slot):
-        self.chan_idle = True if (slot == 4) else False
-        self.decoder.set_slotid(slot)
-
-    def set_key(self, key):
-        self.decoder.set_slotkey(key)
+    def control(self, params):
+        if 'cmd' in params and params['cmd'] == "set_slotid":
+            self.chan_idle = True if (params['slotid'] == 4) else False
+        self.decoder.control(json.dumps(params))
 
     def kill(self):
         for sink in self.sinks:
@@ -698,7 +690,7 @@ class rx_block (gr.top_block):
             self.trunking = None
 
         if self.trunking is not None:
-            self.trunk_rx = self.trunking.rx_ctl(frequency_set = self.change_freq, nac_set = self.set_nac, slot_set = self.set_slot, nbfm_ctrl = self.nbfm_control, on_call_end = self.call_end, debug = self.verbosity, chans = config['chans'])
+            self.trunk_rx = self.trunking.rx_ctl(frequency_set = self.change_freq, nbfm_ctrl = self.nbfm_control, fa_ctrl = self.fa_control, debug = self.verbosity, chans = config['chans'])
             self.du_watcher = du_queue_watcher(self.rx_q, self.trunk_rx.process_qmsg)
             sys.stderr.write("Enabled trunking module: %s\n" % config['module'])
 
@@ -817,11 +809,11 @@ class rx_block (gr.top_block):
             chan.configure_p25_tdma(params)
 
         if not chan.set_freq(params['freq']):
-            chan.set_slot(0)
+            chan.control(json.dumps({'tuner': self.msgq_id, 'cmd': 'set_slotid', 'slotid': 0}))
             return False
 
         if 'slot' in params:
-            chan.set_slot(params['slot'])
+            chan.control(json.dumps({'tuner': self.msgq_id, 'cmd': 'set_slotid', 'slotid': params['slot']}))
 
         if 'rate' in params:
             chan.set_rate(params['rate'])
@@ -840,21 +832,11 @@ class rx_block (gr.top_block):
 
         return True
 
-    def set_nac(self, params):
+    def fa_control(self, params):
         tuner = params['tuner']
         chan = self.channels[tuner]
-        if 'nac' in params:
-            chan.set_nac(params['nac'])
-
-    def set_slot(self, params):
-        tuner = params['tuner']
-        chan = self.channels[tuner]
-        if 'slot' in params:
-            chan.set_slot(params['slot'])
-
-    def call_end(self, msgq_id):
-        if (msgq_id >= 0 and msgq_id < len(self.channels)):
-            self.channels[msgq_id].call_end()
+        if chan is not None:
+            chan.control(params)
 
     def nbfm_control(self, msgq_id, action):
         if (msgq_id >= 0 and msgq_id < len(self.channels)) and self.channels[msgq_id].nbfm is not None:

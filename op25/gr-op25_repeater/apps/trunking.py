@@ -1224,7 +1224,7 @@ def get_int_dict(s):
     return dict.fromkeys(d)
 
 class rx_ctl (object):
-    def __init__(self, debug=0, frequency_set=None, conf_file=None, logfile_workers=None, meta_update=None, crypt_behavior=0, nac_set=None, slot_set=None, nbfm_ctrl=None, on_call_end=None, chans={}):
+    def __init__(self, debug=0, frequency_set=None, conf_file=None, logfile_workers=None, meta_update=None, crypt_behavior=0, nbfm_ctrl=None, fa_ctrl=None, chans={}):
         class _states(object):
             ACQ = 0
             CC = 1
@@ -1236,7 +1236,7 @@ class rx_ctl (object):
         self.trunked_systems = {}
         self.receivers = {}
         self.frequency_set = frequency_set
-        self.nac_set = nac_set
+        self.fa_ctrl = fa_ctrl
         self.meta_update = meta_update
         self.crypt_behavior = crypt_behavior
         self.meta_state = 0
@@ -1316,9 +1316,9 @@ class rx_ctl (object):
                 worker['demod'].connect_chain('fsk4')
 
         if self.current_nac is None:
-            self.nac_set({'tuner': 0,'nac': 0})
+            self.fa_ctrl({'tuner': 0, 'cmd': 'set_nac', 'nac': 0})
         else:
-            self.nac_set({'tuner': 0,'nac': self.current_nac})
+            self.fa_ctrl({'tuner': 0, 'cmd': 'set_nac', 'nac': self.current_nac})
         self.set_frequency({
             'freq':   tsys.trunk_cc,
             'tgid':   None,
@@ -1619,7 +1619,7 @@ class rx_ctl (object):
                 #TODO: make trunking properly auto-start with minimal configuration
                 #self.nacs = list(self.configs.keys())
                 #self.current_nac = nac
-                #self.nac_set({'tuner': 0,'nac': nac})
+                #self.fa_ctrl({'tuner': 0, 'cmd': 'set_nac', 'nac': nac})
             else:
                 # If trunk.tsv file configured with nac=0, use decoded nac instead
                 if 0 in self.trunked_systems:
@@ -1628,7 +1628,7 @@ class rx_ctl (object):
                     self.configs[nac] = self.configs.pop(0)
                     self.nacs = list(self.configs.keys())
                     self.current_nac = nac
-                    self.nac_set({'tuner': 0,'nac': nac})
+                    self.fa_ctrl({'tuner': 0, 'cmd': 'set_nac', 'nac': nac})
                 else:
                     sys.stderr.write("%s NAC %x not configured\n" % (log_ts.get(), nac))
                 return
@@ -1675,7 +1675,7 @@ class rx_ctl (object):
                     sys.stderr.write("%s Autostart trunking for NAC 0x%03x with cc_list: %s\n" % (log_ts.get(), nac_list[0], tsys.cc_list))
                     self.nacs = list(self.configs.keys())
                     self.current_nac = nac_list[0]
-                    self.nac_set({'tuner': 0,'nac': nac_list[0]})
+                    self.fa_ctrl({'tuner': 0, 'cmd': 'set_nac', 'nac': nac_list[0]})
                     self.current_state = self.states.CC
                     self.autostart = False
 
@@ -2022,7 +2022,7 @@ class rx_ctl (object):
             self.current_srcaddr = 0
             self.current_grpaddr = 0
             self.current_encrypted = 0
-            self.nac_set({'tuner': 0,'nac': 0})
+            self.fa_ctrl({'tuner': 0, 'cmd': 'set_nac', 'nac': 0})
             tsys.reset()
 
         if self.current_state != self.states.CC and self.tgid_hold_until <= curr_time and self.hold_mode is False and new_state is None:
@@ -2051,7 +2051,7 @@ class rx_ctl (object):
             nac = self.current_nac = new_nac
             tsys = self.trunked_systems[nac]
             new_frequency = tsys.trunk_cc
-            self.nac_set({'tuner': 0,'nac': new_nac})
+            self.fa_ctrl({'tuner': 0, 'cmd': 'set_nac', 'nac': new_nac})
             self.current_srcaddr = 0
             self.current_grpaddr = 0
             self.current_encrypted = 0

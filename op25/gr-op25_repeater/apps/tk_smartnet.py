@@ -57,12 +57,10 @@ def meta_update(meta_q, tgid = None, tag = None):
 #################
 # Main trunking class
 class rx_ctl(object):
-    def __init__(self, debug=0, frequency_set=None, nac_set=None, slot_set=None, nbfm_ctrl=None, on_call_end=None, chans={}):
+    def __init__(self, debug=0, frequency_set=None, nbfm_ctrl=None, fa_ctrl=None, chans={}):
         self.frequency_set = frequency_set
-        self.nac_set = nac_set
-        self.slot_set = slot_set
         self.nbfm_ctrl = nbfm_ctrl
-        self.on_call_end = on_call_end
+        self.fa_ctrl = fa_ctrl
         self.debug = debug
         self.receivers = {}
         self.systems = {}
@@ -104,8 +102,8 @@ class rx_ctl(object):
                 rx_sys = voice_receiver(debug         = self.debug,
                                         msgq_id       = msgq_id,
                                         frequency_set = self.frequency_set,
-                                        slot_set      = self.slot_set,
                                         nbfm_ctrl     = self.nbfm_ctrl,
+                                        fa_ctrl       = self.fa_ctrl,
                                         control       = rx_ctl,
                                         config        = config,
                                         meta_q        = meta_q,
@@ -607,12 +605,12 @@ class osw_receiver(object):
 #################
 # Voice channel class
 class voice_receiver(object):
-    def __init__(self, debug, msgq_id, frequency_set, slot_set, nbfm_ctrl, control, config, meta_q = None, freq = 0):
+    def __init__(self, debug, msgq_id, frequency_set, nbfm_ctrl, fa_ctrl, control, config, meta_q = None, freq = 0):
         self.debug = debug
         self.msgq_id = msgq_id
         self.frequency_set = frequency_set
-        self.slot_set = slot_set
         self.nbfm_ctrl = nbfm_ctrl
+        self.fa_ctrl = fa_ctrl
         self.control = control
         self.config = config
         self.meta_q = meta_q
@@ -634,7 +632,7 @@ class voice_receiver(object):
     def post_init(self):
         if self.debug >= 1:
             sys.stderr.write("%s [%d] Initializing voice channel\n" % (log_ts.get(), self.msgq_id))
-        self.slot_set({'tuner': self.msgq_id,'slot': 4})     # disable voice
+        self.fa_ctrl({'tuner': self.msgq_id, 'cmd': 'set_slotid', 'slotid': 4})     # disable voice
         if self.control is not None:
             self.talkgroups = self.control.get_talkgroups()
         self.load_bl_wl()
@@ -863,13 +861,13 @@ class voice_receiver(object):
             self.tuned_frequency = freq
         self.current_tgid = tgid
         self.talkgroups[tgid]['receiver'] = self
-        self.slot_set({'tuner': self.msgq_id,'slot': 0})                      # always enable digital p25cai
-        self.nbfm_ctrl(self.msgq_id, (self.talkgroups[tgid]['mode'] != 1) )   # enable nbfm unless mode is digital
+        self.fa_ctrl({'tuner': self.msgq_id, 'cmd': 'set_slotid', 'slotid': 0}) # always enable digital p25cai
+        self.nbfm_ctrl(self.msgq_id, (self.talkgroups[tgid]['mode'] != 1) )     # enable nbfm unless mode is digital
 
     def expire_talkgroup(self, tgid=None, update_meta = True, reason="unk", auto_hold = True):
         expire_time = time.time()
-        self.nbfm_ctrl(self.msgq_id, False)                                   # disable nbfm
-        self.slot_set({'tuner': self.msgq_id,'slot': 4})                      # disable p25cai
+        self.nbfm_ctrl(self.msgq_id, False)                                     # disable nbfm
+        self.fa_ctrl({'tuner': self.msgq_id, 'cmd': 'set_slotid', 'slotid': 4}) # disable p25cai
         if self.current_tgid is None:
             return
             
