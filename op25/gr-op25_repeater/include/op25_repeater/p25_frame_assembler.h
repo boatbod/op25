@@ -50,7 +50,6 @@ namespace gr {
        */
       static sptr make(const char* udp_host, int port, int debug, bool do_imbe, bool do_output, bool do_msgq, gr::msg_queue::sptr queue, bool do_audio_output, bool do_phase2_tdma, bool do_nocrypt);
       virtual void set_debug(int debug) {}
-      virtual void crypt_key(uint16_t keyid, uint8_t algid, const std::vector<uint8_t> &key) {}
       virtual void control(const std::string& args) {}
     };
 

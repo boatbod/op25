@@ -54,7 +54,6 @@ namespace gr {
 
             // internal functions
             void set_debug(int debug) ;
-            void crypt_key(uint16_t keyid, uint8_t algid, const std::vector<uint8_t> &key);
             void control(const std::string& args);
 
         public:

@@ -43,22 +43,12 @@ using json = nlohmann::json;
 namespace gr {
     namespace op25_repeater {
 
-        void frame_assembler_impl::crypt_key(uint16_t keyid, uint8_t algid, const std::vector<uint8_t> &key) {
-            if (d_sync) {
-                if (d_debug >= 10) {
-                    std::string k_str = uint8_vector_to_hex_string(key);
-                    fprintf(stderr, "%s frame_assembler_impl::crypt_key: setting keyid(0x%x), algid(0x%x), key(0x%s)\n", logts.get(d_msgq_id), keyid, algid, k_str.c_str());
-                }
-                d_sync->crypt_key(keyid, algid, key);
-            }
-        }
-
         // Accept and dispatch JSON formatted commands from python
         void frame_assembler_impl::control(const std::string& args) {
             json j = json::parse(args);
             std::string cmd = j["cmd"].get<std::string>();
             if (d_debug >= 10) {
-                fprintf(stderr, "%s frame_assembler_impl::control: received cmd(%s), args(%s)\n", logts.get(d_msgq_id), cmd.c_str(), args.c_str());
+                fprintf(stderr, "%s frame_assembler_impl::control: cmd(%s), args(%s)\n", logts.get(d_msgq_id), cmd.c_str(), args.c_str());
             }
             if        (cmd == "set_xormask") {
                 if (d_sync)
@@ -82,6 +72,8 @@ namespace gr {
                 if (d_sync)
                     d_sync->crypt_reset();
             } else if (cmd == "crypt_key") {
+                if (d_sync)
+                    d_sync->crypt_key(j["keyid"].get<uint16_t>(), j["keyid"].get<uint8_t>(), j["key"].get<std::vector<uint8_t>>());
             } else if (cmd == "set_debug") {
                 if (d_sync)
                     d_sync->set_debug(j["debug"].get<int>());

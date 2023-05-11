@@ -1,6 +1,6 @@
 #!/bin/sh
 # Copyright 2011, 2012, 2013, 2014, 2015, 2016, 2017 Max H. Parke KA1RBI
-# Copyright 2020, 2021 Graham J. Norbury - gnorbury@bondcar.com
+# Copyright 2020, 2023 Graham J. Norbury - gnorbury@bondcar.com
 # 
 # This file is part of OP25
 # 
@@ -241,7 +241,7 @@ class channel(object):
             sys.stderr.write("%s [%d] reading channel crypt_keys file: %s\n" % (log_ts.get(), self.msgq_id, self.crypt_keys_file))
             self.crypt_keys = get_key_dict(self.crypt_keys_file, self.msgq_id)
             for keyid in self.crypt_keys.keys():
-                self.decoder.crypt_key(int(keyid), int(self.crypt_keys[keyid]['algid']), self.crypt_keys[keyid]['key'])
+                self.decoder.control(json.dumps({'tuner': self.msgq_id, 'cmd': 'crypt_key', 'keyid': int(keyid), 'algid': int(self.crypt_keys[keyid]['algid']), 'key': self.crypt_keys[keyid]['key']}))
 
         # Relative-tune the demodulator
         if not self.demod.set_relative_frequency((dev.frequency + dev.offset + dev.fractional_corr) - self.frequency):
