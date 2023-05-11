@@ -43,36 +43,6 @@ using json = nlohmann::json;
 namespace gr {
     namespace op25_repeater {
 
-        void frame_assembler_impl::set_xormask(const char* p) {
-            if (d_sync)
-                d_sync->set_xormask(p);
-        }
-
-        void frame_assembler_impl::set_nac(int nac) {
-            if (d_sync)
-                d_sync->set_nac(nac);
-        }
-
-        void frame_assembler_impl::set_slotid(int slotid) {
-            if (d_sync)
-                d_sync->set_slot_mask(slotid);
-        }
-
-        void frame_assembler_impl::set_slotkey(int key) {
-            if (d_sync)
-                d_sync->set_slot_key(key);
-        }
-
-        void frame_assembler_impl::sync_reset() {
-            if (d_sync)
-                d_sync->sync_reset();
-        }
-
-        void frame_assembler_impl::crypt_reset() {
-            if (d_sync)
-                d_sync->crypt_reset();
-        }
-
         void frame_assembler_impl::crypt_key(uint16_t keyid, uint8_t algid, const std::vector<uint8_t> &key) {
             if (d_sync) {
                 if (d_debug >= 10) {
