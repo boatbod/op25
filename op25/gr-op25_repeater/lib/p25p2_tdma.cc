@@ -137,6 +137,7 @@ void p25p2_tdma::set_slotid(int slotid)
 }
 
 void p25p2_tdma::call_end() {
+    op25audio.send_audio_flag(op25_audio::DRAIN);
 	reset_ess();
 	reset_vb();
 	d_tdma_slot_first_4v = -1;
