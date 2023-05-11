@@ -49,13 +49,7 @@ namespace gr {
 
                 // internal functions
                 void queue_msg(int duid);
-                void set_xormask(const char* p);
-                void set_nac(int nac);
-                void set_slotid(int slotid);
-                void set_slotkey(int key);
                 void set_debug(int debug);
-                void sync_reset();
-                void crypt_reset();
                 void crypt_key(uint16_t keyid, uint8_t algid, const std::vector<uint8_t> &key);
                 void control(const std::string& args);
 
