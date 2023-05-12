@@ -651,10 +651,10 @@ int p25p2_tdma::handle_packet(uint8_t dibits[], const uint64_t fs)
 
 		// update "first 4V" variable here as well as it always follows 2V
 		// in case we missed both PTTs
-		if (burst_type == 6 && sync.last_rc() != -1)
+		if (burst_type == 6 && sync.last_rc() >= 0)
 			d_tdma_slot_first_4v = (current_slot + 1) % 5;
 
-		if (d_tdma_slot_first_4v >= 0 && sync.last_rc() != -1) {
+		if (d_tdma_slot_first_4v >= 0 && sync.last_rc() >= 0) {
 			// now let's see if the voice frame received is the one we expected to get.
 			// shift the range from [0, 4] to [first_4V, first_4V+4]
 			if (current_slot < (int) d_tdma_slot_first_4v)
