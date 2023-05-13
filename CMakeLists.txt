@@ -22,6 +22,9 @@ else()
 endif(NOT CMAKE_BUILD_TYPE)
 set(CMAKE_BUILD_TYPE ${CMAKE_BUILD_TYPE} CACHE STRING "")
 
+# Disable Documentation
+add_definitions(-DENABLE_DOXYGEN=OFF)
+
 ########################################################################
 # Compiler specific setup
 ########################################################################
