@@ -16,7 +16,7 @@
 /* BINDTOOL_GEN_AUTOMATIC(0) */
 /* BINDTOOL_USE_PYGCCXML(0) */
 /* BINDTOOL_HEADER_FILE(p25_frame_assembler.h) */
-/* BINDTOOL_HEADER_FILE_HASH(7de8c859046c81382cd441081ff32f57) */
+/* BINDTOOL_HEADER_FILE_HASH(1a2507e84c52b9f629ebbeb6a9afe6c7) */
 /***********************************************************************************/
 
 #include <pybind11/complex.h>
@@ -43,29 +43,11 @@ void bind_p25_frame_assembler(py::module &m) {
            py::arg("do_audio_output"), py::arg("do_phase2_tdma"),
            py::arg("do_nocrypt"), D(p25_frame_assembler, make))
 
-      .def("set_xormask", &p25_frame_assembler::set_xormask, py::arg("p"),
-           D(p25_frame_assembler, set_xormask))
-
-      .def("set_nac", &p25_frame_assembler::set_nac, py::arg("nac"),
-           D(p25_frame_assembler, set_nac))
-
-      .def("set_slotid", &p25_frame_assembler::set_slotid, py::arg("slotid"),
-           D(p25_frame_assembler, set_slotid))
-
-      .def("set_slotkey", &p25_frame_assembler::set_slotkey, py::arg("key"),
-           D(p25_frame_assembler, set_slotkey))
-
       .def("set_debug", &p25_frame_assembler::set_debug, py::arg("debug"),
            D(p25_frame_assembler, set_debug))
 
-      .def("reset_timer", &p25_frame_assembler::reset_timer,
-           D(p25_frame_assembler, reset_timer))
-
-      .def("crypt_reset", &p25_frame_assembler::crypt_reset,
-           D(p25_frame_assembler, crypt_reset))
-
-      .def("crypt_key", &p25_frame_assembler::crypt_key, py::arg("keyid"),
-           py::arg("algid"), py::arg("key"), D(p25_frame_assembler, crypt_key))
+      .def("control", &p25_frame_assembler::control, py::arg("args"),
+           D(p25_frame_assembler, control))
 
       ;
 }

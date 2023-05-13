@@ -27,6 +27,8 @@ P25 decoding block.
 """
 
 import time
+import json
+import sys
 from gnuradio import gr, eng_notation
 from gnuradio import blocks, audio
 from gnuradio.eng_option import eng_option
@@ -98,15 +100,12 @@ class p25_decoder_sink_b(gr.hier_block2):
         self.audio_s2f = []
         self.scaler = []
         self.audio_sink = []
-        self.xorhash = []
         num_decoders = 1
         if num_ambe > 1:
            num_decoders += num_ambe - 1
         for slot in range(num_decoders):
             self.p25_decoders.append(op25_repeater.p25_frame_assembler(wireshark_host, udp_port, debug, do_imbe, do_output, do_msgq, msgq, do_audio_output, do_phase2_tdma, do_nocrypt))
-            self.p25_decoders[slot].set_slotid(slot)
-
-            self.xorhash.append('')
+            self.control({"tuner": slot, "cmd": "set_slotid", "slotid": slot})
 
             if dest == 'wav':
                 filename = 'default-%f-%d.wav' % (time.time(), slot)
@@ -125,41 +124,20 @@ class p25_decoder_sink_b(gr.hier_block2):
             return
         self.audio_sink[index].close()
 
-    def set_nac(self, nac, index=0):
-        self.p25_decoders[index].set_nac(nac)
-
-    def set_slotid(self, slot, index=0):
-        self.p25_decoders[index].set_slotid(slot)
-
-    def set_slotkey(self, key, index=0):
-        self.p25_decoders[index].set_slotkey(key)
-
     def set_output(self, filename, index=0):
         if self.dest != 'wav':
             return
         self.audio_sink[index].open(filename)
 
-    def set_xormask(self, xormask, xorhash, index=0):
-        if self.xorhash[index] == xorhash:
-            return
-        self.xorhash[index] = xorhash
-        self.p25_decoders[index].set_xormask(xormask)
+    def control(self, params):
+        if 'tuner' in params and params['tuner'] < len(self.p25_decoders):
+            self.p25_decoders[params['tuner']].control(json.dumps(params))
 
     def set_scaler_k(self, k, index=0):
         self.scaler[index].set_k(k)
-
-    def reset_timer(self, index=0):
-        self.p25_decoders[index].reset_timer()
 
     def set_debug(self, dbglvl):
         self.debug = dbglvl
         for decoder in self.p25_decoders:
             decoder.set_debug(dbglvl)
 
-    def crypt_key(self, keyid, algid, keyval):
-        for decoder in self.p25_decoders:
-            decoder.crypt_key(keyid, algid, keyval)
-
-    def crypt_reset(self):
-        for decoder in self.p25_decoders:
-            decoder.crypt_reset()

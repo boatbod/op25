@@ -16,7 +16,7 @@
 /* BINDTOOL_GEN_AUTOMATIC(0) */
 /* BINDTOOL_USE_PYGCCXML(0) */
 /* BINDTOOL_HEADER_FILE(frame_assembler.h) */
-/* BINDTOOL_HEADER_FILE_HASH(42770c3780d82ad9522c04cace8a2373) */
+/* BINDTOOL_HEADER_FILE_HASH(039ddef878982559df6298d2cbbe8747) */
 /***********************************************************************************/
 
 #include <pybind11/complex.h>
@@ -41,29 +41,11 @@ void bind_frame_assembler(py::module &m) {
            py::arg("debug"), py::arg("msgq_id"), py::arg("queue"),
            D(frame_assembler, make))
 
-      .def("set_xormask", &frame_assembler::set_xormask, py::arg("p"),
-           D(frame_assembler, set_xormask))
-
-      .def("set_nac", &frame_assembler::set_nac, py::arg("nac"),
-           D(frame_assembler, set_nac))
-
-      .def("set_slotid", &frame_assembler::set_slotid, py::arg("slotid"),
-           D(frame_assembler, set_slotid))
-
-      .def("set_slotkey", &frame_assembler::set_slotkey, py::arg("key"),
-           D(frame_assembler, set_slotkey))
-
       .def("set_debug", &frame_assembler::set_debug, py::arg("debug"),
            D(frame_assembler, set_debug))
 
-      .def("sync_reset", &frame_assembler::sync_reset,
-           D(frame_assembler, sync_reset))
-
-      .def("crypt_reset", &frame_assembler::crypt_reset,
-           D(frame_assembler, crypt_reset))
-
-      .def("crypt_key", &frame_assembler::crypt_key, py::arg("keyid"),
-           py::arg("algid"), py::arg("key"), D(frame_assembler, crypt_key))
+      .def("control", &frame_assembler::control, py::arg("args"),
+           D(frame_assembler, control))
 
       ;
 }

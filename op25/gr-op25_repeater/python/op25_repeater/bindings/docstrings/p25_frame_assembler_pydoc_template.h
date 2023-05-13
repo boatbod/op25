@@ -23,26 +23,8 @@ static const char
 static const char *__doc_gr_op25_repeater_p25_frame_assembler_make =
     R"doc()doc";
 
-static const char *__doc_gr_op25_repeater_p25_frame_assembler_set_xormask =
-    R"doc()doc";
-
-static const char *__doc_gr_op25_repeater_p25_frame_assembler_set_nac =
-    R"doc()doc";
-
-static const char *__doc_gr_op25_repeater_p25_frame_assembler_set_slotid =
-    R"doc()doc";
-
-static const char *__doc_gr_op25_repeater_p25_frame_assembler_set_slotkey =
-    R"doc()doc";
-
 static const char *__doc_gr_op25_repeater_p25_frame_assembler_set_debug =
     R"doc()doc";
 
-static const char *__doc_gr_op25_repeater_p25_frame_assembler_reset_timer =
-    R"doc()doc";
-
-static const char *__doc_gr_op25_repeater_p25_frame_assembler_crypt_reset =
-    R"doc()doc";
-
-static const char *__doc_gr_op25_repeater_p25_frame_assembler_crypt_key =
+static const char *__doc_gr_op25_repeater_p25_frame_assembler_control =
     R"doc()doc";

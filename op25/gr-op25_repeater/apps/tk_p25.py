@@ -99,11 +99,10 @@ def get_tgid(tgid):
 #################
 # Main trunking class
 class rx_ctl(object):
-    def __init__(self, debug=0, frequency_set=None, nac_set=None, slot_set=None, nbfm_ctrl=None, chans={}):
+    def __init__(self, debug=0, frequency_set=None, nbfm_ctrl=None, fa_ctrl=None, chans={}):
         self.frequency_set = frequency_set
-        self.nac_set = nac_set
-        self.slot_set = slot_set
         self.nbfm_ctrl = nbfm_ctrl
+        self.fa_ctrl = fa_ctrl
         self.debug = debug
         self.receivers = {}
         self.systems = {}
@@ -131,8 +130,7 @@ class rx_ctl(object):
             rx_rcvr = p25_receiver(debug         = self.debug,
                                    msgq_id       = msgq_id,
                                    frequency_set = self.frequency_set,
-                                   nac_set       = self.nac_set,
-                                   slot_set      = self.slot_set,
+                                   fa_ctrl       = self.fa_ctrl,
                                    system        = rx_sys,
                                    config        = config,
                                    meta_q        = meta_q,
@@ -1508,13 +1506,12 @@ class rid_history(object):
 #################
 # P25 receiver class
 class p25_receiver(object):
-    def __init__(self, debug, msgq_id, frequency_set, nac_set, slot_set, system, config, meta_q = None, freq = 0):
+    def __init__(self, debug, msgq_id, frequency_set, fa_ctrl, system, config, meta_q = None, freq = 0):
         self.debug = debug
         self.msgq_id = msgq_id
         self.config = config
         self.frequency_set = frequency_set
-        self.nac_set = nac_set
-        self.slot_set = slot_set
+        self.fa_ctrl = fa_ctrl
         self.system = system
         self.meta_q = meta_q
         self.meta_stream = from_dict(self.config, 'meta_stream_name', "")
@@ -1568,14 +1565,14 @@ class p25_receiver(object):
     def set_nac(self, nac):
         if self.current_nac != nac:
             self.current_nac = nac
-            self.nac_set({'tuner': self.msgq_id,'nac': nac})
+            self.fa_ctrl({'tuner': self.msgq_id, 'cmd': 'set_nac', 'nac': nac})
 
     def idle_rx(self):
         if not (self.tuner_idle or self.system.has_cc(self.msgq_id)): # don't idle a control channel or an already idle receiver
             if self.debug >= 5:
                 sys.stderr.write("%s [%d] idling receiver\n" % (log_ts.get(), self.msgq_id))
-            if self.slot_set is not None:
-                self.slot_set({'tuner': self.msgq_id,'slot': 4})      # disable receiver (idle)
+            if self.fa_ctrl is not None:
+                self.fa_ctrl({'tuner': self.msgq_id, 'cmd': 'set_slotid', 'slotid': 4})      # disable receiver (idle)
             self.tuner_idle = True
             self.current_slot = None
 
@@ -1588,8 +1585,8 @@ class p25_receiver(object):
             self.set_nac(self.system.get_nac())
 
         if self.tuner_idle:
-            if self.slot_set is not None:
-                self.slot_set({'tuner': self.msgq_id,'slot': 0})     # enable receiver
+            if self.fa_ctrl is not None:
+                self.fa_ctrl({'tuner': self.msgq_id, 'cmd': 'set_slotid', 'slotid': 0})     # enable receiver
             self.tuner_idle = False
         if self.debug >= 5:
             sys.stderr.write("%s [%d] set control channel=%f\n" % (log_ts.get(), self.msgq_id, freq/1e6))
@@ -1607,8 +1604,8 @@ class p25_receiver(object):
             return
 
         if self.tuner_idle:
-            if self.slot_set is not None:
-                self.slot_set({'tuner': self.msgq_id,'slot': 0})     # enable receiver
+            if self.fa_ctrl is not None:
+                self.fa_ctrl({'tuner': self.msgq_id, 'cmd': 'set_slotid', 'slotid': 0})     # enable receiver
             self.tuner_idle = False
         else:
             if self.debug >= 5:
@@ -1921,6 +1918,7 @@ class p25_receiver(object):
             self.hold_until = time.time()
         self.current_tgid = None
         self.current_slot = None
+        self.fa_ctrl({"tuner": self.msgq_id, "cmd": "call_end"})    # Drop any persistent ESS data held in the receiver
 
         if reason == "preempt":                             # Do not retune or update metadata if in middle of tuning to a different tgid
             return

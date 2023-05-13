@@ -3,7 +3,7 @@
 # 
 # Copyright 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020 Max H. Parke KA1RBI
 # 
-# Copyright 2018-2020 Graham J. Norbury
+# Copyright 2018-2023 Graham J. Norbury
 # 
 # Copyright 2003,2004,2005,2006 Free Software Foundation, Inc.
 #         (from radiorausch)
@@ -374,7 +374,7 @@ class p25_rx_block (gr.top_block):
                 logfile_workers.append({'demod': demod, 'decoder': decoder, 'active': False})
                 self.connect(source, demod, decoder)
 
-        self.trunk_rx = trunking.rx_ctl(frequency_set = self.change_freq, nac_set = self.set_nac, debug = self.options.verbosity, conf_file = self.options.trunk_conf_file, logfile_workers=logfile_workers, meta_update = self.meta_update, crypt_behavior = self.options.crypt_behavior)
+        self.trunk_rx = trunking.rx_ctl(frequency_set = self.change_freq, fa_ctrl = self.control, debug = self.options.verbosity, conf_file = self.options.trunk_conf_file, logfile_workers=logfile_workers, meta_update = self.meta_update, crypt_behavior = self.options.crypt_behavior)
 
         self.du_watcher = du_queue_watcher(self.rx_q, self.trunk_rx.process_qmsg)
 
@@ -383,7 +383,7 @@ class p25_rx_block (gr.top_block):
             sys.stderr.write("%s reading crypt_keys file: %s\n" % (log_ts.get(), self.options.crypt_keys))
             crypt_keys = get_key_dict(self.options.crypt_keys, 0)
             for keyid in crypt_keys.keys():
-                self.decoder.crypt_key(int(keyid), int(crypt_keys[keyid]['algid']), crypt_keys[keyid]['key'])
+                self.decoder.control({'tuner': 0, 'cmd': 'crypt_key', 'keyid': int(keyid), 'algid': int(crypt_keys[keyid]['algid']), 'key': crypt_keys[keyid]['key']})
 
     # Connect up the flow graph
     #
@@ -415,9 +415,8 @@ class p25_rx_block (gr.top_block):
         self.current_speed = new_speed
         self.connect_fsk4_demod()
 
-    def set_nac(self, params):
-        if 'nac' in params:
-            self.decoder.set_nac(params['nac'])
+    def control(self, params):
+        self.decoder.control(params)
 
     def configure_tdma(self, params):
         if params['tdma'] is not None and not self.options.phase2_tdma:
@@ -426,7 +425,7 @@ class p25_rx_block (gr.top_block):
         set_tdma = False
         if params['tdma'] is not None:
             set_tdma = True
-            self.decoder.set_slotid(params['tdma'])
+            self.decoder.control({'tuner': 0, 'cmd': 'set_slotid', 'slotid': params['tdma']})
         if set_tdma == self.tdma_state:
             return    # already in desired state
         self.tdma_state = set_tdma
@@ -434,7 +433,7 @@ class p25_rx_block (gr.top_block):
             hash = '%x%x%x' % (params['nac'], params['sysid'], params['wacn'])
             if hash not in self.xor_cache:
                 self.xor_cache[hash] = lfsr.p25p2_lfsr(params['nac'], params['sysid'], params['wacn']).xor_chars
-            self.decoder.set_xormask(self.xor_cache[hash], hash)
+            self.decoder.control({'tuner': 0, 'cmd': 'set_xormask', 'xormask': self.xor_cache[hash]})
             rate = 6000
         else:
             rate = self.symbol_rate
@@ -519,7 +518,7 @@ class p25_rx_block (gr.top_block):
                 self.set_freq(freq + offset)
             else:
                 pass                                        # fake tuning when playing back symbols file
-            self.decoder.reset_timer()
+            self.decoder.control({'tuner': 0, 'cmd': 'reset_timer'})
 
         self.configure_tdma(params)
         self.freq_update()

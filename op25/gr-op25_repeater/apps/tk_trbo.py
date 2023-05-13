@@ -49,7 +49,7 @@ class dmr_chan:
         self.debug = dbglvl
 
 class dmr_receiver:
-    def __init__(self, msgq_id, frequency_set=None, nac_set=None, slot_set=None, chans={}, debug=0):
+    def __init__(self, msgq_id, frequency_set=None, fa_ctrl=None, chans={}, debug=0):
         class _states(object):
             IDLE = 0
             CC   = 1
@@ -60,8 +60,7 @@ class dmr_receiver:
         self.states = _states
         self.current_state = self.states.IDLE
         self.frequency_set = frequency_set
-        self.nac_set = nac_set
-        self.slot_set = slot_set
+        self.fa_ctrl = fa_ctrl
         self.msgq_id = msgq_id
         self.debug = debug
         self.cc_timeouts = 0
@@ -270,7 +269,7 @@ class dmr_receiver:
             lcn = d1
             if self.current_type < 0:
                 self.current_type = 0
-                self.slot_set({'tuner': 0,'slot': 3})
+                self.fa_ctrl({'tuner': 0, 'cmd': 'set_slotid', 'slotid': 3})
                 if self.debug >= 2:
                     sys.stderr.write("%s [%d] System type is TRBO Connect Plus\n" % (log_ts.get(), self.msgq_id))
             self.rest_lcn = d1
@@ -370,10 +369,9 @@ class dmr_receiver:
 
 
 class rx_ctl(object):
-    def __init__(self, debug=0, frequency_set=None, nac_set=None, slot_set=None, nbfm_ctrl=None, chans={}):
+    def __init__(self, debug=0, frequency_set=None, nbfm_ctrl=None, fa_ctrl=None, chans={}):
         self.frequency_set = frequency_set
-        self.slot_set = slot_set
-        self.nac_set = nac_set
+        self.fa_ctrl = fa_ctrl
         self.debug = debug
         self.receivers = {}
 
@@ -400,7 +398,7 @@ class rx_ctl(object):
             self.receivers[rx_id].post_init()
 
     def add_receiver(self, msgq_id, config, meta_q = None, freq = 0):
-        self.receivers[msgq_id] = dmr_receiver(msgq_id, self.frequency_set, self.nac_set, self.slot_set, self.chans, self.debug)
+        self.receivers[msgq_id] = dmr_receiver(msgq_id, self.frequency_set, self.fa_ctrl, self.chans, self.debug)
 
     def process_qmsg(self, msg):
         m_proto = ctypes.c_int16(msg.type() >> 16).value    # upper 16 bits of msg.type() is signed protocol
@@ -427,7 +425,7 @@ class rx_ctl(object):
                         sys.stderr.write("%s Shutting off voice channel lcn(%d), slot(%d)\n" % (log_ts.get(), act_lcn, act_slot))
                     self.receivers[1].vc_timeouts = 0
                     self.receivers[1].current_state = self.receivers[1].states.IDLE
-                    self.slot_set({'tuner': 1,'slot': 4})
+                    self.fa_ctrl({'tuner': 1, 'cmd': 'set_slotid', 'slotid': 4})
 
     def get_chan_status(self):
         d = {'json_type': 'channel_update'}
