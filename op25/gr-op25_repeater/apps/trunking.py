@@ -656,7 +656,7 @@ class trunked_system (object):
             mfrid  = (tsbk >> 80) & 0xff
             rv     = (tsbk >> 76) & 0x3
             syid   = (tsbk >> 64) & 0xfff
-            sid   = (tsbk >> 40) & 0xffffff
+            sid    = (tsbk >> 40) & 0xffffff
             sa     = (tsbk >> 16) & 0xffffff
             if self.debug >= 10:
                 sys.stderr.write('%s [0] tsbk(0x2c) u_reg_rsp: mfid: 0x%x rv: %d syid: 0x%x sid: %d sa: %d\n' % (log_ts.get(), mfrid, rv, syid, sid, sa))
