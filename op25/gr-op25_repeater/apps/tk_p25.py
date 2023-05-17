@@ -740,15 +740,15 @@ class p25_system(object):
         elif opcode == 0x2c:   # u_reg_rsp
             mfrid  = (tsbk >> 80) & 0xff
             rv     = (tsbk >> 76) & 0x3
-            syid   = (tsbk >> 64) & 0xffff
-            sid   = (tsbk >> 40) & 0xffffff
+            syid   = (tsbk >> 64) & 0xfff
+            sid    = (tsbk >> 40) & 0xffffff
             sa     = (tsbk >> 16) & 0xffffff
             if self.debug >= 10:
                 sys.stderr.write('%s [%d] tsbk(0x2c) u_reg_rsp: mfid: 0x%x rv: %d syid: 0x%x sid: %d sa: %d\n' % (log_ts.get(), m_rxid, mfrid, rv, syid, sid, sa))
         elif opcode == 0x2f:   # u_de_reg_ack
             mfrid  = (tsbk >> 80) & 0xff
             wacn   = (tsbk >> 52) & 0xfffff
-            syid   = (tsbk >> 40) & 0xffff
+            syid   = (tsbk >> 40) & 0xfff
             sid    = (tsbk >> 16) & 0xffffff
             if self.debug >= 10:
                 sys.stderr.write('%s [%d] tsbk(0x2f) u_de_reg_ack: mfid: 0x%x wacn: 0x%x syid: 0x%x sid: %d\n' % (log_ts.get(), m_rxid, mfrid, wacn, syid, sid))
