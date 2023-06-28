@@ -809,11 +809,11 @@ class rx_block (gr.top_block):
             chan.configure_p25_tdma(params)
 
         if not chan.set_freq(params['freq']):
-            chan.control(json.dumps({'tuner': chan.msgq_id, 'cmd': 'set_slotid', 'slotid': 0}))
+            chan.control({'tuner': chan.msgq_id, 'cmd': 'set_slotid', 'slotid': 0})
             return False
 
         if 'slot' in params:
-            chan.control(json.dumps({'tuner': chan.msgq_id, 'cmd': 'set_slotid', 'slotid': params['slot']}))
+            chan.control({'tuner': chan.msgq_id, 'cmd': 'set_slotid', 'slotid': params['slot']})
 
         if 'rate' in params:
             chan.set_rate(params['rate'])
