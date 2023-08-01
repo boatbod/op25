@@ -47,12 +47,14 @@ PATCH_EXPIRY_TIME = 20.0 # Number of seconds until patch expiry
 #################
 # Helper functions
 
-def meta_update(meta_q, tgid = None, tag = None, msgq_id = 0, ts = time.time()):
+def meta_update(meta_q, tgid = None, tag = None, rid = None, rtag = None, msgq_id = 0, ts = time.time()):
     if meta_q is None:
         return
     d = {'json_type': 'meta_update'}
     d['tgid'] = tgid
     d['tag'] = tag
+    d['rid'] = rid
+    d['rtag'] = rtag
     msg = gr.message().make_from_string(json.dumps(d), -2, ts, 0)
     if not meta_q.full_p():
         meta_q.insert_tail(msg)
@@ -1899,7 +1901,7 @@ class p25_receiver(object):
             self.expire_talkgroup(update_meta=False, reason="preempt")
             self.tune_voice(freq, tgid, slot)
 
-        meta_update(self.meta_q, tgid, self.talkgroups[tgid]['tag'], msgq_id=self.msgq_id)
+        meta_update(self.meta_q, tgid=tgid, tag=self.talkgroups[tgid]['tag'], rid=self.talkgroups[tgid]['srcaddr'], rtag=self.system.get_rid_tag(self.talkgroups[tgid]['srcaddr']), msgq_id=self.msgq_id)
 
     def expire_talkgroup(self, tgid=None, update_meta = True, reason="unk", auto_hold = True):
         if self.current_tgid is None:
