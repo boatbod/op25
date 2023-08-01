@@ -1294,12 +1294,13 @@ class rx_ctl (object):
             self.meta_q = meta_q
             self.meta_update = self.update_meta
 
-    def update_meta(self, tgid = None, tag = None):
+    def update_meta(self, tgid = None, tag = None, rid = None):
         if self.meta_q is None:
             return
         d = {'json_type': 'meta_update'}
         d['tgid'] = tgid
         d['tag'] = tag
+        d['rid'] = rid
         msg = gr.message().make_from_string(json.dumps(d), -2, time.time(), 0)
         if not self.meta_q.full_p():
             self.meta_q.insert_tail(msg)
@@ -1344,7 +1345,7 @@ class rx_ctl (object):
             self.frequency_set(params)
             self.current_slot = params['tdma']
 
-    def do_metadata(self, state, tgid, tag):
+    def do_metadata(self, state, tgid, tag, rid = None):
         if self.meta_update is None:
             return
 
@@ -1353,7 +1354,7 @@ class rx_ctl (object):
 
         if self.debug > 10:
             sys.stderr.write("%s do_metadata state=%d: [%s] %s\n" % (log_ts.get(), state, tgid, tag))
-        self.meta_update(tgid, tag)
+        self.meta_update(tgid, tag, rid)
         self.meta_state = state
 
     def add_trunked_system(self, nac):
@@ -1871,7 +1872,7 @@ class rx_ctl (object):
                     self.tgid_hold_until = max(curr_time + self.TGID_HOLD_TIME, self.tgid_hold_until)
                     self.wait_until = curr_time + self.TSYS_HOLD_TIME
                     new_slot = tdma_slot
-                    self.do_metadata(0, new_tgid,tsys.get_tag(new_tgid))
+                    self.do_metadata(0, new_tgid,tsys.get_tag(new_tgid), srcaddr)
             else: # check for priority tgid preemption
                 new_frequency, new_tgid, tdma_slot, srcaddr = tsys.find_talkgroup(tsys.talkgroups[self.current_tgid]['time'], tgid=self.current_tgid, hold=self.hold_mode)
                 if new_tgid != self.current_tgid:
@@ -1885,7 +1886,7 @@ class rx_ctl (object):
                     self.tgid_hold_until = max(curr_time + self.TGID_HOLD_TIME, self.tgid_hold_until)
                     self.wait_until = curr_time + self.TSYS_HOLD_TIME
                     new_slot = tdma_slot
-                    self.do_metadata(0, new_tgid,tsys.get_tag(new_tgid))
+                    self.do_metadata(0, new_tgid,tsys.get_tag(new_tgid), srcaddr)
                 else:
                     if tsys.talkgroups[self.current_tgid]['srcaddr'] != 0:
                         self.current_srcaddr = tsys.talkgroups[self.current_tgid]['srcaddr']
@@ -2045,7 +2046,7 @@ class rx_ctl (object):
             new_state = self.states.CC
 
         if self.current_state == self.states.CC and self.tgid_hold_until <= curr_time:
-            self.do_metadata(1, None, None)
+            self.do_metadata(1, None, None, None)
 
         if new_nac is not None:
             nac = self.current_nac = new_nac
