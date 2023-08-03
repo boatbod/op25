@@ -59,8 +59,8 @@ class meta_server(threading.Thread):
         self.fmt_idle = from_dict(self.cfg, 'meta_format_idle', '[idle]')
         self.fmt_tgid = from_dict(self.cfg, 'meta_format_tgid', '[%TGID%]')
         self.fmt_tag = from_dict(self.cfg, 'meta_format_tag', '[%TGID%] %TAG%')
-        self.fmt_rid = from_dict(self.cfg, 'meta_format_rid', '@ [%RID%]')
-        self.fmt_rtag = from_dict(self.cfg, 'meta_format_rtag', '@ [%RID%] %RTAG%')
+        self.fmt_rid = from_dict(self.cfg, 'meta_format_rid', '')   # default is no RID
+        self.fmt_rtag = from_dict(self.cfg, 'meta_format_rtag', '') # default is no RTAG
         self.start()
 
     def set_debug(self, dbglvl):
