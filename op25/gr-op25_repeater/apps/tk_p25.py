@@ -1881,8 +1881,13 @@ class p25_receiver(object):
 
     def scan_for_talkgroups(self, curr_time):
         if self.current_tgid is None and self.hold_tgid is not None and (curr_time < self.hold_until):
+            # no call in progress but a tgid hold is set, so allow only calls with matching tgid
             freq, tgid, slot, src = self.find_talkgroup(curr_time, tgid=self.hold_tgid)
+        elif self.current_tgid is not None and self.hold_tgid is not None and (curr_time < self.hold_until) and self.hold_mode is True:
+            # a call is in progress along with a manual hold, so disable preemption
+            return
         else:
+            # allow priority call preemption if needed
             freq, tgid, slot, src = self.find_talkgroup(curr_time, tgid=self.current_tgid)
 
         if self.current_tgid is not None and self.current_tgid == tgid:  # active call remains, nothing to do
