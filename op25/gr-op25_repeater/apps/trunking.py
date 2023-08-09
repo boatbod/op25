@@ -1874,24 +1874,28 @@ class rx_ctl (object):
                     new_slot = tdma_slot
                     self.do_metadata(0, new_tgid,tsys.get_tag(new_tgid), srcaddr)
             else: # check for priority tgid preemption
-                new_frequency, new_tgid, tdma_slot, srcaddr = tsys.find_talkgroup(tsys.talkgroups[self.current_tgid]['time'], tgid=self.current_tgid, hold=self.hold_mode)
-                if new_tgid != self.current_tgid:
-                    if self.debug > 0:
-                        tslot = tdma_slot if tdma_slot is not None else '-'
-                        sys.stderr.write("%s voice preempt: tg(%s), freq(%s), slot(%s), prio(%d)\n" % (log_ts.get(), new_tgid, new_frequency, tslot, tsys.get_prio(new_tgid)))
-                    new_state = self.states.TO_VC
-                    self.current_tgid = new_tgid
-                    self.current_srcaddr = srcaddr
-                    self.tgid_hold = new_tgid
-                    self.tgid_hold_until = max(curr_time + self.TGID_HOLD_TIME, self.tgid_hold_until)
-                    self.wait_until = curr_time + self.TSYS_HOLD_TIME
-                    new_slot = tdma_slot
-                    self.do_metadata(0, new_tgid,tsys.get_tag(new_tgid), srcaddr)
+                if (self.tgid_hold is not None) and (self.tgid_hold_until > curr_time) and self.hold_mode is True:
+                    if self.debug > 10:
+                        sys.stderr.write("%s skip preempt due to manual hold on tg(%s)\n" % (log_ts.get(), self.tgid_hold))
                 else:
-                    if tsys.talkgroups[self.current_tgid]['srcaddr'] != 0:
-                        self.current_srcaddr = tsys.talkgroups[self.current_tgid]['srcaddr']
-                        self.current_grpaddr = self.current_tgid
-                    new_frequency = None
+                    new_frequency, new_tgid, tdma_slot, srcaddr = tsys.find_talkgroup(tsys.talkgroups[self.current_tgid]['time'], tgid=self.current_tgid, hold=self.hold_mode)
+                    if new_tgid != self.current_tgid:
+                        if self.debug > 0:
+                            tslot = tdma_slot if tdma_slot is not None else '-'
+                            sys.stderr.write("%s voice preempt: tg(%s), freq(%s), slot(%s), prio(%d)\n" % (log_ts.get(), new_tgid, new_frequency, tslot, tsys.get_prio(new_tgid)))
+                        new_state = self.states.TO_VC
+                        self.current_tgid = new_tgid
+                        self.current_srcaddr = srcaddr
+                        self.tgid_hold = new_tgid
+                        self.tgid_hold_until = max(curr_time + self.TGID_HOLD_TIME, self.tgid_hold_until)
+                        self.wait_until = curr_time + self.TSYS_HOLD_TIME
+                        new_slot = tdma_slot
+                        self.do_metadata(0, new_tgid,tsys.get_tag(new_tgid), srcaddr)
+                    else:
+                        if tsys.talkgroups[self.current_tgid]['srcaddr'] != 0:
+                            self.current_srcaddr = tsys.talkgroups[self.current_tgid]['srcaddr']
+                            self.current_grpaddr = self.current_tgid
+                        new_frequency = None
         elif command in ['duid3', 'tdma_duid3']: # termination, no channel release
             if self.current_state != self.states.CC:
                 self.wait_until = curr_time + self.TSYS_HOLD_TIME
