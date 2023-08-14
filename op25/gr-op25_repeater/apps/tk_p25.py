@@ -230,6 +230,7 @@ class rx_ctl(object):
         rcvr_ids = []
         for rcvr in self.receivers:
             if self.receivers[rcvr]['rx_rcvr'] is not None:
+                self.receivers[rcvr]['rx_rcvr'].check_expired_hold(time.time())
                 rcvr_name = from_dict(self.receivers[rcvr]['config'], 'name', "")
                 d[str(rcvr)] = json.loads(self.receivers[rcvr]['rx_rcvr'].get_status())
                 d[str(rcvr)]['name'] = rcvr_name
@@ -1879,10 +1880,11 @@ class p25_receiver(object):
         return None, None, None, None
 
     def scan_for_talkgroups(self, curr_time):
-        if self.current_tgid is None and self.hold_tgid is not None and (curr_time < self.hold_until):
+        self.check_expired_hold(curr_time)
+        if self.current_tgid is None and self.hold_tgid is not None:
             # no call in progress but a tgid hold is set, so allow only calls with matching tgid
             freq, tgid, slot, src = self.find_talkgroup(curr_time, tgid=self.hold_tgid)
-        elif self.current_tgid is not None and self.hold_tgid is not None and (curr_time < self.hold_until) and self.hold_mode is True:
+        elif self.current_tgid is not None and self.hold_tgid is not None and self.hold_mode is True:
             # a call is in progress along with a manual hold, so disable preemption
             return
         else:
@@ -1907,6 +1909,11 @@ class p25_receiver(object):
 
         meta_update(self.meta_q, tgid=tgid, tag=self.talkgroups[tgid]['tag'], rid=self.talkgroups[tgid]['srcaddr'], rtag=self.system.get_rid_tag(self.talkgroups[tgid]['srcaddr']), msgq_id=self.msgq_id)
 
+    def check_expired_hold(self, curr_time):
+        if self.hold_tgid is not None and (self.hold_until <= curr_time):
+            self.hold_tgid = None
+            self.hold_mode = False
+
     def expire_talkgroup(self, tgid=None, update_meta = True, reason="unk", auto_hold = True):
         if self.current_tgid is None:
             return
@@ -1917,11 +1924,18 @@ class p25_receiver(object):
         self.talkgroups[self.current_tgid]['srcaddr'] = 0
         if self.debug > 1:
             sys.stderr.write("%s [%d] releasing:  tg(%d), freq(%f), slot(%s), reason(%s)\n" % (log_ts.get(), self.msgq_id, self.current_tgid, (self.tuned_frequency/1e6), get_slot(self.current_slot), reason))
-        if auto_hold:
-            self.hold_tgid = self.current_tgid
-            self.hold_until = time.time() + self.tgid_hold_time
+        if self.hold_mode is False:
+            # Commanded tgid hold inactive
+            if auto_hold:
+                self.hold_tgid = self.current_tgid
+                self.hold_until = time.time() + self.tgid_hold_time
+            else:
+                self.hold_tgid = None
+                self.hold_until = time.time()
         else:
-            self.hold_until = time.time()
+            # Commanded tgid hold active
+            pass
+
         self.current_tgid = None
         self.current_slot = None
         self.fa_ctrl({"tuner": self.msgq_id, "cmd": "call_end"})    # Drop any persistent ESS data held in the receiver
@@ -1947,7 +1961,6 @@ class p25_receiver(object):
                 sys.stderr.write ('%s [%d] set hold tg(%d) until %f\n' % (log_ts.get(), self.msgq_id, self.hold_tgid, self.hold_until))
             if self.current_tgid != self.hold_tgid:
                 self.expire_talkgroup(reason="new hold", auto_hold = False)
-                self.current_tgid = self.hold_tgid
         elif self.hold_mode is False:
             if self.current_tgid:
                 self.hold_tgid = self.current_tgid
@@ -1968,7 +1981,7 @@ class p25_receiver(object):
         d = {}
         d['freq'] = self.tuned_frequency
         d['tdma'] = self.current_slot
-        d['tgid'] = self.current_tgid
+        d['tgid'] = self.hold_tgid if self.hold_tgid is not None else self.current_tgid
         d['system'] = self.config['trunking_sysname']
         d['tag'] = self.talkgroups[self.current_tgid]['tag'] if self.current_tgid is not None else cc_tag
         d['srcaddr'] = self.talkgroups[self.current_tgid]['srcaddr'] if self.current_tgid is not None else 0
