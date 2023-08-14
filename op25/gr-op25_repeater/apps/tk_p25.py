@@ -1978,13 +1978,14 @@ class p25_receiver(object):
             self.expire_talkgroup(reason="clear hold", auto_hold = False)
 
     def get_status(self):
+        _tgid = self.hold_tgid if self.hold_tgid is not None else self.current_tgid
         cc_tag = "Control Channel" if self.system.has_cc(self.msgq_id) else None
         d = {}
         d['freq'] = self.tuned_frequency
         d['tdma'] = self.current_slot
-        d['tgid'] = self.hold_tgid if self.hold_tgid is not None else self.current_tgid
+        d['tgid'] = _tgid
         d['system'] = self.config['trunking_sysname']
-        d['tag'] = self.talkgroups[self.current_tgid]['tag'] if self.current_tgid is not None else cc_tag
+        d['tag'] = self.talkgroups[_tgid]['tag'] if _tgid is not None else cc_tag
         d['srcaddr'] = self.talkgroups[self.current_tgid]['srcaddr'] if self.current_tgid is not None else 0
         d['srctag'] = self.system.get_rid_tag(self.talkgroups[self.current_tgid]['srcaddr']) if self.current_tgid is not None else ""
         d['encrypted'] = self.talkgroups[self.current_tgid]['encrypted'] if self.current_tgid is not None else 0
