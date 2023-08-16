@@ -1,4 +1,4 @@
-# Copyright 2018 Graham Norbury
+# Copyright 2018-2023 Graham Norbury
 # 
 # This file is part of OP25
 # 
@@ -86,17 +86,19 @@ class meta_server(threading.Thread):
             metatext = self.fmt_idle
         elif meta['tgid'] is not None and meta['tag'] is not None and meta['tag'] != "":
             metatext = self.fmt_tag
+            metatext = metatext.replace("%TGID%", str(int(meta['tgid'])))
+            metatext = metatext.replace("%TAG%", str(meta['tag']))
         else:
             metatext = self.fmt_tgid
-        metatext = metatext.replace("%TGID%", str(meta['tgid']))
-        metatext = metatext.replace("%TAG%", str(meta['tag']))
+            metatext = metatext.replace("%TGID%", str(int(meta['tgid'])))
+
         if 'rtag' in meta and meta['rtag'] is not None and 'rid' in meta and meta['rid'] is not None and meta['rid'] != 0:
             metatext = metatext + " " + self.fmt_rtag
-            metatext = metatext.replace("%RID%", str(meta['rid']))
+            metatext = metatext.replace("%RID%", str(int(meta['rid'])))
             metatext = metatext.replace("%RTAG%", str(meta['rtag']))
         elif 'rid' in meta and meta['rid'] is not None and meta['rid'] != 0:
             metatext = metatext + " " + self.fmt_rid
-            metatext = metatext.replace("%RID%", str(meta['rid']))
+            metatext = metatext.replace("%RID%", str(int(meta['rid'])))
         
         return metatext
 
