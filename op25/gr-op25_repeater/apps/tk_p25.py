@@ -47,7 +47,7 @@ PATCH_EXPIRY_TIME = 20.0 # Number of seconds until patch expiry
 #################
 # Helper functions
 
-def meta_update(meta_q, tgid = None, tag = None, rid = None, rtag = None, msgq_id = 0, ts = time.time()):
+def meta_update(meta_q, tgid = None, tag = None, rid = None, rtag = None, msgq_id = 0, ts = time.time(), debug = 0):
     if meta_q is None:
         return
     d = {'json_type': 'meta_update'}
@@ -58,6 +58,11 @@ def meta_update(meta_q, tgid = None, tag = None, rid = None, rtag = None, msgq_i
     msg = gr.message().make_from_string(json.dumps(d), -2, ts, 0)
     if not meta_q.full_p():
         meta_q.insert_tail(msg)
+        if debug > 10:
+            sys.stderr.write("%s [%d] meta_update: queued msg: %s\n" % (log_ts.get(), msgq_id, json.dumps(d)))
+    else:
+        if debug > 10:
+            sys.stderr.write("%s [%d] meta_update: dropped msg: %s\n" % (log_ts.get(), msgq_id, json.dumps(d)))
 
 def add_default_tgid(tgs, tgid):
     if tgs is None:
@@ -1549,7 +1554,7 @@ class p25_receiver(object):
 
         self.load_bl_wl()
         self.tgid_hold_time = float(from_dict(self.system.config, 'tgid_hold_time', TGID_HOLD_TIME))
-        meta_update(self.meta_q, msgq_id=self.msgq_id)
+        meta_update(self.meta_q, msgq_id=self.msgq_id, debug=self.debug)
         self.idle_rx()
 
     def load_bl_wl(self):
@@ -1641,6 +1646,9 @@ class p25_receiver(object):
         self.vc_retries = 0
         self.current_tgid = tgid
         self.current_slot = slot
+        if not self.hold_mode:
+            self.hold_tgid = None
+            self.hold_until = time.time()
         self.talkgroups[tgid]['receiver'] = self
 
     def ui_command(self, cmd, data, curr_time):
@@ -1882,20 +1890,14 @@ class p25_receiver(object):
 
     def scan_for_talkgroups(self, curr_time):
         self.check_expired_hold(curr_time)
-        if self.current_tgid is None and self.hold_tgid is not None:
-            # no call in progress but a tgid hold is set, so allow only calls with matching tgid
-            freq, tgid, slot, src = self.find_talkgroup(curr_time, tgid=self.hold_tgid)
-        elif self.current_tgid is not None and self.hold_tgid is not None and self.hold_mode is True:
-            # a call is in progress along with a manual hold, so disable preemption
-            return
-        else:
-            # allow priority call preemption if needed
-            freq, tgid, slot, src = self.find_talkgroup(curr_time, tgid=self.current_tgid)
+        hold_active = True if self.hold_tgid is not None and self.hold_mode is True else False  # manual holds are not pre-emptable
+        tgid_target = self.hold_tgid if self.hold_tgid is not None else self.current_tgid       # auto hold vs call in progress
+        freq, tgid, slot, src = self.find_talkgroup(curr_time, tgid=tgid_target, hold=hold_active)
 
-        if self.current_tgid is not None and self.current_tgid == tgid:  # active call remains, nothing to do
+        if self.current_tgid is not None and self.current_tgid == tgid:                         # active call unchanged, nothing to do
             return
 
-        if tgid is None:                                                 # no call
+        if tgid is None:                                                                        # no call
             return
 
         if self.current_tgid is None:
@@ -1908,7 +1910,7 @@ class p25_receiver(object):
             self.expire_talkgroup(update_meta=False, reason="preempt")
             self.tune_voice(freq, tgid, slot)
 
-        meta_update(self.meta_q, tgid=tgid, tag=self.talkgroups[tgid]['tag'], rid=self.talkgroups[tgid]['srcaddr'], rtag=self.system.get_rid_tag(self.talkgroups[tgid]['srcaddr']), msgq_id=self.msgq_id)
+        meta_update(self.meta_q, tgid=tgid, tag=self.talkgroups[tgid]['tag'], rid=self.talkgroups[tgid]['srcaddr'], rtag=self.system.get_rid_tag(self.talkgroups[tgid]['srcaddr']), msgq_id=self.msgq_id, debug=self.debug)
 
     def check_expired_hold(self, curr_time):
         if self.hold_tgid is not None and (self.hold_until <= curr_time):
@@ -1945,7 +1947,7 @@ class p25_receiver(object):
             return
 
         if update_meta:
-            meta_update(self.meta_q, msgq_id=self.msgq_id, ts=self.hold_until)  # Send Idle metadata update
+            meta_update(self.meta_q, msgq_id=self.msgq_id, ts=self.hold_until, debug=self.debug)  # Send Idle metadata update
         self.idle_rx()                                      # Make receiver available
 
     def hold_talkgroup(self, tgid, curr_time):
