@@ -76,7 +76,11 @@ class meta_server(threading.Thread):
     def run(self):
         while(self.keep_running):
             self.process_q_events()
+            if self.msg and self.logging >= 11:
+                    sys.stderr.write("%s icemeta::run: received message arg1=%s\n" % (log_ts.get(), log_ts.get(self.msg.arg1())))
             if self.msg and (time.time() >= (self.msg.arg1() + self.delay)):
+                if self.logging >= 11:
+                    sys.stderr.write("%s icemeta::run: processing message\n" % (log_ts.get()))
                 self.send_metadata(self.format(json.loads(self.msg.to_string())))
                 self.msg = None
             time.sleep(0.1)
@@ -107,6 +111,8 @@ class meta_server(threading.Thread):
 
     def process_q_events(self):
         if (self.msg is None) and (self.input_q.empty_p() == False):
+            if self.logging >= 11:
+                sys.stderr.write("%s icemeta::process_q_events: queue size=%d\n" % (log_ts.get(), self.input_q.count()))
             self.msg = self.input_q.delete_head_nowait()
             if self.msg.type() != -2:
                 self.msg = None
@@ -123,12 +129,12 @@ class meta_server(threading.Thread):
                 if self.logging >= 11:
                     sys.stderr.write("%s metadata result: \"%s\"\n" % (log_ts.get(), status))
                 if status != 200:
-                    if self.logging >= 1:
+                    if self.logging >= 11:
                         sys.stderr.write("%s meta_server::send_metadata(): metadata update error: %s\n" % (log_ts.get(), status))
                 else:
                     self.last_metadata = metadata
             except (requests.ConnectionError, requests.Timeout):
-                if self.logging >= 1:
+                if self.logging >= 11:
                     sys.stderr.write("%s meta_server::send_metadata(): exception %s\n" % (log_ts.get(), sys.exc_info()[1]))
 
     def get_url(self):
