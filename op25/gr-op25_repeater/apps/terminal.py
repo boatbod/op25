@@ -94,6 +94,7 @@ class curses_terminal(threading.Thread):
         self.current_msgqid = '0'
         self.channel_list = []
         self.capture_active = False
+        self.hold_tgid = 0
         self.maxx = 0
         self.maxy = 0
         self.sock = sock
@@ -169,6 +170,8 @@ class curses_terminal(threading.Thread):
             title_str = "OP25 (symbol capture)"
         else:
             title_str = "OP25"
+        if self.hold_tgid != 0:
+            title_str += (" (holding tg %d)" % self.hold_tgid)
         help_str = "(f)req (h)old (s)kip (l)ock (W)list (B)list (q)uit (1-6)plot (,.<>)tune"
         self.title_bar.erase()
         self.help_bar.erase()
@@ -429,6 +432,10 @@ class curses_terminal(threading.Thread):
             if msg[c_id]['capture'] is not None:
                 if msg[c_id]['capture'] != self.capture_active:
                     self.capture_active = msg[c_id]['capture']
+                    self.title_help()
+            if msg[c_id]['hold_tgid'] is not None:
+                if msg[c_id]['hold_tgid'] != self.hold_tgid:
+                    self.hold_tgid = msg[c_id]['hold_tgid']
                     self.title_help()
             if msg[c_id]['tgid'] is not None:
                 s += ' Talkgroup ID %s' % (int(msg[c_id]['tgid']))

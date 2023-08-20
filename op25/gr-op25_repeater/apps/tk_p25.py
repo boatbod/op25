@@ -2005,6 +2005,7 @@ class p25_receiver(object):
         d['srcaddr'] = self.talkgroups[self.current_tgid]['srcaddr'] if self.current_tgid is not None else 0
         d['srctag'] = self.system.get_rid_tag(self.talkgroups[self.current_tgid]['srcaddr']) if self.current_tgid is not None else ""
         d['encrypted'] = self.talkgroups[self.current_tgid]['encrypted'] if self.current_tgid is not None else 0
+        d['hold_tgid'] = self.hold_tgid if self.hold_tgid is not None else 0
         d['mode'] = None
         d['stream'] = self.meta_stream
         d['msgqid'] = self.msgq_id
