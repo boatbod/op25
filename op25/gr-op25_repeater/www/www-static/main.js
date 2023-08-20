@@ -28,6 +28,7 @@ var auto_tracking = null;
 var fine_tune = null;
 var current_tgid = null;
 var capture_active = false;
+var hold_tgid = 0;
 var send_busy = 0;
 var send_qfull = 0;
 var send_queue = [];
@@ -293,6 +294,7 @@ function channel_update(d) {
             c_srctag = d[c_id]['srctag'];
             c_stream_url = d[c_id]['stream_url'];
             capture_active = d[c_id]['capture'];
+            hold_tgid = d[c_id]['hold_tgid'];
             s2_c.style['display'] = "";
             s2_d.style['display'] = "";
             s2_e.style['display'] = "";
@@ -366,6 +368,9 @@ function channel_status() {
     html = "";
     if (current_tgid != null) {
         html += "<span class=\"value\">" + current_tgid + "</span>";
+        if (hold_tgid != 0) {
+            html += "<span class=\"value\"> [HOLD]</span>";
+        }
     }
     else if (c_grpaddr != 0) {
         html += "<span class=\"value\">" + c_grpaddr + "</span>";
