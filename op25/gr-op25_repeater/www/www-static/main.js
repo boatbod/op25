@@ -51,6 +51,7 @@ var c_nac = 0;
 var c_name = "";
 var channel_list = [];
 var channel_index = 0;
+var default_channel = null;
 
 function find_parent(ele, tagname) {
     while (ele) {
@@ -164,6 +165,9 @@ function term_config(d) {
     if (updated) {
         set_tuning_step_sizes(lg_step, sm_step);
     }
+    if ((d["default_channel"] != undefined) && (d["default_channel"] != "")) {
+        default_channel = d["default_channel"];
+    }
 }
 
 function set_tuning_step_sizes(lg_step=1200, sm_step=100) {
@@ -269,6 +273,18 @@ function channel_update(d) {
         channel_list = d['channels'];    
 
         if (channel_list.length > 0) {
+            // if this is the first update, find the default_channel if specified
+            if (default_channel != null && default_channel != "") {
+                for (ch_id = 0; ch_id < channel_list.length; ch_id++) {
+                    if (d[ch_id]['name'] == default_channel) {
+                        channel_index = ch_id;
+                        break;
+                    }
+                }
+                default_channel = null;
+            }
+
+            // display channel information
             var c_id = channel_list[channel_index];
             c_system = d[c_id]['system'];
             c_name = "[" + c_id + "]";

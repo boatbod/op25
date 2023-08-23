@@ -91,6 +91,7 @@ class curses_terminal(threading.Thread):
         self.current_encrypted = 0
         self.current_msgqid = '0'
         self.channel_list = []
+        self.default_channel = None
         self.capture_active = False
         self.hold_tgid = 0
         self.maxx = 0
@@ -168,8 +169,6 @@ class curses_terminal(threading.Thread):
             title_str = "OP25 (symbol capture)"
         else:
             title_str = "OP25"
-        if self.hold_tgid != 0:
-            title_str += (" (holding tg %d)" % self.hold_tgid)
         help_str = "(f)req (h)old (s)kip (l)ock (W)list (B)list (q)uit (1-6)plot (,.<>)tune"
         self.title_bar.erase()
         self.help_bar.erase()
@@ -418,6 +417,16 @@ class curses_terminal(threading.Thread):
             if ('channels' not in msg) or (len(msg['channels']) == 0):
                 return
             self.channel_list = msg['channels']
+
+            # Pick the default channel if specified and this is the first update received.
+            if self.default_channel is not None and self.default_channel != "":
+                for ch_id in self.channel_list:
+                    if msg[ch_id]['name'] == self.default_channel:
+                        self.current_msgqid = ch_id
+                        break
+                self.default_channel = None
+
+            # Format and display the channel info
             c_id = self.current_msgqid if self.current_msgqid in self.channel_list else self.channel_list[0]
             if 'system' in msg[c_id] and msg[c_id]['system'] is not None:
                 self.current_sysname = msg[c_id]['system']
@@ -431,14 +440,12 @@ class curses_terminal(threading.Thread):
                 if msg[c_id]['capture'] != self.capture_active:
                     self.capture_active = msg[c_id]['capture']
                     self.title_help()
-            if msg[c_id]['hold_tgid'] is not None:
-                if msg[c_id]['hold_tgid'] != self.hold_tgid:
-                    self.hold_tgid = msg[c_id]['hold_tgid']
-                    self.title_help()
             if msg[c_id]['tgid'] is not None:
                 s += ' Talkgroup ID %s' % (int(msg[c_id]['tgid']))
                 if 'tdma' in msg[c_id] and msg[c_id]['tdma'] is not None:
                     s += ' TDMA Slot %s' % int(msg[c_id]['tdma'])
+                if msg[c_id]['hold_tgid'] is not None:
+                    s += ' [HOLD]'
                 if 'mode' in msg[c_id]:
                     mode  = msg[c_id]['mode']
                     if mode == 0:
@@ -493,6 +500,8 @@ class curses_terminal(threading.Thread):
                 self.sm_step = int(msg['tuning_step_small'])
             if 'tuning_step_large' in msg and int(msg['tuning_step_large']) > 0:
                 self.lg_step = int(msg['tuning_step_large'])
+            if 'default_channel' in msg and str(msg['default_channel']) != "":
+                self.default_channel = str(msg['default_channel'])
  
         return False
 
