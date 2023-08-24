@@ -446,7 +446,7 @@ class curses_terminal(threading.Thread):
                 s += ' Talkgroup ID %s' % (int(msg[c_id]['tgid']))
                 if 'tdma' in msg[c_id] and msg[c_id]['tdma'] is not None:
                     s += ' TDMA Slot %s' % int(msg[c_id]['tdma'])
-                if msg[c_id]['hold_tgid'] is not None:
+                if 'hold_tgid' in msg[c_id] and msg[c_id]['hold_tgid'] is not None:
                     s += ' [HOLD]'
                 if 'mode' in msg[c_id]:
                     mode  = msg[c_id]['mode']
