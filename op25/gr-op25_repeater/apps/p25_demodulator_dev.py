@@ -4,7 +4,7 @@
 # OP25 Demodulator Block
 # Copyright 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020 Max H. Parke KA1RBI
 #
-# Copyright 2020 Graham J. Norbury - gnorbury@bondcar.com
+# Copyright 2020-2023 Graham J. Norbury - gnorbury@bondcar.com
 # 
 # This file is part of GNU Radio and part of OP25
 # 
@@ -350,7 +350,7 @@ class p25_demod_cb(p25_demod_base):
 
         decimation = int(input_rate / if_rate)
         resampled_rate = float(input_rate) / float(decimation)
-        if_coeffs = filter.firdes.low_pass(1.0, self.if_rate, self.if_rate/(2 * decimation), 1250, filter.firdes.WIN_HANN)
+        if_coeffs = filter.firdes.low_pass(1.0, self.if_rate, self.if_rate/(2 * decimation), 900, filter.firdes.WIN_HANN)
         self.freq_xlat = filter.freq_xlating_fir_filter_ccf(decimation, if_coeffs, 0, input_rate)
         self.connect(self, self.freq_xlat)
         if self.if_rate != resampled_rate:
