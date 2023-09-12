@@ -350,7 +350,7 @@ class p25_demod_cb(p25_demod_base):
 
         decimation = int(input_rate / if_rate)
         resampled_rate = float(input_rate) / float(decimation)
-        if_coeffs = filter.firdes.low_pass(1.0, input_rate, resampled_rate/2, resampled_rate, filter.firdes.WIN_HAMMING)
+        if_coeffs = filter.firdes.low_pass(1.0, input_rate, resampled_rate/2, resampled_rate/2, filter.firdes.WIN_HAMMING)
         self.freq_xlat = filter.freq_xlating_fir_filter_ccf(decimation, if_coeffs, 0, input_rate)
         self.connect(self, self.freq_xlat)
         if self.if_rate != resampled_rate:
@@ -359,16 +359,17 @@ class p25_demod_cb(p25_demod_base):
         else:
             self.if_out = self.freq_xlat
 
-        fa = 6250
-        fb = fa + 1250
-        cutoff_coeffs = filter.firdes.low_pass(1.0, self.if_rate, (fb+fa)/2, fb-fa, filter.firdes.WIN_HANN)
+        fa = 6200
+        fb = fa + 620
+        cutoff_coeffs = filter.firdes.low_pass(1.0, self.if_rate, (fb+fa)/2, fb-fa, filter.firdes.WIN_HAMMING)
         self.cutoff = filter.fir_filter_ccf(1, cutoff_coeffs)
 
         omega = float(self.if_rate) / float(self.symbol_rate)
         sps = self.if_rate // self.symbol_rate
         gain_omega = 0.1  * gain_mu * gain_mu
 
-        sys.stderr.write("demodulator: if_rate=%d, relative_freq=%f, input_rate=%d, decimation=%d, taps=%d, resampled_rate=%d, sps=%d\n" % (if_rate, relative_freq, input_rate, decimation, len(if_coeffs), resampled_rate, sps))
+        sys.stderr.write("demodulator: xlator if_rate=%d, input_rate=%d, decim=%d, taps=%d, resampled_rate=%d, sps=%d\n" % (if_rate, input_rate, decimation, len(if_coeffs), resampled_rate, sps))
+        sys.stderr.write("demodulator: cutoff if_rate=%d, cutoff_freq=%f, transition_width=%f, taps=%d\n" % (if_rate, (fb+fa)/2, fb-fa, len(cutoff_coeffs)))
 
         self.agc = rms_agc.rms_agc(0.45, 0.85)
         self.fll = digital.fll_band_edge_cc(sps, excess_bw, 2*sps+1, TWO_PI/sps/350) # automatic frequency correction
