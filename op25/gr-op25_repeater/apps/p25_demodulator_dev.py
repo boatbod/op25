@@ -350,7 +350,7 @@ class p25_demod_cb(p25_demod_base):
 
         decimation = int(input_rate / if_rate)
         resampled_rate = float(input_rate) / float(decimation)
-        if_coeffs = filter.firdes.low_pass(1.0, self.if_rate, self.if_rate/(2 * decimation), 900, filter.firdes.WIN_HANN)
+        if_coeffs = filter.firdes.low_pass(1.0, input_rate, resampled_rate/2, resampled_rate, filter.firdes.WIN_HAMMING)
         self.freq_xlat = filter.freq_xlating_fir_filter_ccf(decimation, if_coeffs, 0, input_rate)
         self.connect(self, self.freq_xlat)
         if self.if_rate != resampled_rate:
@@ -358,6 +358,11 @@ class p25_demod_cb(p25_demod_base):
             self.connect(self.freq_xlat, self.if_out)
         else:
             self.if_out = self.freq_xlat
+
+        fa = 6250
+        fb = fa + 1250
+        cutoff_coeffs = filter.firdes.low_pass(1.0, self.if_rate, (fb+fa)/2, fb-fa, filter.firdes.WIN_HANN)
+        self.cutoff = filter.fir_filter_ccf(1, cutoff_coeffs)
 
         omega = float(self.if_rate) / float(self.symbol_rate)
         sps = self.if_rate // self.symbol_rate
@@ -435,8 +440,10 @@ class p25_demod_cb(p25_demod_base):
         if self.connect_state == 'cqpsk':
             self.disconnect_fm_demod()
             self.disconnect(self.if_out, self.agc, self.fll, self.clock, self.diffdec, self.costas, self.to_float, self.rescale, self.slicer)
+            #self.disconnect(self.if_out, self.fll, self.agc, self.clock, self.diffdec, self.costas, self.to_float, self.rescale, self.slicer)
         elif self.connect_state == 'fsk4':
             self.disconnect(self.if_out, self.fm_demod, self.baseband_amp, self.symbol_filter, self.fsk4_demod, self.slicer)
+            #self.disconnect(self.if_out, self.fll, self.fm_demod, self.baseband_amp, self.symbol_filter, self.fsk4_demod, self.slicer)
         self.connect_state = None
 
     # assumes lock held or init
@@ -447,8 +454,10 @@ class p25_demod_cb(p25_demod_base):
         self.connect_state = demod_type
         if demod_type == 'fsk4':
             self.connect(self.if_out, self.agc, self.fll, self.fm_demod, self.baseband_amp, self.symbol_filter, self.fsk4_demod, self.slicer)
+            #self.connect(self.if_out, self.fll, self.agc, self.fm_demod, self.baseband_amp, self.symbol_filter, self.fsk4_demod, self.slicer)
         elif demod_type == 'cqpsk':
             self.connect(self.if_out, self.agc, self.fll, self.clock, self.diffdec, self.costas, self.to_float, self.rescale, self.slicer)
+            #self.connect(self.if_out, self.fll, self.agc, self.clock, self.diffdec, self.costas, self.to_float, self.rescale, self.slicer)
         else:
             sys.stderr.write("connect_chain failed, type: %s\n" % demod_type)
             assert 0 == 1
