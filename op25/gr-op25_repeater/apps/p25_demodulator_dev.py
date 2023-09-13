@@ -359,9 +359,12 @@ class p25_demod_cb(p25_demod_base):
         else:
             self.if_out = self.freq_xlat
 
-        fa = 6200
-        fb = fa + 620
+        #fa = 2880
+        #fb = fa + 960
+        fa = 3200
+        fb = fa + 800
         cutoff_coeffs = filter.firdes.low_pass(1.0, self.if_rate, (fb+fa)/2, fb-fa, filter.firdes.WIN_HAMMING)
+        #cutoff_coeffs = filter.firdes.root_raised_cosine(1.0, self.if_rate, 6000, 0.35, 160)
         self.cutoff = filter.fir_filter_ccf(1, cutoff_coeffs)
 
         omega = float(self.if_rate) / float(self.symbol_rate)
