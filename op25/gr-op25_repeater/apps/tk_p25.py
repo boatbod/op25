@@ -519,13 +519,13 @@ class p25_system(object):
             header = get_ordinals(s1)
             mbt_data = get_ordinals(s2)
 
-            fmt = (header >> 72) & 0x1f
-            sap = (header >> 64) & 0x3f
-            src = (header >> 32) & 0xffffff
+            fmt = (header >> 56 ) & 0x1f
+            sap = (header >> 48) & 0x3f
+            src = (header >> 16) & 0xffffff
             if fmt != 0x17: # only Extended Format MBT presently supported
                 return updated
-            opcode = (header >> 16) & 0x3f
-            updated += self.decode_mbt(m_rxid, opcode, src, header << 16, mbt_data << 32)
+            opcode = header & 0x3f
+            updated += self.decode_mbt_data(m_rxid, opcode, src, header << 16, mbt_data << 32)
 
         elif m_type == 18:                                  # TDMA PDU
             updated += self.decode_tdma_msg(m_rxid, s[2:], curr_time)

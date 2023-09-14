@@ -59,7 +59,7 @@ from optparse import OptionParser
 
 import gnuradio.op25 as op25
 import gnuradio.op25_repeater as op25_repeater
-import p25_demodulator
+#import p25_demodulator
 import op25_nbfm
 import op25_iqsrc
 import op25_wavsrc
@@ -151,7 +151,8 @@ class device(object):
             self.src.set_freq_corr(int(round(self.ppm)))
 
             self.src.set_sample_rate(config['rate'])
-            self.sample_rate = config['rate']
+            #self.sample_rate = config['rate']
+            self.sample_rate = self.src.get_sample_rate() # actual rate may not be the same as the requested rate!
 
             self.offset = int(from_dict(config, 'offset', 0))
 
@@ -217,7 +218,7 @@ class channel(object):
                              filter_type = filter_type,
                              usable_bw = self.device.usable_bw,
                              excess_bw = float(from_dict(config, 'excess_bw', 0.2)),
-                             relative_freq = (dev.frequency + dev.offset + dev.fractional_corr),
+                             relative_freq = ((dev.frequency + dev.offset + dev.fractional_corr) - self.frequency),
                              offset = dev.offset,
                              if_rate = config['if_rate'],
                              symbol_rate = self.symbol_rate)
@@ -230,7 +231,7 @@ class channel(object):
                              filter_type = config['filter_type'],
                              usable_bw = self.device.usable_bw,
                              excess_bw = float(from_dict(config, 'excess_bw', 0.2)),
-                             relative_freq = (dev.frequency + dev.offset + dev.fractional_corr),
+                             relative_freq = ((dev.frequency + dev.offset + dev.fractional_corr) - self.frequency),
                              offset = dev.offset,
                              if_rate = config['if_rate'],
                              symbol_rate = self.symbol_rate)
@@ -1028,9 +1029,16 @@ class rx_main(object):
         parser.add_option("-c", "--config-file", type="string", default=None, help="specify config file name")
         parser.add_option("-v", "--verbosity", type="int", default=0, help="message debug level")
         parser.add_option("-p", "--pause", action="store_true", default=False, help="block on startup")
+        parser.add_option("-d", "--dev-mode", action="store_true", default=False, help="enable developer mode")
         (options, args) = parser.parse_args()
 
+        if options.dev_mode:
+            globals()["p25_demodulator"] = importlib.import_module("p25_demodulator_dev")
+        else:
+            globals()["p25_demodulator"] = importlib.import_module("p25_demodulator")
+
         # wait for gdb
+        sys.stderr.write("Starting OP25 (pid = %d)\n" % (os.getpid()))
         if options.pause:
             sys.stdout.write("Ready for GDB to attach (pid = %d)\n" % (os.getpid(),))
             if sys.version[0] > '2':
