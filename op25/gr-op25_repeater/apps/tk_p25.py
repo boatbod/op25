@@ -507,6 +507,7 @@ class p25_system(object):
         m_type = ctypes.c_int16(msg.type() & 0xffff).value  # lower 16 bits is p25 duid
         nac = get_ordinals(s[:2])                           # first two bytes are NAC
         self.set_nac(nac)
+        s = s[2:]
 
         updated = 0
         if m_type == 7:                                     # TSBK
@@ -519,12 +520,12 @@ class p25_system(object):
             header = get_ordinals(s1)
             mbt_data = get_ordinals(s2)
 
-            fmt = (header >> 56 ) & 0x1f
-            sap = (header >> 48) & 0x3f
-            src = (header >> 16) & 0xffffff
+            fmt = (header >> 72 ) & 0x1f
+            sap = (header >> 64) & 0x3f
+            src = (header >> 32) & 0xffffff
             if fmt != 0x17: # only Extended Format MBT presently supported
                 return updated
-            opcode = header & 0x3f
+            opcode = (header >> 16) & 0x3f
             updated += self.decode_mbt_data(m_rxid, opcode, src, header << 16, mbt_data << 32)
 
         elif m_type == 18:                                  # TDMA PDU
