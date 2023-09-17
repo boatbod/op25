@@ -79,7 +79,7 @@ import gnuradio.op25_repeater as op25_repeater
 
 import trunking
 
-import p25_demodulator
+import p25_demodulator_dev as p25_demodulator
 import p25_decoder
 
 sys.path.append('tdma')

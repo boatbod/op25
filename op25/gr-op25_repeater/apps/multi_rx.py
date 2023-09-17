@@ -59,7 +59,7 @@ from optparse import OptionParser
 
 import gnuradio.op25 as op25
 import gnuradio.op25_repeater as op25_repeater
-#import p25_demodulator
+import p25_demodulator_dev as p25_demodulator
 import op25_nbfm
 import op25_iqsrc
 import op25_wavsrc
@@ -1032,10 +1032,10 @@ class rx_main(object):
         parser.add_option("-d", "--dev-mode", action="store_true", default=False, help="enable developer mode")
         (options, args) = parser.parse_args()
 
-        if options.dev_mode:
-            globals()["p25_demodulator"] = importlib.import_module("p25_demodulator_dev")
-        else:
-            globals()["p25_demodulator"] = importlib.import_module("p25_demodulator")
+        #if options.dev_mode:
+        #    globals()["p25_demodulator"] = importlib.import_module("p25_demodulator_dev")
+        #else:
+        #    globals()["p25_demodulator"] = importlib.import_module("p25_demodulator")
 
         # wait for gdb
         sys.stderr.write("Starting OP25 (pid = %d)\n" % (os.getpid()))
