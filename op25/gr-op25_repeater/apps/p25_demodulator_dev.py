@@ -359,12 +359,9 @@ class p25_demod_cb(p25_demod_base):
         else:
             self.if_out = self.freq_xlat
 
-        #fa = 2880
-        #fb = fa + 960
         fa = 3200
         fb = fa + 800
         cutoff_coeffs = filter.firdes.low_pass(1.0, self.if_rate, (fb+fa)/2, fb-fa, filter.firdes.WIN_HAMMING)
-        #cutoff_coeffs = filter.firdes.root_raised_cosine(1.0, self.if_rate, 6000, 0.35, 160)
         self.cutoff = filter.fir_filter_ccf(1, cutoff_coeffs)
 
         omega = float(self.if_rate) / float(self.symbol_rate)
@@ -444,10 +441,8 @@ class p25_demod_cb(p25_demod_base):
         if self.connect_state == 'cqpsk':
             self.disconnect_fm_demod()
             self.disconnect(self.if_out, self.agc, self.fll, self.clock, self.diffdec, self.costas, self.to_float, self.rescale, self.slicer)
-            #self.disconnect(self.if_out, self.fll, self.agc, self.clock, self.diffdec, self.costas, self.to_float, self.rescale, self.slicer)
         elif self.connect_state == 'fsk4':
             self.disconnect(self.if_out, self.fm_demod, self.baseband_amp, self.symbol_filter, self.fsk4_demod, self.slicer)
-            #self.disconnect(self.if_out, self.fll, self.fm_demod, self.baseband_amp, self.symbol_filter, self.fsk4_demod, self.slicer)
         self.connect_state = None
 
     # assumes lock held or init
@@ -458,10 +453,8 @@ class p25_demod_cb(p25_demod_base):
         self.connect_state = demod_type
         if demod_type == 'fsk4':
             self.connect(self.if_out, self.agc, self.fll, self.fm_demod, self.baseband_amp, self.symbol_filter, self.fsk4_demod, self.slicer)
-            #self.connect(self.if_out, self.fll, self.agc, self.fm_demod, self.baseband_amp, self.symbol_filter, self.fsk4_demod, self.slicer)
         elif demod_type == 'cqpsk':
             self.connect(self.if_out, self.agc, self.fll, self.clock, self.diffdec, self.costas, self.to_float, self.rescale, self.slicer)
-            #self.connect(self.if_out, self.fll, self.agc, self.clock, self.diffdec, self.costas, self.to_float, self.rescale, self.slicer)
         else:
             sys.stderr.write("connect_chain failed, type: %s\n" % demod_type)
             assert 0 == 1
@@ -472,7 +465,6 @@ class p25_demod_cb(p25_demod_base):
             return
         if self.aux_fm_connected == 0:
             self.connect(self.fll, self.fm_demod, self.baseband_amp, self.symbol_filter, self.null_sink)
-            #self.connect(self.agc, self.fm_demod, self.baseband_amp, self.symbol_filter, self.null_sink)
         self.aux_fm_connected += 1          # increment refcount
 
     # assumes lock held or init
@@ -483,7 +475,6 @@ class p25_demod_cb(p25_demod_base):
         self.aux_fm_connected -= 1          # decrement refcount
         if self.aux_fm_connected == 0:
             self.disconnect(self.fll, self.fm_demod, self.baseband_amp, self.symbol_filter, self.null_sink)
-            #self.disconnect(self.agc, self.fm_demod, self.baseband_amp, self.symbol_filter, self.null_sink)
 
     def disconnect_float(self, sink):
         # assumes lock held or init
