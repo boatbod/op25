@@ -359,17 +359,11 @@ class p25_demod_cb(p25_demod_base):
         else:
             self.if_out = self.freq_xlat
 
-        fa = 3200
-        fb = fa + 800
-        cutoff_coeffs = filter.firdes.low_pass(1.0, self.if_rate, (fb+fa)/2, fb-fa, filter.firdes.WIN_HAMMING)
-        self.cutoff = filter.fir_filter_ccf(1, cutoff_coeffs)
-
         omega = float(self.if_rate) / float(self.symbol_rate)
         sps = self.if_rate // self.symbol_rate
         gain_omega = 0.1  * gain_mu * gain_mu
 
         sys.stderr.write("demodulator: xlator if_rate=%d, input_rate=%d, decim=%d, taps=%d, resampled_rate=%d, sps=%d\n" % (if_rate, input_rate, decimation, len(if_coeffs), resampled_rate, sps))
-        sys.stderr.write("demodulator: cutoff if_rate=%d, cutoff_freq=%f, transition_width=%f, taps=%d\n" % (if_rate, (fb+fa)/2, fb-fa, len(cutoff_coeffs)))
 
         self.agc = rms_agc.rms_agc(0.45, 0.85)
         self.fll = digital.fll_band_edge_cc(sps, excess_bw, 2*sps+1, TWO_PI/sps/350) # automatic frequency correction
@@ -518,9 +512,6 @@ class p25_demod_cb(p25_demod_base):
         elif src == 'mixer':
             self.connect(self.mixer, sink)
             self.complex_sink[sink] = self.mixer
-        elif src == 'cutoff':
-            self.connect(self.cutoff, sink)
-            self.complex_sink[sink] = self.cutoff
         elif src == 'fll':
             self.connect(self.fll, sink)
             self.complex_sink[sink] = self.fll
@@ -540,7 +531,7 @@ class p25_demod_cb(p25_demod_base):
     def connect_nbfm(self, nbfm_blk):
         if self.connect_state == 'fsk4':
             self.nbfm = nbfm_blk
-            self.connect(self.cutoff, nbfm_blk)
+            self.connect(self.if_out, nbfm_blk)
             return True
         else:
             return False
