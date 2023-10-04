@@ -1,0 +1,94 @@
+{
+    "channels": [
+        {
+            "name": "Voice_chA", 
+            "frequency": 155820000,
+            "device": "sdr0",
+            "trunking_sysname": "",
+            "meta_stream_name": "",
+            "demod_type": "fsk4", 
+            "cqpsk_tracking": false,
+            "destination": "udp://127.0.0.1:23456",
+            "excess_bw": 0.2,
+            "filter_type": "rc",
+            "if_rate": 24000,
+            "plot": "",
+            "symbol_rate": 4800,
+            "enable_analog": "off",
+            "blacklist": "",
+            "whitelist": "",
+            "crypt_keys": "example_keys.json"
+        },
+        {
+            "name": "Voice_chB",
+            "frequency": 155700000,
+            "device": "sdr0",
+            "trunking_sysname": "",
+            "meta_stream_name": "",
+            "demod_type": "fsk4",
+            "cqpsk_tracking": false,
+            "destination": "udp://127.0.0.1:23466",
+            "excess_bw": 0.2,
+            "filter_type": "rc",
+            "if_rate": 24000,
+            "plot": "",
+            "symbol_rate": 4800,
+            "enable_analog": "off",
+            "blacklist": "",
+            "whitelist": ""
+        }
+    ], 
+
+    "devices": [
+        {
+            "args": "rtl=0",
+            "frequency": 155000000,
+            "gains": "LNA:39",
+            "gain_mode": false,
+            "name": "sdr0",
+            "offset": 0,
+            "ppm": 0.0,
+            "rate": 1000000,
+            "usable_bw_pct": 0.85,
+            "tunable": false
+        }
+    ],
+    "trunking": {
+        "module": "",
+        "chans": [
+        ]
+    },
+    "metadata": {
+        "module": "",
+        "streams": [
+        ]
+    },
+    "audio": {
+        "module": "sockaudio.py",
+        "instances": [
+            {
+                "instance_name": "audio0",
+                "device_name": "default",
+                "udp_port": 23456,
+                "audio_gain": 1.0,
+                "number_channels": 1
+            },
+            {
+                "instance_name": "audio1",
+                "device_name": "default",
+                "udp_port": 23466,
+                "audio_gain": 1.0,
+                "number_channels": 1
+            }
+        ]
+    },
+    "terminal": {
+        "module": "terminal.py",
+        "terminal_type": "curses",
+        "curses_plot_interval": 0.1,
+        "http_plot_interval": 1.0,
+        "http_plot_directory": "../www/images",
+        "tuning_step_large": 1200,
+        "tuning_step_small": 100
+    }
+}
