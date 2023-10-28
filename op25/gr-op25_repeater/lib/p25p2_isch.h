@@ -33,6 +33,6 @@ public:
 	int16_t isch_lookup(uint64_t cw);
 	int16_t isch_lookup(const uint8_t dibits[]);
 private:
-    std::map <std::uint64_t, int> isch_map;
+    std::map <uint64_t, int> isch_map;
 };
 #endif /* INCLUDED_P25P2_ISCH_H */
