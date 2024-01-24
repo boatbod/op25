@@ -46,15 +46,22 @@ PATCH_EXPIRY_TIME = 20.0 # Number of seconds until patch expiry
 #################
 # Helper functions
 
-def meta_update(meta_q, tgid = None, tag = None, msgq_id = 0, ts = time.time()):
+def meta_update(meta_q, tgid = None, tag = None, rid = None, rtag = None, msgq_id = 0, ts = time.time(), debug = 0):
     if meta_q is None:
         return
     d = {'json_type': 'meta_update'}
     d['tgid'] = tgid
     d['tag'] = tag
+    d['rid'] = rid
+    d['rtag'] = rtag
     msg = gr.message().make_from_string(json.dumps(d), -2, ts, 0)
     if not meta_q.full_p():
         meta_q.insert_tail(msg)
+        if debug > 10:
+            sys.stderr.write("%s [%d] meta_update: queued[%d] msg: %s\n" % (log_ts.get(), msgq_id, meta_q.count(), json.dumps(d)))
+    else:
+        if debug > 10:
+            sys.stderr.write("%s [%d] meta_update: dropped[%d] msg: %s\n" % (log_ts.get(), msgq_id, meta_q.count(), json.dumps(d)))
 
 def add_default_tgid(tgs, tgid):
     if tgs is None:
@@ -228,6 +235,7 @@ class rx_ctl(object):
         rcvr_ids = []
         for rcvr in self.receivers:
             if self.receivers[rcvr]['rx_rcvr'] is not None:
+                self.receivers[rcvr]['rx_rcvr'].check_expired_hold(time.time())
                 rcvr_name = from_dict(self.receivers[rcvr]['config'], 'name', "")
                 d[str(rcvr)] = json.loads(self.receivers[rcvr]['rx_rcvr'].get_status())
                 d[str(rcvr)]['name'] = rcvr_name
@@ -498,6 +506,7 @@ class p25_system(object):
         m_type = ctypes.c_int16(msg.type() & 0xffff).value  # lower 16 bits is p25 duid
         nac = get_ordinals(s[:2])                           # first two bytes are NAC
         self.set_nac(nac)
+        s = s[2:]
 
         updated = 0
         if m_type == 7:                                     # TSBK
@@ -510,13 +519,13 @@ class p25_system(object):
             header = get_ordinals(s1)
             mbt_data = get_ordinals(s2)
 
-            fmt = (header >> 72) & 0x1f
+            fmt = (header >> 72 ) & 0x1f
             sap = (header >> 64) & 0x3f
             src = (header >> 32) & 0xffffff
             if fmt != 0x17: # only Extended Format MBT presently supported
                 return updated
             opcode = (header >> 16) & 0x3f
-            updated += self.decode_mbt(m_rxid, opcode, src, header << 16, mbt_data << 32)
+            updated += self.decode_mbt_data(m_rxid, opcode, src, header << 16, mbt_data << 32)
 
         elif m_type == 18:                                  # TDMA PDU
             updated += self.decode_tdma_msg(m_rxid, s[2:], curr_time)
@@ -1545,7 +1554,7 @@ class p25_receiver(object):
 
         self.load_bl_wl()
         self.tgid_hold_time = float(from_dict(self.system.config, 'tgid_hold_time', TGID_HOLD_TIME))
-        meta_update(self.meta_q, msgq_id=self.msgq_id)
+        meta_update(self.meta_q, msgq_id=self.msgq_id, debug=self.debug)
         self.idle_rx()
 
     def load_bl_wl(self):
@@ -1637,15 +1646,18 @@ class p25_receiver(object):
         self.vc_retries = 0
         self.current_tgid = tgid
         self.current_slot = slot
+        if not self.hold_mode:
+            self.hold_tgid = None
+            self.hold_until = time.time()
         self.talkgroups[tgid]['receiver'] = self
 
     def ui_command(self, cmd, data, curr_time):
         if self.debug > 10:
             sys.stderr.write("%s [%d] ui_command: cmd(%s), data(%d), time(%f)\n" % (log_ts.get(), self.msgq_id, cmd, data, curr_time))
         if cmd == 'hold':
-            self.hold_talkgroup(data, curr_time)
+            self.hold_talkgroup(int(data), curr_time)
         elif cmd == 'whitelist':
-            self.add_whitelist(data)
+            self.add_whitelist(int(data))
         elif cmd == 'skip':
             if self.current_tgid is not None:
                 self.add_skiplist(self.current_tgid, curr_time + TGID_SKIP_TIME)
@@ -1653,7 +1665,7 @@ class p25_receiver(object):
             if (data == 0) and self.current_tgid is not None:
                 self.add_blacklist(self.current_tgid)
             elif data > 0:
-                self.add_blacklist(data)
+                self.add_blacklist(int(data))
         elif cmd == 'reload':
             self.blacklist = {}
             self.whitelist = None
@@ -1877,15 +1889,15 @@ class p25_receiver(object):
         return None, None, None, None
 
     def scan_for_talkgroups(self, curr_time):
-        if self.current_tgid is None and self.hold_tgid is not None and (curr_time < self.hold_until):
-            freq, tgid, slot, src = self.find_talkgroup(curr_time, tgid=self.hold_tgid)
-        else:
-            freq, tgid, slot, src = self.find_talkgroup(curr_time, tgid=self.current_tgid)
+        self.check_expired_hold(curr_time)
+        hold_active = True if self.hold_tgid is not None and self.hold_mode is True else False  # manual holds are not pre-emptable
+        tgid_target = self.hold_tgid if self.hold_tgid is not None else self.current_tgid       # auto hold vs call in progress
+        freq, tgid, slot, src = self.find_talkgroup(curr_time, tgid=tgid_target, hold=hold_active)
 
-        if self.current_tgid is not None and self.current_tgid == tgid:  # active call remains, nothing to do
+        if self.current_tgid is not None and self.current_tgid == tgid:                         # active call unchanged, nothing to do
             return
 
-        if tgid is None:                                                 # no call
+        if tgid is None:                                                                        # no call
             return
 
         if self.current_tgid is None:
@@ -1898,7 +1910,13 @@ class p25_receiver(object):
             self.expire_talkgroup(update_meta=False, reason="preempt")
             self.tune_voice(freq, tgid, slot)
 
-        meta_update(self.meta_q, tgid, self.talkgroups[tgid]['tag'], msgq_id=self.msgq_id)
+        meta_update(self.meta_q, tgid=tgid, tag=self.talkgroups[tgid]['tag'], rid=self.talkgroups[tgid]['srcaddr'], rtag=self.system.get_rid_tag(self.talkgroups[tgid]['srcaddr']), msgq_id=self.msgq_id, debug=self.debug)
+
+    def check_expired_hold(self, curr_time):
+        if self.hold_tgid is not None and (self.hold_until <= curr_time):
+            self.hold_tgid = None
+            self.hold_mode = False
+            meta_update(self.meta_q, msgq_id=self.msgq_id, debug=self.debug)
 
     def expire_talkgroup(self, tgid=None, update_meta = True, reason="unk", auto_hold = True):
         if self.current_tgid is None:
@@ -1910,11 +1928,18 @@ class p25_receiver(object):
         self.talkgroups[self.current_tgid]['srcaddr'] = 0
         if self.debug > 1:
             sys.stderr.write("%s [%d] releasing:  tg(%d), freq(%f), slot(%s), reason(%s)\n" % (log_ts.get(), self.msgq_id, self.current_tgid, (self.tuned_frequency/1e6), get_slot(self.current_slot), reason))
-        if auto_hold:
-            self.hold_tgid = self.current_tgid
-            self.hold_until = time.time() + self.tgid_hold_time
+        if self.hold_mode is False:
+            # Commanded tgid hold inactive
+            if auto_hold:
+                self.hold_tgid = self.current_tgid
+                self.hold_until = time.time() + self.tgid_hold_time
+            else:
+                self.hold_tgid = None
+                self.hold_until = time.time()
         else:
-            self.hold_until = time.time()
+            # Commanded tgid hold active
+            pass
+
         self.current_tgid = None
         self.current_slot = None
         self.fa_ctrl({"tuner": self.msgq_id, "cmd": "call_end"})    # Drop any persistent ESS data held in the receiver
@@ -1922,11 +1947,15 @@ class p25_receiver(object):
         if reason == "preempt":                             # Do not retune or update metadata if in middle of tuning to a different tgid
             return
 
-        if update_meta:
-            meta_update(self.meta_q, msgq_id=self.msgq_id, ts=self.hold_until)  # Send Idle metadata update
+        if self.hold_tgid is not None:
+            meta_update(self.meta_q, tgid=self.hold_tgid, tag=self.talkgroups[self.hold_tgid]['tag'], msgq_id=self.msgq_id, debug=self.debug)
+        else:
+            meta_update(self.meta_q, msgq_id=self.msgq_id, debug=self.debug)
+
         self.idle_rx()                                      # Make receiver available
 
     def hold_talkgroup(self, tgid, curr_time):
+        update_meta = False
         if tgid > 0:
             if self.whitelist is not None and tgid not in self.whitelist:
                 if self.debug > 1:
@@ -1940,7 +1969,7 @@ class p25_receiver(object):
                 sys.stderr.write ('%s [%d] set hold tg(%d) until %f\n' % (log_ts.get(), self.msgq_id, self.hold_tgid, self.hold_until))
             if self.current_tgid != self.hold_tgid:
                 self.expire_talkgroup(reason="new hold", auto_hold = False)
-                self.current_tgid = self.hold_tgid
+            update_meta = True
         elif self.hold_mode is False:
             if self.current_tgid:
                 self.hold_tgid = self.current_tgid
@@ -1948,6 +1977,7 @@ class p25_receiver(object):
                 self.hold_mode = True
                 if self.debug > 1:
                     sys.stderr.write ('%s [%d] set hold tg(%d) until %f\n' % (log_ts.get(), self.msgq_id, self.hold_tgid, self.hold_until))
+                update_meta = True
         elif self.hold_mode is True:
             if self.debug > 1:
                 sys.stderr.write ('%s [%d] clear hold tg(%d)\n' % (log_ts.get(), self.msgq_id, self.hold_tgid))
@@ -1955,18 +1985,27 @@ class p25_receiver(object):
             self.hold_until = curr_time
             self.hold_mode = False
             self.expire_talkgroup(reason="clear hold", auto_hold = False)
+            update_meta = True
+
+        if update_meta:
+            if self.hold_tgid is not None and self.current_tgid != self.hold_tgid:
+                meta_update(self.meta_q, tgid=self.hold_tgid, tag=self.talkgroups[self.hold_tgid]['tag'], msgq_id=self.msgq_id, debug=self.debug)
+            elif self.hold_tgid is None:
+                meta_update(self.meta_q, msgq_id=self.msgq_id, debug=self.debug)
 
     def get_status(self):
+        _tgid = self.hold_tgid if self.hold_tgid is not None else self.current_tgid
         cc_tag = "Control Channel" if self.system.has_cc(self.msgq_id) else None
         d = {}
         d['freq'] = self.tuned_frequency
         d['tdma'] = self.current_slot
-        d['tgid'] = self.current_tgid
+        d['tgid'] = _tgid
         d['system'] = self.config['trunking_sysname']
-        d['tag'] = self.talkgroups[self.current_tgid]['tag'] if self.current_tgid is not None else cc_tag
+        d['tag'] = self.talkgroups[_tgid]['tag'] if _tgid is not None else cc_tag
         d['srcaddr'] = self.talkgroups[self.current_tgid]['srcaddr'] if self.current_tgid is not None else 0
         d['srctag'] = self.system.get_rid_tag(self.talkgroups[self.current_tgid]['srcaddr']) if self.current_tgid is not None else ""
         d['encrypted'] = self.talkgroups[self.current_tgid]['encrypted'] if self.current_tgid is not None else 0
+        d['hold_tgid'] = self.hold_tgid if self.hold_tgid is not None else 0
         d['mode'] = None
         d['stream'] = self.meta_stream
         d['msgqid'] = self.msgq_id

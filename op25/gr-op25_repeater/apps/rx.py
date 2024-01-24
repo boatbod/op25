@@ -79,7 +79,7 @@ import op25_repeater
 
 import trunking
 
-import p25_demodulator
+import p25_demodulator_dev as p25_demodulator
 import p25_decoder
 
 sys.path.append('tdma')
@@ -537,12 +537,13 @@ class p25_rx_block (gr.top_block):
         if not self.input_q.full_p():
             self.input_q.insert_tail(msg)
 
-    def meta_update(self, tgid, tag):
+    def meta_update(self, tgid, tag, rid = None):
         if self.meta_server is None:
             return
         d = {'json_type': 'meta_update'}
         d['tgid'] = tgid
         d['tag'] = tag
+        d['rid'] = rid
         msg = gr.message().make_from_string(json.dumps(d), -2, time.time(), 0)
         if not self.meta_q.full_p():
             self.meta_q.insert_tail(msg)

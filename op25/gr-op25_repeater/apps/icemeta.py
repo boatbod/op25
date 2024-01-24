@@ -1,4 +1,4 @@
-# Copyright 2018 Graham Norbury
+# Copyright 2018-2023 Graham Norbury
 # 
 # This file is part of OP25
 # 
@@ -59,6 +59,8 @@ class meta_server(threading.Thread):
         self.fmt_idle = from_dict(self.cfg, 'meta_format_idle', '[idle]')
         self.fmt_tgid = from_dict(self.cfg, 'meta_format_tgid', '[%TGID%]')
         self.fmt_tag = from_dict(self.cfg, 'meta_format_tag', '[%TGID%] %TAG%')
+        self.fmt_rid = from_dict(self.cfg, 'meta_format_rid', '')   # default is no RID
+        self.fmt_rtag = from_dict(self.cfg, 'meta_format_rtag', '') # default is no RTAG
         self.start()
 
     def set_debug(self, dbglvl):
@@ -74,7 +76,11 @@ class meta_server(threading.Thread):
     def run(self):
         while(self.keep_running):
             self.process_q_events()
+            if self.msg and self.logging >= 11:
+                    sys.stderr.write("%s icemeta::run: received message arg1=%s\n" % (log_ts.get(), log_ts.get(self.msg.arg1())))
             if self.msg and (time.time() >= (self.msg.arg1() + self.delay)):
+                if self.logging >= 11:
+                    sys.stderr.write("%s icemeta::run: processing message\n" % (log_ts.get()))
                 self.send_metadata(self.format(json.loads(self.msg.to_string())))
                 self.msg = None
             time.sleep(0.1)
@@ -84,10 +90,20 @@ class meta_server(threading.Thread):
             metatext = self.fmt_idle
         elif meta['tgid'] is not None and meta['tag'] is not None and meta['tag'] != "":
             metatext = self.fmt_tag
+            metatext = metatext.replace("%TGID%", str(int(meta['tgid'])))
+            metatext = metatext.replace("%TAG%", str(meta['tag']))
         else:
             metatext = self.fmt_tgid
-        metatext = metatext.replace("%TGID%", str(meta['tgid']))
-        metatext = metatext.replace("%TAG%", str(meta['tag']))
+            metatext = metatext.replace("%TGID%", str(int(meta['tgid'])))
+
+        if 'rtag' in meta and meta['rtag'] is not None and 'rid' in meta and meta['rid'] is not None and meta['rid'] != 0:
+            metatext = metatext + " " + self.fmt_rtag
+            metatext = metatext.replace("%RID%", str(int(meta['rid'])))
+            metatext = metatext.replace("%RTAG%", str(meta['rtag']))
+        elif 'rid' in meta and meta['rid'] is not None and meta['rid'] != 0:
+            metatext = metatext + " " + self.fmt_rid
+            metatext = metatext.replace("%RID%", str(int(meta['rid'])))
+        
         return metatext
 
     def stop(self):
@@ -95,6 +111,8 @@ class meta_server(threading.Thread):
 
     def process_q_events(self):
         if (self.msg is None) and (self.input_q.empty_p() == False):
+            if self.logging >= 11:
+                sys.stderr.write("%s icemeta::process_q_events: queue size=%d\n" % (log_ts.get(), self.input_q.count()))
             self.msg = self.input_q.delete_head_nowait()
             if self.msg.type() != -2:
                 self.msg = None
@@ -111,12 +129,12 @@ class meta_server(threading.Thread):
                 if self.logging >= 11:
                     sys.stderr.write("%s metadata result: \"%s\"\n" % (log_ts.get(), status))
                 if status != 200:
-                    if self.logging >= 1:
+                    if self.logging >= 11:
                         sys.stderr.write("%s meta_server::send_metadata(): metadata update error: %s\n" % (log_ts.get(), status))
                 else:
                     self.last_metadata = metadata
             except (requests.ConnectionError, requests.Timeout):
-                if self.logging >= 1:
+                if self.logging >= 11:
                     sys.stderr.write("%s meta_server::send_metadata(): exception %s\n" % (log_ts.get(), sys.exc_info()[1]))
 
     def get_url(self):

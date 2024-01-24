@@ -1,6 +1,7 @@
 {
     "channels": [
         {
+            "name": "p25", 
             "device": "",
             "demod_type": "cqpsk", 
             "cqpsk_tracking": true,
@@ -12,7 +13,6 @@
             "filter_type": "rc", 
             "frequency": 460412500, 
             "if_rate": 24000, 
-            "name": "p25", 
             "plot": "symbol", 
             "symbol_rate": 4800,
             "raw_output": "",
@@ -24,6 +24,7 @@
 
         }, 
         {
+            "name": "ysf", 
             "device": "device_0",
             "demod_type": "fsk4", 
             "cqpsk_tracking": false,
@@ -32,7 +33,6 @@
             "filter_type": "rrc", 
             "frequency": 460500000, 
             "if_rate": 24000, 
-            "name": "ysf", 
             "plot": "datascope", 
             "symbol_rate": 4800,
             "raw_output": "",
@@ -42,6 +42,7 @@
             "nbfm_squelch": -60
         }, 
         {
+            "name": "dmr", 
             "device": "device_1",
             "demod_type": "fsk4", 
             "cqpsk_tracking": false,
@@ -50,7 +51,6 @@
             "filter_type": "rrc", 
             "frequency": 460050000, 
             "if_rate": 24000, 
-            "name": "dmr", 
             "plot": "symbol", 
             "symbol_rate": 4800,
             "raw_output": "",
@@ -105,6 +105,11 @@
         "streams": [
             {
                 "stream_name": "stream_0",
+                "meta_format_idle": "[idle]",
+                "meta_format_tgid": "[%TGID%]",
+                "meta_format_tag":  "[%TGID%] %TAG%",
+                "meta_format_rid":  "@ [%RID%]",
+                "meta_format_rtag": "@ [%RID%] %RTAG%",
                 "icecastServerAddress": "your_stream_host_and_port",
                 "icecastMountpoint": "your_mountpoint_name",
                 "icecastPass": "your_password",
@@ -113,6 +118,11 @@
             },
             {
                 "stream_name": "stream_1",
+                "meta_format_idle": "[idle]",
+                "meta_format_tgid": "[%TGID%]",
+                "meta_format_tag":  "[%TGID%] %TAG%",
+                "meta_format_rid":  " @ [%RID%]",
+                "meta_format_rtag": " @ [%RID%] %RTAG%",
                 "icecastServerAddress": "your_second stream_host_and_port",
                 "icecastMountpoint": "your_second_mountpoint_name",
                 "icecastPass": "your_second_password",
@@ -138,6 +148,7 @@
         "terminal_type": "curses",
         "#terminal_type": "http:127.0.0.1:8080",
         "terminal_timeout": 5.0,
+        "default_channel": "p25",
         "curses_plot_interval": 0.2,
         "http_plot_interval": 1.0,
         "http_plot_directory": "../www/images",

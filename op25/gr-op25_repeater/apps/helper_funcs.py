@@ -151,7 +151,7 @@ def read_tsv_file(tsv_filename, key):
             for i in range(len(row)):
                 if row[i]:
                     fields[hdrmap[i]] = row[i]
-                    if hdrmap[i] != 'sysname':
+                    if hdrmap[i] in ['control_channel_list', 'offset', 'nac', 'center_frequency']:
                         fields[hdrmap[i]] = fields[hdrmap[i]].lower()
             key_val = int(fields[key], 0)
             tsv_obj[key_val] = fields
