@@ -140,7 +140,7 @@ import os
 import sys
 from distutils import sysconfig
 pfx = '/usr/local'
-m1 = os.path.join('lib', 'python' + sys.version[:3], 'dist-packages')
+m1 = os.path.join('lib', 'python' + '.'.join(sys.version.split('.')[:2]), 'dist-packages')
 m2 = sysconfig.get_python_lib(plat_specific=True, prefix='')
 f1 = os.path.join(pfx, m1)
 f2 = os.path.join(pfx, m2)
