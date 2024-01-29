@@ -1,2 +1,2 @@
 "Sysname"	"Control Channel List"	"Offset"	"NAC"	"Modulation"	"TGID Tags File"	"Whitelist"	"Blacklist"	"Center Frequency"
-"P25 SYSTEM"	"876.54320"	"0"	"0"	"cqpsk"	""	""	""	""
+"Marin MERA"	"488.400,488.475,488.725,488.875"	"0"	"0"	"cqpsk"	""	"marin.tsv"	""	""

@@ -1,0 +1,179 @@
+16	OSCAD for Fire Station Alerting
+160	DTMF tones for opening Fire's Knox Boxes
+8208	Radio Technicians 1
+8272	Radio Technicians 2
+9600	Open Space District Tac 1
+9680	Marin Humane Society (Animal Control)
+9696	Probation
+9712	Public Works 1
+9728	Juvenile Hall
+9808	Roads - Civic Center Yard
+9840	Roads - Nicasio Yard
+9872	Parks and Recreation Tac 1
+10096	Traffic Flagging 3
+10128	Traffic Flagging 4
+10160	Parks and Recreation Tac 2 (McNears Beach)
+11216	Public Works
+11600	Public Works
+12016	Public Works
+12400	Public Works
+12816	Public Works
+13200	Public Works 1
+13232	Public Works 2
+13616	Public Works
+14416	Public Works
+14800	Public Works 1
+14832	Public Works 2
+14864	Public Works 3
+16400	Public Works
+16816	Public Works
+18000	Parks and Recreation Rangers
+18032	Office of Emergency Services
+18064	USAR Tac M2
+18096	USAR Tac M3
+18128	County Transit 1 - Whistlestop Wheels (Paratransit)
+18368	Special Event 2
+18400	Special Event 3
+18432	Special Event 4
+18464	Special Event 5
+18496	Special Event 6
+18528	Special Event 7
+18560	Special Event 8
+18592	Special Event 9
+18624	Special Event 10
+19616	Ch. 1 All Schools
+19632	Ch. 2 MCOE
+19648	Ch. 3 North
+19664	Ch. 4 Central
+19680	Ch. 5 South
+19712	Ch. 6 West
+21616	Control G2
+21648	Control G3
+21680	Tac G4
+21712	Command G5
+21744	Tac G6
+21776	Control F2
+21808	Control F3
+21840	Tac F4
+21872	Command F5
+21904	Tac F6
+24016	Admin H15
+24032	Fire Tac E8
+24048	Fire Tac E9
+24080	Control H2
+24112	Control H3
+24144	Tac H4
+24176	Command H5
+24208	Tac H6
+26416	Fire Control E2
+26448	Fire Control E3
+26480	Fire Tac E4
+26512	Fire Command E5
+26544	Fire Tac E6
+26576	Fire Admin E15
+28816	Fire Control D2
+28848	Fire Control D3
+28880	Fire Tac D4
+28912	Fire Command D5
+28944	Fire Tac D6
+28976	Fire Admin D15
+32016	Admin F15
+32816	Admin G15
+34416	Fire Tac D8
+35216	Fire Tac D9
+36016	Tac F9
+36816	Tac F8
+38416	Tac G8
+39216	Tac G9
+40016	Tac H9
+40816	USAR Tac M4
+41616	Weather/Info H12
+42416	Tac H8
+43216	USAR Tac M5
+44816	Dispatch A2
+44848	All Hospitals A3
+44880	Kaiser 1 (Consult)
+44912	Marin General Hospital 1 (Consult)
+44944	Novato Community Hospital 1 (Consult)
+44976	Tac A10
+45008	Kaiser 2 (BLS Report)
+45040	Marin General Hospital 2 (BLS Report)
+45072	Novato Community Hospital 2 (BLS Report)
+45616	Sheriff Dispatch
+45648	Sheriff Secondary
+45712	Court Security
+45744	Investigations 1
+45776	Investigations 2
+45808	Investigations 3
+45840	Jail 1
+45872	Jail 2
+45904	Blue 2
+45936	Sheriff Tactical
+45968	Blue 6
+46032	Jail Calling
+46064	Police Dispatch
+46096	Police Secondary
+46128	Police Tactical
+46272	Search and Rescue 1
+46304	Search and Rescue 2
+46336	Search and Rescue 3
+46480	Marin Major Crimes Task Force 1
+46512	Marin Major Crimes Task Force 2
+46544	Marin Major Crimes Task Force 3
+47248	Police Dispatch
+47280	Police Secondary
+47344	Police Tactical
+49648	Police Dispatch
+49680	Police Secondary
+49744	Police Tactical
+52048	Police Dispatch
+52080	Police Secondary
+52112	Police Tactical
+54448	Police Dispatch
+54480	Police Secondary
+54512	Police Tactical
+61168	CHP Dispatch (not currently used)
+61936	Open Space District Rangers
+61968	Rangers Dispatch
+62000	Rangers Tac 1
+62032	Special Response Team 1
+62064	Special Response Team 2
+62096	Special Response Team 3
+62128	Special Response Team 4
+62704	All Points Bulletins
+62736	Calling
+62768	Talk
+62800	Blue Command
+62832	Blue 8
+62864	Blue 9
+62896	Blue 7
+62928	Dispatch
+62960	Emergency Operations Center
+62992	Calling
+63056	Talk
+63088	Calling
+63120	Tac 3
+63152	Tac 4
+63184	Tac 5
+63216	Tac 6
+63248	Tac 7
+63280	Tac 8
+63312	Tac 9
+63344	Tac 10
+63376	Tac 11
+63408	Tac 12
+63440	Tac 13
+63472	Tac 14
+63504	Tac 15
+63536	911 Emergency
+63552	Emergency Button
+63568	Fire Command D7
+63600	Local Government Calling
+63632	Local Government Talk
+63664	Command F7
+63696	Command G7
+63728	Fire Command E7
+63760	Command H7
+64704	Golden Gate National Recreation Area 1
+64736	Golden Gate National Recreation Area 2
+64768	Golden Gate National Recreation Area 3 (Point Reyes National Seashore G3)
