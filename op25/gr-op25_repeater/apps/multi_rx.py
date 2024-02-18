@@ -975,6 +975,7 @@ class rx_block (gr.top_block):
             self.terminal.end_terminal()
 
     def stop(self):
+        sys.stderr.write("%s rx_block::stop() flowgraph stop called\n" % log_ts.get())
         self.kill()
         gr.top_block.stop(self)
 

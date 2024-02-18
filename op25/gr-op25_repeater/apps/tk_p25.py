@@ -542,6 +542,7 @@ class p25_system(object):
         self.stats['tsbk_count'] += 1
         updated = 0
         if opcode == 0x0:  # grp voice channel grant
+            opts = (header >> 8)    & 0xff
             ch1  = (mbt_data >> 64) & 0xffff
             ch2  = (mbt_data >> 48) & 0xffff
             ga   = (mbt_data >> 32) & 0xffff
@@ -550,7 +551,7 @@ class p25_system(object):
             if f:
                 updated += 1
             if self.debug >= 10:
-                sys.stderr.write('%s [%d] mbt(0x00) grp_v_ch__grant: ch1: %x ch2: %x ga: %d\n' %(log_ts.get(), m_rxid, ch1, ch2, ga))
+                sys.stderr.write('%s [%d] mbt(0x00) grp_v_ch__grant: opts: 0x%02x ch1: %x ch2: %x ga: %d\n' %(log_ts.get(), m_rxid, opts, ch1, ch2, ga))
         elif opcode == 0x02: # grp regroup voice channel grant
             mfrid  = (mbt_data >> 168) & 0xff
             if mfrid == 0x90:    # MOT_GRG_CN_GRANT_EXP
@@ -651,7 +652,7 @@ class p25_system(object):
                 if f:
                     updated += 1
                 if self.debug >= 10:
-                    sys.stderr.write('%s [%d] tsbk(0x00) grp_v_ch_grant: freq: %s ga: %d sa: %d\n' % (log_ts.get(), m_rxid, self.channel_id_to_string(ch), ga, sa))
+                    sys.stderr.write('%s [%d] tsbk(0x00) grp_v_ch_grant: opts: 0x%02x freq: %s ga: %d sa: %d\n' % (log_ts.get(), m_rxid, opts, self.channel_id_to_string(ch), ga, sa))
         elif opcode == 0x01:   # reserved
             mfrid  = (tsbk >> 80) & 0xff
             if mfrid == 0x90: #MOT_GRG_DEL_CMD
@@ -709,6 +710,7 @@ class p25_system(object):
                 if self.debug >= 10:
                     sys.stderr.write('%s [%d] tsbk(0x03) mfid90_grg_ch_grant_up: freq1: %s sg1: %d freq2: %s sg2:%d\n' % (log_ts.get(), m_rxid, self.channel_id_to_string(ch1), sg1, self.channel_id_to_string(ch2), sg2))
             elif mfrid == 0:
+                opts = (tsbk >> 72) & 0xff
                 ch1  = (tsbk >> 48) & 0xffff
                 ch2   = (tsbk >> 32) & 0xffff
                 ga  = (tsbk >> 16) & 0xffff
@@ -717,7 +719,7 @@ class p25_system(object):
                 if f:
                     updated += 1
                 if self.debug >= 10:
-                    sys.stderr.write('%s [%d] tsbk(0x03) grp_v_ch_grant_up_exp: freq-t: %s freq-r: %s ga: %d\n' % (log_ts.get(), m_rxid, self.channel_id_to_string(ch1), self.channel_id_to_string(ch2), ga))
+                    sys.stderr.write('%s [%d] tsbk(0x03) grp_v_ch_grant_up_exp: opts: 0x%02x freq-t: %s freq-r: %s ga: %d\n' % (log_ts.get(), m_rxid, opts, self.channel_id_to_string(ch1), self.channel_id_to_string(ch2), ga))
         elif opcode == 0x16:   # sndcp data ch
             ch1  = (tsbk >> 48) & 0xffff
             ch2  = (tsbk >> 32) & 0xffff
