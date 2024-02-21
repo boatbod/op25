@@ -247,9 +247,11 @@ class rx_ctl(object):
     def set_debug(self, dbglvl):
         self.debug = dbglvl
         for rx_sys in self.systems:
-            self.systems[rx_sys]['system'].set_debug(dbglvl)
+            if self.systems[rx_sys]['system'] is not None:
+                self.systems[rx_sys]['system'].set_debug(dbglvl)
         for rcvr in self.receivers:
-            self.receivers[rcvr]['rx_rcvr'].set_debug(dbglvl)
+            if self.receivers[rcvr]['rx_rcvr'] is not None:
+                self.receivers[rcvr]['rx_rcvr'].set_debug(dbglvl)
 
 #################
 # P25 system class
@@ -529,10 +531,10 @@ class p25_system(object):
             updated += self.decode_mbt_data(m_rxid, opcode, src, header << 16, mbt_data << 32)
 
         elif m_type == 18:                                  # TDMA PDU
-            updated += self.decode_tdma_msg(m_rxid, s[2:], curr_time)
+            updated += self.decode_tdma_msg(m_rxid, s, curr_time)
 
         elif m_type == 19:                                  # FDMA LCW
-            updated += self.decode_fdma_lcw(m_rxid, s[2:], curr_time)
+            updated += self.decode_fdma_lcw(m_rxid, s, curr_time)
 
         updated += self.expire_patches()
         return updated
@@ -941,46 +943,53 @@ class p25_system(object):
 
         # Opcode specific handlers
         if op == 0x01:   # Group Voice Channel User Abbreviated
-            ga = get_ordinals(msg[2:4])
-            sa = get_ordinals(msg[4:7])
+            opts = get_ordinals(msg[1:2])
+            ga   = get_ordinals(msg[2:4])
+            sa   = get_ordinals(msg[4:7])
             if self.debug >= 10:
-                sys.stderr.write('%s [%d] tdma(0x01) grp_v_ch_usr: ga: %d sa: %d\n' % (log_ts.get(), m_rxid, ga, sa))
+                sys.stderr.write('%s [%d] tdma(0x01) grp_v_ch_usr: opts: 0x%02x ga: %d sa: %d\n' % (log_ts.get(), m_rxid, opts, ga, sa))
             updated += self.update_talkgroup_srcaddr(curr_time, ga, sa)
         elif op == 0x05: # Group Voice Channel Grant Update Multiple - Implicit
-            ch1 = get_ordinals(msg[2:4])
-            ga1 = get_ordinals(msg[4:6])
-            ch2 = get_ordinals(msg[7:9])
-            ga2 = get_ordinals(msg[9:11])
-            ch3 = get_ordinals(msg[12:14])
-            ga3 = get_ordinals(msg[14:16])
+            opt1 = get_ordinals(msg[1:2])
+            ch1  = get_ordinals(msg[2:4])
+            ga1  = get_ordinals(msg[4:6])
+            opt2 = get_ordinals(msg[6:7])
+            ch2  = get_ordinals(msg[7:9])
+            ga2  = get_ordinals(msg[9:11])
+            opt3 = get_ordinals(msg[11:12])
+            ch3  = get_ordinals(msg[12:14])
+            ga3  = get_ordinals(msg[14:16])
             f1 = self.channel_id_to_frequency(ch1)
             f2 = self.channel_id_to_frequency(ch2)
             f3 = self.channel_id_to_frequency(ch3)
             if self.debug >= 10:
-                sys.stderr.write('%s [%d] tdma(0x05) grp_v_ch_grant_up: f1: %s ga1: %d f2: %s ga2: %d f3: %s ga3: %d\n' % (log_ts.get(), m_rxid, self.channel_id_to_string(ch1), ga1, self.channel_id_to_string(ch2), ga2, self.channel_id_to_string(ch3), ga3))
+                sys.stderr.write('%s [%d] tdma(0x05) grp_v_ch_grant_up: opt1: 0x%02x f1: %s ga1: %d opt2: 0x%02x f2: %s ga2: %d opt3: 0x%02x f3: %s ga3: %d\n' % (log_ts.get(), m_rxid, opt1, self.channel_id_to_string(ch1), ga1, opt2, self.channel_id_to_string(ch2), ga2, opt3, self.channel_id_to_string(ch3), ga3))
             self.update_voice_frequency(f1, tgid=ga1, tdma_slot=self.get_tdma_slot(ch1))
             self.update_voice_frequency(f2, tgid=ga2, tdma_slot=self.get_tdma_slot(ch2))
             self.update_voice_frequency(f3, tgid=ga3, tdma_slot=self.get_tdma_slot(ch3))
             if f1 or f2 or f3:
                 updated += 1
         elif op == 0x21: # Group Voice Channel User - Extended
+            opts = get_ordinals(msg[1:2])
             ga   = get_ordinals(msg[2:4])
             sa   = get_ordinals(msg[4:7])
             suid = get_ordinals(msg[7:14])
             if self.debug >= 10:
-                sys.stderr.write('%s [%d] tdma(0x21) grp_v_ch_usr: ga: %d sa: %d: suid: %d\n' % (log_ts.get(), m_rxid, ga, sa, suid))
+                sys.stderr.write('%s [%d] tdma(0x21) grp_v_ch_usr: opts: 0x%02x ga: %d sa: %d: suid: %d\n' % (log_ts.get(), m_rxid, opts, ga, sa, suid))
             updated += self.update_talkgroup_srcaddr(curr_time, ga, sa)
         elif op == 0x25: # Group Voice Channel Grant Update Multiple - Explicit
+            opt1 = get_ordinals(msg[1:2])
             ch1t = get_ordinals(msg[2:4])
             ch1r = get_ordinals(msg[4:6])
             ga1  = get_ordinals(msg[6:8])
+            opt2 = get_ordinals(msg[8:9])
             ch2t = get_ordinals(msg[9:11])
             ch2r = get_ordinals(msg[11:13])
             ga2  = get_ordinals(msg[13:15])
             f1   = self.channel_id_to_frequency(ch1t)
             f2   = self.channel_id_to_frequency(ch2t)
             if self.debug >= 10:
-                sys.stderr.write('%s [%d] tdma(0x25) grp_v_ch_grant_up: f1-t: %s f1-r: %s ga1: %d f2-t: %s f2-r: %s ga2: %d\n' % (log_ts.get(), m_rxid, self.channel_id_to_string(ch1t), self.channel_id_to_string(ch1r), ga1, self.channel_id_to_string(ch2t), self.channel_id_to_string(ch2r), ga2))
+                sys.stderr.write('%s [%d] tdma(0x25) grp_v_ch_grant_up: opt1: 0x%02x f1-t: %s f1-r: %s ga1: %d opt2: 0x%02x f2-t: %s f2-r: %s ga2: %d\n' % (log_ts.get(), m_rxid, opt1, self.channel_id_to_string(ch1t), self.channel_id_to_string(ch1r), ga1, opt2, self.channel_id_to_string(ch2t), self.channel_id_to_string(ch2r), ga2))
             self.update_voice_frequency(f1, tgid=ga1, tdma_slot=self.get_tdma_slot(ch1t))
             self.update_voice_frequency(f2, tgid=ga2, tdma_slot=self.get_tdma_slot(ch2t))
             if f1 or f2:
@@ -996,6 +1005,30 @@ class p25_system(object):
             sa = get_ordinals(msg[2:5])
             if self.debug >= 10:
                 sys.stderr.write('%s [%d] tdma(0x31) MAC_Release: uf: %d ca: %d sa: %d\n' % (log_ts.get(), m_rxid, uf, ca, sa))
+        elif op == 0x40: # Group Voice Grant Implicit
+            opts = get_ordinals(msg[1:2])
+            ch   = get_ordinals(msg[2:4])
+            ga   = get_ordinals(msg[4:6])
+            sa   = get_ordinals(msg[6:9])
+            if self.debug >= 10:
+                sys.stderr.write('%s [%d] tdma(0x40) grp_v_ch_grant: opts: 0x%02x ch: %s ga: %d sa: %d\n' % (log_ts.get(), m_rxid, opts, self.channel_id_to_string(ch), ga, sa))
+            f = self.channel_id_to_frequency(ch)
+            self.update_voice_frequency(f, tgid=ga, tdma_slot=self.get_tdma_slot(ch), srcaddr=sa)
+            if f:
+                updated += 1
+        elif op == 0x42: # Group Voice Channel Grant Update Implicit
+            ch1  = get_ordinals(msg[1:3])
+            ga1  = get_ordinals(msg[3:5])
+            ch2  = get_ordinals(msg[5:7])
+            ga2  = get_ordinals(msg[7:9])
+            f1   = self.channel_id_to_frequency(ch1)
+            f2   = self.channel_id_to_frequency(ch2)
+            if self.debug >= 10:
+                sys.stderr.write('%s [%d] tdma(0x42) grp_v_ch_grant_up: f1: %s ga1: %d f2: %s ga2: %d\n' % (log_ts.get(), m_rxid, self.channel_id_to_string(ch1), ga1, self.channel_id_to_string(ch2), ga2))
+            self.update_voice_frequency(f1, tgid=ga1, tdma_slot=self.get_tdma_slot(ch1))
+            self.update_voice_frequency(f2, tgid=ga2, tdma_slot=self.get_tdma_slot(ch2))
+            if f1 or f2:
+                updated += 1
         elif op == 0x80 and mfid == 0x90: # MFID90 Group Regroup Voice Channel User Abbreviated
             sg = get_ordinals(msg[3:5])
             sa = get_ordinals(msg[5:8])
@@ -1102,23 +1135,25 @@ class p25_system(object):
             else:               # Individual Address (not currently supported)
                 pass
         elif op == 0xc0: # Group Voice Channel Grant Explicit
+            opts = get_ordinals(msg[1:2])
             ch1t = get_ordinals(msg[2:4])
             ch1r = get_ordinals(msg[4:6])
             ga   = get_ordinals(msg[6:8])
             sa   = get_ordinals(msg[8:11])
             f    = self.channel_id_to_frequency(ch1t)
             if self.debug >= 10:
-                sys.stderr.write('%s [%d] tdma(0xc0) grp_v_ch_grant: freq-t: %s freq-r: %s ga: %d sa: %d\n' % (log_ts.get(), m_rxid, self.channel_id_to_string(ch1t), self.channel_id_to_string(ch1r), ga, sa))
+                sys.stderr.write('%s [%d] tdma(0xc0) grp_v_ch_grant: opts: 0x%02x freq-t: %s freq-r: %s ga: %d sa: %d\n' % (log_ts.get(), m_rxid, opts, self.channel_id_to_string(ch1t), self.channel_id_to_string(ch1r), ga, sa))
             self.update_voice_frequency(f, tgid=ga, tdma_slot=self.get_tdma_slot(ch1t), srcaddr=sa)
             if f:
                 updated += 1
         elif op == 0xc3: # Group Voice Channel Grant Update Explicit
+            opts = get_ordinals(msg[1:2])
             ch1t = get_ordinals(msg[2:4])
             ch1r = get_ordinals(msg[4:6])
             ga   = get_ordinals(msg[6:8])
             f    = self.channel_id_to_frequency(ch1t)
             if self.debug >= 10:
-                sys.stderr.write('%s [%d] tdma(0xc3) grp_v_ch_grant_up: freq-t: %s freq-r: %s ga: %d\n' % (log_ts.get(), m_rxid, self.channel_id_to_string(ch1t), self.channel_id_to_string(ch1r), ga))
+                sys.stderr.write('%s [%d] tdma(0xc3) grp_v_ch_grant_up: opts: 0x%02x freq-t: %s freq-r: %s ga: %d\n' % (log_ts.get(), m_rxid, opts, self.channel_id_to_string(ch1t), self.channel_id_to_string(ch1r), ga))
             self.update_voice_frequency(f, tgid=ga, tdma_slot=self.get_tdma_slot(ch1t))
             if f:
                 updated += 1
@@ -1214,8 +1249,8 @@ class p25_system(object):
                     sys.stderr.write('%s [%d] tdma(0xfe) adj_sts_bcst: base freq: %s step: %s\n' % (log_ts.get(), m_rxid, self.freq_table[table]['frequency'] , self.freq_table[table]['step'] ))
         else:
             if self.debug >= 10:
-                m_data = get_ordinals(msg[1:])
-                sys.stderr.write('%s [%d] tdma(0x%02x) unhandled: mfid: %x msg_data: %x\n' % (log_ts.get(), m_rxid, op, mfid, m_data))
+                m_data = get_ordinals(msg)
+                sys.stderr.write('%s [%d] tdma(0x%02x) unhandled: mfid: 0x%x msg_data: 0x%x\n' % (log_ts.get(), m_rxid, op, mfid, m_data))
         return updated
 
     def decode_fdma_lcw(self, m_rxid, msg, curr_time):
