@@ -1,6 +1,6 @@
 # P25 trunking module
 #
-# Copyright 2020, 2021 Graham J. Norbury - gnorbury@bondcar.com
+# Copyright 2020-2024 Graham J. Norbury - gnorbury@bondcar.com
 # 
 # This file is part of OP25
 # 
@@ -77,6 +77,7 @@ def add_default_tgid(tgs, tgid):
         tgs[tgid]['frequency'] = None
         tgs[tgid]['tdma_slot'] = None
         tgs[tgid]['encrypted'] = 0
+        tgs[tgid]['svcopts'] = 0x04
         tgs[tgid]['algid'] = -1
         tgs[tgid]['keyid'] = -1
         tgs[tgid]['receiver'] = None
@@ -550,7 +551,7 @@ class p25_system(object):
             ch2  = (mbt_data >> 48) & 0xffff
             ga   = (mbt_data >> 32) & 0xffff
             f = self.channel_id_to_frequency(ch1)
-            self.update_voice_frequency(f, tgid=ga, tdma_slot=self.get_tdma_slot(ch1), srcaddr=src)
+            self.update_voice_frequency(f, tgid=ga, tdma_slot=self.get_tdma_slot(ch1), srcaddr=src, svcopts=opts)
             if f:
                 updated += 1
             if self.debug >= 10:
@@ -651,7 +652,7 @@ class p25_system(object):
                 ga   = (tsbk >> 40) & 0xffff
                 sa   = (tsbk >> 16) & 0xffffff
                 f = self.channel_id_to_frequency(ch)
-                self.update_voice_frequency(f, tgid=ga, tdma_slot=self.get_tdma_slot(ch), srcaddr=sa)
+                self.update_voice_frequency(f, tgid=ga, tdma_slot=self.get_tdma_slot(ch), srcaddr=sa, svcopts=opts)
                 if f:
                     updated += 1
                 if self.debug >= 10:
@@ -718,7 +719,7 @@ class p25_system(object):
                 ch2   = (tsbk >> 32) & 0xffff
                 ga  = (tsbk >> 16) & 0xffff
                 f = self.channel_id_to_frequency(ch1)
-                self.update_voice_frequency(f, tgid=ga, tdma_slot=self.get_tdma_slot(ch1))
+                self.update_voice_frequency(f, tgid=ga, tdma_slot=self.get_tdma_slot(ch1), svcopts=opts)
                 if f:
                     updated += 1
                 if self.debug >= 10:
@@ -948,7 +949,7 @@ class p25_system(object):
             sa   = get_ordinals(msg[4:7])
             if self.debug >= 10:
                 sys.stderr.write('%s [%d] tdma(0x01) grp_v_ch_usr: opts: 0x%02x ga: %d sa: %d\n' % (log_ts.get(), m_rxid, opts, ga, sa))
-            updated += self.update_talkgroup_srcaddr(curr_time, ga, sa)
+            updated += self.update_talkgroup_srcaddr(curr_time, ga, sa, svcopts=opts)
         elif op == 0x05: # Group Voice Channel Grant Update Multiple - Implicit
             opt1 = get_ordinals(msg[1:2])
             ch1  = get_ordinals(msg[2:4])
@@ -964,9 +965,9 @@ class p25_system(object):
             f3 = self.channel_id_to_frequency(ch3)
             if self.debug >= 10:
                 sys.stderr.write('%s [%d] tdma(0x05) grp_v_ch_grant_up: opt1: 0x%02x f1: %s ga1: %d opt2: 0x%02x f2: %s ga2: %d opt3: 0x%02x f3: %s ga3: %d\n' % (log_ts.get(), m_rxid, opt1, self.channel_id_to_string(ch1), ga1, opt2, self.channel_id_to_string(ch2), ga2, opt3, self.channel_id_to_string(ch3), ga3))
-            self.update_voice_frequency(f1, tgid=ga1, tdma_slot=self.get_tdma_slot(ch1))
-            self.update_voice_frequency(f2, tgid=ga2, tdma_slot=self.get_tdma_slot(ch2))
-            self.update_voice_frequency(f3, tgid=ga3, tdma_slot=self.get_tdma_slot(ch3))
+            self.update_voice_frequency(f1, tgid=ga1, tdma_slot=self.get_tdma_slot(ch1), svcopts=opt1)
+            self.update_voice_frequency(f2, tgid=ga2, tdma_slot=self.get_tdma_slot(ch2), svcopts=opt2)
+            self.update_voice_frequency(f3, tgid=ga3, tdma_slot=self.get_tdma_slot(ch3), svcopts=opt3)
             if f1 or f2 or f3:
                 updated += 1
         elif op == 0x21: # Group Voice Channel User - Extended
@@ -976,7 +977,7 @@ class p25_system(object):
             suid = get_ordinals(msg[7:14])
             if self.debug >= 10:
                 sys.stderr.write('%s [%d] tdma(0x21) grp_v_ch_usr: opts: 0x%02x ga: %d sa: %d: suid: %d\n' % (log_ts.get(), m_rxid, opts, ga, sa, suid))
-            updated += self.update_talkgroup_srcaddr(curr_time, ga, sa)
+            updated += self.update_talkgroup_srcaddr(curr_time, ga, sa, svcopts=opts)
         elif op == 0x25: # Group Voice Channel Grant Update Multiple - Explicit
             opt1 = get_ordinals(msg[1:2])
             ch1t = get_ordinals(msg[2:4])
@@ -990,8 +991,8 @@ class p25_system(object):
             f2   = self.channel_id_to_frequency(ch2t)
             if self.debug >= 10:
                 sys.stderr.write('%s [%d] tdma(0x25) grp_v_ch_grant_up: opt1: 0x%02x f1-t: %s f1-r: %s ga1: %d opt2: 0x%02x f2-t: %s f2-r: %s ga2: %d\n' % (log_ts.get(), m_rxid, opt1, self.channel_id_to_string(ch1t), self.channel_id_to_string(ch1r), ga1, opt2, self.channel_id_to_string(ch2t), self.channel_id_to_string(ch2r), ga2))
-            self.update_voice_frequency(f1, tgid=ga1, tdma_slot=self.get_tdma_slot(ch1t))
-            self.update_voice_frequency(f2, tgid=ga2, tdma_slot=self.get_tdma_slot(ch2t))
+            self.update_voice_frequency(f1, tgid=ga1, tdma_slot=self.get_tdma_slot(ch1t), svcopts=opt1)
+            self.update_voice_frequency(f2, tgid=ga2, tdma_slot=self.get_tdma_slot(ch2t), svcopts=opt2)
             if f1 or f2:
                 updated += 1
         elif op == 0x30: # Power Control Signal Quality
@@ -1013,7 +1014,7 @@ class p25_system(object):
             if self.debug >= 10:
                 sys.stderr.write('%s [%d] tdma(0x40) grp_v_ch_grant: opts: 0x%02x ch: %s ga: %d sa: %d\n' % (log_ts.get(), m_rxid, opts, self.channel_id_to_string(ch), ga, sa))
             f = self.channel_id_to_frequency(ch)
-            self.update_voice_frequency(f, tgid=ga, tdma_slot=self.get_tdma_slot(ch), srcaddr=sa)
+            self.update_voice_frequency(f, tgid=ga, tdma_slot=self.get_tdma_slot(ch), srcaddr=sa, svcopts=opts)
             if f:
                 updated += 1
         elif op == 0x42: # Group Voice Channel Grant Update Implicit
@@ -1143,7 +1144,7 @@ class p25_system(object):
             f    = self.channel_id_to_frequency(ch1t)
             if self.debug >= 10:
                 sys.stderr.write('%s [%d] tdma(0xc0) grp_v_ch_grant: opts: 0x%02x freq-t: %s freq-r: %s ga: %d sa: %d\n' % (log_ts.get(), m_rxid, opts, self.channel_id_to_string(ch1t), self.channel_id_to_string(ch1r), ga, sa))
-            self.update_voice_frequency(f, tgid=ga, tdma_slot=self.get_tdma_slot(ch1t), srcaddr=sa)
+            self.update_voice_frequency(f, tgid=ga, tdma_slot=self.get_tdma_slot(ch1t), srcaddr=sa, svcopts=opts)
             if f:
                 updated += 1
         elif op == 0xc3: # Group Voice Channel Grant Update Explicit
@@ -1154,7 +1155,7 @@ class p25_system(object):
             f    = self.channel_id_to_frequency(ch1t)
             if self.debug >= 10:
                 sys.stderr.write('%s [%d] tdma(0xc3) grp_v_ch_grant_up: opts: 0x%02x freq-t: %s freq-r: %s ga: %d\n' % (log_ts.get(), m_rxid, opts, self.channel_id_to_string(ch1t), self.channel_id_to_string(ch1r), ga))
-            self.update_voice_frequency(f, tgid=ga, tdma_slot=self.get_tdma_slot(ch1t))
+            self.update_voice_frequency(f, tgid=ga, tdma_slot=self.get_tdma_slot(ch1t), svcopts=opts)
             if f:
                 updated += 1
         elif op == 0xe9: # Secondary Control Channel Broadcast Explicit
@@ -1264,11 +1265,12 @@ class p25_system(object):
 
         if pb_sf_lco   == 0x00:     # Group Voice Channel User
             mfid = get_ordinals(msg[1:2])
+            opts = get_ordinals(msg[2:3])
             ga = get_ordinals(msg[4:6])
             sa = get_ordinals(msg[6:9])
             if self.debug >= 10:
                 sys.stderr.write('%s [%d] lcw(0x00) grp_v_ch_usr: ga: %d s: %d sa: %d\n' % (log_ts.get(), m_rxid, ga, (get_ordinals(msg[3:4]) & 0x1), sa))
-            updated += self.update_talkgroup_srcaddr(curr_time, ga, sa)
+            updated += self.update_talkgroup_srcaddr(curr_time, ga, sa, svcopts=opts)
         elif pb_sf_lco == 0x42:     # Group Voice Channel Update
             ch1 = get_ordinals(msg[1:3])
             ga1 = get_ordinals(msg[3:5])
@@ -1283,13 +1285,14 @@ class p25_system(object):
             if f1 or f2:
                 updated += 1
         elif pb_sf_lco == 0x44:   # Group Voice Channel Update Explicit
+            opts = get_ordinals(msg[2:3])
             ga   = get_ordinals(msg[3:5])
             ch1t = get_ordinals(msg[5:7])
             ch1r = get_ordinals(msg[7:9])
             f    = self.channel_id_to_frequency(ch1t)
             if self.debug >= 10:
                 sys.stderr.write('%s [%d] lco(0x04) grp_v_ch_up: freq-t: %s freq-r: %s ga: %d\n' % (log_ts.get(), m_rxid, self.channel_id_to_string(ch1t), self.channel_id_to_string(ch1r), ga))
-            self.update_voice_frequency(f, tgid=ga, tdma_slot=self.get_tdma_slot(ch1t))
+            self.update_voice_frequency(f, tgid=ga, tdma_slot=self.get_tdma_slot(ch1t), svcopts=opts)
             if f:
                 updated += 1
         elif pb_sf_lco == 0x49:   # Source ID Extension
@@ -1320,11 +1323,11 @@ class p25_system(object):
                 return (freq, 1)
         return (None, None)
 
-    def update_voice_frequency(self, frequency, tgid=None, tdma_slot=None, srcaddr=0):
+    def update_voice_frequency(self, frequency, tgid=None, tdma_slot=None, srcaddr=0, svcopts=None):
         if not frequency:    # e.g., channel identifier not yet known
             return
         prev_freq, prev_slot = self.find_voice_freq(tgid)
-        self.update_talkgroups(frequency, tgid, tdma_slot, srcaddr)
+        self.update_talkgroups(frequency, tgid, tdma_slot, srcaddr, svcopts)
         if frequency not in self.voice_frequencies:
             self.voice_frequencies[frequency] = {'counter':0}
             sorted_freqs = collections.OrderedDict(sorted(self.voice_frequencies.items()))
@@ -1368,17 +1371,17 @@ class p25_system(object):
                         sys.stderr.write("%s [%s] VF expire: tgid: %s, freq: %f, slot: %s, ts: %s\n" % (log_ts.get(), self.sysname, tgid, frequency/1000000.0, slot, log_ts.get(self.voice_frequencies[frequency]['ts'][slot])))
                     self.voice_frequencies[frequency]['tgid'][slot] = None
 
-    def update_talkgroups(self, frequency, tgid, tdma_slot, srcaddr):
-        self.update_talkgroup(frequency, tgid, tdma_slot, srcaddr)
+    def update_talkgroups(self, frequency, tgid, tdma_slot, srcaddr, svcopts):
+        self.update_talkgroup(frequency, tgid, tdma_slot, srcaddr, svcopts)
         if tgid in self.patches:
             for ptgid in self.patches[tgid]['ga']:
-                self.update_talkgroup(frequency, ptgid, tdma_slot, srcaddr)
+                self.update_talkgroup(frequency, ptgid, tdma_slot, srcaddr, svcopts)
                 if self.debug >= 5:
                     sys.stderr.write('%s [%s] update_talkgroups: sg(%d) patched tgid(%d)\n' % (log_ts.get(), self.sysname, tgid, ptgid))
 
-    def update_talkgroup(self, frequency, tgid, tdma_slot, srcaddr):
+    def update_talkgroup(self, frequency, tgid, tdma_slot, srcaddr, svcopts):
         if self.debug >= 5:
-            sys.stderr.write('%s [%s] set tgid=%s, srcaddr=%s\n' % (log_ts.get(), self.sysname, tgid, srcaddr))
+            sys.stderr.write('%s [%s] set tgid=%s, srcaddr=%s, svcopts=0x%x\n' % (log_ts.get(), self.sysname, tgid, srcaddr, svcopts))
         
         if tgid not in self.talkgroups:
             add_default_tgid(self.talkgroups, tgid)
@@ -1388,17 +1391,21 @@ class p25_system(object):
         self.talkgroups[tgid]['counter'] += 1
         self.talkgroups[tgid]['frequency'] = frequency
         self.talkgroups[tgid]['tdma_slot'] = tdma_slot
+        if svcopts is not None:
+            self.talkgroups[tgid]['svcopts'] = svcopts
         if (self.talkgroups[tgid]['receiver'] is not None):
             if (srcaddr > 0):
                 self.talkgroups[tgid]['srcaddr'] = srcaddr      # don't overwrite with null srcaddr for active calls
         else:
             self.talkgroups[tgid]['srcaddr'] = srcaddr
 
-    def update_talkgroup_srcaddr(self, curr_time, tgid, srcaddr):
+    def update_talkgroup_srcaddr(self, curr_time, tgid, srcaddr, svcopts=None):
         if (tgid is None or tgid <= 0 or srcaddr is None or srcaddr <= 0 or
             tgid not in self.talkgroups or self.talkgroups[tgid]['receiver'] is None):
             return 0
 
+        if svcopts is not None:
+            self.talkgroups[tgid]['svcopts'] = svcopts
         self.talkgroups[tgid]['srcaddr'] = srcaddr
         add_default_rid(self.sourceids, srcaddr)
         self.sourceids[srcaddr]['counter'] += 1
@@ -1915,6 +1922,8 @@ class p25_receiver(object):
                 continue
             if self.whitelist and active_tgid not in self.whitelist:
                 continue
+            if (self.crypt_behavior > 1) and ((self.talkgroups[active_tgid]['svcopts'] & 0x40) == 0x40):
+                continue
             if tgt_tgid is None:
                 if self.talkgroups[active_tgid]['receiver'] is None:
                     tgt_tgid = active_tgid
@@ -1964,6 +1973,7 @@ class p25_receiver(object):
         self.talkgroups[self.current_tgid]['frequency'] = None
         self.talkgroups[self.current_tgid]['tdma_slot'] = None
         self.talkgroups[self.current_tgid]['srcaddr'] = 0
+        self.talkgroups[self.current_tgid]['svcopts'] = 0x4
         if self.debug > 1:
             sys.stderr.write("%s [%d] releasing:  tg(%d), freq(%f), slot(%s), reason(%s)\n" % (log_ts.get(), self.msgq_id, self.current_tgid, (self.tuned_frequency/1e6), get_slot(self.current_slot), reason))
         if self.hold_mode is False:
@@ -2041,6 +2051,7 @@ class p25_receiver(object):
         d['system'] = self.config['trunking_sysname']
         d['tag'] = self.talkgroups[_tgid]['tag'] if _tgid is not None else cc_tag
         d['srcaddr'] = self.talkgroups[self.current_tgid]['srcaddr'] if self.current_tgid is not None else 0
+        d['svcopts'] = self.talkgroups[self.current_tgid]['svcopts'] if self.current_tgid is not None else 0
         d['srctag'] = self.system.get_rid_tag(self.talkgroups[self.current_tgid]['srcaddr']) if self.current_tgid is not None else ""
         d['encrypted'] = self.talkgroups[self.current_tgid]['encrypted'] if self.current_tgid is not None else 0
         d['hold_tgid'] = self.hold_tgid if self.hold_tgid is not None else 0
