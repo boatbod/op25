@@ -1268,7 +1268,7 @@ class p25_system(object):
             ga = get_ordinals(msg[4:6])
             sa = get_ordinals(msg[6:9])
             if self.debug >= 10:
-                sys.stderr.write('%s [%d] lcw(0x00) grp_v_ch_usr: ga: %d s: %d sa: %d\n' % (log_ts.get(), m_rxid, ga, (get_ordinals(msg[3:4]) & 0x1), sa))
+                sys.stderr.write('%s [%d] lcw(0x00) grp_v_ch_usr: opts: 0x%02x ga: %d s: %d sa: %d\n' % (log_ts.get(), m_rxid, opts, ga, (get_ordinals(msg[3:4]) & 0x1), sa))
             updated += self.update_talkgroup_srcaddr(curr_time, ga, sa, svcopts=opts)
         elif pb_sf_lco == 0x42:     # Group Voice Channel Update
             ch1 = get_ordinals(msg[1:3])
@@ -1290,7 +1290,7 @@ class p25_system(object):
             ch1r = get_ordinals(msg[7:9])
             f    = self.channel_id_to_frequency(ch1t)
             if self.debug >= 10:
-                sys.stderr.write('%s [%d] lco(0x04) grp_v_ch_up: freq-t: %s freq-r: %s ga: %d\n' % (log_ts.get(), m_rxid, self.channel_id_to_string(ch1t), self.channel_id_to_string(ch1r), ga))
+                sys.stderr.write('%s [%d] lco(0x04) grp_v_ch_up: opts: 0x%02x freq-t: %s freq-r: %s ga: %d\n' % (log_ts.get(), m_rxid, opts, self.channel_id_to_string(ch1t), self.channel_id_to_string(ch1r), ga))
             self.update_voice_frequency(f, tgid=ga, tdma_slot=self.get_tdma_slot(ch1t), svcopts=opts)
             if f:
                 updated += 1
@@ -1380,7 +1380,10 @@ class p25_system(object):
 
     def update_talkgroup(self, frequency, tgid, tdma_slot, srcaddr, svcopts):
         if self.debug >= 5:
-            sys.stderr.write('%s [%s] set tgid=%s, srcaddr=%s, svcopts=0x%x\n' % (log_ts.get(), self.sysname, tgid, srcaddr, svcopts))
+            if svcopts is None:
+                sys.stderr.write('%s [%s] set tgid=%s, srcaddr=%s, svcopts=None\n' % (log_ts.get(), self.sysname, tgid, srcaddr))
+            else:
+                sys.stderr.write('%s [%s] set tgid=%s, srcaddr=%s, svcopts=0x%x\n' % (log_ts.get(), self.sysname, tgid, srcaddr, svcopts))
         
         if tgid not in self.talkgroups:
             add_default_tgid(self.talkgroups, tgid)
