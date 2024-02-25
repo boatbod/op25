@@ -1322,7 +1322,7 @@ class p25_system(object):
                 return (freq, 1)
         return (None, None)
 
-    def update_voice_frequency(self, frequency, tgid=None, tdma_slot=None, srcaddr=0, svcopts=None):
+    def update_voice_frequency(self, frequency, tgid=None, tdma_slot=None, srcaddr=None, svcopts=None):
         if not frequency:    # e.g., channel identifier not yet known
             return
         prev_freq, prev_slot = self.find_voice_freq(tgid)
@@ -1395,11 +1395,12 @@ class p25_system(object):
         self.talkgroups[tgid]['tdma_slot'] = tdma_slot
         if svcopts is not None:
             self.talkgroups[tgid]['svcopts'] = svcopts
-        if (self.talkgroups[tgid]['receiver'] is not None):
-            if (srcaddr > 0):
-                self.talkgroups[tgid]['srcaddr'] = srcaddr      # don't overwrite with null srcaddr for active calls
-        else:
-            self.talkgroups[tgid]['srcaddr'] = srcaddr
+        if srcaddr is not None:
+            if (self.talkgroups[tgid]['receiver'] is not None):
+                if (srcaddr > 0):
+                    self.talkgroups[tgid]['srcaddr'] = srcaddr      # don't overwrite with null srcaddr for active calls
+            else:
+                self.talkgroups[tgid]['srcaddr'] = srcaddr
 
     def update_talkgroup_srcaddr(self, curr_time, tgid, srcaddr, svcopts=None):
         if (tgid is None or tgid <= 0 or srcaddr is None or srcaddr <= 0 or
