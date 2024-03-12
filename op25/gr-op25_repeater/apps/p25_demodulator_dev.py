@@ -103,6 +103,7 @@ class p25_demod_base(gr.hier_block2):
         self.bb_tuner_sink = {}
         self.spiir = filter.single_pole_iir_filter_ff(0.0001)
 
+        self.switch = blocks.copy(gr.sizeof_gr_complex)
         self.null_sink = blocks.null_sink(gr.sizeof_float)
         self.baseband_amp = blocks.multiply_const_ff(_def_bb_gain)
         coeffs = op25_c4fm_mod.c4fm_taps(sample_rate=self.if_rate, span=9, generator=op25_c4fm_mod.transfer_function_rx).generate()
@@ -233,6 +234,9 @@ class p25_demod_base(gr.hier_block2):
     def get_freq_error(self):
         return 0
 
+    def control(self, enabled = True):
+        self.switch.set_enabled(enabled)
+
 class p25_demod_fb(p25_demod_base):
 
     def __init__(self,
@@ -261,7 +265,7 @@ class p25_demod_fb(p25_demod_base):
         self.input_rate = input_rate
         self.float_sink = {}
 
-        self.connect(self, self.baseband_amp, self.symbol_filter, self.fsk4_demod, self.slicer, self)
+        self.connect(self, self.switch, self.baseband_amp, self.symbol_filter, self.fsk4_demod, self.slicer, self)
 
     def disconnect_float(self, sink):
         # assumes lock held or init
@@ -353,7 +357,7 @@ class p25_demod_cb(p25_demod_base):
         resampled_rate = float(input_rate) / float(decimation)
         if_coeffs = filter.firdes.low_pass(1.0, input_rate, resampled_rate/2, resampled_rate/2, window.WIN_HAMMING)
         self.freq_xlat = filter.freq_xlating_fir_filter_ccf(decimation, if_coeffs, 0, input_rate)
-        self.connect(self, self.freq_xlat)
+        self.connect(self, self.switch, self.freq_xlat)
         if self.if_rate != resampled_rate:
             self.if_out = filter.pfb.arb_resampler_ccf(float(self.if_rate) / resampled_rate)
             self.connect(self.freq_xlat, self.if_out)
