@@ -523,6 +523,7 @@ class channel(object):
         if 'cmd' in params and params['cmd'] == "set_slotid":
             self.chan_idle = True if (params['slotid'] == 4) else False
         self.decoder.control(json.dumps(params))
+        self.demod.control(not self.chan_idle)
 
     def kill(self):
         for sink in self.sinks:

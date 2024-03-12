@@ -2046,7 +2046,7 @@ class p25_receiver(object):
 
     def get_status(self):
         _tgid = self.hold_tgid if self.hold_tgid is not None else self.current_tgid
-        cc_tag = "Control Channel" if self.system.has_cc(self.msgq_id) else None
+        cc_tag = "Control Channel" if self.system.has_cc(self.msgq_id) else "Idle" if self.tuner_idle else None
         d = {}
         d['freq'] = self.tuned_frequency
         d['tdma'] = self.current_slot
