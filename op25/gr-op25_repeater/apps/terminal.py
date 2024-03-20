@@ -1,7 +1,8 @@
 #!/bin/sh
+#
 # Copyright 2008-2011 Steve Glass
-# 
 # Copyright 2011, 2012, 2013, 2014, 2015, 2016, 2017 Max H. Parke KA1RBI
+# Copyright 2017-2024 Graham J. Norbury
 # 
 # This file is part of OP25
 # 
@@ -89,6 +90,7 @@ class curses_terminal(threading.Thread):
         self.current_sysname = None
         self.current_srcaddr = 0
         self.current_encrypted = 0
+        self.current_emergency = 0
         self.current_msgqid = '0'
         self.channel_list = []
         self.default_channel = None
@@ -488,13 +490,22 @@ class curses_terminal(threading.Thread):
                     self.status1.refresh()
             if 'encrypted' in msg[c_id]:
                 encrypted = msg[c_id]['encrypted']
-                if self.current_encrypted != encrypted:
+                if (self.current_encrypted != encrypted) and (self.current_emergency == 0):
                     self.status2.erase()
                     if encrypted != 0:
                         s = 'ENCRYPTED'
                         self.status2.addstr(0, (14-len(s)), s, curses.A_REVERSE)
                     self.status2.refresh()
                     self.current_encrypted = encrypted
+            if 'emergency' in msg[c_id]:
+                emergency = msg[c_id]['emergency']
+                if self.current_emergency != emergency:
+                    self.status2.erase()
+                    if emergency != 0:
+                        s = 'EMERGENCY'
+                        self.status2.addstr(0, (14-len(s)), s, curses.A_REVERSE)
+                    self.status2.refresh()
+                    self.current_emergency = emergency
         elif msg['json_type'] == 'terminal_config': # from multi_rx.py
             if 'tuning_step_small' in msg and int(msg['tuning_step_small']) > 0:
                 self.sm_step = int(msg['tuning_step_small'])

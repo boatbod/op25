@@ -47,6 +47,7 @@ var c_srctag = "";
 var c_srcaddr = 0;
 var c_grpaddr = 0;
 var c_encrypted = 0;
+var c_emergency = 0;
 var c_nac = 0;
 var c_name = "";
 var channel_list = [];
@@ -311,6 +312,8 @@ function channel_update(d) {
             c_stream_url = d[c_id]['stream_url'];
             capture_active = d[c_id]['capture'];
             hold_tgid = d[c_id]['hold_tgid'];
+            c_encrypted = d[c_id]['encrypted'];
+            c_emergency = d[c_id]['emergency'];
             s2_c.style['display'] = "";
             s2_d.style['display'] = "";
             s2_e.style['display'] = "";
@@ -335,6 +338,8 @@ function channel_update(d) {
             c_srcaddr = 0;
             c_srctag = "";
             c_stream_url = "";
+            c_encrypted = 0;
+            c_emergency = 0;
         }
         channel_status();
     }
@@ -371,8 +376,11 @@ function channel_status() {
     html = "";
     if (c_tag != null) {
         html += "<span class=\"value\">" + c_tag + "</span>";
+        if ((current_tgid != null) && (c_emergency)) {
+            html += "<span class=\"value\"> [EMERGENCY]</span>";
+        }
         if ((current_tgid != null) && (c_encrypted)) {
-            html += "<span class=\"label\">[ENCRYPTED]</span>";
+            html += "<span class=\"value\"> [ENCRYPTED]</span>";
         }
     }
     else
@@ -550,6 +558,8 @@ function trunk_update(d) {
         c_grpaddr = d['grpaddr']
     if (d['encrypted'] != undefined)
         c_encrypted = d['encrypted']
+    if (d['emergency'] != undefined)
+        c_emergency = d['emergency']
 
     var div_s3 = document.getElementById("div_s3");
     div_s3.innerHTML = html;
