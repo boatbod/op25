@@ -429,7 +429,7 @@ class osw_receiver(object):
                     self.rx_sys_id = osw2_addr
                     self.rx_cc_freq = osw0_f * 1e6
                     if self.debug >= 11:
-                        sys.stderr.write("%s [%d] SMARTNET SYSID (%x) CONTROL CHANNEL (%f)\n" % (log_ts.get(), self.msgq_id, osw2_addr, osw1_f))
+                        sys.stderr.write("%s [%d] SMARTNET SYSID (%x) CONTROL CHANNEL (%f)\n" % (log_ts.get(), self.msgq_id, osw2_addr, osw0_f))
                 else:
                     self.osw_q.appendleft((osw0_addr, osw0_grp, osw0_cmd, osw0_ch, osw0_f, osw0_t)) # put back unused OSW0
                     if ((osw1_addr & 0xfc00) == 0x2800):
@@ -452,7 +452,7 @@ class osw_receiver(object):
                         cellid = (osw1_addr >> 10) & 0x3f
                         band = (osw1_addr >> 7) & 0x7
                         feat = osw1_addr & 0x3f
-                        freq = osw0_f
+                        freq = self.get_freq(osw0_addr & 0x03ff)
                         if self.debug >= 11:
                             sys.stderr.write("%s [%d] SMARTNET SYSID (%x) CELLID (%x) BAND (%d) FEATURES (%x) CONTROL CHANNEL (%f)\n" % (log_ts.get(), self.msgq_id, sysid, cellid, band, feat, freq))
                 else:
