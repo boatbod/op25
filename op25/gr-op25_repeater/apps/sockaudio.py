@@ -483,7 +483,10 @@ class socket_audio(object):
     def scale(self, data):  # crude amplitude scaler (volume) for S16_LE samples
         arr = np.array(np.frombuffer(data, dtype=np.int16), dtype=np.float32)
         result = np.zeros(len(arr), dtype=np.int16)
-        arr = np.clip(arr*self.audio_gain, -32767, 32766, out=result, casting='unsafe')
+        if sys.version[0] == '2':
+            arr = np.clip(arr*self.audio_gain, -32767, 32766, out=result)
+        else:
+            arr = np.clip(arr*self.audio_gain, -32767, 32766, out=result, casting='unsafe')
         return result.tobytes('C')
 
     def interleave(self, data_a, data_b):
