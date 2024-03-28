@@ -390,6 +390,24 @@ class osw_receiver(object):
                     sys.stderr.write("%s [%d] SMARTNET OSW freq cmd: %d out of range\n" % (log_ts.get(), self.msgq_id, cmd))
         return round(freq, 5)   # round to 5 decimal places to eliminate accumulated floating point errors
 
+    def get_band(self, band): # Convert index into string of the frequency band
+        if band == 0:
+            return "800 splinter"
+        elif band == 1:
+            return "800"
+        elif band == 2:
+            return "800 legacy splinter"
+        elif band == 3:
+            return "800 legacy"
+        elif band == 4:
+            return "900"
+        elif band == 5:
+            return "800 rebanded"
+        elif band == 7:
+            return "OBT"
+        else:
+            return "%s" % (band)
+
     def enqueue(self, addr, grp, cmd, ts):
         grp_str = "G" if (grp != 0) else "I"
         if self.is_chan(cmd):
@@ -443,19 +461,19 @@ class osw_receiver(object):
                     sys.stderr.write("%s [%d] SMARTNET AFFILIATION src(%d), tgid(%d)\n" % (log_ts.get(), self.msgq_id, src_rid, dst_tgid))
             elif osw1_cmd == 0x320:
                 osw0_addr, osw0_grp, osw0_cmd, osw0_ch, osw0_f, osw0_t = self.osw_q.popleft()
-                if osw0_cmd == 0x30b:
+                if osw0_cmd == 0x30b and osw0_addr & 0xfc00 == 0x6000:
                     # There is information that can be extracted from these OSWs but it may apply to a neighbor not ourself
                     # proceed with caution!
-                    if (osw0_addr & 0xfc00) == 0x6000:
-                        sysid = osw2_addr
-                        cellid = (osw1_addr >> 10) & 0x3f
-                        band = (osw1_addr >> 7) & 0x7
-                        feat = osw1_addr & 0x3f
-                        freq = self.get_freq(osw0_addr & 0x03ff)
-                        if self.debug >= 11:
-                            sys.stderr.write("%s [%d] SMARTNET SYSID (%x) CELLID (%x) BAND (%d) FEATURES (%x) CONTROL CHANNEL (%f)\n" % (log_ts.get(), self.msgq_id, sysid, cellid, band, feat, freq))
+                    sysid = osw2_addr
+                    site = (osw1_addr & 0xfc00) >> 10
+                    band = (osw1_addr & 0x380) >> 7
+                    feat = osw1_addr & 0x3f
+                    freq = self.get_freq(osw0_addr & 0x03ff)
+                    if self.debug >= 11:
+                        sys.stderr.write("%s [%d] SMARTNET SYSTEM sys(0x%x) site(0x%x) band(%s) features(0x%02x) cc_freq(%f)\n" % (log_ts.get(), self.msgq_id, sysid, site, self.get_band(band), feat, freq))
                 else:
-                    self.osw_q.appendleft((osw0_addr, osw0_grp, osw0_cmd, osw0_ch, osw0_f, osw0_t)) # put back unused OSW0
+                    # Put back unused OSW0
+                    self.osw_q.appendleft((osw0_addr, osw0_grp, osw0_cmd, osw0_ch, osw0_f, osw0_t))
             else: # OSW1 did not match, so put it back in the queue 
                 self.osw_q.appendleft((osw1_addr, osw1_grp, osw1_cmd, osw1_ch, osw1_f, osw1_t))
         elif osw2_cmd == 0x321:                                                  # Two-OSW digital group voice grant
