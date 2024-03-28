@@ -1,19 +1,19 @@
 # Smartnet trunking module
 #
 # Copyright 2020 Graham J. Norbury - gnorbury@bondcar.com
-# 
+#
 # This file is part of OP25
-# 
+#
 # OP25 is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 3, or (at your option)
 # any later version.
-# 
+#
 # OP25 is distributed in the hope that it will be useful, but WITHOUT
 # ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
 # or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public
 # License for more details.
-# 
+#
 # You should have received a copy of the GNU General Public License
 # along with OP25; see the file COPYING. If not, write to the Free
 # Software Foundation, Inc., 51 Franklin Street, Boston, MA
@@ -128,7 +128,7 @@ class rx_ctl(object):
     def process_qmsg(self, msg):
         curr_time = time.time()
         m_rxid = int(msg.arg1()) >> 1
-        if (m_rxid in self.receivers and 
+        if (m_rxid in self.receivers and
             self.receivers[m_rxid]['rx_sys'] is not None and
             self.receivers[m_rxid]['rx_sys'].process_qmsg(msg, curr_time)):
             for rx in self.systems[self.receivers[m_rxid]['sysname']]['voice']: # Scan for voice activity if the arriving OSW caused a change
@@ -474,7 +474,7 @@ class osw_receiver(object):
                 else:
                     # Put back unused OSW0
                     self.osw_q.appendleft((osw0_addr, osw0_grp, osw0_cmd, osw0_ch, osw0_f, osw0_t))
-            else: # OSW1 did not match, so put it back in the queue 
+            else: # OSW1 did not match, so put it back in the queue
                 self.osw_q.appendleft((osw1_addr, osw1_grp, osw1_cmd, osw1_ch, osw1_f, osw1_t))
         elif osw2_cmd == 0x321:                                                  # Two-OSW digital group voice grant
             osw1_addr, osw1_grp, osw1_cmd, osw1_ch, osw1_f, osw1_t = self.osw_q.popleft()
@@ -485,7 +485,7 @@ class osw_receiver(object):
                 rc |= self.update_voice_frequency(tgt_freq, dst_tgid, src_rid, mode=1, ts=osw1_t)
                 if self.debug >= 11:
                     sys.stderr.write("%s [%d] SMARTNET ASTRO GRANT src(%d), tgid(%d), freq(%f)\n" % (log_ts.get(), self.msgq_id, src_rid, dst_tgid, tgt_freq))
-            else: # OSW did not match, so put it back in the queue 
+            else: # OSW did not match, so put it back in the queue
                 self.osw_q.appendleft((osw1_addr, osw1_grp, osw1_cmd, osw1_ch, osw1_f, osw1_t))
         elif osw2_ch and osw2_grp:                                               # Single-OSW voice update
             dst_tgid = osw2_addr
@@ -538,7 +538,7 @@ class osw_receiver(object):
 
         if self.debug >= 5:
             sys.stderr.write('%s [%d] set tgid=%s, status=0x%x, srcaddr=%s\n' % (log_ts.get(), self.msgq_id, base_tgid, tgid_stat, srcaddr))
-        
+
         if base_tgid not in self.talkgroups:
             self.add_default_tgid(base_tgid)
             if self.debug >= 5:
@@ -588,7 +588,7 @@ class osw_receiver(object):
         sys.stderr.write("Known tgids: { ")
         for tgid in sorted(self.talkgroups.keys()):
             sys.stderr.write("%d " % tgid);
-        sys.stderr.write("}\n") 
+        sys.stderr.write("}\n")
 
     def to_json(self):  # ugly but required for compatibility with P25 trunking and terminal modules
         d = {}
@@ -688,7 +688,7 @@ class voice_receiver(object):
             self.blacklist = {}
             self.whitelist = None
             self.load_bl_wl()
- 
+
     def process_qmsg(self, msg, curr_time):
         rc = False
         m_type = ctypes.c_int16(msg.type() & 0xffff).value
@@ -704,7 +704,7 @@ class voice_receiver(object):
                 self.nbfm_ctrl(self.msgq_id, False)              # disable nbfm
                 self.talkgroups[self.current_tgid]['mode'] = 1   # set mode to digital
         elif (m_type == 3):  # DUID-3  (call termination without channel release)
-            pass 
+            pass
         elif (m_type == 15): # DUID-15 (call termination with channel release)
             self.expire_talkgroup(reason="duid15")
             rc = True
@@ -813,7 +813,7 @@ class voice_receiver(object):
                     continue
             elif (self.talkgroups[active_tgid]['prio'] < self.talkgroups[tgt_tgid]['prio']) and (self.talkgroups[active_tgid]['status'] < 8) and (self.talkgroups[active_tgid]['receiver'] is None):
                 tgt_tgid = active_tgid
-                   
+
         if tgt_tgid is not None and self.talkgroups[tgt_tgid]['time'] >= start_time:
             return self.talkgroups[tgt_tgid]['frequency'], tgt_tgid, self.talkgroups[tgt_tgid]['srcaddr']
         return None, None, None
@@ -888,7 +888,7 @@ class voice_receiver(object):
         self.fa_ctrl({'tuner': self.msgq_id, 'cmd': 'set_slotid', 'slotid': 4}) # disable p25cai
         if self.current_tgid is None:
             return
-            
+
         self.talkgroups[self.current_tgid]['receiver'] = None
         self.talkgroups[self.current_tgid]['srcaddr'] = 0
         self.talkgroups[self.current_tgid]['release_time'] = expire_time
