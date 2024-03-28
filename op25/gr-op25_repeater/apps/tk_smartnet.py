@@ -328,10 +328,10 @@ class osw_receiver(object):
         if band == "800":
             if subtype == "reband" and cmd > 0x22f:
                 return False
-            if (cmd >= 0 and cmd <= 0x2F7) or (cmd >= 0x32f and cmd <= 0x33F) or (cmd >= 0x3c1 and cmd <= 0x3FE) or cmd == 0x3BE:
+            if (cmd >= 0 and cmd <= 0x2f7) or (cmd >= 0x32f and cmd <= 0x33f) or (cmd >= 0x3c1 and cmd <= 0x3fe) or cmd == 0x3be:
                 return True
         elif band == "900":
-            if cmd >= 0 and cmd <= 0x1DE:
+            if cmd >= 0 and cmd <= 0x1de:
                 return True
         elif band == "400":
             bp_base_offset = int(from_dict(self.config, 'bp_base_offset', 380))
@@ -348,24 +348,24 @@ class osw_receiver(object):
         subtype = bandplan[3:len(bandplan)].lower().lstrip("_-:")
 
         if band == "800":
-            if cmd <= 0x2CF:
+            if cmd <= 0x2cf:
                 if subtype == "reband":                                   # REBAND
                     if cmd < 0x1b8:
                         freq = 851.0125 + (0.025 * cmd)
-                    if cmd >= 0x1B8 and cmd <= 0x22F:
-                        freq = 851.0250 + (0.025 * (cmd - 0x1B8))
+                    if cmd >= 0x1b8 and cmd <= 0x22f:
+                        freq = 851.0250 + (0.025 * (cmd - 0x1b8))
                 elif subtype == "splinter" and cmd <= 0x257:              # SPLINTER site
                     freq = 851.0 + (0.025 * cmd)
                 else:
                     freq = 851.0125 + (0.025 * cmd)                       # STANDARD site
             elif cmd <= 0x2f7:
-                freq = 866.0000 + (0.025 * (cmd - 0x2D0))
-            elif cmd >= 0x32F and cmd <= 0x33F:
-                freq = 867.0000 + (0.025 * (cmd - 0x32F))
-            elif cmd == 0x3BE:
+                freq = 866.0000 + (0.025 * (cmd - 0x2d0))
+            elif cmd >= 0x32f and cmd <= 0x33f:
+                freq = 867.0000 + (0.025 * (cmd - 0x32f))
+            elif cmd == 0x3be:
                 freq = 868.9750
-            elif cmd >= 0x3C1 and cmd <= 0x3FE:
-                freq = 867.4250 + (0.025 * (cmd - 0x3C1))
+            elif cmd >= 0x3c1 and cmd <= 0x3fe:
+                freq = 867.4250 + (0.025 * (cmd - 0x3c1))
 
         elif band == "900":
             freq = 935.0125 + (0.0125 * cmd)
@@ -424,7 +424,7 @@ class osw_receiver(object):
                     sys.stderr.write("%s [%d] SMARTNET SYSID (%x) CONTROL CHANNEL (%f)\n" % (log_ts.get(), self.msgq_id, osw2_addr, osw1_f))
             elif osw1_cmd == 0x30b:
                 osw0_addr, osw0_grp, osw0_cmd, osw0_ch, osw0_f, osw0_t = self.osw_q.popleft()
-                if osw0_ch and ((osw0_addr & 0xff00) == 0x1F00) and ((osw1_addr & 0xfc00) == 0x2800) and ((osw1_addr & 0x3ff) == osw0_cmd):
+                if osw0_ch and ((osw0_addr & 0xff00) == 0x1f00) and ((osw1_addr & 0xfc00) == 0x2800) and ((osw1_addr & 0x3ff) == osw0_cmd):
                     self.rx_sys_id = osw2_addr
                     self.rx_cc_freq = osw0_f * 1e6
                     if self.debug >= 11:
