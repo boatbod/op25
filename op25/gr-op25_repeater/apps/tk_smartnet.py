@@ -390,6 +390,9 @@ class osw_receiver(object):
                     sys.stderr.write("%s [%d] SMARTNET OSW freq cmd: %d out of range\n" % (log_ts.get(), self.msgq_id, cmd))
         return round(freq, 5)   # round to 5 decimal places to eliminate accumulated floating point errors
 
+    def get_group_str(self, is_group): # Convert is-group bit to human-readable string
+        return "G" if is_group != 0 else "I"
+
     def get_band(self, band): # Convert index into string of the frequency band
         if band == 0:
             return "800 splinter"
@@ -409,7 +412,7 @@ class osw_receiver(object):
             return "%s" % (band)
 
     def enqueue(self, addr, grp, cmd, ts):
-        grp_str = "G" if (grp != 0) else "I"
+        grp_str = self.get_group_str(grp)
         if self.is_chan(cmd):
             freq = self.get_freq(cmd)
             if self.debug >= 13:
