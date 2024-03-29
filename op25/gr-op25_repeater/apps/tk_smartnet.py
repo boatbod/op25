@@ -333,7 +333,7 @@ class osw_receiver(object):
         elif band == "900":
             if cmd >= 0 and cmd <= 0x1de:
                 return True
-        elif band == "400":
+        elif band == "OBT" or band == "400": # Still accept '400' for backwards compatibility
             bp_base_offset = int(from_dict(self.config, 'bp_base_offset', 380))
             if (cmd >= bp_base_offset) and cmd <= (bp_base_offset + 380):
                 return True
@@ -370,7 +370,7 @@ class osw_receiver(object):
         elif band == "900":
             freq = 935.0125 + (0.0125 * cmd)
 
-        elif band == "400":
+        elif band == "OBT" or band == "400": # Still accept '400' for backwards compatibility
             bp_spacing     = float(from_dict(self.config, 'bp_spacing',     "0.025"))
             bp_base_offset = int(from_dict(self.config,   'bp_base_offset', 380))
             bp_mid_offset  = int(from_dict(self.config,   'bp_mid_offset',  760))
