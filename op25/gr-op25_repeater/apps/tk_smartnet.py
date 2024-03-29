@@ -395,13 +395,13 @@ class osw_receiver(object):
 
     def get_band(self, band): # Convert index into string of the frequency band
         if band == 0:
-            return "800 splinter"
+            return "800 international splinter"
         elif band == 1:
-            return "800"
+            return "800 international"
         elif band == 2:
-            return "800 legacy splinter"
+            return "800 domestic splinter"
         elif band == 3:
-            return "800 legacy"
+            return "800 domestic"
         elif band == 4:
             return "900"
         elif band == 5:
