@@ -411,6 +411,31 @@ class osw_receiver(object):
         else:
             return "%s" % (band)
 
+    def get_call_options_str(self, tgid): # Convert TGID into a string showing the call options
+        is_encrypted = (tgid & 0x8) >> 3
+        options = tgid & 0x7
+
+        options_str = "ENCRYPTED" if is_encrypted else "CLEAR"
+
+        if options != 0:
+            options_str += " "
+            if options == 1:
+                options_str += "ANNOUNCEMENT"
+            elif options == 2:
+                options_str += "EMEREGENCY"
+            elif options == 3:
+                options_str += "PATCH"
+            elif options == 4:
+                options_str += "EMEREGENCY PATCH"
+            elif options == 5:
+                options_str += "EMERGENCY MULTISELECT"
+            elif options == 6:
+                options_str += "[UNDEFINED CALL OPTION]"
+            elif options == 7:
+                options_str += "MULTISELECT"
+
+        return options_str
+
     def enqueue(self, addr, grp, cmd, ts):
         grp_str = self.get_group_str(grp)
         if self.is_chan(cmd):
@@ -443,8 +468,8 @@ class osw_receiver(object):
                 vc_freq = osw1_f
                 rc |= self.update_voice_frequency(vc_freq, dst_tgid, src_rid, mode=0, ts=osw1_t)
                 if self.debug >= 11:
-                    sys.stderr.write("%s [%d] SMARTNET ANALOG GROUP GRANT src(%05d) tgid(%05d/0x%03x) vc_freq(%f)\n" % (log_ts.get(), self.msgq_id, src_rid, dst_tgid, dst_tgid >> 4, vc_freq))
             # SysId + Control Channel broadcast
+                    sys.stderr.write("%s [%d] SMARTNET ANALOG %s GROUP GRANT src(%05d) tgid(%05d/0x%03x) vc_freq(%f)\n" % (log_ts.get(), self.msgq_id, self.get_call_options_str(dst_tgid), src_rid, dst_tgid, dst_tgid >> 4, vc_freq))
             elif osw1_ch and not osw1_grp and ((osw1_addr & 0xff00) == 0x1f00):
                 system = osw2_addr
                 cc_freq = osw1_f
@@ -528,7 +553,7 @@ class osw_receiver(object):
                 vc_freq = osw1_f
                 rc |= self.update_voice_frequency(vc_freq, dst_tgid, src_rid, mode=1, ts=osw1_t)
                 if self.debug >= 11:
-                    sys.stderr.write("%s [%d] SMARTNET DIGITAL GROUP GRANT src(%05d) tgid(%05d/0x%03x) vc_freq(%f)\n" % (log_ts.get(), self.msgq_id, src_rid, dst_tgid, dst_tgid >> 4, vc_freq))
+                    sys.stderr.write("%s [%d] SMARTNET DIGITAL %s GROUP GRANT src(%05d) tgid(%05d/0x%03x) vc_freq(%f)\n" % (log_ts.get(), self.msgq_id, self.get_call_options_str(dst_tgid), src_rid, dst_tgid, dst_tgid >> 4, vc_freq))
             else:
                 # OSW1 did not match, so put it back in the queue
                 self.osw_q.appendleft((osw1_addr, osw1_grp, osw1_cmd, osw1_ch, osw1_f, osw1_t))
@@ -538,8 +563,8 @@ class osw_receiver(object):
             vc_freq = osw2_f
             rc |= self.update_voice_frequency(vc_freq, dst_tgid, ts=osw2_t)
             if self.debug >= 11:
-                sys.stderr.write("%s [%d] SMARTNET GROUP UPDATE tgid(%05d/0x%03x) vc_freq(%f)\n" % (log_ts.get(), self.msgq_id, dst_tgid, dst_tgid >> 4, vc_freq))
         # Single-OSW Control Channel broadcast
+                sys.stderr.write("%s [%d] SMARTNET %s GROUP UPDATE tgid(%05d/0x%03x) vc_freq(%f)\n" % (log_ts.get(), self.msgq_id, self.get_call_options_str(dst_tgid), dst_tgid, dst_tgid >> 4, vc_freq))
         elif osw2_ch and not osw2_grp and ((osw2_addr & 0xff00) == 0x1f00):
             cc_freq = osw2_f
             self.rx_cc_freq = cc_freq * 1e6
