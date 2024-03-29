@@ -443,7 +443,7 @@ class osw_receiver(object):
                 vc_freq = osw1_f
                 rc |= self.update_voice_frequency(vc_freq, dst_tgid, src_rid, mode=0, ts=osw1_t)
                 if self.debug >= 11:
-                    sys.stderr.write("%s [%d] SMARTNET ANALOG GROUP GRANT src(%05d) tgid(%05d/0x%04x) vc_freq(%f)\n" % (log_ts.get(), self.msgq_id, src_rid, dst_tgid, dst_tgid, vc_freq))
+                    sys.stderr.write("%s [%d] SMARTNET ANALOG GROUP GRANT src(%05d) tgid(%05d/0x%03x) vc_freq(%f)\n" % (log_ts.get(), self.msgq_id, src_rid, dst_tgid, dst_tgid >> 4, vc_freq))
             # SysId + Control Channel broadcast
             elif osw1_ch and not osw1_grp and ((osw1_addr & 0xff00) == 0x1f00):
                 system = osw2_addr
@@ -487,7 +487,7 @@ class osw_receiver(object):
                 src_rid = osw2_addr
                 dst_tgid = osw1_addr & 0xfff0
                 if self.debug >= 11:
-                    sys.stderr.write("%s [%d] SMARTNET AFFILIATION src(%05d) tgid(%05d/0x%04x)\n" % (log_ts.get(), self.msgq_id, src_rid, dst_tgid, dst_tgid))
+                    sys.stderr.write("%s [%d] SMARTNET AFFILIATION src(%05d) tgid(%05d/0x%03x)\n" % (log_ts.get(), self.msgq_id, src_rid, dst_tgid, dst_tgid >> 4))
             # Two- or three-OSW system information
             elif osw1_cmd == 0x320:
                 # Get OSW0
@@ -528,7 +528,7 @@ class osw_receiver(object):
                 vc_freq = osw1_f
                 rc |= self.update_voice_frequency(vc_freq, dst_tgid, src_rid, mode=1, ts=osw1_t)
                 if self.debug >= 11:
-                    sys.stderr.write("%s [%d] SMARTNET DIGITAL GROUP GRANT src(%05d) tgid(%05d/0x%04x) vc_freq(%f)\n" % (log_ts.get(), self.msgq_id, src_rid, dst_tgid, dst_tgid, vc_freq))
+                    sys.stderr.write("%s [%d] SMARTNET DIGITAL GROUP GRANT src(%05d) tgid(%05d/0x%03x) vc_freq(%f)\n" % (log_ts.get(), self.msgq_id, src_rid, dst_tgid, dst_tgid >> 4, vc_freq))
             else:
                 # OSW1 did not match, so put it back in the queue
                 self.osw_q.appendleft((osw1_addr, osw1_grp, osw1_cmd, osw1_ch, osw1_f, osw1_t))
@@ -538,7 +538,7 @@ class osw_receiver(object):
             vc_freq = osw2_f
             rc |= self.update_voice_frequency(vc_freq, dst_tgid, ts=osw2_t)
             if self.debug >= 11:
-                sys.stderr.write("%s [%d] SMARTNET GROUP UPDATE tgid(%05d/0x%04x) vc_freq(%f)\n" % (log_ts.get(), self.msgq_id, dst_tgid, dst_tgid, vc_freq))
+                sys.stderr.write("%s [%d] SMARTNET GROUP UPDATE tgid(%05d/0x%03x) vc_freq(%f)\n" % (log_ts.get(), self.msgq_id, dst_tgid, dst_tgid >> 4, vc_freq))
         # Single-OSW Control Channel broadcast
         elif osw2_ch and not osw2_grp and ((osw2_addr & 0xff00) == 0x1f00):
             cc_freq = osw2_f
