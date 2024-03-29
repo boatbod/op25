@@ -443,7 +443,7 @@ class osw_receiver(object):
                 vc_freq = osw1_f
                 rc |= self.update_voice_frequency(vc_freq, dst_tgid, src_rid, mode=0, ts=osw1_t)
                 if self.debug >= 11:
-                    sys.stderr.write("%s [%d] SMARTNET ANALOG GROUP GRANT src(%5d) tgid(%5d/0x%4x) vc_freq(%f)\n" % (log_ts.get(), self.msgq_id, src_rid, dst_tgid, dst_tgid, vc_freq))
+                    sys.stderr.write("%s [%d] SMARTNET ANALOG GROUP GRANT src(%05d) tgid(%05d/0x%04x) vc_freq(%f)\n" % (log_ts.get(), self.msgq_id, src_rid, dst_tgid, dst_tgid, vc_freq))
             # SysId + Control Channel broadcast
             elif osw1_ch and not osw1_grp and ((osw1_addr & 0xff00) == 0x1f00):
                 system = osw2_addr
@@ -451,7 +451,7 @@ class osw_receiver(object):
                 self.rx_sys_id = system
                 self.rx_cc_freq = cc_freq * 1e6
                 if self.debug >= 11:
-                    sys.stderr.write("%s [%d] SMARTNET SYSTEM CONTROL CHANNEL sys(0x%4x) cc_freq(%f)\n" % (log_ts.get(), self.msgq_id, system, cc_freq))
+                    sys.stderr.write("%s [%d] SMARTNET SYSTEM CONTROL CHANNEL sys(0x%04x) cc_freq(%f)\n" % (log_ts.get(), self.msgq_id, system, cc_freq))
             # One of many possible two- or three-OSW meanings...
             elif osw1_cmd == 0x30b:
                 # Get next OSW in the queue
@@ -464,7 +464,7 @@ class osw_receiver(object):
                     self.rx_sys_id = system
                     self.rx_cc_freq = cc_freq * 1e6
                     if self.debug >= 11:
-                        sys.stderr.write("%s [%d] SMARTNET SYSTEM CONTROL CHANNEL sys(0x%4x) cc_freq(%f)\n" % (log_ts.get(), self.msgq_id, system, cc_freq))
+                        sys.stderr.write("%s [%d] SMARTNET SYSTEM CONTROL CHANNEL sys(0x%04x) cc_freq(%f)\n" % (log_ts.get(), self.msgq_id, system, cc_freq))
                 else:
                     # Put back unused OSW0
                     self.osw_q.appendleft((osw0_addr, osw0_grp, osw0_cmd, osw0_ch, osw0_f, osw0_t))
@@ -476,18 +476,18 @@ class osw_receiver(object):
                         self.rx_sys_id = system
                         self.rx_cc_freq = cc_freq * 1e6
                         if self.debug >= 11:
-                            sys.stderr.write("%s [%d] SMARTNET SYSTEM CONTROL CHANNEL sys(0x%4x) cc_freq(%f)\n" % (log_ts.get(), self.msgq_id, system, cc_freq))
+                            sys.stderr.write("%s [%d] SMARTNET SYSTEM CONTROL CHANNEL sys(0x%04x) cc_freq(%f)\n" % (log_ts.get(), self.msgq_id, system, cc_freq))
                     # Unknown extended function
                     else:
                         code = osw1_addr
                         if self.debug >= 11:
-                            sys.stderr.write("%s [%d] SMARTNET EXTENDED FUNCTION src(%5d) code(%s,0x%04x)\n" % (log_ts.get(), self.msgq_id, osw2_addr, grp1_str, code))
+                            sys.stderr.write("%s [%d] SMARTNET EXTENDED FUNCTION src(%05d) code(%s,0x%04x)\n" % (log_ts.get(), self.msgq_id, osw2_addr, grp1_str, code))
             # Two-OSW Type II affiliation
             elif osw1_cmd == 0x310:
                 src_rid = osw2_addr
                 dst_tgid = osw1_addr & 0xfff0
                 if self.debug >= 11:
-                    sys.stderr.write("%s [%d] SMARTNET AFFILIATION src(%5d) tgid(%5d/0x%4x)\n" % (log_ts.get(), self.msgq_id, src_rid, dst_tgid, dst_tgid))
+                    sys.stderr.write("%s [%d] SMARTNET AFFILIATION src(%05d) tgid(%05d/0x%04x)\n" % (log_ts.get(), self.msgq_id, src_rid, dst_tgid, dst_tgid))
             # Two- or three-OSW system information
             elif osw1_cmd == 0x320:
                 # Get OSW0
@@ -502,7 +502,7 @@ class osw_receiver(object):
                     feat = osw1_addr & 0x3f
                     cc_freq = self.get_freq(osw0_addr & 0x03ff)
                     if self.debug >= 11:
-                        sys.stderr.write("%s [%d] SMARTNET SYSTEM sys(0x%4x) site(%2d) band(%s) features(0x%02x) cc_freq(%f)\n" % (log_ts.get(), self.msgq_id, sysid, site, self.get_band(band), feat, cc_freq))
+                        sys.stderr.write("%s [%d] SMARTNET SYSTEM sys(0x%04x) site(%02d) band(%s) features(0x%02x) cc_freq(%f)\n" % (log_ts.get(), self.msgq_id, sysid, site, self.get_band(band), feat, cc_freq))
                 else:
                     # Put back unused OSW0
                     self.osw_q.appendleft((osw0_addr, osw0_grp, osw0_cmd, osw0_ch, osw0_f, osw0_t))
@@ -528,7 +528,7 @@ class osw_receiver(object):
                 vc_freq = osw1_f
                 rc |= self.update_voice_frequency(vc_freq, dst_tgid, src_rid, mode=1, ts=osw1_t)
                 if self.debug >= 11:
-                    sys.stderr.write("%s [%d] SMARTNET DIGITAL GROUP GRANT src(%5d) tgid(%5d/0x%4x) vc_freq(%f)\n" % (log_ts.get(), self.msgq_id, src_rid, dst_tgid, dst_tgid, vc_freq))
+                    sys.stderr.write("%s [%d] SMARTNET DIGITAL GROUP GRANT src(%05d) tgid(%05d/0x%04x) vc_freq(%f)\n" % (log_ts.get(), self.msgq_id, src_rid, dst_tgid, dst_tgid, vc_freq))
             else:
                 # OSW1 did not match, so put it back in the queue
                 self.osw_q.appendleft((osw1_addr, osw1_grp, osw1_cmd, osw1_ch, osw1_f, osw1_t))
@@ -538,7 +538,7 @@ class osw_receiver(object):
             vc_freq = osw2_f
             rc |= self.update_voice_frequency(vc_freq, dst_tgid, ts=osw2_t)
             if self.debug >= 11:
-                sys.stderr.write("%s [%d] SMARTNET GROUP UPDATE tgid(%5d/0x%4x) vc_freq(%f)\n" % (log_ts.get(), self.msgq_id, dst_tgid, dst_tgid, vc_freq))
+                sys.stderr.write("%s [%d] SMARTNET GROUP UPDATE tgid(%05d/0x%04x) vc_freq(%f)\n" % (log_ts.get(), self.msgq_id, dst_tgid, dst_tgid, vc_freq))
         # Single-OSW Control Channel broadcast
         elif osw2_ch and not osw2_grp and ((osw2_addr & 0xff00) == 0x1f00):
             cc_freq = osw2_f
