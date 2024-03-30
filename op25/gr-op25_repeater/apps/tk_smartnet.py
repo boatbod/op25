@@ -335,7 +335,7 @@ class osw_receiver(object):
                 return True
         elif band == "OBT" or band == "400": # Still accept '400' for backwards compatibility
             bp_base_offset = int(from_dict(self.config, 'bp_base_offset', 380))
-            if (cmd >= bp_base_offset) and cmd <= (bp_base_offset + 380):
+            if (cmd >= bp_base_offset) and cmd < (bp_base_offset + 380):
                 return True
             else:
                 return False
