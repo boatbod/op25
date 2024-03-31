@@ -349,7 +349,13 @@ class osw_receiver(object):
 
         return False
 
-    def get_freq(self, chan): # Convert 'chan' into band-dependent frequency
+    def get_freq(self, chan, is_tx=False): # Convert 'chan' into band-dependent frequency (is_tx for debugging uplink frequencies)
+        # Short-circuit invalid frequencies
+        if not self.is_chan(chan, is_tx):
+            if self.debug >= 5:
+                sys.stderr.write("%s [%d] SMARTNET tx chan %d out of range\n" % (log_ts.get(), self.msgq_id, chan))
+            return 0.0
+
         freq = 0.0
         bandplan = from_dict(self.config, 'bandplan', "800_reband")
         band = bandplan[:3]
@@ -357,15 +363,18 @@ class osw_receiver(object):
 
         if band == "800":
             if chan <= 0x2cf:
-                if subtype == "reband":                                   # REBAND
+                # Rebanded site
+                if subtype == "reband":
                     if chan < 0x1b8:
                         freq = 851.0125 + (0.025 * chan)
                     if chan >= 0x1b8 and chan <= 0x22f:
                         freq = 851.0250 + (0.025 * (chan - 0x1b8))
-                elif subtype == "splinter" and chan <= 0x257:             # SPLINTER site
+                # Splinter site
+                elif subtype == "splinter" and chan <= 0x257:
                     freq = 851.0 + (0.025 * chan)
+                # Standard site
                 else:
-                    freq = 851.0125 + (0.025 * chan)                      # STANDARD site
+                    freq = 851.0125 + (0.025 * chan)
             elif chan <= 0x2f7:
                 freq = 866.0000 + (0.025 * (chan - 0x2d0))
             elif chan >= 0x32f and chan <= 0x33f:
@@ -374,32 +383,60 @@ class osw_receiver(object):
                 freq = 868.9750
             elif chan >= 0x3c1 and chan <= 0x3fe:
                 freq = 867.4250 + (0.025 * (chan - 0x3c1))
+            if is_tx:
+                freq -= 45.0 # Standard tx offset for 800 band
 
         elif band == "900":
             freq = 935.0125 + (0.0125 * chan)
+            if is_tx:
+                freq -= 39.0 # Standard tx offset for 900 band
 
         elif band == "OBT" or band == "400": # Still accept '400' for backwards compatibility
-            bp_spacing      = float(from_dict(self.config, 'bp_spacing',     "0.025")) # Back-compat - implies all spacing is the same
-            bp_base         = float(from_dict(self.config, 'bp_base',        "0.0"))
-            bp_mid          = float(from_dict(self.config, 'bp_mid',         "0.0"))
-            bp_high         = float(from_dict(self.config, 'bp_high',        "0.0"))
-            bp_base_spacing = float(from_dict(self.config, 'bp_base_spacing', bp_spacing))
-            bp_mid_spacing  = float(from_dict(self.config, 'bp_mid_spacing',  bp_spacing))
-            bp_high_spacing = float(from_dict(self.config, 'bp_high_spacing', bp_spacing))
-            bp_base_offset  = int(from_dict(self.config,   'bp_base_offset',  380))
-            bp_mid_offset   = int(from_dict(self.config,   'bp_mid_offset',   760))
-            bp_high_offset  = int(from_dict(self.config,   'bp_high_offset',  760))
+            bp_spacing = float(from_dict(self.config, 'bp_spacing', "0.025")) # Back-compat - implies all spacing is the same
 
-            if (chan >= bp_base_offset) and (chan < bp_mid_offset):
-                freq = bp_base + (bp_base_spacing * (chan - bp_base_offset ))
-            elif (chan >= bp_mid_offset) and (chan < bp_high_offset):
-                freq = bp_mid + (bp_mid_spacing * (chan - bp_mid_offset))
-            elif (chan >= bp_high_offset) and (chan < 760):
-                freq = bp_high + (bp_high_spacing * (chan - bp_high_offset))
+            if not is_tx:
+                bp_base         = float(from_dict(self.config, 'bp_base',        "0.0"))
+                bp_mid          = float(from_dict(self.config, 'bp_mid',         "0.0"))
+                bp_high         = float(from_dict(self.config, 'bp_high',        "0.0"))
+                bp_base_spacing = float(from_dict(self.config, 'bp_base_spacing', bp_spacing))
+                bp_mid_spacing  = float(from_dict(self.config, 'bp_mid_spacing',  bp_spacing))
+                bp_high_spacing = float(from_dict(self.config, 'bp_high_spacing', bp_spacing))
+                bp_base_offset  = int(from_dict(self.config,   'bp_base_offset',  380))
+                bp_mid_offset   = int(from_dict(self.config,   'bp_mid_offset',   760))
+                bp_high_offset  = int(from_dict(self.config,   'bp_high_offset',  760))
+
+                if (chan >= bp_base_offset) and (chan < bp_mid_offset):
+                    freq = bp_base + (bp_base_spacing * (chan - bp_base_offset ))
+                elif (chan >= bp_mid_offset) and (chan < bp_high_offset):
+                    freq = bp_mid + (bp_mid_spacing * (chan - bp_mid_offset))
+                elif (chan >= bp_high_offset) and (chan < 760):
+                    freq = bp_high + (bp_high_spacing * (chan - bp_high_offset))
+                else:
+                    if self.debug >= 5:
+                        sys.stderr.write("%s [%d] SMARTNET chan %d out of range\n" % (log_ts.get(), self.msgq_id, chan))
             else:
-                if self.debug >= 5:
-                    sys.stderr.write("%s [%d] SMARTNET OSW freq chan: %d out of range\n" % (log_ts.get(), self.msgq_id, chan))
-        return round(freq, 5)   # round to 5 decimal places to eliminate accumulated floating point errors
+                bp_tx_base         = float(from_dict(self.config, 'bp_tx_base',        "0.0"))
+                bp_tx_mid          = float(from_dict(self.config, 'bp_tx_mid',         "0.0"))
+                bp_tx_high         = float(from_dict(self.config, 'bp_tx_high',        "0.0"))
+                bp_tx_base_spacing = float(from_dict(self.config, 'bp_tx_base_spacing', bp_spacing))
+                bp_tx_mid_spacing  = float(from_dict(self.config, 'bp_tx_mid_spacing',  bp_spacing))
+                bp_tx_high_spacing = float(from_dict(self.config, 'bp_tx_high_spacing', bp_spacing))
+                bp_tx_base_offset  = int(from_dict(self.config,   'bp_tx_base_offset',  0))
+                bp_tx_mid_offset   = int(from_dict(self.config,   'bp_tx_mid_offset',   380))
+                bp_tx_high_offset  = int(from_dict(self.config,   'bp_tx_high_offset',  380))
+
+                if (chan >= bp_tx_base_offset) and (chan < bp_tx_mid_offset):
+                    freq = bp_tx_base + (bp_tx_base_spacing * (chan - bp_tx_base_offset ))
+                elif (chan >= bp_tx_mid_offset) and (chan < bp_tx_high_offset):
+                    freq = bp_tx_mid + (bp_tx_mid_spacing * (chan - bp_tx_mid_offset))
+                elif (chan >= bp_tx_high_offset) and (chan < 380):
+                    freq = bp_tx_high + (bp_tx_high_spacing * (chan - bp_tx_high_offset))
+                else:
+                    if self.debug >= 5:
+                        sys.stderr.write("%s [%d] SMARTNET tx chan %d out of range\n" % (log_ts.get(), self.msgq_id, chan))
+
+        # Round to 5 decimal places to eliminate accumulated floating point errors
+        return round(freq, 5)
 
     def get_group_str(self, is_group): # Convert is-group bit to human-readable string
         return "G" if is_group != 0 else "I"

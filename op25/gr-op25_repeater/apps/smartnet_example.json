@@ -80,7 +80,17 @@
                 "bp_mid_offset": 579,
                 "bp_high": 154.320,
                 "bp_high_spacing": 0.015,
-                "bp_high_offset": 632
+                "bp_high_offset": 632,
+                "bp_tx_comment": "The bp_tx_ parameters are only used by the OBT bandplan for debug logging of uplink channels",
+                "bp_tx_base": 141.015,
+                "bp_tx_base_spacing": 0.015,
+                "bp_tx_base_offset": 0,
+                "bp_tx_mid": 151.730,
+                "bp_tx_mid_spacing": 0.015,
+                "bp_tx_mid_offset": 199,
+                "bp_tx_high": 154.320,
+                "bp_tx_high_spacing": 0.015,
+                "bp_tx_high_offset": 252
             }
         ]
     },
