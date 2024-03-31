@@ -371,20 +371,23 @@ class osw_receiver(object):
             freq = 935.0125 + (0.0125 * chan)
 
         elif band == "OBT" or band == "400": # Still accept '400' for backwards compatibility
-            bp_spacing     = float(from_dict(self.config, 'bp_spacing',     "0.025"))
-            bp_base_offset = int(from_dict(self.config,   'bp_base_offset', 380))
-            bp_mid_offset  = int(from_dict(self.config,   'bp_mid_offset',  760))
-            bp_high_offset = int(from_dict(self.config,   'bp_high_offset', 760))
-            bp_base        = float(from_dict(self.config, 'bp_base',        "0.0"))
-            bp_mid         = float(from_dict(self.config, 'bp_mid',         "0.0"))
-            bp_high        = float(from_dict(self.config, 'bp_high',        "0.0"))
+            bp_spacing      = float(from_dict(self.config, 'bp_spacing',     "0.025")) # Back-compat - implies all spacing is the same
+            bp_base         = float(from_dict(self.config, 'bp_base',        "0.0"))
+            bp_mid          = float(from_dict(self.config, 'bp_mid',         "0.0"))
+            bp_high         = float(from_dict(self.config, 'bp_high',        "0.0"))
+            bp_base_spacing = float(from_dict(self.config, 'bp_base_spacing', bp_spacing))
+            bp_mid_spacing  = float(from_dict(self.config, 'bp_mid_spacing',  bp_spacing))
+            bp_high_spacing = float(from_dict(self.config, 'bp_high_spacing', bp_spacing))
+            bp_base_offset  = int(from_dict(self.config,   'bp_base_offset',  380))
+            bp_mid_offset   = int(from_dict(self.config,   'bp_mid_offset',   760))
+            bp_high_offset  = int(from_dict(self.config,   'bp_high_offset',  760))
 
-            if (cmd >= bp_base_offset) and (cmd < bp_mid_offset):
-                freq = bp_base + (bp_spacing * (cmd - bp_base_offset ))
-            elif (cmd >= bp_mid_offset) and (cmd < bp_high_offset):
-                freq = bp_mid + (bp_spacing * (cmd - bp_mid_offset))
-            elif (cmd >= bp_high_offset) and (cmd < 760):
-                freq = bp_high + (bp_spacing * (cmd - bp_high_offset))
+            if (chan >= bp_base_offset) and (chan < bp_mid_offset):
+                freq = bp_base + (bp_base_spacing * (chan - bp_base_offset ))
+            elif (chan >= bp_mid_offset) and (chan < bp_high_offset):
+                freq = bp_mid + (bp_mid_spacing * (chan - bp_mid_offset))
+            elif (chan >= bp_high_offset) and (chan < 760):
+                freq = bp_high + (bp_high_spacing * (chan - bp_high_offset))
             else:
                 if self.debug >= 5:
                     sys.stderr.write("%s [%d] SMARTNET OSW freq chan: %d out of range\n" % (log_ts.get(), self.msgq_id, chan))
