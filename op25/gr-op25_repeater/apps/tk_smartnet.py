@@ -322,23 +322,31 @@ class osw_receiver(object):
         return rc
 
     def is_chan(self, chan): # Is the 'chan' a valid frequency
+    def is_chan(self, chan, is_tx=False): # Is the 'chan' a valid frequency (is_tx for OBT explicit tx channel assignments)
         bandplan = from_dict(self.config, 'bandplan', "800_reband")
         band = bandplan[:3]
         subtype = bandplan[3:len(bandplan)].lower().lstrip("_-:")
+
         if band == "800":
             if subtype == "reband" and chan > 0x22f:
                 return False
             if (chan >= 0 and chan <= 0x2f7) or (chan >= 0x32f and chan <= 0x33f) or (chan >= 0x3c1 and chan <= 0x3fe) or chan == 0x3be:
                 return True
+
         elif band == "900":
             if chan >= 0 and chan <= 0x1de:
                 return True
+
         elif band == "OBT" or band == "400": # Still accept '400' for backwards compatibility
-            bp_base_offset = int(from_dict(self.config, 'bp_base_offset', 380))
-            if (chan >= bp_base_offset) and (chan < 760):
+            bp_base_offset    = int(from_dict(self.config, 'bp_base_offset', 380))
+            bp_tx_base_offset = int(from_dict(self.config, 'bp_tx_base_offset', 0))
+            if is_tx and (chan >= bp_tx_base_offset) and (chan < 380):
+                return True
+            elif (chan >= bp_base_offset) and (chan < 760):
                 return True
             else:
                 return False
+
         return False
 
     def get_freq(self, chan): # Convert 'chan' into band-dependent frequency
