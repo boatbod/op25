@@ -321,54 +321,54 @@ class osw_receiver(object):
         rc |= self.expire_talkgroups(curr_time)
         return rc
 
-    def is_chan(self, cmd): # Is the 'cmd' a valid frequency or an actual command
+    def is_chan(self, chan): # Is the 'chan' a valid frequency
         bandplan = from_dict(self.config, 'bandplan', "800_reband")
         band = bandplan[:3]
         subtype = bandplan[3:len(bandplan)].lower().lstrip("_-:")
         if band == "800":
-            if subtype == "reband" and cmd > 0x22f:
+            if subtype == "reband" and chan > 0x22f:
                 return False
-            if (cmd >= 0 and cmd <= 0x2f7) or (cmd >= 0x32f and cmd <= 0x33f) or (cmd >= 0x3c1 and cmd <= 0x3fe) or cmd == 0x3be:
+            if (chan >= 0 and chan <= 0x2f7) or (chan >= 0x32f and chan <= 0x33f) or (chan >= 0x3c1 and chan <= 0x3fe) or chan == 0x3be:
                 return True
         elif band == "900":
-            if cmd >= 0 and cmd <= 0x1de:
+            if chan >= 0 and chan <= 0x1de:
                 return True
         elif band == "OBT" or band == "400": # Still accept '400' for backwards compatibility
             bp_base_offset = int(from_dict(self.config, 'bp_base_offset', 380))
-            if (cmd >= bp_base_offset) and (cmd < 760):
+            if (chan >= bp_base_offset) and (chan < 760):
                 return True
             else:
                 return False
         return False
 
-    def get_freq(self, cmd): # Convert 'cmd' into band-dependent frequency
+    def get_freq(self, chan): # Convert 'chan' into band-dependent frequency
         freq = 0.0
         bandplan = from_dict(self.config, 'bandplan', "800_reband")
         band = bandplan[:3]
         subtype = bandplan[3:len(bandplan)].lower().lstrip("_-:")
 
         if band == "800":
-            if cmd <= 0x2cf:
+            if chan <= 0x2cf:
                 if subtype == "reband":                                   # REBAND
-                    if cmd < 0x1b8:
-                        freq = 851.0125 + (0.025 * cmd)
-                    if cmd >= 0x1b8 and cmd <= 0x22f:
-                        freq = 851.0250 + (0.025 * (cmd - 0x1b8))
-                elif subtype == "splinter" and cmd <= 0x257:              # SPLINTER site
-                    freq = 851.0 + (0.025 * cmd)
+                    if chan < 0x1b8:
+                        freq = 851.0125 + (0.025 * chan)
+                    if chan >= 0x1b8 and chan <= 0x22f:
+                        freq = 851.0250 + (0.025 * (chan - 0x1b8))
+                elif subtype == "splinter" and chan <= 0x257:             # SPLINTER site
+                    freq = 851.0 + (0.025 * chan)
                 else:
-                    freq = 851.0125 + (0.025 * cmd)                       # STANDARD site
-            elif cmd <= 0x2f7:
-                freq = 866.0000 + (0.025 * (cmd - 0x2d0))
-            elif cmd >= 0x32f and cmd <= 0x33f:
-                freq = 867.0000 + (0.025 * (cmd - 0x32f))
-            elif cmd == 0x3be:
+                    freq = 851.0125 + (0.025 * chan)                      # STANDARD site
+            elif chan <= 0x2f7:
+                freq = 866.0000 + (0.025 * (chan - 0x2d0))
+            elif chan >= 0x32f and chan <= 0x33f:
+                freq = 867.0000 + (0.025 * (chan - 0x32f))
+            elif chan == 0x3be:
                 freq = 868.9750
-            elif cmd >= 0x3c1 and cmd <= 0x3fe:
-                freq = 867.4250 + (0.025 * (cmd - 0x3c1))
+            elif chan >= 0x3c1 and chan <= 0x3fe:
+                freq = 867.4250 + (0.025 * (chan - 0x3c1))
 
         elif band == "900":
-            freq = 935.0125 + (0.0125 * cmd)
+            freq = 935.0125 + (0.0125 * chan)
 
         elif band == "OBT" or band == "400": # Still accept '400' for backwards compatibility
             bp_spacing     = float(from_dict(self.config, 'bp_spacing',     "0.025"))
@@ -387,7 +387,7 @@ class osw_receiver(object):
                 freq = bp_high + (bp_spacing * (cmd - bp_high_offset))
             else:
                 if self.debug >= 5:
-                    sys.stderr.write("%s [%d] SMARTNET OSW freq cmd: %d out of range\n" % (log_ts.get(), self.msgq_id, cmd))
+                    sys.stderr.write("%s [%d] SMARTNET OSW freq chan: %d out of range\n" % (log_ts.get(), self.msgq_id, chan))
         return round(freq, 5)   # round to 5 decimal places to eliminate accumulated floating point errors
 
     def get_group_str(self, is_group): # Convert is-group bit to human-readable string
