@@ -580,6 +580,13 @@ class osw_receiver(object):
                         self.rx_cc_freq = cc_freq * 1e6
                         if self.debug >= 11:
                             sys.stderr.write("%s [%d] SMARTNET CONTROL CHANNEL 2 sys(0x%04x) cc_freq(%f)\n" % (log_ts.get(), self.msgq_id, system, cc_freq))
+                    # System ID + adjacent/alternate control channel broadcast
+                    elif (osw1_addr & 0xfc00) == 0x6000:
+                        type_str = "ADJACENT" if osw1_grp else "ALTERNATE"
+                        system = osw2_addr
+                        cc_freq = self.get_freq(osw1_addr & 0x3ff)
+                        if self.debug >= 11:
+                            sys.stderr.write("%s [%d] SMARTNET %s CONTROL CHANNEL sys(0x%04x) cc_freq(%f)\n" % (log_ts.get(), self.msgq_id, type_str, system, cc_freq))
                     # Unknown extended function
                     else:
                         code = osw1_addr
