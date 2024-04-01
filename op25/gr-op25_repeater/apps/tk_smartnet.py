@@ -623,14 +623,29 @@ class osw_receiver(object):
             else:
                 # OSW1 did not match, so put it back in the queue
                 self.osw_q.appendleft((osw1_addr, osw1_grp, osw1_cmd, osw1_ch, osw1_f, osw1_t))
-        # Single-OSW voice update
+        # One-OSW system status update
+        elif osw2_cmd == 0x3bf or osw2_cmd == 0x3c0:
+            scope = "SYSTEM" if osw2_cmd == 0x3c0 else "NETWORK"
+            opcode = (osw2_addr & 0xe000) >> 13
+            data = osw2_addr & 0x1fff
+            if opcode == 1:
+                power = (data & 0x1000) >> 12
+                dispatch_timeout = (data & 0xe00) >> 9
+                connect_tone = (data & 0x1e0) >> 5
+                interconnect_timeout = data & 0x1f
+                if self.debug >= 11:
+                    sys.stderr.write("%s [%d] SMARTNET %s STATUS power(%d) connect_tone(%.02f) dispatch_timeout(%d) interconnect_timeout(%d)\n" % (log_ts.get(), self.msgq_id, scope, power, self.get_connect_tone(connect_tone), dispatch_timeout, interconnect_timeout))
+            else:
+                if self.debug >= 11:
+                    sys.stderr.write("%s [%d] SMARTNET %s STATUS type(%s) opcode(0x%x) data(0x%04x)\n" % (log_ts.get(), self.msgq_id, scope, grp2_str, opcode, data))
+        # One-OSW voice update
         elif osw2_ch and osw2_grp:
             dst_tgid = osw2_addr
             vc_freq = osw2_f
             rc |= self.update_voice_frequency(vc_freq, dst_tgid, ts=osw2_t)
             if self.debug >= 11:
                 sys.stderr.write("%s [%d] SMARTNET %s GROUP UPDATE tgid(%05d/0x%03x) vc_freq(%f)\n" % (log_ts.get(), self.msgq_id, self.get_call_options_str(dst_tgid), dst_tgid, dst_tgid >> 4, vc_freq))
-        # Single-OSW control channel broadcast
+        # One-OSW control channel broadcast
         elif osw2_ch and not osw2_grp and ((osw2_addr & 0xff00) == 0x1f00):
             cc_freq = osw2_f
             self.rx_cc_freq = cc_freq * 1e6
