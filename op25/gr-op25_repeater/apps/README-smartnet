@@ -24,7 +24,7 @@ Motorola Type II SmartNet/SmartZone systems send a channel identifier command in
 
 In the USA, most legacy 800Mhz systems should be configured with bandplan set to `800_reband` with no further information necessary.  VHF and UHF systems are considered "Other Band Trunking" (OBT), and require the bandplan set to `OBT` along with values populated in the `bp_` frequency, spacing, and offset parameters.  These can usually be found on the RadioReference wiki as "Custom Frequency Tables" or "Custom Band Plan".
 
-OBT systems may optionally have the nine `bp_tx_` parameters set as well.  These behave identically to the `bp_` parameters but are used to translate subscriber transmit (uplink) numeric IDs to actual frequencies.  This is not required for simply listening to a system; the functionality is added for more involved debugging of outbound service words (OSWs) as may be necessary for a system admin.  Transmit frequencies are logged to stderr along with detailed OSW meanings when verbosity is set to at least 11, or full raw OSWs can be logged with a verbosity of at least 13.
+OBT systems may optionally have the nine `bp_tx_` parameters set as well; if not set they default to values based on the `bp_` parameters.  These behave identically to the `bp_` parameters but are used to translate subscriber transmit (uplink) numeric IDs to actual frequencies.  This is not required for simply listening to a system; the functionality is added for more involved debugging of outbound service words (OSWs) as may be necessary for a system admin.  Transmit frequencies are logged to stderr along with detailed OSW meanings when verbosity is set to at least 11, or full raw OSWs can be logged with a verbosity of at least 13.
 
 Example 1
 ---------
@@ -36,24 +36,7 @@ Anne Arundel County (https://www.radioreference.com/apps/db/?sid=187)
 
 Example 2
 ---------
-OBT (UHF) system with receive-only parameters populated
-
-Federal Medical Center Devens (https://www.radioreference.com/db/sid/6990)
-    "control_channel_list": "406.8125,407.4125,408.25,409.0125",
-    "bandplan": "OBT",
-    "bp_base": 406.0,
-    "bp_base_spacing": 0.0125,
-    "bp_base_offset": 380,
-    "bp_mid": 408.0,
-    "bp_mid_spacing": 0.0125,
-    "bp_mid_offset": 572,
-    "bp_high": 409.0,
-    "bp_high_spacing": 0.0125,
-    "bp_high_offset": 712
-
-Example 3
----------
-OBT (VHF) system with subscriber uplink parameters populated
+OBT (VHF) system with receive-only parameters populated
 
 Bell FleetNet Ontario (https://www.radioreference.com/apps/db/?sid=2560)
     "control_channel_list": "142.500",
@@ -66,16 +49,27 @@ Bell FleetNet Ontario (https://www.radioreference.com/apps/db/?sid=2560)
     "bp_mid_offset": 579,
     "bp_high": 154.320,
     "bp_high_spacing": 0.015,
-    "bp_high_offset": 632,
-    "bp_tx_base": 141.015,
-    "bp_tx_base_spacing": 0.015,
+    "bp_high_offset": 632
+
+Example 3
+---------
+OBT (UHF) system with subscriber uplink parameters populated
+
+Federal Medical Center Devens (https://www.radioreference.com/db/sid/6990)
+    "control_channel_list": "406.8125,407.4125,408.25,409.0125",
+    "bandplan": "OBT",
+    "bp_base": 406.0,
+    "bp_base_spacing": 0.0125,
+    "bp_base_offset": 380,
+    "bp_mid": 409.0,
+    "bp_mid_spacing": 0.0125,
+    "bp_mid_offset": 744,
+    "bp_tx_base": 415.0,
+    "bp_tx_base_spacing": 0.0125,
     "bp_tx_base_offset": 0,
-    "bp_tx_mid": 151.730,
-    "bp_tx_mid_spacing": 0.015,
-    "bp_tx_mid_offset": 199,
-    "bp_tx_high": 154.320,
-    "bp_tx_high_spacing": 0.015,
-    "bp_tx_high_offset": 252
+    "bp_tx_mid": 418.0,
+    "bp_tx_mid_spacing": 0.0125,
+    "bp_tx_mid_offset": 364
 
 Startup
 -------

@@ -321,6 +321,33 @@ class osw_receiver(object):
         rc |= self.expire_talkgroups(curr_time)
         return rc
 
+    def is_obt_system(self): # Is the current config for an OBT system
+        bandplan = from_dict(self.config, 'bandplan', "800_reband")
+        band = bandplan[:3]
+        return band == "OBT" or band == "400" # Still accept '400' for backwards compatibility
+
+    def get_expected_obt_tx_freq(self, rx_freq): # Attempt to auto-compute transmit offsets based on typical USA/Canada band plans
+        # VHF has no standard transmit offset so OBT systems usually use the same base freq, and assign different channel numbers
+        if rx_freq >= 136.0 and rx_freq < 174.0:
+            return rx_freq
+
+        # UHF has standard transmit offsets so OBT systems usually use a different base freq, and assign the same channel number
+        # Common US military
+        if rx_freq >= 380.0 and rx_freq < 406.0:
+            return rx_freq + 10.0
+        # Common US federal
+        if rx_freq >= 406.0 and rx_freq < 420.0:
+            return rx_freq + 9.0
+        # Standard US commercial
+        if rx_freq >= 450.0 and rx_freq < 470.0:
+            return rx_freq + 5.0
+        # Standard US T-band
+        if rx_freq >= 470.0 and rx_freq < 512.0:
+            return rx_freq + 3.0
+
+        # Unknown frequency range, so we can't get an expected value
+        return 0.0
+
     def is_chan(self, chan, is_tx=False): # Is the 'chan' a valid frequency (is_tx for OBT explicit tx channel assignments)
         bandplan = from_dict(self.config, 'bandplan', "800_reband")
         band = bandplan[:3]
@@ -352,7 +379,8 @@ class osw_receiver(object):
         # Short-circuit invalid frequencies
         if not self.is_chan(chan, is_tx):
             if self.debug >= 5:
-                sys.stderr.write("%s [%d] SMARTNET tx chan %d out of range\n" % (log_ts.get(), self.msgq_id, chan))
+                type_str = "transmit" if is_tx else "receive"
+                sys.stderr.write("%s [%d] SMARTNET %s chan %d out of range\n" % (log_ts.get(), self.msgq_id, type_str, chan))
             return 0.0
 
         freq = 0.0
@@ -382,57 +410,70 @@ class osw_receiver(object):
                 freq = 868.9750
             elif chan >= 0x3c1 and chan <= 0x3fe:
                 freq = 867.4250 + (0.025 * (chan - 0x3c1))
-            if is_tx:
+            if is_tx and freq != 0.0:
                 freq -= 45.0 # Standard tx offset for 800 band
 
         elif band == "900":
             freq = 935.0125 + (0.0125 * chan)
-            if is_tx:
+            if is_tx and freq != 0.0:
                 freq -= 39.0 # Standard tx offset for 900 band
 
         elif band == "OBT" or band == "400": # Still accept '400' for backwards compatibility
-            bp_spacing = float(from_dict(self.config, 'bp_spacing', "0.025")) # Back-compat - implies all spacing is the same
+            # For OBT operation, we need a band plan. At minimum the user must provide a base frequency, and either
+            # global or per-range spacing, so we read those directly rather than using from_dict() with a default value.
+
+            # Receive parameters
+            bp_base         = float(self.config['bp_base'])
+            bp_mid          = float(from_dict(self.config, 'bp_mid',  bp_base))
+            bp_high         = float(from_dict(self.config, 'bp_high', bp_mid))
+            # Back-compat: assume all spacing is the same if new per-range spacing is not given
+            if 'bp_spacing' in self.config and not ('bp_base_spacing' in self.config):
+                bp_base_spacing = float(self.config['bp_spacing'])
+            else:
+                bp_base_spacing = float(self.config['bp_base_spacing'])
+            bp_mid_spacing  = float(from_dict(self.config, 'bp_mid_spacing',  bp_base_spacing))
+            bp_high_spacing = float(from_dict(self.config, 'bp_high_spacing', bp_mid_spacing))
+            bp_base_offset  = int(from_dict(self.config,   'bp_base_offset',  380))
+            bp_mid_offset   = int(from_dict(self.config,   'bp_mid_offset',   760))
+            bp_high_offset  = int(from_dict(self.config,   'bp_high_offset',  760))
 
             if not is_tx:
-                bp_base         = float(from_dict(self.config, 'bp_base',        "0.0"))
-                bp_mid          = float(from_dict(self.config, 'bp_mid',         "0.0"))
-                bp_high         = float(from_dict(self.config, 'bp_high',        "0.0"))
-                bp_base_spacing = float(from_dict(self.config, 'bp_base_spacing', bp_spacing))
-                bp_mid_spacing  = float(from_dict(self.config, 'bp_mid_spacing',  bp_spacing))
-                bp_high_spacing = float(from_dict(self.config, 'bp_high_spacing', bp_spacing))
-                bp_base_offset  = int(from_dict(self.config,   'bp_base_offset',  380))
-                bp_mid_offset   = int(from_dict(self.config,   'bp_mid_offset',   760))
-                bp_high_offset  = int(from_dict(self.config,   'bp_high_offset',  760))
-
                 if (chan >= bp_base_offset) and (chan < bp_mid_offset):
-                    freq = bp_base + (bp_base_spacing * (chan - bp_base_offset ))
+                    freq = bp_base + (bp_base_spacing * (chan - bp_base_offset))
                 elif (chan >= bp_mid_offset) and (chan < bp_high_offset):
                     freq = bp_mid + (bp_mid_spacing * (chan - bp_mid_offset))
                 elif (chan >= bp_high_offset) and (chan < 760):
                     freq = bp_high + (bp_high_spacing * (chan - bp_high_offset))
                 else:
                     if self.debug >= 5:
-                        sys.stderr.write("%s [%d] SMARTNET chan %d out of range\n" % (log_ts.get(), self.msgq_id, chan))
+                        sys.stderr.write("%s [%d] SMARTNET receive chan %d out of range\n" % (log_ts.get(), self.msgq_id, chan))
             else:
-                bp_tx_base         = float(from_dict(self.config, 'bp_tx_base',        "0.0"))
-                bp_tx_mid          = float(from_dict(self.config, 'bp_tx_mid',         "0.0"))
-                bp_tx_high         = float(from_dict(self.config, 'bp_tx_high',        "0.0"))
-                bp_tx_base_spacing = float(from_dict(self.config, 'bp_tx_base_spacing', bp_spacing))
-                bp_tx_mid_spacing  = float(from_dict(self.config, 'bp_tx_mid_spacing',  bp_spacing))
-                bp_tx_high_spacing = float(from_dict(self.config, 'bp_tx_high_spacing', bp_spacing))
-                bp_tx_base_offset  = int(from_dict(self.config,   'bp_tx_base_offset',  0))
-                bp_tx_mid_offset   = int(from_dict(self.config,   'bp_tx_mid_offset',   380))
-                bp_tx_high_offset  = int(from_dict(self.config,   'bp_tx_high_offset',  380))
+                # Transmit parameters default to being based off receive parameters
+                bp_tx_base         = float(from_dict(self.config, 'bp_tx_base',         self.get_expected_obt_tx_freq(bp_base)))
+                bp_tx_mid          = float(from_dict(self.config, 'bp_tx_mid',          self.get_expected_obt_tx_freq(bp_mid)))
+                bp_tx_high         = float(from_dict(self.config, 'bp_tx_high',         self.get_expected_obt_tx_freq(bp_high)))
+                bp_tx_base_spacing = float(from_dict(self.config, 'bp_tx_base_spacing', bp_base_spacing))
+                bp_tx_mid_spacing  = float(from_dict(self.config, 'bp_tx_mid_spacing',  bp_mid_spacing))
+                bp_tx_high_spacing = float(from_dict(self.config, 'bp_tx_high_spacing', bp_high_spacing))
+                bp_tx_base_offset  = int(from_dict(self.config,   'bp_tx_base_offset',  bp_base_offset - 380))
+                bp_tx_mid_offset   = int(from_dict(self.config,   'bp_tx_mid_offset',   bp_mid_offset - 380))
+                bp_tx_high_offset  = int(from_dict(self.config,   'bp_tx_high_offset',  bp_high_offset - 380))
 
+                # Only return a frequency if we are given a (or computed an expected) transmit frequency. If not, return
+                # 0.0, which can be handled by the display side.
+                freq = 0.0
                 if (chan >= bp_tx_base_offset) and (chan < bp_tx_mid_offset):
-                    freq = bp_tx_base + (bp_tx_base_spacing * (chan - bp_tx_base_offset ))
+                    if bp_tx_base != 0.0:
+                        freq = bp_tx_base + (bp_tx_base_spacing * (chan - bp_tx_base_offset))
                 elif (chan >= bp_tx_mid_offset) and (chan < bp_tx_high_offset):
-                    freq = bp_tx_mid + (bp_tx_mid_spacing * (chan - bp_tx_mid_offset))
+                    if bp_tx_mid != 0.0:
+                        freq = bp_tx_mid + (bp_tx_mid_spacing * (chan - bp_tx_mid_offset))
                 elif (chan >= bp_tx_high_offset) and (chan < 380):
-                    freq = bp_tx_high + (bp_tx_high_spacing * (chan - bp_tx_high_offset))
+                    if bp_tx_high != 0.0:
+                        freq = bp_tx_high + (bp_tx_high_spacing * (chan - bp_tx_high_offset))
                 else:
                     if self.debug >= 5:
-                        sys.stderr.write("%s [%d] SMARTNET tx chan %d out of range\n" % (log_ts.get(), self.msgq_id, chan))
+                        sys.stderr.write("%s [%d] SMARTNET transmit chan %d out of range\n" % (log_ts.get(), self.msgq_id, chan))
 
         # Round to 5 decimal places to eliminate accumulated floating point errors
         return round(freq, 5)
