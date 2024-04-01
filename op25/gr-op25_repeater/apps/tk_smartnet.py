@@ -613,6 +613,61 @@ class osw_receiver(object):
                             src_rid = osw2_addr
                             if self.debug >= 11:
                                 sys.stderr.write("%s [%d] SMARTNET DEAFFILIATION src(%05d)\n" % (log_ts.get(), self.msgq_id, src_rid))
+                        # Failsoft assign
+                        elif osw1_addr == 0x8301:
+                            tgt_rid = osw2_addr
+                            if self.debug >= 11:
+                                sys.stderr.write("%s [%d] SMARTNET FAILSOFT ASSIGN tgt(%05d)\n" % (log_ts.get(), self.msgq_id, tgt_rid))
+                        # Selector unlocked
+                        elif osw1_addr == 0x8302:
+                            src_rid = osw2_addr
+                            if self.debug >= 11:
+                                sys.stderr.write("%s [%d] SMARTNET SELECTOR UNLOCKED src(%05d)\n" % (log_ts.get(), self.msgq_id, src_rid))
+                        # Selector locked
+                        elif osw1_addr == 0x8303:
+                            src_rid = osw2_addr
+                            if self.debug >= 11:
+                                sys.stderr.write("%s [%d] SMARTNET SELECTOR LOCKED src(%05d)\n" % (log_ts.get(), self.msgq_id, src_rid))
+                        # Failsoft canceled
+                        elif osw1_addr == 0x8305:
+                            src_rid = osw2_addr
+                            if self.debug >= 11:
+                                sys.stderr.write("%s [%d] SMARTNET FAILSOFT CANCELED src(%05d)\n" % (log_ts.get(), self.msgq_id, src_rid))
+                        # Radio inhibited
+                        elif osw1_addr == 0x8307:
+                            src_rid = osw2_addr
+                            if self.debug >= 11:
+                                sys.stderr.write("%s [%d] SMARTNET RADIO INHIBITED src(%05d)\n" % (log_ts.get(), self.msgq_id, src_rid))
+                        # Radio uninhibited
+                        elif osw1_addr == 0x8308:
+                            src_rid = osw2_addr
+                            if self.debug >= 11:
+                                sys.stderr.write("%s [%d] SMARTNET RADIO UNINHIBITED src(%05d)\n" % (log_ts.get(), self.msgq_id, src_rid))
+                        # Selector unlock
+                        elif osw1_addr == 0x8312:
+                            tgt_rid = osw2_addr
+                            if self.debug >= 11:
+                                sys.stderr.write("%s [%d] SMARTNET SELECTOR UNLOCK tgt(%05d)\n" % (log_ts.get(), self.msgq_id, tgt_rid))
+                        # Selector lock
+                        elif osw1_addr == 0x8313:
+                            tgt_rid = osw2_addr
+                            if self.debug >= 11:
+                                sys.stderr.write("%s [%d] SMARTNET SELECTOR LOCK tgt(%05d)\n" % (log_ts.get(), self.msgq_id, tgt_rid))
+                        # Failsoft cancel
+                        elif osw1_addr == 0x8315:
+                            tgt_rid = osw2_addr
+                            if self.debug >= 11:
+                                sys.stderr.write("%s [%d] SMARTNET FAILSOFT CANCEL tgt(%05d)\n" % (log_ts.get(), self.msgq_id, tgt_rid))
+                        # Radio inhibit
+                        elif osw1_addr == 0x8317:
+                            tgt_rid = osw2_addr
+                            if self.debug >= 11:
+                                sys.stderr.write("%s [%d] SMARTNET RADIO INHIBIT tgt(%05d)\n" % (log_ts.get(), self.msgq_id, tgt_rid))
+                        # Radio uninhibit
+                        elif osw1_addr == 0x8318:
+                            tgt_rid = osw2_addr
+                            if self.debug >= 11:
+                                sys.stderr.write("%s [%d] SMARTNET RADIO UNINHIBIT tgt(%05d)\n" % (log_ts.get(), self.msgq_id, tgt_rid))
                         # Unknown extended function
                         else:
                             src_rid = osw2_addr
