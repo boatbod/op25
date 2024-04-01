@@ -523,14 +523,23 @@ class osw_receiver(object):
         osw2_addr, osw2_grp, osw2_cmd, osw2_ch, osw2_f, osw2_t = self.osw_q.popleft()
         grp2_str = self.get_group_str(osw2_grp)
 
-        # Two-OSW command
+        # Two-OSW command (0x308 is standard Type II, 0x309 is Type II masqueraded as Type I, whatever that means)
         if (osw2_cmd == 0x308) or (osw2_cmd == 0x309):
             # Get next OSW in the queue
             osw1_addr, osw1_grp, osw1_cmd, osw1_ch, osw1_f, osw1_t = self.osw_q.popleft()
             grp1_str = self.get_group_str(osw1_grp)
 
+            # Two-OSW system ID + control channel broadcast
+            if osw1_ch and not osw1_grp and ((osw1_addr & 0xff00) == 0x1f00):
+                system = osw2_addr
+                cc_freq = osw1_f
+                data = osw1_addr & 0xff
+                self.rx_sys_id = system
+                self.rx_cc_freq = cc_freq * 1e6
+                if self.debug == 11:
+                    sys.stderr.write("%s [%d] SMARTNET CONTROL CHANNEL 2 sys(0x%04x) cc_freq(%f) data(0x%02x)\n" % (log_ts.get(), self.msgq_id, system, cc_freq, data))
             # Two-OSW analog group voice grant
-            if osw1_ch and osw1_grp and (osw1_addr != 0) and (osw2_addr != 0):
+            elif osw1_ch and osw1_grp and (osw1_addr != 0) and (osw2_addr != 0):
                 src_rid = osw2_addr
                 dst_tgid = osw1_addr
                 vc_freq = osw1_f
