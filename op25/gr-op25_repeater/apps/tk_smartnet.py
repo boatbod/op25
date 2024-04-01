@@ -587,11 +587,27 @@ class osw_receiver(object):
                         cc_freq = self.get_freq(osw1_addr & 0x3ff)
                         if self.debug >= 11:
                             sys.stderr.write("%s [%d] SMARTNET %s CONTROL CHANNEL sys(0x%04x) cc_freq(%f)\n" % (log_ts.get(), self.msgq_id, type_str, system, cc_freq))
-                    # Unknown extended function
+                    # Extended functions on groups
+                    elif osw1_grp:
+                        # Patch/multiselect cancel
+                        if osw1_addr == 0x2021 and (osw2_addr & 0xf == 3 or osw2_addr & 0xf == 7):
+                            type_str = "PATCH" if osw2_addr & 0xf == 3 else "MULTISELECT"
+                            sub_tgid = osw2_addr
+                            if self.debug >= 11:
+                                sys.stderr.write("%s [%d] SMARTNET %s CANCEL sub_tgid(%05d/0x%03x)\n" % (log_ts.get(), self.msgq_id, type_str, sub_tgid, sub_tgid >> 4))
+                        # Unknown extended function
+                        else:
+                            tgid = osw2_addr
+                            code = osw1_addr
+                            if self.debug >= 11:
+                                sys.stderr.write("%s [%d] SMARTNET GROUP EXTENDED FUNCTION tgid(%05d/0x%03x) code(0x%04x)\n" % (log_ts.get(), self.msgq_id, tgid, tgid >> 4, code))
+                    # Extended functions on individuals
                     else:
+                        # Unknown extended function
+                        src_rid = osw2_addr
                         code = osw1_addr
                         if self.debug >= 11:
-                            sys.stderr.write("%s [%d] SMARTNET EXTENDED FUNCTION src(%05d) code(%s,0x%04x)\n" % (log_ts.get(), self.msgq_id, osw2_addr, grp1_str, code))
+                            sys.stderr.write("%s [%d] SMARTNET INDIVIDUAL EXTENDED FUNCTION src(%05d) code(0x%04x)\n" % (log_ts.get(), self.msgq_id, src_rid, code))
             # Two-OSW Type II affiliation
             elif osw1_cmd == 0x310:
                 src_rid = osw2_addr
