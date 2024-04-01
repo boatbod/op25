@@ -744,6 +744,16 @@ class osw_receiver(object):
                     if self.debug >= 11:
                         sys.stderr.write("%s [%d] SMARTNET UNKNOWN OSW (0x%04x,%s,0x%03x)\n" % (log_ts.get(), self.msgq_id, osw2_addr, grp2_str, osw2_cmd))
                         sys.stderr.write("%s [%d] SMARTNET UNKNOWN OSW (0x%04x,%s,0x%03x)\n" % (log_ts.get(), self.msgq_id, osw1_addr, grp1_str, osw1_cmd))
+            # Two-OSW date/time
+            elif osw1_cmd == 0x322:
+                year = ((osw2_addr & 0xfe00) >> 9) + 2000
+                month = (osw2_addr & 0x1e0) >> 5
+                day = osw2_addr & 0x1f
+                data = (osw1_addr & 0xe000) >> 13
+                hour = (osw1_addr & 0x1f00) >> 8
+                minute = osw1_addr & 0xff
+                if self.debug >= 11:
+                    sys.stderr.write("%s [%d] SMARTNET DATE/TIME %04d-%02d-%02d %02d:%02d data(0x%x)\n" % (log_ts.get(), self.msgq_id, year, month, day, hour, minute, data))
             # Two-OSW patch/multiselect
             elif osw1_cmd == 0x340 and (osw2_addr & 0xf == 3 or osw2_addr & 0xf == 7):
                 type_str = "PATCH" if osw2_addr & 0xf == 3 else "MULTISELECT"
