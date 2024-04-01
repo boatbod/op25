@@ -717,7 +717,7 @@ class osw_receiver(object):
     def to_json(self):  # ugly but required for compatibility with P25 trunking and terminal modules
         d = {}
         d['system']         = self.sysname
-        d['top_line']       = 'Smartnet/Smartzone SysId %04x' % (self.rx_sys_id if self.rx_sys_id is not None else 0)
+        d['top_line']       = 'SmartNet/SmartZone SysId %04x' % (self.rx_sys_id if self.rx_sys_id is not None else 0)
         d['top_line']      += ' Control Ch %f' % ((self.rx_cc_freq if self.rx_cc_freq is not None else self.cc_list[self.cc_index]) / 1e6)
         d['top_line']      += ' OSW count %d' % (self.stats['osw_count'])
         d['secondary']      = ""
@@ -726,7 +726,7 @@ class osw_receiver(object):
         d['last_tsbk'] = self.last_osw
         t = time.time()
         for f in list(self.voice_frequencies.keys()):
-            d['frequencies'][f] = 'voice frequency %f tgid %5d %4.1fs ago count %d' %  ((f/1e6), self.voice_frequencies[f]['tgid'], t - self.voice_frequencies[f]['time'], self.voice_frequencies[f]['counter'])
+            d['frequencies'][f] = 'voice frequency %f tgid [%5d 0x%03x] %5.1fs ago count %d' %  ((f/1e6), self.voice_frequencies[f]['tgid'], self.voice_frequencies[f]['tgid'] >> 4, t - self.voice_frequencies[f]['time'], self.voice_frequencies[f]['counter'])
 
             d['frequency_data'][f] = {'tgids': [self.voice_frequencies[f]['tgid']], 'last_activity': '%7.1f' % (t - self.voice_frequencies[f]['time']), 'counter': self.voice_frequencies[f]['counter']}
         d['adjacent_data'] = ""
