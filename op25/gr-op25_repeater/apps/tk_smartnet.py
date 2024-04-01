@@ -726,7 +726,10 @@ class osw_receiver(object):
         d['last_tsbk'] = self.last_osw
         t = time.time()
         for f in list(self.voice_frequencies.keys()):
-            d['frequencies'][f] = 'voice frequency %f tgid [%5d 0x%03x] %5.1fs ago count %d' %  ((f/1e6), self.voice_frequencies[f]['tgid'], self.voice_frequencies[f]['tgid'] >> 4, t - self.voice_frequencies[f]['time'], self.voice_frequencies[f]['counter'])
+            if t - self.voice_frequencies[f]['time'] < 1.0:
+                d['frequencies'][f] = 'voice frequency %f tgid [%5d 0x%03x] %5.1fs ago count %d' %  ((f/1e6), self.voice_frequencies[f]['tgid'], self.voice_frequencies[f]['tgid'] >> 4, t - self.voice_frequencies[f]['time'], self.voice_frequencies[f]['counter'])
+            else:
+                d['frequencies'][f] = 'voice frequency %f tgid [           ] %5.1fs ago count %d' %  ((f/1e6), t - self.voice_frequencies[f]['time'], self.voice_frequencies[f]['counter'])
 
             d['frequency_data'][f] = {'tgids': [self.voice_frequencies[f]['tgid']], 'last_activity': '%7.1f' % (t - self.voice_frequencies[f]['time']), 'counter': self.voice_frequencies[f]['counter']}
         d['adjacent_data'] = ""
