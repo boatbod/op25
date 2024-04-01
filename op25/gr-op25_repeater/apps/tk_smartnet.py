@@ -608,6 +608,11 @@ class osw_receiver(object):
                             tgt_rid = osw2_addr
                             if self.debug >= 11:
                                 sys.stderr.write("%s [%d] SMARTNET RADIO CHECK tgt(%05d)\n" % (log_ts.get(), self.msgq_id, tgt_rid))
+                        # Deaffiliation
+                        elif osw1_addr == 0x261c:
+                            src_rid = osw2_addr
+                            if self.debug >= 11:
+                                sys.stderr.write("%s [%d] SMARTNET DEAFFILIATION src(%05d)\n" % (log_ts.get(), self.msgq_id, src_rid))
                         # Unknown extended function
                         else:
                             src_rid = osw2_addr
