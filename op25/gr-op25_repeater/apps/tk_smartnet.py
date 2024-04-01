@@ -614,6 +614,16 @@ class osw_receiver(object):
                     if self.debug >= 11:
                         sys.stderr.write("%s [%d] SMARTNET UNKNOWN OSW (0x%04x,%s,0x%03x)\n" % (log_ts.get(), self.msgq_id, osw2_addr, grp2_str, osw2_cmd))
                         sys.stderr.write("%s [%d] SMARTNET UNKNOWN OSW (0x%04x,%s,0x%03x)\n" % (log_ts.get(), self.msgq_id, osw1_addr, grp1_str, osw1_cmd))
+            # Two-OSW patch/multiselect
+            elif osw1_cmd == 0x340 and (osw2_addr & 0xf == 3 or osw2_addr & 0xf == 7):
+                type_str = "PATCH" if osw2_addr & 0xf == 3 else "MULTISELECT"
+                tgid = (osw1_addr & 0xfff) << 4
+                sub_tgid = osw2_addr & 0xfff0
+                if self.debug >= 11:
+                    if tgid == sub_tgid:
+                        sys.stderr.write("%s [%d] SMARTNET %s tgid(%05d/0x%03x)\n" % (log_ts.get(), self.msgq_id, type_str, tgid, tgid >> 4))
+                    else:
+                        sys.stderr.write("%s [%d] SMARTNET %s tgid(%05d/0x%03x) sub_tgid(%05d/0x%03x)\n" % (log_ts.get(), self.msgq_id, type_str, tgid, tgid >> 4, sub_tgid, sub_tgid >> 4))
             else:
                 # OSW1 did not match, so put it back in the queue
                 self.osw_q.appendleft((osw1_addr, osw1_grp, osw1_cmd, osw1_ch, osw1_f, osw1_t))
