@@ -321,7 +321,6 @@ class osw_receiver(object):
         rc |= self.expire_talkgroups(curr_time)
         return rc
 
-    def is_chan(self, chan): # Is the 'chan' a valid frequency
     def is_chan(self, chan, is_tx=False): # Is the 'chan' a valid frequency (is_tx for OBT explicit tx channel assignments)
         bandplan = from_dict(self.config, 'bandplan', "800_reband")
         band = bandplan[:3]
@@ -550,10 +549,10 @@ class osw_receiver(object):
                         self.rx_sys_id = system
                         self.rx_cc_freq = cc_freq * 1e6
                         if self.debug >= 11:
+                            sys.stderr.write("%s [%d] SMARTNET CONTROL CHANNEL sys(0x%04x) cc_freq(%f)\n" % (log_ts.get(), self.msgq_id, system, cc_freq))
                     # Unknown extended function
                     else:
                         code = osw1_addr
-                            sys.stderr.write("%s [%d] SMARTNET CONTROL CHANNEL sys(0x%04x) cc_freq(%f)\n" % (log_ts.get(), self.msgq_id, system, cc_freq))
                         if self.debug >= 11:
                             sys.stderr.write("%s [%d] SMARTNET EXTENDED FUNCTION src(%05d) code(%s,0x%04x)\n" % (log_ts.get(), self.msgq_id, osw2_addr, grp1_str, code))
             # Two-OSW Type II affiliation
