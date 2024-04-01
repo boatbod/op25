@@ -581,13 +581,14 @@ class osw_receiver(object):
                 dst_tgid = osw1_addr & 0xfff0
                 if self.debug >= 11:
                     sys.stderr.write("%s [%d] SMARTNET AFFILIATION src(%05d) tgid(%05d/0x%03x)\n" % (log_ts.get(), self.msgq_id, src_rid, dst_tgid, dst_tgid >> 4))
-            # Two- or three-OSW system information
+            # Three-OSW system information
             elif osw1_cmd == 0x320:
                 # Get OSW0
                 osw0_addr, osw0_grp, osw0_cmd, osw0_ch, osw0_f, osw0_t = self.osw_q.popleft()
 
                 # The information returned here may be for this site, or may be for other adjacent sites
                 if osw0_cmd == 0x30b and osw0_addr & 0xfc00 == 0x6000:
+                    type_str = "ADJACENT SITE" if osw0_grp else "ALTERNATE CONTROL CHANNEL"
                     sysid = osw2_addr
                     # Sites are encoded as 0-indexed but usually referred to as 1-indexed
                     site = ((osw1_addr & 0xfc00) >> 10) + 1
@@ -595,10 +596,11 @@ class osw_receiver(object):
                     feat = osw1_addr & 0x3f
                     cc_freq = self.get_freq(osw0_addr & 0x03ff)
                     if self.debug >= 11:
-                        sys.stderr.write("%s [%d] SMARTNET SYSTEM sys(0x%04x) site(%02d) band(%s) features(0x%02x) cc_freq(%f)\n" % (log_ts.get(), self.msgq_id, sysid, site, self.get_band(band), feat, cc_freq))
+                        sys.stderr.write("%s [%d] SMARTNET %s sys(0x%04x) site(%02d) band(%s) features(0x%02x) cc_freq(%f)\n" % (log_ts.get(), self.msgq_id, type_str, sysid, site, self.get_band(band), feat, cc_freq))
                 else:
                     # Put back unused OSW0
                     self.osw_q.appendleft((osw0_addr, osw0_grp, osw0_cmd, osw0_ch, osw0_f, osw0_t))
+
                     if self.debug >= 11:
                         sys.stderr.write("%s [%d] SMARTNET UNKNOWN OSW (0x%04x,%s,0x%03x)\n" % (log_ts.get(), self.msgq_id, osw2_addr, grp2_str, osw2_cmd))
                         sys.stderr.write("%s [%d] SMARTNET UNKNOWN OSW (0x%04x,%s,0x%03x)\n" % (log_ts.get(), self.msgq_id, osw1_addr, grp1_str, osw1_cmd))
