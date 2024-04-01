@@ -623,6 +623,11 @@ class osw_receiver(object):
             else:
                 # OSW1 did not match, so put it back in the queue
                 self.osw_q.appendleft((osw1_addr, osw1_grp, osw1_cmd, osw1_ch, osw1_f, osw1_t))
+        # One-OSW system ID
+        elif osw2_cmd == 0x32b and not osw2_grp:
+            system = osw2_addr
+            if self.debug >= 11:
+                sys.stderr.write("%s [%d] SMARTNET SYSTEM sys(0x%04x)\n" % (log_ts.get(), self.msgq_id, system))
         # One-OSW system status update
         elif osw2_cmd == 0x3bf or osw2_cmd == 0x3c0:
             scope = "SYSTEM" if osw2_cmd == 0x3c0 else "NETWORK"
