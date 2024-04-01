@@ -562,10 +562,11 @@ class osw_receiver(object):
                 if osw0_ch and (osw0_addr & 0xff00) == 0x1f00 and (osw1_addr & 0xfc00) == 0x2800 and (osw1_addr & 0x3ff) == osw0_cmd:
                     system = osw2_addr
                     cc_freq = osw0_f
+                    data = osw0_addr & 0xff
                     self.rx_sys_id = system
                     self.rx_cc_freq = cc_freq * 1e6
                     if self.debug >= 11:
-                        sys.stderr.write("%s [%d] SMARTNET CONTROL CHANNEL 3 sys(0x%04x) cc_freq(%f)\n" % (log_ts.get(), self.msgq_id, system, cc_freq))
+                        sys.stderr.write("%s [%d] SMARTNET CONTROL CHANNEL 3 sys(0x%04x) cc_freq(%f) data(0x%02x)\n" % (log_ts.get(), self.msgq_id, system, cc_freq, data))
                 # Two-OSW messages
                 else:
                     # Put back unused OSW0
