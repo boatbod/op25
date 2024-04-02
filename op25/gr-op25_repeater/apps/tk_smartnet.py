@@ -368,7 +368,7 @@ class osw_receiver(object):
             bp_tx_base_offset = int(from_dict(self.config, 'bp_tx_base_offset', 0))
             if is_tx and (chan >= bp_tx_base_offset) and (chan < 380):
                 return True
-            elif (chan >= bp_base_offset) and (chan < 760):
+            elif not is_tx and (chan >= bp_base_offset) and (chan < 760):
                 return True
             else:
                 return False
