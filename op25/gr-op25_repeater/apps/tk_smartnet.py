@@ -1019,7 +1019,7 @@ class osw_receiver(object):
 
             # Only show TGID if we believe the call is currently ongoing
             if t - self.voice_frequencies[f]['time'] < 1.0:
-                d['frequencies'][f] = 'voice frequency %f tgid [%5d 0x%03x] %s count %d' %  ((f/1e6), self.voice_frequencies[f]['tgid'], self.voice_frequencies[f]['tgid'] >> 4, time_ago_str, self.voice_frequencies[f]['counter'])
+                d['frequencies'][f] = 'voice frequency %f tgid [%5d 0x%03x]   Now     count %d' %  ((f/1e6), self.voice_frequencies[f]['tgid'], self.voice_frequencies[f]['tgid'] >> 4, time_ago_str, self.voice_frequencies[f]['counter'])
             else:
                 d['frequencies'][f] = 'voice frequency %f tgid [           ] %s count %d' %  ((f/1e6), time_ago_str, self.voice_frequencies[f]['counter'])
 
