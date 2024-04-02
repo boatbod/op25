@@ -458,6 +458,26 @@ class osw_receiver(object):
         else:
             return "%s" % (band)
 
+    def get_connect_tone(self, connect_tone_index): # Convert index into connect tone (Hz)
+        if connect_tone_index == 0:
+            return 105.88
+        elif connect_tone_index == 1:
+            return 76.60
+        elif connect_tone_index == 2:
+            return 83.72
+        elif connect_tone_index == 3:
+            return 90.00
+        elif connect_tone_index == 4:
+            return 97.30
+        elif connect_tone_index == 5:
+            return 116.13
+        elif connect_tone_index == 6:
+            return 128.57
+        elif connect_tone_index == 7:
+            return 138.46
+        else:
+            return None
+
     def get_call_options_str(self, tgid): # Convert TGID into a string showing the call options
         is_encrypted = (tgid & 0x8) >> 3
         options = tgid & 0x7
