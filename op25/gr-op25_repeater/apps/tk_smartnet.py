@@ -840,6 +840,12 @@ class osw_receiver(object):
                             code = osw1_addr
                             if self.debug >= 11:
                                 sys.stderr.write("%s [%d] SMARTNET INDIVIDUAL EXTENDED FUNCTION src(%05d) code(0x%04x)\n" % (log_ts.get(), self.msgq_id, src_rid, code))
+            # Two-OSW dynamic regroup
+            elif osw1_cmd == 0x30a:
+                src_rid = osw2_addr
+                tgid = osw1_addr
+                if self.debug >= 11:
+                    sys.stderr.write("%s [%d] SMARTNET DYNAMIC REGROUP src(%05d) tgid(%05d/0x%03x)\n" % (log_ts.get(), self.msgq_id, src_rid, tgid, tgid >> 4))
             # Two-OSW Type II affiliation
             elif osw1_cmd == 0x310:
                 src_rid = osw2_addr
