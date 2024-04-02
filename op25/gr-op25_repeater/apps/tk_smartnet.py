@@ -519,9 +519,40 @@ class osw_receiver(object):
         else:
             return None
 
+    def get_features_str(self, feat): # Convert features into a string showing the meaning
+        failsoft    = (feat & 0x31 == 0)
+        voc         = (feat & 0x20) >> 5
+        wide_area   = (feat & 0x10) >> 4
+        digital     = (feat & 0x8) >> 3
+        analog      = (feat & 0x4) >> 2
+        cvsd        = (feat & 0x2) >> 1
+        active      = (feat & 0x1)
+
+        feat_str = ""
+
+        if failsoft:
+            feat_str += "failsoft, "
+        else:
+            if voc:
+                feat_str += "VOC, "
+            if wide_area:
+                feat_str += "wide area, "
+            else:
+                feat_str += "site trunk, "
+        if digital:
+            feat_str += "digital, "
+        if analog:
+            feat_str += "analog, "
+        if cvsd:
+            feat_str += "CVSD, "
+        if active:
+            feat_str += "active, "
+
+        return feat_str[:-2]
+
     def get_call_options_str(self, tgid): # Convert TGID into a string showing the call options
         is_encrypted = (tgid & 0x8) >> 3
-        options = tgid & 0x7
+        options      = (tgid & 0x7)
 
         options_str = "ENCRYPTED" if is_encrypted else "CLEAR"
 
@@ -808,12 +839,48 @@ class osw_receiver(object):
             opcode = (osw2_addr & 0xe000) >> 13
             data = osw2_addr & 0x1fff
             if opcode == 1:
-                power = (data & 0x1000) >> 12
-                dispatch_timeout = (data & 0xe00) >> 9
-                connect_tone = (data & 0x1e0) >> 5
-                interconnect_timeout = data & 0x1f
+                bit12                = (data & 0x1000) >> 12
+                dispatch_timeout     = (data & 0xe00) >> 9
+                connect_tone         = (data & 0x1e0) >> 5
+                interconnect_timeout = (data & 0x1f)
                 if self.debug >= 11:
-                    sys.stderr.write("%s [%d] SMARTNET %s STATUS power(%d) connect_tone(%.02f) dispatch_timeout(%d) interconnect_timeout(%d)\n" % (log_ts.get(), self.msgq_id, scope, power, self.get_connect_tone(connect_tone), dispatch_timeout, interconnect_timeout))
+                    sys.stderr.write("%s [%d] SMARTNET %s STATUS connect_tone(%.02f) dispatch_timeout(%d) interconnect_timeout(%d) bit12(%d)\n" % (log_ts.get(), self.msgq_id, scope, self.get_connect_tone(connect_tone), dispatch_timeout, interconnect_timeout, bit12))
+            elif opcode == 2:
+                no_secure        = (data & 0x1000) >> 12
+                secure_upgrade   = (data & 0x800) >> 11
+                full_data        = (data & 0x400) >> 10
+                no_data          = (data & 0x200) >> 9
+                reduced_otar     = (data & 0x100) >> 8
+                multikey_buf_b   = (data & 0x80) >> 7
+                bit6             = (data & 0x40) >> 6
+                cvsd_echo_delay  = (data & 0x3e) >> 1
+                bit0             = (data & 0x1)
+                # Try to make it more human-readable
+                secure_str       = "None" if no_secure else ("Upgraded" if secure_upgrade else "Standard")
+                data_str         = "None" if no_data else ("Full" if full_data else "Reduced")
+                otar_str         = "Reduced" if reduced_otar else "Full"
+                multikey_buf_str = "B" if multikey_buf_b else "A"
+                if self.debug >= 11:
+                    sys.stderr.write("%s [%d] SMARTNET %s STATUS data(%s) secure(%s)" % (log_ts.get(), self.msgq_id, scope, data_str, secure_str))
+                    # If we have secure enabled
+                    if no_secure == 0:
+                        # If we have data enabled
+                        if no_data == 0:
+                            sys.stderr.write(" otar(%s)" % (otar_str))
+                        sys.stderr.write(" multikey_buf(%s) cvsd_echo_delay(%02d)" % (multikey_buf_str, cvsd_echo_delay))
+                    sys.stderr.write(" bit6(%x) bit0(%x)\n" % (bit6, bit0))
+            elif opcode == 3:
+                rotation     = (data & 0x800) >> 11
+                wide_pulse   = (data & 0x400) >> 10
+                cvsd_mod_4   = (data & 0x200) >> 9
+                cvsd_mod_str = "4" if cvsd_mod_4 else "2"
+                trespass     = (data & 0x100) >> 8
+                voc          = (data & 0x80) >> 7
+                bit2_6       = (data & 0x7c) >> 2
+                site_trunk   = (data & 0x2) >> 1
+                wide_area    = (data & 0x1)
+                if self.debug >= 11:
+                    sys.stderr.write("%s [%d] SMARTNET %s STATUS rotation(%d) wide_pulse(%d) cvsd_mod(%s) trespass(%d) voc(%d) site_trunk(%d) wide_area(%d) bit2_6(%x)\n" % (log_ts.get(), self.msgq_id, scope, rotation, wide_pulse, cvsd_mod_str, trespass, voc, site_trunk, wide_area, bit2_6))
             else:
                 if self.debug >= 11:
                     sys.stderr.write("%s [%d] SMARTNET %s STATUS type(%s) opcode(0x%x) data(0x%04x)\n" % (log_ts.get(), self.msgq_id, scope, grp2_str, opcode, data))
