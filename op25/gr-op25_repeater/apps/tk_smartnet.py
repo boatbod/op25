@@ -885,7 +885,7 @@ class osw_receiver(object):
                 hour   = (osw1_addr & 0x1f00) >> 8
                 minute = osw1_addr & 0xff
                 if self.debug >= 11:
-                    sys.stderr.write("%s [%d] SMARTNET DATE/TIME %04d-%02d-%02d %02d:%02d data(0x%x)\n" % (log_ts.get(), self.msgq_id, year, month, day, hour, minute, data))
+                    sys.stderr.write("%s [%d] SMARTNET DATE/TIME %04d-%02d-%02d %02d:%02d data(0x%1x)\n" % (log_ts.get(), self.msgq_id, year, month, day, hour, minute, data))
             # Two-OSW patch/multiselect
             elif osw1_cmd == 0x340 and (osw2_addr & 0xf == 3 or osw2_addr & 0xf == 7):
                 type_str = "PATCH" if osw2_addr & 0xf == 3 else "MULTISELECT"
@@ -963,7 +963,7 @@ class osw_receiver(object):
                         if no_data == 0:
                             sys.stderr.write(" otar(%s)" % (otar_str))
                         sys.stderr.write(" multikey_buf(%s) cvsd_echo_delay(%02d)" % (multikey_buf_str, cvsd_echo_delay))
-                    sys.stderr.write(" bit6(%x) bit0(%x)\n" % (bit6, bit0))
+                    sys.stderr.write(" bit6(%d) bit0(%d)\n" % (bit6, bit0))
             elif opcode == 3:
                 rotation     = (data & 0x800) >> 11
                 wide_pulse   = (data & 0x400) >> 10
@@ -975,7 +975,7 @@ class osw_receiver(object):
                 site_trunk   = (data & 0x2) >> 1
                 wide_area    = (data & 0x1)
                 if self.debug >= 11:
-                    sys.stderr.write("%s [%d] SMARTNET %s STATUS rotation(%d) wide_pulse(%d) cvsd_mod(%s) trespass(%d) voc(%d) site_trunk(%d) wide_area(%d) bit2_6(%x)\n" % (log_ts.get(), self.msgq_id, scope, rotation, wide_pulse, cvsd_mod_str, trespass, voc, site_trunk, wide_area, bit2_6))
+                    sys.stderr.write("%s [%d] SMARTNET %s STATUS rotation(%d) wide_pulse(%d) cvsd_mod(%s) trespass(%d) voc(%d) site_trunk(%d) wide_area(%d) bit2_6(0x%2x)\n" % (log_ts.get(), self.msgq_id, scope, rotation, wide_pulse, cvsd_mod_str, trespass, voc, site_trunk, wide_area, bit2_6))
             else:
                 if self.debug >= 11:
                     sys.stderr.write("%s [%d] SMARTNET %s STATUS type(%s) opcode(0x%x) data(0x%04x)\n" % (log_ts.get(), self.msgq_id, scope, grp2_str, opcode, data))
@@ -1079,7 +1079,7 @@ class osw_receiver(object):
     def to_json(self):  # ugly but required for compatibility with P25 trunking and terminal modules
         d = {}
         d['system']         = self.sysname
-        d['top_line']       = 'SmartNet/SmartZone SysId %04x' % (self.rx_sys_id if self.rx_sys_id is not None else 0)
+        d['top_line']       = 'SmartNet/SmartZone SysId 0x%04x' % (self.rx_sys_id if self.rx_sys_id is not None else 0)
         d['top_line']      += ' Control Ch %f' % ((self.rx_cc_freq if self.rx_cc_freq is not None else self.cc_list[self.cc_index]) / 1e6)
         d['top_line']      += ' OSW count %d' % (self.stats['osw_count'])
         d['secondary']      = ""
@@ -1100,7 +1100,7 @@ class osw_receiver(object):
                 time_ago_str = "%4.1fd ago" % (time_ago / 60.0 / 60.0 / 24.0)
 
             # Only show TGID if we believe the call is currently ongoing
-            if t - self.voice_frequencies[f]['time'] < 1.0:
+            if t - self.voice_frequencies[f]['time'] < TGID_EXPIRY_TIME:
                 d['frequencies'][f] = 'voice frequency %f tgid [%5d 0x%03x]   Now     count %d' %  ((f/1e6), self.voice_frequencies[f]['tgid'], self.voice_frequencies[f]['tgid'] >> 4, self.voice_frequencies[f]['counter'])
             else:
                 d['frequencies'][f] = 'voice frequency %f tgid [           ] %s count %d' %  ((f/1e6), time_ago_str, self.voice_frequencies[f]['counter'])
