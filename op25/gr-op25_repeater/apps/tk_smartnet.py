@@ -828,6 +828,12 @@ class osw_receiver(object):
                             tgt_rid = osw2_addr
                             if self.debug >= 11:
                                 sys.stderr.write("%s [%d] SMARTNET RADIO UNINHIBIT tgt(%05d)\n" % (log_ts.get(), self.msgq_id, tgt_rid))
+                        # Denial
+                        elif (osw1_addr & 0xfc00) == 0x2c00:
+                            src_rid = osw2_addr
+                            reason = osw1_addr & 0x3ff
+                            if self.debug >= 11:
+                                sys.stderr.write("%s [%d] SMARTNET DENIED src(%05d) code(0x%03x)\n" % (log_ts.get(), self.msgq_id, src_rid, reason))
                         # Unknown extended function
                         else:
                             src_rid = osw2_addr
