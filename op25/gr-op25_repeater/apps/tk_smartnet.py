@@ -933,12 +933,24 @@ class osw_receiver(object):
         d['last_tsbk'] = self.last_osw
         t = time.time()
         for f in list(self.voice_frequencies.keys()):
-            if t - self.voice_frequencies[f]['time'] < 1.0:
-                d['frequencies'][f] = 'voice frequency %f tgid [%5d 0x%03x] %5.1fs ago count %d' %  ((f/1e6), self.voice_frequencies[f]['tgid'], self.voice_frequencies[f]['tgid'] >> 4, t - self.voice_frequencies[f]['time'], self.voice_frequencies[f]['counter'])
+            # Show time in appropriate units based on how long ago - useful for some high-capacity/low-traffic sites
+            time_ago = t - self.voice_frequencies[f]['time']
+            if time_ago < (60.0):
+                time_ago_str = "%4.1fs ago" % (time_ago)
+            elif time_ago < (60.0 * 60.0):
+                time_ago_str = "%4.1fm ago" % (time_ago / 60.0)
+            elif time_ago < (60.0 * 60.0 * 24.0):
+                time_ago_str = "%4.1fh ago" % (time_ago / 60.0 / 60.0)
             else:
-                d['frequencies'][f] = 'voice frequency %f tgid [           ] %5.1fs ago count %d' %  ((f/1e6), t - self.voice_frequencies[f]['time'], self.voice_frequencies[f]['counter'])
+                time_ago_str = "%4.1fd ago" % (time_ago / 60.0 / 60.0 / 24.0)
 
-            d['frequency_data'][f] = {'tgids': [self.voice_frequencies[f]['tgid']], 'last_activity': '%7.1f' % (t - self.voice_frequencies[f]['time']), 'counter': self.voice_frequencies[f]['counter']}
+            # Only show TGID if we believe the call is currently ongoing
+            if t - self.voice_frequencies[f]['time'] < 1.0:
+                d['frequencies'][f] = 'voice frequency %f tgid [%5d 0x%03x] %s count %d' %  ((f/1e6), self.voice_frequencies[f]['tgid'], self.voice_frequencies[f]['tgid'] >> 4, time_ago_str, self.voice_frequencies[f]['counter'])
+            else:
+                d['frequencies'][f] = 'voice frequency %f tgid [           ] %s count %d' %  ((f/1e6), time_ago_str, self.voice_frequencies[f]['counter'])
+
+            d['frequency_data'][f] = {'tgids': [self.voice_frequencies[f]['tgid']], 'last_activity': '%7.1f' % (time_ago), 'counter': self.voice_frequencies[f]['counter']}
         d['adjacent_data'] = ""
         return json.dumps(d)
 
