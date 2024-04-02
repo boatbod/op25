@@ -587,7 +587,7 @@ class osw_receiver(object):
             rx_freq = self.get_freq(cmd)
         if is_tx_chan:
             tx_freq = self.get_freq(cmd, is_tx=True)
-        
+
         if self.debug >= 13:
             if is_rx_chan and is_tx_chan:
                 sys.stderr.write("%s [%d] SMARTNET RAW OSW (0x%04x,%s,0x%03x;rx:%f,tx:%f)\n" % (log_ts.get(), self.msgq_id, addr, grp_str, cmd, rx_freq, tx_freq))
@@ -716,7 +716,7 @@ class osw_receiver(object):
             elif osw1_cmd == 0x30b:
                 # Get next OSW in the queue
                 osw0_addr, osw0_grp, osw0_cmd, osw0_ch_rx, osw0_ch_tx, osw0_f_rx, osw0_f_tx, osw0_t = self.osw_q.popleft()
-                
+
                 # Three-OSW system ID + control channel broadcast
                 if osw0_ch_rx and (osw0_addr & 0xff00) == 0x1f00 and (osw1_addr & 0xfc00) == 0x2800 and (osw1_addr & 0x3ff) == osw0_cmd:
                     system = osw2_addr
@@ -851,10 +851,10 @@ class osw_receiver(object):
                     # Sites are encoded as 0-indexed but usually referred to as 1-indexed
                     site = ((osw1_addr & 0xfc00) >> 10) + 1
                     band = (osw1_addr & 0x380) >> 7
-                    feat = osw1_addr & 0x3f
+                    feat = (osw1_addr & 0x3f)
                     cc_freq = self.get_freq(osw0_addr & 0x03ff)
                     if self.debug >= 11:
-                        sys.stderr.write("%s [%d] SMARTNET %s sys(0x%04x) site(%02d) band(%s) features(0x%02x) cc_freq(%f)\n" % (log_ts.get(), self.msgq_id, type_str, sysid, site, self.get_band(band), feat, cc_freq))
+                        sys.stderr.write("%s [%d] SMARTNET %s sys(0x%04x) site(%02d) band(%s) features(%s) cc_freq(%f)\n" % (log_ts.get(), self.msgq_id, type_str, sysid, site, self.get_band(band), self.get_features_str(feat), cc_freq))
                 else:
                     # Put back unused OSW0
                     self.osw_q.appendleft((osw0_addr, osw0_grp, osw0_cmd, osw0_ch_rx, osw0_ch_tx, osw0_f_rx, osw0_f_tx, osw0_t))
@@ -864,11 +864,11 @@ class osw_receiver(object):
                         sys.stderr.write("%s [%d] SMARTNET UNKNOWN OSW (0x%04x,%s,0x%03x)\n" % (log_ts.get(), self.msgq_id, osw1_addr, grp1_str, osw1_cmd))
             # Two-OSW date/time
             elif osw1_cmd == 0x322:
-                year = ((osw2_addr & 0xfe00) >> 9) + 2000
-                month = (osw2_addr & 0x1e0) >> 5
-                day = osw2_addr & 0x1f
-                data = (osw1_addr & 0xe000) >> 13
-                hour = (osw1_addr & 0x1f00) >> 8
+                year   = ((osw2_addr & 0xfe00) >> 9) + 2000
+                month  = (osw2_addr & 0x1e0) >> 5
+                day    = (osw2_addr & 0x1f)
+                data   = (osw1_addr & 0xe000) >> 13
+                hour   = (osw1_addr & 0x1f00) >> 8
                 minute = osw1_addr & 0xff
                 if self.debug >= 11:
                     sys.stderr.write("%s [%d] SMARTNET DATE/TIME %04d-%02d-%02d %02d:%02d data(0x%x)\n" % (log_ts.get(), self.msgq_id, year, month, day, hour, minute, data))
