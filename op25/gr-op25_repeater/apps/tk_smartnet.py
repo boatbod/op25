@@ -643,6 +643,20 @@ class osw_receiver(object):
                     if self.debug >= 11:
                         sys.stderr.write("%s [%d] SMARTNET UNKNOWN OSW (0x%04x,%s,0x%03x)\n" % (log_ts.get(), self.msgq_id, osw2_addr, grp2_str, osw2_cmd))
                         sys.stderr.write("%s [%d] SMARTNET UNKNOWN OSW (0x%04x,%s,0x%03x)\n" % (log_ts.get(), self.msgq_id, osw1_addr, grp1_str, osw1_cmd))
+            # Two-OSW group voice grant command
+            elif osw1_ch_rx and osw1_grp and (osw1_addr != 0) and (osw2_addr != 0):
+                mode = 0 if osw2_grp else 1
+                type_str = "ANALOG" if osw2_grp else "DIGITAL"
+                src_rid = osw2_addr
+                dst_tgid = osw1_addr
+                vc_rx_freq = osw1_f_rx
+                vc_tx_freq = osw2_f_tx
+                rc |= self.update_voice_frequency(vc_rx_freq, dst_tgid, src_rid, mode=mode, ts=osw1_t)
+                if self.debug >= 11:
+                    if vc_tx_freq != 0.0:
+                        sys.stderr.write("%s [%d] SMARTNET OBT %s %s GROUP GRANT src(%05d) tgid(%05d/0x%03x) vc_rx_freq(%f) vc_tx_freq(%f)\n" % (log_ts.get(), self.msgq_id, type_str, self.get_call_options_str(dst_tgid), src_rid, dst_tgid, dst_tgid >> 4, vc_rx_freq, vc_tx_freq))
+                    else:
+                        sys.stderr.write("%s [%d] SMARTNET OBT %s %s GROUP GRANT src(%05d) tgid(%05d/0x%03x) vc_rx_freq(%f)\n" % (log_ts.get(), self.msgq_id, type_str, self.get_call_options_str(dst_tgid), src_rid, dst_tgid, dst_tgid >> 4, vc_rx_freq))
             else:
                 # Put back unused OSW1
                 self.osw_q.appendleft((osw1_addr, osw1_grp, osw1_cmd, osw1_ch_rx, osw1_ch_tx, osw1_f_rx, osw1_f_tx, osw1_t))
