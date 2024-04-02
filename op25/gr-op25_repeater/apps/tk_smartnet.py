@@ -641,8 +641,9 @@ class osw_receiver(object):
                     self.osw_q.appendleft((osw0_addr, osw0_grp, osw0_cmd, osw0_ch_rx, osw0_ch_tx, osw0_f_rx, osw0_f_tx, osw0_t))
 
                     if self.debug >= 11:
-                        sys.stderr.write("%s [%d] SMARTNET UNKNOWN OSW (0x%04x,%s,0x%03x)\n" % (log_ts.get(), self.msgq_id, osw2_addr, grp2_str, osw2_cmd))
-                        sys.stderr.write("%s [%d] SMARTNET UNKNOWN OSW (0x%04x,%s,0x%03x)\n" % (log_ts.get(), self.msgq_id, osw1_addr, grp1_str, osw1_cmd))
+                        ts = log_ts.get()
+                        sys.stderr.write("%s [%d] SMARTNET OBT UNKNOWN OSW (0x%04x,%s,0x%03x)\n" % (ts, self.msgq_id, osw2_addr, grp2_str, osw2_cmd))
+                        sys.stderr.write("%s [%d] SMARTNET OBT UNKNOWN OSW (0x%04x,%s,0x%03x)\n" % (ts, self.msgq_id, osw1_addr, grp1_str, osw1_cmd))
             # Two-OSW group voice grant command
             elif osw1_ch_rx and osw1_grp and (osw1_addr != 0) and (osw2_addr != 0):
                 mode = 0 if osw2_grp else 1
@@ -662,7 +663,7 @@ class osw_receiver(object):
                 self.osw_q.appendleft((osw1_addr, osw1_grp, osw1_cmd, osw1_ch_rx, osw1_ch_tx, osw1_f_rx, osw1_f_tx, osw1_t))
 
                 if self.debug >= 11:
-                    sys.stderr.write("%s [%d] SMARTNET UNKNOWN OSW (0x%04x,%s,0x%03x)\n" % (log_ts.get(), self.msgq_id, osw2_addr, grp2_str, osw2_cmd))
+                    sys.stderr.write("%s [%d] SMARTNET OBT UNKNOWN OSW (0x%04x,%s,0x%03x)\n" % (log_ts.get(), self.msgq_id, osw2_addr, grp2_str, osw2_cmd))
         # One-OSW voice update
         elif osw2_ch_rx and osw2_grp:
             dst_tgid = osw2_addr
@@ -860,8 +861,9 @@ class osw_receiver(object):
                     self.osw_q.appendleft((osw0_addr, osw0_grp, osw0_cmd, osw0_ch_rx, osw0_ch_tx, osw0_f_rx, osw0_f_tx, osw0_t))
 
                     if self.debug >= 11:
-                        sys.stderr.write("%s [%d] SMARTNET UNKNOWN OSW (0x%04x,%s,0x%03x)\n" % (log_ts.get(), self.msgq_id, osw2_addr, grp2_str, osw2_cmd))
-                        sys.stderr.write("%s [%d] SMARTNET UNKNOWN OSW (0x%04x,%s,0x%03x)\n" % (log_ts.get(), self.msgq_id, osw1_addr, grp1_str, osw1_cmd))
+                        ts = log_ts.get()
+                        sys.stderr.write("%s [%d] SMARTNET UNKNOWN OSW (0x%04x,%s,0x%03x)\n" % (ts, self.msgq_id, osw2_addr, grp2_str, osw2_cmd))
+                        sys.stderr.write("%s [%d] SMARTNET UNKNOWN OSW (0x%04x,%s,0x%03x)\n" % (ts, self.msgq_id, osw1_addr, grp1_str, osw1_cmd))
             # Two-OSW date/time
             elif osw1_cmd == 0x322:
                 year   = ((osw2_addr & 0xfe00) >> 9) + 2000
