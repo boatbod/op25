@@ -595,8 +595,21 @@ class osw_receiver(object):
         osw2_addr, osw2_grp, osw2_cmd, osw2_ch, osw2_f, osw2_t = self.osw_q.popleft()
         grp2_str = self.get_group_str(osw2_grp)
 
+        # One-OSW voice update
+        if osw2_ch and osw2_grp:
+            dst_tgid = osw2_addr
+            vc_freq = osw2_f
+            rc |= self.update_voice_frequency(vc_freq, dst_tgid, ts=osw2_t)
+            if self.debug >= 11:
+                sys.stderr.write("%s [%d] SMARTNET %s GROUP UPDATE tgid(%05d/0x%03x) vc_freq(%f)\n" % (log_ts.get(), self.msgq_id, self.get_call_options_str(dst_tgid), dst_tgid, dst_tgid >> 4, vc_freq))
+        # One-OSW control channel broadcast
+        elif osw2_ch and not osw2_grp and ((osw2_addr & 0xff00) == 0x1f00):
+            cc_freq = osw2_f
+            self.rx_cc_freq = cc_freq * 1e6
+            if self.debug >= 11:
+                sys.stderr.write("%s [%d] SMARTNET CONTROL CHANNEL 1 cc_freq(%f)\n" % (log_ts.get(), self.msgq_id, cc_freq))
         # One-OSW system idle
-        if osw2_cmd == 0x2f8:
+        elif osw2_cmd == 0x2f8:
             grp_str = grp2_str
             data = osw2_addr
             if self.debug >= 11:
@@ -884,19 +897,6 @@ class osw_receiver(object):
             else:
                 if self.debug >= 11:
                     sys.stderr.write("%s [%d] SMARTNET %s STATUS type(%s) opcode(0x%x) data(0x%04x)\n" % (log_ts.get(), self.msgq_id, scope, grp2_str, opcode, data))
-        # One-OSW voice update
-        elif osw2_ch and osw2_grp:
-            dst_tgid = osw2_addr
-            vc_freq = osw2_f
-            rc |= self.update_voice_frequency(vc_freq, dst_tgid, ts=osw2_t)
-            if self.debug >= 11:
-                sys.stderr.write("%s [%d] SMARTNET %s GROUP UPDATE tgid(%05d/0x%03x) vc_freq(%f)\n" % (log_ts.get(), self.msgq_id, self.get_call_options_str(dst_tgid), dst_tgid, dst_tgid >> 4, vc_freq))
-        # One-OSW control channel broadcast
-        elif osw2_ch and not osw2_grp and ((osw2_addr & 0xff00) == 0x1f00):
-            cc_freq = osw2_f
-            self.rx_cc_freq = cc_freq * 1e6
-            if self.debug >= 11:
-                sys.stderr.write("%s [%d] SMARTNET CONTROL CHANNEL 1 cc_freq(%f)\n" % (log_ts.get(), self.msgq_id, cc_freq))
         else:
             if self.debug >= 11:
                 sys.stderr.write("%s [%d] SMARTNET UNKNOWN OSW (0x%04x,%s,0x%03x)\n" % (log_ts.get(), self.msgq_id, osw2_addr, grp2_str, osw2_cmd))
