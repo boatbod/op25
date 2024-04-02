@@ -608,8 +608,49 @@ class osw_receiver(object):
         osw2_addr, osw2_grp, osw2_cmd, osw2_ch_rx, osw2_ch_tx, osw2_f_rx, osw2_f_tx, osw2_t = self.osw_q.popleft()
         grp2_str = self.get_group_str(osw2_grp)
 
+        # Parsing for OBT-specific commands. OBT systems sometimes (always?) use explicit commands that provide tx and
+        # rx channels separately for certain system information, and for voice grants. Check for them specifically
+        # first, but then fall back to non-OBT-specific parsing if that fails.
+        if self.is_obt_system() and osw2_ch_tx:
+            # Get next OSW in the queue
+            osw1_addr, osw1_grp, osw1_cmd, osw1_ch_rx, osw1_ch_tx, osw1_f_rx, osw1_f_tx, osw1_t = self.osw_q.popleft()
+            grp1_str = self.get_group_str(osw1_grp)
+
+            # Three-OSW system information
+            if osw1_cmd == 0x320:
+                # Get OSW0
+                osw0_addr, osw0_grp, osw0_cmd, osw0_ch_rx, osw0_ch_tx, osw0_f_rx, osw0_f_tx, osw0_t = self.osw_q.popleft()
+
+                # The information returned here may be for this site, or may be for other adjacent sites
+                if osw0_cmd == 0x30b and osw0_addr & 0xfc00 == 0x6000:
+                    type_str = "ADJACENT SITE" if osw0_grp else "ALTERNATE CONTROL CHANNEL"
+                    sysid = osw2_addr
+                    # Sites are encoded as 0-indexed but usually referred to as 1-indexed
+                    site = ((osw1_addr & 0xfc00) >> 10) + 1
+                    band = (osw1_addr & 0x380) >> 7
+                    feat = (osw1_addr & 0x3f)
+                    cc_rx_freq = self.get_freq(osw0_addr & 0x3ff)
+                    cc_tx_freq = osw2_f_tx
+                    if self.debug >= 11:
+                        if cc_tx_freq != 0.0:
+                            sys.stderr.write("%s [%d] SMARTNET OBT %s sys(0x%04x) site(%02d) band(%s) features(%s) cc_rx_freq(%f) cc_tx_freq(%f)\n" % (log_ts.get(), self.msgq_id, type_str, sysid, site, self.get_band(band), self.get_features_str(feat), cc_rx_freq, cc_tx_freq))
+                        else:
+                            sys.stderr.write("%s [%d] SMARTNET OBT %s sys(0x%04x) site(%02d) band(%s) features(%s) cc_rx_freq(%f)\n" % (log_ts.get(), self.msgq_id, type_str, sysid, site, self.get_band(band), self.get_features_str(feat), cc_rx_freq))
+                else:
+                    # Put back unused OSW0
+                    self.osw_q.appendleft((osw0_addr, osw0_grp, osw0_cmd, osw0_ch_rx, osw0_ch_tx, osw0_f_rx, osw0_f_tx, osw0_t))
+
+                    if self.debug >= 11:
+                        sys.stderr.write("%s [%d] SMARTNET UNKNOWN OSW (0x%04x,%s,0x%03x)\n" % (log_ts.get(), self.msgq_id, osw2_addr, grp2_str, osw2_cmd))
+                        sys.stderr.write("%s [%d] SMARTNET UNKNOWN OSW (0x%04x,%s,0x%03x)\n" % (log_ts.get(), self.msgq_id, osw1_addr, grp1_str, osw1_cmd))
+            else:
+                # Put back unused OSW1
+                self.osw_q.appendleft((osw1_addr, osw1_grp, osw1_cmd, osw1_ch_rx, osw1_ch_tx, osw1_f_rx, osw1_f_tx, osw1_t))
+
+                if self.debug >= 11:
+                    sys.stderr.write("%s [%d] SMARTNET UNKNOWN OSW (0x%04x,%s,0x%03x)\n" % (log_ts.get(), self.msgq_id, osw2_addr, grp2_str, osw2_cmd))
         # One-OSW voice update
-        if osw2_ch_rx and osw2_grp:
+        elif osw2_ch_rx and osw2_grp:
             dst_tgid = osw2_addr
             vc_freq = osw2_f_rx
             rc |= self.update_voice_frequency(vc_freq, dst_tgid, ts=osw2_t)
