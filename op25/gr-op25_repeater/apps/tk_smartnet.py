@@ -593,8 +593,10 @@ class osw_receiver(object):
                 sys.stderr.write("%s [%d] SMARTNET RAW OSW (0x%04x,%s,0x%03x;rx:%f,tx:%f)\n" % (log_ts.get(), self.msgq_id, addr, grp_str, cmd, rx_freq, tx_freq))
             elif is_rx_chan:
                 sys.stderr.write("%s [%d] SMARTNET RAW OSW (0x%04x,%s,0x%03x;rx:%f)\n" % (log_ts.get(), self.msgq_id, addr, grp_str, cmd, rx_freq))
-            if is_rx_chan and is_tx_chan:
+            elif is_tx_chan:
                 sys.stderr.write("%s [%d] SMARTNET RAW OSW (0x%04x,%s,0x%03x;tx:%f)\n" % (log_ts.get(), self.msgq_id, addr, grp_str, cmd, tx_freq))
+            else:
+                sys.stderr.write("%s [%d] SMARTNET RAW OSW (0x%04x,%s,0x%03x)\n" % (log_ts.get(), self.msgq_id, addr, grp_str, cmd))
 
         self.osw_q.append((addr, (grp != 0), cmd, is_rx_chan, is_tx_chan, rx_freq, tx_freq, ts))
 
