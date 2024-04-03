@@ -750,8 +750,8 @@ class osw_receiver(object):
                     # Extended functions on groups
                     elif osw1_grp:
                         # Patch/multiselect cancel
-                        if osw1_addr == 0x2021 and (osw2_addr & 0xf == 3 or osw2_addr & 0xf == 7):
-                            type_str = "PATCH" if osw2_addr & 0xf == 3 else "MULTISELECT"
+                        if osw1_addr == 0x2021 and (osw2_addr & 0x7 == 3 or osw2_addr & 0x7 == 7):
+                            type_str = "PATCH" if osw2_addr & 0x7 == 3 else "MULTISELECT"
                             sub_tgid = osw2_addr
                             if self.debug >= 11:
                                 sys.stderr.write("%s [%d] SMARTNET %s CANCEL sub_tgid(%05d/0x%03x)\n" % (log_ts.get(), self.msgq_id, type_str, sub_tgid, sub_tgid >> 4))
@@ -887,8 +887,8 @@ class osw_receiver(object):
                 if self.debug >= 11:
                     sys.stderr.write("%s [%d] SMARTNET DATE/TIME %04d-%02d-%02d %02d:%02d data(0x%1x)\n" % (log_ts.get(), self.msgq_id, year, month, day, hour, minute, data))
             # Two-OSW patch/multiselect
-            elif osw1_cmd == 0x340 and (osw2_addr & 0xf == 3 or osw2_addr & 0xf == 7):
-                type_str = "PATCH" if osw2_addr & 0xf == 3 else "MULTISELECT"
+            elif osw1_cmd == 0x340 and (osw2_addr & 0x7 == 3 or osw2_addr & 0x7 == 7):
+                type_str = "PATCH" if osw2_addr & 0x7 == 3 else "MULTISELECT"
                 tgid = (osw1_addr & 0xfff) << 4
                 sub_tgid = osw2_addr & 0xfff0
                 if self.debug >= 11:
