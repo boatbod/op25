@@ -883,7 +883,7 @@ class osw_receiver(object):
                 hour   = (osw1_addr & 0x1f00) >> 8
                 minute = osw1_addr & 0xff
                 if self.debug >= 11:
-                    sys.stderr.write("%s [%d] SMARTNET DATE/TIME %04d-%02d-%02d %02d:%02d data(0x%1x)\n" % (log_ts.get(), self.msgq_id, year, month, day, hour, minute, data))
+                    sys.stderr.write("%s [%d] SMARTNET DATE/TIME %04d-%02d-%02d %02d:%02d data(0x%01x)\n" % (log_ts.get(), self.msgq_id, year, month, day, hour, minute, data))
             # Two-OSW patch/multiselect
             elif osw1_cmd == 0x340 and osw2_grp and osw1_grp and (osw2_addr & 0x7 == 3 or osw2_addr & 0x7 == 7):
                 type_str = "PATCH" if osw2_addr & 0x7 == 3 else "MULTISELECT"
@@ -973,7 +973,7 @@ class osw_receiver(object):
                 site_trunk   = (data & 0x2) >> 1
                 wide_area    = (data & 0x1)
                 if self.debug >= 11:
-                    sys.stderr.write("%s [%d] SMARTNET %s STATUS rotation(%d) wide_pulse(%d) cvsd_mod(%s) trespass(%d) voc(%d) site_trunk(%d) wide_area(%d) bit2_6(0x%2x)\n" % (log_ts.get(), self.msgq_id, scope, rotation, wide_pulse, cvsd_mod_str, trespass, voc, site_trunk, wide_area, bit2_6))
+                    sys.stderr.write("%s [%d] SMARTNET %s STATUS rotation(%d) wide_pulse(%d) cvsd_mod(%s) trespass(%d) voc(%d) site_trunk(%d) wide_area(%d) bit2_6(0x%02x)\n" % (log_ts.get(), self.msgq_id, scope, rotation, wide_pulse, cvsd_mod_str, trespass, voc, site_trunk, wide_area, bit2_6))
             else:
                 if self.debug >= 11:
                     sys.stderr.write("%s [%d] SMARTNET %s STATUS type(%s) opcode(0x%x) data(0x%04x)\n" % (log_ts.get(), self.msgq_id, scope, grp2_str, opcode, data))
