@@ -683,8 +683,8 @@ class osw_receiver(object):
             data = osw2_addr
             if self.debug >= 11:
                 sys.stderr.write("%s [%d] SMARTNET IDLE data(%s,0x%04x)\n" % (log_ts.get(), self.msgq_id, grp_str, data))
-        # Two-OSW command (0x308 is standard Type II, 0x309 is Type II masqueraded as Type I, whatever that means)
-        elif (osw2_cmd == 0x308) or (osw2_cmd == 0x309):
+        # Two-OSW command
+        elif osw2_cmd == 0x308:
             # Get next OSW in the queue
             osw1_addr, osw1_grp, osw1_cmd, osw1_ch_rx, osw1_ch_tx, osw1_f_rx, osw1_f_tx, osw1_t = self.osw_q.popleft()
             grp1_str = self.get_group_str(osw1_grp)
