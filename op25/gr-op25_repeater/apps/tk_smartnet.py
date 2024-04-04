@@ -617,12 +617,12 @@ class osw_receiver(object):
             grp1_str = self.get_group_str(osw1_grp)
 
             # Three-OSW system information
-            if osw1_cmd == 0x320:
+            if osw1_cmd == 0x320 and osw2_grp and osw1_grp:
                 # Get OSW0
                 osw0_addr, osw0_grp, osw0_cmd, osw0_ch_rx, osw0_ch_tx, osw0_f_rx, osw0_f_tx, osw0_t = self.osw_q.popleft()
 
                 # The information returned here may be for this site, or may be for other adjacent sites
-                if osw0_cmd == 0x30b and osw0_addr & 0xfc00 == 0x6000:
+                if osw0_cmd == 0x30b and not osw0_grp and osw0_addr & 0xfc00 == 0x6000:
                     type_str = "ADJACENT SITE" if osw0_grp else "ALTERNATE CONTROL CHANNEL"
                     sysid = osw2_addr
                     # Sites are encoded as 0-indexed but usually referred to as 1-indexed
@@ -645,7 +645,7 @@ class osw_receiver(object):
                         sys.stderr.write("%s [%d] SMARTNET OBT UNKNOWN OSW (0x%04x,%s,0x%03x)\n" % (ts, self.msgq_id, osw2_addr, grp2_str, osw2_cmd))
                         sys.stderr.write("%s [%d] SMARTNET OBT UNKNOWN OSW (0x%04x,%s,0x%03x)\n" % (ts, self.msgq_id, osw1_addr, grp1_str, osw1_cmd))
             # Two-OSW group voice grant command
-            elif osw1_ch_rx and osw1_grp and (osw1_addr != 0) and (osw2_addr != 0):
+            elif osw1_ch_rx and osw2_grp and osw1_grp and (osw1_addr != 0) and (osw2_addr != 0):
                 mode = 0 if osw2_grp else 1
                 type_str = "ANALOG" if osw2_grp else "DIGITAL"
                 src_rid = osw2_addr
@@ -678,7 +678,7 @@ class osw_receiver(object):
             if self.debug >= 11:
                 sys.stderr.write("%s [%d] SMARTNET CONTROL CHANNEL 1 cc_freq(%f)\n" % (log_ts.get(), self.msgq_id, cc_freq))
         # One-OSW system idle
-        elif osw2_cmd == 0x2f8:
+        elif osw2_cmd == 0x2f8 and not osw2_grp:
             grp_str = grp2_str
             data = osw2_addr
             if self.debug >= 11:
@@ -719,7 +719,12 @@ class osw_receiver(object):
                 osw0_addr, osw0_grp, osw0_cmd, osw0_ch_rx, osw0_ch_tx, osw0_f_rx, osw0_f_tx, osw0_t = self.osw_q.popleft()
 
                 # Three-OSW system ID + control channel broadcast
-                if osw0_ch_rx and (osw0_addr & 0xff00) == 0x1f00 and (osw1_addr & 0xfc00) == 0x2800 and (osw1_addr & 0x3ff) == osw0_cmd:
+                if (
+                    osw1_grp and not osw0_grp and osw0_ch_rx and
+                    (osw0_addr & 0xff00) == 0x1f00 and
+                    (osw1_addr & 0xfc00) == 0x2800 and
+                    (osw1_addr & 0x3ff) == osw0_cmd
+                ):
                     system = osw2_addr
                     cc_freq = osw0_f_rx
                     data = osw0_addr & 0xff
@@ -840,14 +845,14 @@ class osw_receiver(object):
                             code = osw1_addr
                             if self.debug >= 11:
                                 sys.stderr.write("%s [%d] SMARTNET INDIVIDUAL EXTENDED FUNCTION src(%05d) code(0x%04x)\n" % (log_ts.get(), self.msgq_id, src_rid, code))
-            # Two-OSW dynamic regroup
+            # Two-OSW dynamic regroup (unknown whether OSWs are group or individual)
             elif osw1_cmd == 0x30a:
                 src_rid = osw2_addr
                 tgid = osw1_addr
                 if self.debug >= 11:
                     sys.stderr.write("%s [%d] SMARTNET DYNAMIC REGROUP src(%05d) tgid(%05d/0x%03x)\n" % (log_ts.get(), self.msgq_id, src_rid, tgid, tgid >> 4))
-            # Two-OSW Type II affiliation
-            elif osw1_cmd == 0x310:
+            # Two-OSW affiliation
+            elif osw1_cmd == 0x310 and not osw2_grp and not osw1_grp:
                 src_rid = osw2_addr
                 dst_tgid = osw1_addr & 0xfff0
                 if self.debug >= 11:
@@ -877,7 +882,7 @@ class osw_receiver(object):
                         sys.stderr.write("%s [%d] SMARTNET UNKNOWN OSW (0x%04x,%s,0x%03x)\n" % (ts, self.msgq_id, osw2_addr, grp2_str, osw2_cmd))
                         sys.stderr.write("%s [%d] SMARTNET UNKNOWN OSW (0x%04x,%s,0x%03x)\n" % (ts, self.msgq_id, osw1_addr, grp1_str, osw1_cmd))
             # Two-OSW date/time
-            elif osw1_cmd == 0x322:
+            elif osw1_cmd == 0x322 and osw2_grp and osw1_grp:
                 year   = ((osw2_addr & 0xfe00) >> 9) + 2000
                 month  = (osw2_addr & 0x1e0) >> 5
                 day    = (osw2_addr & 0x1f)
@@ -887,7 +892,7 @@ class osw_receiver(object):
                 if self.debug >= 11:
                     sys.stderr.write("%s [%d] SMARTNET DATE/TIME %04d-%02d-%02d %02d:%02d data(0x%1x)\n" % (log_ts.get(), self.msgq_id, year, month, day, hour, minute, data))
             # Two-OSW patch/multiselect
-            elif osw1_cmd == 0x340 and (osw2_addr & 0x7 == 3 or osw2_addr & 0x7 == 7):
+            elif osw1_cmd == 0x340 and osw2_grp and osw1_grp and (osw2_addr & 0x7 == 3 or osw2_addr & 0x7 == 7):
                 type_str = "PATCH" if osw2_addr & 0x7 == 3 else "MULTISELECT"
                 tgid = (osw1_addr & 0xfff) << 4
                 sub_tgid = osw2_addr & 0xfff0
@@ -907,7 +912,7 @@ class osw_receiver(object):
             osw1_addr, osw1_grp, osw1_cmd, osw1_ch_rx, osw1_ch_tx, osw1_f_rx, osw1_f_tx, osw1_t = self.osw_q.popleft()
 
             # Two-OSW digital group voice grant
-            if osw1_ch_rx and osw1_grp and (osw1_addr != 0):
+            if osw1_ch_rx and osw2_grp and osw1_grp and (osw1_addr != 0):
                 src_rid = osw2_addr
                 dst_tgid = osw1_addr
                 vc_freq = osw1_f_rx
@@ -923,7 +928,7 @@ class osw_receiver(object):
             if self.debug >= 11:
                 sys.stderr.write("%s [%d] SMARTNET SYSTEM sys(0x%04x)\n" % (log_ts.get(), self.msgq_id, system))
         # One-OSW AMSS (Automatic Multiple Site Select) message
-        elif osw2_cmd >= 0x360 and osw2_cmd <= 0x39f:
+        elif osw2_cmd >= 0x360 and osw2_cmd <= 0x39f and osw2_grp:
             # Sites are encoded as 0-indexed but usually referred to as 1-indexed
             site = osw2_cmd - 0x360 + 1
             if self.debug >= 11:
