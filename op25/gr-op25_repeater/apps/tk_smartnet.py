@@ -632,10 +632,10 @@ class osw_receiver(object):
                     cc_rx_freq = self.get_freq(osw0_addr & 0x3ff)
                     cc_tx_freq = osw2_f_tx
                     if self.debug >= 11:
+                        sys.stderr.write("%s [%d] SMARTNET OBT %s sys(0x%04x) site(%02d) band(%s) features(%s) cc_rx_freq(%f)" % (log_ts.get(), self.msgq_id, type_str, sysid, site, self.get_band(band), self.get_features_str(feat), cc_rx_freq))
                         if cc_tx_freq != 0.0:
-                            sys.stderr.write("%s [%d] SMARTNET OBT %s sys(0x%04x) site(%02d) band(%s) features(%s) cc_rx_freq(%f) cc_tx_freq(%f)\n" % (log_ts.get(), self.msgq_id, type_str, sysid, site, self.get_band(band), self.get_features_str(feat), cc_rx_freq, cc_tx_freq))
-                        else:
-                            sys.stderr.write("%s [%d] SMARTNET OBT %s sys(0x%04x) site(%02d) band(%s) features(%s) cc_rx_freq(%f)\n" % (log_ts.get(), self.msgq_id, type_str, sysid, site, self.get_band(band), self.get_features_str(feat), cc_rx_freq))
+                            sys.stderr.write(" cc_tx_freq(%f)" % (cc_tx_freq))
+                        sys.stderr.write("\n")
                 else:
                     # Put back unused OSW0
                     self.osw_q.appendleft((osw0_addr, osw0_grp, osw0_cmd, osw0_ch_rx, osw0_ch_tx, osw0_f_rx, osw0_f_tx, osw0_t))
@@ -654,10 +654,10 @@ class osw_receiver(object):
                 vc_tx_freq = osw2_f_tx
                 rc |= self.update_voice_frequency(vc_rx_freq, dst_tgid, src_rid, mode=mode, ts=osw1_t)
                 if self.debug >= 11:
+                    sys.stderr.write("%s [%d] SMARTNET OBT %s %s GROUP GRANT src(%05d) tgid(%05d/0x%03x) vc_rx_freq(%f)" % (log_ts.get(), self.msgq_id, type_str, self.get_call_options_str(dst_tgid), src_rid, dst_tgid, dst_tgid >> 4, vc_rx_freq))
                     if vc_tx_freq != 0.0:
-                        sys.stderr.write("%s [%d] SMARTNET OBT %s %s GROUP GRANT src(%05d) tgid(%05d/0x%03x) vc_rx_freq(%f) vc_tx_freq(%f)\n" % (log_ts.get(), self.msgq_id, type_str, self.get_call_options_str(dst_tgid), src_rid, dst_tgid, dst_tgid >> 4, vc_rx_freq, vc_tx_freq))
-                    else:
-                        sys.stderr.write("%s [%d] SMARTNET OBT %s %s GROUP GRANT src(%05d) tgid(%05d/0x%03x) vc_rx_freq(%f)\n" % (log_ts.get(), self.msgq_id, type_str, self.get_call_options_str(dst_tgid), src_rid, dst_tgid, dst_tgid >> 4, vc_rx_freq))
+                        sys.stderr.write(" vc_tx_freq(%f)" % (vc_tx_freq))
+                    sys.stderr.write("\n")
             else:
                 # Put back unused OSW1
                 self.osw_q.appendleft((osw1_addr, osw1_grp, osw1_cmd, osw1_ch_rx, osw1_ch_tx, osw1_f_rx, osw1_f_tx, osw1_t))
