@@ -706,13 +706,6 @@ class osw_receiver(object):
                 rc |= self.update_voice_frequency(vc_freq, dst_tgid, src_rid, mode=0, ts=osw1_t)
                 if self.debug >= 11:
                     sys.stderr.write("%s [%d] SMARTNET ANALOG %s GROUP GRANT src(%05d) tgid(%05d/0x%03x) vc_freq(%f)\n" % (log_ts.get(), self.msgq_id, self.get_call_options_str(dst_tgid), src_rid, dst_tgid, dst_tgid >> 4, vc_freq))
-            elif osw1_ch_rx and not osw1_grp and ((osw1_addr & 0xff00) == 0x1f00):
-                system = osw2_addr
-                cc_freq = osw1_f_rx
-                self.rx_sys_id = system
-                self.rx_cc_freq = cc_freq * 1e6
-                if self.debug >= 11:
-                    sys.stderr.write("%s [%d] SMARTNET CONTROL CHANNEL 2 sys(0x%04x) cc_freq(%f)\n" % (log_ts.get(), self.msgq_id, system, cc_freq))
             # One of many possible two- or three-OSW meanings...
             elif osw1_cmd == 0x30b:
                 # Get next OSW in the queue
