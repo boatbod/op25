@@ -1,19 +1,19 @@
 
 // Copyright 2017, 2018 Max H. Parke KA1RBI
 // Copyright 2018, 2019, 2020, 2021 gnorbury@bondcar.com
-// 
+//
 // This file is part of OP25
-// 
+//
 // OP25 is free software; you can redistribute it and/or modify it
 // under the terms of the GNU General Public License as published by
 // the Free Software Foundation; either version 3, or (at your option)
 // any later version.
-// 
+//
 // OP25 is distributed in the hope that it will be useful, but WITHOUT
 // ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
 // or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public
 // License for more details.
-// 
+//
 // You should have received a copy of the GNU General Public License
 // along with OP25; see the file COPYING. If not, write to the Free
 // Software Foundation, Inc., 51 Franklin Street, Boston, MA
@@ -271,7 +271,7 @@ function channel_update(d) {
     var s2_ht = document.getElementById("s2_ch_trk");
 
     if (d['channels'] != undefined) {
-        channel_list = d['channels'];    
+        channel_list = d['channels'];
 
         if (channel_list.length > 0) {
             // if this is the first update, find the default_channel if specified
@@ -406,7 +406,7 @@ function channel_status() {
     s2_grp.innerHTML = html;
 
     html = "";
-    if ((c_srcaddr != 0) && (c_srcaddr != 0xffffff)) 
+    if ((c_srcaddr != 0) && (c_srcaddr != 0xffffff))
         if (c_srctag != "")
             html += "<span class=\"value\">" + c_srctag + "</span>";
         else
