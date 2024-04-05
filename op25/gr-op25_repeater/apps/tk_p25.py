@@ -1494,6 +1494,7 @@ class p25_system(object):
 
     def to_json(self):  # ugly but required for compatibility with P25 trunking and terminal modules
         d = {}
+        d['type']           = 'p25'
         d['system']         = self.sysname
         d['top_line']       = 'P25 NAC 0x%x' % (self.nac)
         d['top_line']      += ' WACN 0x%x' % (self.ns_wacn if self.ns_wacn is not None else 0)

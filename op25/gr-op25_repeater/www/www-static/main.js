@@ -427,21 +427,28 @@ function channel_status() {
 // adjacent sites table
 
 function adjacent_data(d) {
-    if (Object.keys(d).length < 1) {
+    if (d['adjacent_data'] != null && Object.keys(d['adjacent_data']).length < 1) {
         var html = "</div>";
         return html;
     }
+    var is_p25 = (d['type'] == "p25");
     var html = "<div class=\"adjacent\">";
     html += "<table border=1 borderwidth=0 cellpadding=0 cellspacing=0 width=100%>";
     html += "<tr><th colspan=99 style=\"align: center\">Adjacent Sites</th></tr>";
-    html += "<tr><th>Frequency</th><th>RFSS</th><th>Site</th><th>Uplink</th></tr>";
+    html += "<tr><th>Frequency</th>";
+    if (is_p25) // Only P25 has RFSS
+        html += "<th>RFSS</th>";
+    html += "<th>Site</th><th>Uplink</th></tr>";
     var ct = 0;
-    for (var freq in d) {
+    for (var freq in d['adjacent_data']) {
         var color = "#d0d0d0";
         if ((ct & 1) == 0)
             color = "#c0c0c0";
         ct += 1;
-        html += "<tr style=\"background-color: " + color + ";\"><td>" + (freq / 1000000.0).toFixed(6) + "</td><td>" + d[freq]["rfid"] + "</td><td>" + d[freq]["stid"] + "</td><td>" + (d[freq]["uplink"] / 1000000.0).toFixed(6) + "</td></tr>";
+        html += "<tr style=\"background-color: " + color + ";\"><td>" + (freq / 1000000.0).toFixed(6) + "</td>";
+        if (is_p25)
+            html += "<td>" + d['adjacent_data'][freq]["rfid"] + "</td>";
+        html += "<td>" + d['adjacent_data'][freq]["stid"] + "</td><td>" + (d['adjacent_data'][freq]["uplink"] / 1000000.0).toFixed(6) + "</td></tr>";
     }
     html += "</table></div></div><br><br>";
 
@@ -549,7 +556,7 @@ function trunk_update(d) {
 
 // end system freqencies table
 
-        html += adjacent_data(d[nac]['adjacent_data']);
+        html += adjacent_data(d[nac]);
     }
 
     if (d['srcaddr'] != undefined)

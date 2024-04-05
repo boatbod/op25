@@ -32,14 +32,15 @@ from gnuradio import gr
 
 #################
 
-OSW_QUEUE_SIZE = 3       # Some OSWs can be 3 commands long
-CC_TIMEOUT_RETRIES = 3   # Number of control channel framing timeouts before hunting
-VC_TIMEOUT_RETRIES = 3   # Number of voice channel framing timeouts before expiry
-TGID_DEFAULT_PRIO = 3    # Default tgid priority when unassigned
-TGID_HOLD_TIME = 2.0     # Number of seconds to give previously active tgid exclusive channel access
-TGID_SKIP_TIME = 4.0     # Number of seconds to blacklist a previously skipped tgid
-TGID_EXPIRY_TIME = 1.0   # Number of seconds to allow tgid to remain active with no updates received
-EXPIRY_TIMER = 0.2       # Number of seconds between checks for tgid expiry
+OSW_QUEUE_SIZE          = 5     # Some messages can be 3 OSWs long, plus up to two IDLEs can be inserted in between useful messages
+CC_TIMEOUT_RETRIES      = 3     # Number of control channel framing timeouts before hunting
+VC_TIMEOUT_RETRIES      = 3     # Number of voice channel framing timeouts before expiry
+TGID_DEFAULT_PRIO       = 3     # Default tgid priority when unassigned
+TGID_HOLD_TIME          = 2.0   # Number of seconds to give previously active tgid exclusive channel access
+TGID_SKIP_TIME          = 4.0   # Number of seconds to blacklist a previously skipped tgid
+TGID_EXPIRY_TIME        = 1.0   # Number of seconds to allow tgid to remain active with no updates received
+EXPIRY_TIMER            = 0.2   # Number of seconds between checks for expirations
+ADJ_SITE_EXPIRY_TIME    = 300.0 # Number of seconds until adjacent site expiry
 
 #################
 # Helper functions
@@ -180,6 +181,7 @@ class osw_receiver(object):
         self.skiplist = {}
         self.blacklist = {}
         self.whitelist = None
+        self.adjacent_sites = {}
         self.cc_list = []
         self.cc_index = -1
         self.cc_retries = 0
@@ -319,6 +321,7 @@ class osw_receiver(object):
         rc = False
         rc |= self.process_osws()
         rc |= self.expire_talkgroups(curr_time)
+        rc |= self.expire_adjacent_sites(curr_time)
         return rc
 
     # Is the current config for an OBT system
@@ -641,7 +644,7 @@ class osw_receiver(object):
                 osw0_addr, osw0_grp, osw0_cmd, osw0_ch_rx, osw0_ch_tx, osw0_f_rx, osw0_f_tx, osw0_t = self.osw_q.popleft()
 
                 # The information returned here may be for this site, or may be for other adjacent sites
-                if osw0_cmd == 0x30b and not osw0_grp and osw0_addr & 0xfc00 == 0x6000:
+                if osw0_cmd == 0x30b and osw0_addr & 0xfc00 == 0x6000:
                     type_str = "ADJACENT SITE" if osw0_grp else "ALTERNATE CONTROL CHANNEL"
                     sysid = osw2_addr
                     # Sites are encoded as 0-indexed but usually referred to as 1-indexed
@@ -650,6 +653,8 @@ class osw_receiver(object):
                     feat = (osw1_addr & 0x3f)
                     cc_rx_freq = self.get_freq(osw0_addr & 0x3ff)
                     cc_tx_freq = osw2_f_tx
+                    if osw0_grp:
+                        self.update_adjacent_site(site, cc_rx_freq, cc_tx_freq, osw1_t)
                     if self.debug >= 11:
                         sys.stderr.write("%s [%d] SMARTNET OBT %s sys(0x%04x) site(%02d) band(%s) features(%s) cc_rx_freq(%f)" % (log_ts.get(), self.msgq_id, type_str, sysid, site, self.get_band(band), self.get_features_str(feat), cc_rx_freq))
                         if cc_tx_freq != 0.0:
@@ -882,9 +887,12 @@ class osw_receiver(object):
                     site = ((osw1_addr & 0xfc00) >> 10) + 1
                     band = (osw1_addr & 0x380) >> 7
                     feat = (osw1_addr & 0x3f)
-                    cc_freq = self.get_freq(osw0_addr & 0x03ff)
+                    cc_rx_freq = self.get_freq(osw0_addr & 0x03ff)
+                    cc_tx_freq = self.get_freq(osw0_addr & 0x03ff, is_tx=True)
+                    if osw0_grp:
+                        self.update_adjacent_site(site, cc_rx_freq, cc_tx_freq)
                     if self.debug >= 11:
-                        sys.stderr.write("%s [%d] SMARTNET %s sys(0x%04x) site(%02d) band(%s) features(%s) cc_freq(%f)\n" % (log_ts.get(), self.msgq_id, type_str, sysid, site, self.get_band(band), self.get_features_str(feat), cc_freq))
+                        sys.stderr.write("%s [%d] SMARTNET %s sys(0x%04x) site(%02d) band(%s) features(%s) cc_freq(%f)\n" % (log_ts.get(), self.msgq_id, type_str, sysid, site, self.get_band(band), self.get_features_str(feat), cc_rx_freq))
                 else:
                     # Put back unused OSW0
                     self.osw_q.appendleft((osw0_addr, osw0_grp, osw0_cmd, osw0_ch_rx, osw0_ch_tx, osw0_f_rx, osw0_f_tx, osw0_t))
@@ -1005,6 +1013,29 @@ class osw_receiver(object):
 
         return rc
 
+    def update_adjacent_site(self, site, float_cc_rx_freq, float_cc_tx_freq, ts):
+        if not float_cc_rx_freq or not float_cc_tx_freq:
+            return False
+
+        # Use integers in data we send up to the display layer
+        cc_rx_freq = int(float_cc_rx_freq * 1e6)
+        cc_tx_freq = int(float_cc_tx_freq * 1e6)
+
+        self.adjacent_sites[cc_rx_freq] = {'time': ts, 'site': site, 'cc_tx_freq': cc_tx_freq}
+        return True
+
+    def expire_adjacent_sites(self, curr_time):
+        if curr_time < self.last_expiry_check + EXPIRY_TIMER:
+            return False
+
+        for f in list(self.adjacent_sites.keys()):
+            if curr_time > self.adjacent_sites[f]['time'] + ADJ_SITE_EXPIRY_TIME:
+                site = self.adjacent_sites[f]['site']
+                del self.adjacent_sites[f]
+                if self.debug >= 5:
+                    sys.stderr.write("%s [%d] expire_adjacent_sites: expiring site(%d)\n" % (log_ts.get(), self.msgq_id, site))
+        return True
+
     def update_voice_frequency(self, float_freq, tgid=None, srcaddr=-1, mode=-1, ts=time.time()):
         if not float_freq:    # e.g., channel identifier not yet known
             return False
@@ -1098,6 +1129,7 @@ class osw_receiver(object):
 
     def to_json(self):  # ugly but required for compatibility with P25 trunking and terminal modules
         d = {}
+        d['type']           = 'smartnet'
         d['system']         = self.sysname
         d['top_line']       = 'SmartNet/SmartZone SysId 0x%04x' % (self.rx_sys_id if self.rx_sys_id is not None else 0)
         d['top_line']      += ' Control Ch %f' % ((self.rx_cc_freq if self.rx_cc_freq is not None else self.cc_list[self.cc_index]) / 1e6)
@@ -1105,28 +1137,35 @@ class osw_receiver(object):
         d['secondary']      = ""
         d['frequencies']    = {}
         d['frequency_data'] = {}
-        d['last_tsbk'] = self.last_osw
+        d['adjacent_data']  = {}
+        d['last_tsbk']      = self.last_osw
         t = time.time()
         for f in list(self.voice_frequencies.keys()):
             # Show time in appropriate units based on how long ago - useful for some high-capacity/low-traffic sites
             time_ago = t - self.voice_frequencies[f]['time']
             if time_ago < (60.0):
-                time_ago_str = "%4.1fs ago" % (time_ago)
+                time_ago_str = "%4.1fs" % (time_ago)
             elif time_ago < (60.0 * 60.0):
-                time_ago_str = "%4.1fm ago" % (time_ago / 60.0)
+                time_ago_str = "%4.1fm" % (time_ago / 60.0)
             elif time_ago < (60.0 * 60.0 * 24.0):
-                time_ago_str = "%4.1fh ago" % (time_ago / 60.0 / 60.0)
+                time_ago_str = "%4.1fh" % (time_ago / 60.0 / 60.0)
             else:
-                time_ago_str = "%4.1fd ago" % (time_ago / 60.0 / 60.0 / 24.0)
+                time_ago_str = "%4.1fd" % (time_ago / 60.0 / 60.0 / 24.0)
 
             # Only show TGID if we believe the call is currently ongoing
-            if t - self.voice_frequencies[f]['time'] < TGID_EXPIRY_TIME:
-                d['frequencies'][f] = 'voice frequency %f tgid [%5d 0x%03x]   Now     count %d' %  ((f/1e6), self.voice_frequencies[f]['tgid'], self.voice_frequencies[f]['tgid'] >> 4, self.voice_frequencies[f]['counter'])
+            tgid_dec = "%5d" % (self.voice_frequencies[f]['tgid'])
+            tgid_hex = "0x%03x" % (self.voice_frequencies[f]['tgid'] >> 4)
+            if t > self.voice_frequencies[f]['time'] + TGID_EXPIRY_TIME:
+                d['frequencies'][f] = 'voice frequency %f tgid [%s %s]   Now     count %d' %  ((f/1e6), tgid_dec, tgid_hex, self.voice_frequencies[f]['counter'])
+                # Co-opt the P25 phase 2 TG slots to show both dec and hex for users who are into that
+                d['frequency_data'][f] = {'tgids': [tgid_hex, tgid_dec], 'last_activity': 'Now', 'counter': self.voice_frequencies[f]['counter']}
             else:
-                d['frequencies'][f] = 'voice frequency %f tgid [           ] %s count %d' %  ((f/1e6), time_ago_str, self.voice_frequencies[f]['counter'])
+                d['frequencies'][f] = 'voice frequency %f tgid [           ] %s ago count %d' %  ((f/1e6), time_ago_str, self.voice_frequencies[f]['counter'])
+                d['frequency_data'][f] = {'tgids': [], 'last_activity': '%s' % (time_ago_str), 'counter': self.voice_frequencies[f]['counter']}
 
-            d['frequency_data'][f] = {'tgids': [self.voice_frequencies[f]['tgid']], 'last_activity': '%7.1f' % (time_ago), 'counter': self.voice_frequencies[f]['counter']}
-        d['adjacent_data'] = ""
+        for f in list(self.adjacent_sites.keys()):
+            d['adjacent_data'][f] = {'stid': self.adjacent_sites[f]['site'], 'uplink': self.adjacent_sites[f]['cc_tx_freq']}
+
         return json.dumps(d)
 
     def get_status(self):

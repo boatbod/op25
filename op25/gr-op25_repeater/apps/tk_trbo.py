@@ -84,13 +84,14 @@ class dmr_receiver:
 
     def to_json(self):  # ugly but required for compatibility with P25 trunking and terminal modules
         d = {}
+        d['type']           = 'trbo'
         d['system']         = "tk_trbo"
         d['top_line']       = "OP25 TRBO Trunking"
         d['secondary']      = ""
         d['frequencies']    = {}
         d['frequency_data'] = {}
-        d['last_tsbk'] = 0
-        d['adjacent_data'] = ""
+        d['adjacent_data']  = {}
+        d['last_tsbk']      = 0
         return json.dumps(d)
 
     def process_grant(self, m_buf):
