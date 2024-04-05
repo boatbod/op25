@@ -940,8 +940,6 @@ class osw_receiver(object):
             type_str = "II"
             if self.debug >= 11:
                 sys.stderr.write("%s [%d] SMARTNET SYSTEM sys(0x%04x) type(%s)\n" % (log_ts.get(), self.msgq_id, system, type_str))
-            if self.debug >= 11:
-                sys.stderr.write("%s [%d] SMARTNET SYSTEM sys(0x%04x)\n" % (log_ts.get(), self.msgq_id, system))
         # One-OSW AMSS (Automatic Multiple Site Select) message
         elif osw2_cmd >= 0x360 and osw2_cmd <= 0x39f and osw2_grp:
             # Sites are encoded as 0-indexed but usually referred to as 1-indexed
