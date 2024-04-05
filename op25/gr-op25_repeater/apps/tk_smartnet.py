@@ -924,9 +924,12 @@ class osw_receiver(object):
             else:
                 # OSW1 did not match, so put it back in the queue
                 self.osw_q.appendleft((osw1_addr, osw1_grp, osw1_cmd, osw1_ch_rx, osw1_ch_tx, osw1_f_rx, osw1_f_tx, osw1_t))
-        # One-OSW system ID
+        # One-OSW system ID / scan marker
         elif osw2_cmd == 0x32b and not osw2_grp:
-            system = osw2_addr
+            system   = osw2_addr
+            type_str = "II"
+            if self.debug >= 11:
+                sys.stderr.write("%s [%d] SMARTNET SYSTEM sys(0x%04x) type(%s)\n" % (log_ts.get(), self.msgq_id, system, type_str))
             if self.debug >= 11:
                 sys.stderr.write("%s [%d] SMARTNET SYSTEM sys(0x%04x)\n" % (log_ts.get(), self.msgq_id, system))
         # One-OSW AMSS (Automatic Multiple Site Select) message
