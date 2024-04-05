@@ -1155,7 +1155,7 @@ class osw_receiver(object):
             # Only show TGID if we believe the call is currently ongoing
             tgid_dec = "%5d" % (self.voice_frequencies[f]['tgid'])
             tgid_hex = "0x%03x" % (self.voice_frequencies[f]['tgid'] >> 4)
-            if t > self.voice_frequencies[f]['time'] + TGID_EXPIRY_TIME:
+            if t < self.voice_frequencies[f]['time'] + TGID_EXPIRY_TIME:
                 d['frequencies'][f] = 'voice frequency %f tgid [%s %s]   Now     count %d' %  ((f/1e6), tgid_dec, tgid_hex, self.voice_frequencies[f]['counter'])
                 # Co-opt the P25 phase 2 TG slots to show both dec and hex for users who are into that
                 d['frequency_data'][f] = {'tgids': [tgid_hex, tgid_dec], 'last_activity': 'Now', 'counter': self.voice_frequencies[f]['counter']}
