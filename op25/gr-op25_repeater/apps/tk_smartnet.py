@@ -654,7 +654,7 @@ class osw_receiver(object):
                     cc_rx_freq = self.get_freq(osw0_addr & 0x3ff)
                     cc_tx_freq = osw2_f_tx
                     if osw0_grp:
-                        self.update_adjacent_site(site, cc_rx_freq, cc_tx_freq, osw1_t)
+                        self.update_adjacent_site(osw1_t, site, cc_rx_freq, cc_tx_freq)
                     if self.debug >= 11:
                         sys.stderr.write("%s [%d] SMARTNET OBT %s sys(0x%04x) site(%02d) band(%s) features(%s) cc_rx_freq(%f)" % (log_ts.get(), self.msgq_id, type_str, sysid, site, self.get_band(band), self.get_features_str(feat), cc_rx_freq))
                         if cc_tx_freq != 0.0:
@@ -676,7 +676,7 @@ class osw_receiver(object):
                 dst_tgid = osw1_addr
                 vc_rx_freq = osw1_f_rx
                 vc_tx_freq = osw2_f_tx
-                rc |= self.update_voice_frequency(vc_rx_freq, dst_tgid, src_rid, mode=mode, ts=osw1_t)
+                rc |= self.update_voice_frequency(osw1_t, vc_rx_freq, dst_tgid, src_rid, mode=mode)
                 if self.debug >= 11:
                     sys.stderr.write("%s [%d] SMARTNET OBT %s %s GROUP GRANT src(%05d) tgid(%05d/0x%03x) vc_rx_freq(%f)" % (log_ts.get(), self.msgq_id, type_str, self.get_call_options_str(dst_tgid), src_rid, dst_tgid, dst_tgid >> 4, vc_rx_freq))
                     if vc_tx_freq != 0.0:
@@ -692,7 +692,7 @@ class osw_receiver(object):
         elif osw2_ch_rx and osw2_grp:
             dst_tgid = osw2_addr
             vc_freq = osw2_f_rx
-            rc |= self.update_voice_frequency(vc_freq, dst_tgid, ts=osw2_t)
+            rc |= self.update_voice_frequency(osw2_t, vc_freq, dst_tgid)
             if self.debug >= 11:
                 sys.stderr.write("%s [%d] SMARTNET %s GROUP UPDATE tgid(%05d/0x%03x) vc_freq(%f)\n" % (log_ts.get(), self.msgq_id, self.get_call_options_str(dst_tgid), dst_tgid, dst_tgid >> 4, vc_freq))
         # One-OSW control channel broadcast
@@ -727,7 +727,7 @@ class osw_receiver(object):
                 src_rid = osw2_addr
                 dst_tgid = osw1_addr
                 vc_freq = osw1_f_rx
-                rc |= self.update_voice_frequency(vc_freq, dst_tgid, src_rid, mode=0, ts=osw1_t)
+                rc |= self.update_voice_frequency(osw1_t, vc_freq, dst_tgid, src_rid, mode=0)
                 if self.debug >= 11:
                     sys.stderr.write("%s [%d] SMARTNET ANALOG %s GROUP GRANT src(%05d) tgid(%05d/0x%03x) vc_freq(%f)\n" % (log_ts.get(), self.msgq_id, self.get_call_options_str(dst_tgid), src_rid, dst_tgid, dst_tgid >> 4, vc_freq))
             # One of many possible two- or three-OSW meanings...
@@ -890,7 +890,7 @@ class osw_receiver(object):
                     cc_rx_freq = self.get_freq(osw0_addr & 0x03ff)
                     cc_tx_freq = self.get_freq(osw0_addr & 0x03ff, is_tx=True)
                     if osw0_grp:
-                        self.update_adjacent_site(site, cc_rx_freq, cc_tx_freq)
+                        self.update_adjacent_site(osw1_t, site, cc_rx_freq, cc_tx_freq)
                     if self.debug >= 11:
                         sys.stderr.write("%s [%d] SMARTNET %s sys(0x%04x) site(%02d) band(%s) features(%s) cc_freq(%f)\n" % (log_ts.get(), self.msgq_id, type_str, sysid, site, self.get_band(band), self.get_features_str(feat), cc_rx_freq))
                 else:
@@ -936,7 +936,7 @@ class osw_receiver(object):
                 src_rid = osw2_addr
                 dst_tgid = osw1_addr
                 vc_freq = osw1_f_rx
-                rc |= self.update_voice_frequency(vc_freq, dst_tgid, src_rid, mode=1, ts=osw1_t)
+                rc |= self.update_voice_frequency(osw1_t, vc_freq, dst_tgid, src_rid, mode=1)
                 if self.debug >= 11:
                     sys.stderr.write("%s [%d] SMARTNET DIGITAL %s GROUP GRANT src(%05d) tgid(%05d/0x%03x) vc_freq(%f)\n" % (log_ts.get(), self.msgq_id, self.get_call_options_str(dst_tgid), src_rid, dst_tgid, dst_tgid >> 4, vc_freq))
             else:
@@ -1013,7 +1013,7 @@ class osw_receiver(object):
 
         return rc
 
-    def update_adjacent_site(self, site, float_cc_rx_freq, float_cc_tx_freq, ts):
+    def update_adjacent_site(self, ts, site, float_cc_rx_freq, float_cc_tx_freq):
         if not float_cc_rx_freq or not float_cc_tx_freq:
             return False
 
@@ -1036,13 +1036,13 @@ class osw_receiver(object):
                     sys.stderr.write("%s [%d] expire_adjacent_sites: expiring site(%d)\n" % (log_ts.get(), self.msgq_id, site))
         return True
 
-    def update_voice_frequency(self, float_freq, tgid=None, srcaddr=-1, mode=-1, ts=time.time()):
+    def update_voice_frequency(self, ts, float_freq, tgid=None, srcaddr=-1, mode=-1):
         if not float_freq:    # e.g., channel identifier not yet known
             return False
 
         frequency = int(float_freq * 1e6) # use integer not float as dictionary keys
 
-        rc = self.update_talkgroups(frequency, tgid, srcaddr, mode, ts)
+        rc = self.update_talkgroups(ts, frequency, tgid, srcaddr, mode)
 
         base_tgid = tgid & 0xfff0
         tgid_stat = tgid & 0x000f
@@ -1060,16 +1060,16 @@ class osw_receiver(object):
         self.voice_frequencies[frequency]['time'] = time.time()
         return rc
 
-    def update_talkgroups(self, frequency, tgid, srcaddr, mode=-1, ts=time.time()):
-        rc = self.update_talkgroup(frequency, tgid, srcaddr, mode, ts)
         #if tgid in self.patches:
         #    for ptgid in self.patches[tgid]['ga']:
         #        rc |= self.update_talkgroup(frequency, ptgid, srcaddr)
         #        if self.debug >= 5:
         #            sys.stderr.write('%s update_talkgroups: sg(%d) patched tgid(%d)\n' % (log_ts.get(), tgid, ptgid))
+    def update_talkgroups(self, ts, frequency, tgid, srcaddr, mode=-1):
+        rc = self.update_talkgroup(ts, frequency, tgid, srcaddr, mode)
         return rc
 
-    def update_talkgroup(self, frequency, tgid, srcaddr, mode=-1, ts=time.time()):
+    def update_talkgroup(self, ts, frequency, tgid, srcaddr, mode=-1):
         base_tgid = tgid & 0xfff0
         tgid_stat = tgid & 0x000f
 
