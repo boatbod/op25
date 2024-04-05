@@ -563,10 +563,12 @@ class osw_receiver(object):
         is_encrypted = (tgid & 0x8) >> 3
         options      = (tgid & 0x7)
 
-        options_str = "ENCRYPTED" if is_encrypted else "CLEAR"
+        options_str = "ENCRYPTED" if is_encrypted else ("CLEAR" if include_clear else "")
 
         if options != 0:
-            options_str += " "
+            if options_str != "":
+                options_str += " "
+
             if options == 1:
                 options_str += "ANNOUNCEMENT"
             elif options == 2:
@@ -583,6 +585,14 @@ class osw_receiver(object):
                 options_str += "MULTISELECT"
 
         return options_str
+
+    # Do the TG's call options indicate a patch group
+    def is_patch_group(self, tgid):
+        return tgid & 0x7 == 3 or tgid & 0x7 == 4
+
+    # Do the TG's call options indicate a multiselect group
+    def is_multiselect_group(self, tgid):
+        return tgid & 0x7 == 5 or tgid & 0x7 == 7
 
     def enqueue(self, addr, grp, cmd, ts):
         grp_str = self.get_group_str(grp)
@@ -757,8 +767,8 @@ class osw_receiver(object):
                     # Extended functions on groups
                     elif osw1_grp:
                         # Patch/multiselect cancel
-                        if osw1_addr == 0x2021 and (osw2_addr & 0x7 == 3 or osw2_addr & 0x7 == 7):
-                            type_str = "PATCH" if osw2_addr & 0x7 == 3 else "MULTISELECT"
+                        if osw1_addr == 0x2021 and (self.is_patch_group(osw2_addr) or self.is_multiselect_group(osw2_addr)):
+                            type_str = self.get_call_options_str(osw2_addr, include_clear=False)
                             sub_tgid = osw2_addr
                             if self.debug >= 11:
                                 sys.stderr.write("%s [%d] SMARTNET %s CANCEL sub_tgid(%05d/0x%03x)\n" % (log_ts.get(), self.msgq_id, type_str, sub_tgid, sub_tgid >> 4))
@@ -894,8 +904,8 @@ class osw_receiver(object):
                 if self.debug >= 11:
                     sys.stderr.write("%s [%d] SMARTNET DATE/TIME %04d-%02d-%02d %02d:%02d data(0x%01x)\n" % (log_ts.get(), self.msgq_id, year, month, day, hour, minute, data))
             # Two-OSW patch/multiselect
-            elif osw1_cmd == 0x340 and osw2_grp and osw1_grp and (osw2_addr & 0x7 == 3 or osw2_addr & 0x7 == 7):
-                type_str = "PATCH" if osw2_addr & 0x7 == 3 else "MULTISELECT"
+            elif osw1_cmd == 0x340 and osw2_grp and osw1_grp and (self.is_patch_group(osw2_addr) or self.is_multiselect_group(osw2_addr)):
+                type_str = self.get_call_options_str(osw2_addr, include_clear=False)
                 tgid = (osw1_addr & 0xfff) << 4
                 sub_tgid = osw2_addr & 0xfff0
                 if self.debug >= 11:
