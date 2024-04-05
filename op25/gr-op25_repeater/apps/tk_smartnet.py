@@ -321,12 +321,14 @@ class osw_receiver(object):
         rc |= self.expire_talkgroups(curr_time)
         return rc
 
-    def is_obt_system(self): # Is the current config for an OBT system
+    # Is the current config for an OBT system
+    def is_obt_system(self):
         bandplan = from_dict(self.config, 'bandplan', "800_reband")
         band = bandplan[:3]
         return band == "OBT" or band == "400" # Still accept '400' for backwards compatibility
 
-    def get_expected_obt_tx_freq(self, rx_freq): # Attempt to auto-compute transmit offsets based on typical USA/Canada band plans
+    # Attempt to auto-compute transmit offsets based on typical USA/Canada band plans
+    def get_expected_obt_tx_freq(self, rx_freq):
         # VHF has no standard transmit offset so OBT systems usually use the same base freq, and assign different channel numbers
         if rx_freq >= 136.0 and rx_freq < 174.0:
             return rx_freq
@@ -348,7 +350,8 @@ class osw_receiver(object):
         # Unknown frequency range, so we can't get an expected value
         return 0.0
 
-    def is_chan(self, chan, is_tx=False): # Is the 'chan' a valid frequency (is_tx for OBT explicit tx channel assignments)
+    # Is the 'chan' a valid frequency; uplink channel if is_tx=True (mostly applicable for OBT systems with explicit tx channel assignments)
+    def is_chan(self, chan, is_tx=False):
         bandplan = from_dict(self.config, 'bandplan', "800_reband")
         band = bandplan[:3]
         subtype = bandplan[3:len(bandplan)].lower().lstrip("_-:")
@@ -375,7 +378,8 @@ class osw_receiver(object):
 
         return False
 
-    def get_freq(self, chan, is_tx=False): # Convert 'chan' into band-dependent frequency (is_tx for debugging uplink frequencies)
+    # Convert 'chan' into band-dependent frequency; uplink frequency if is_tx=True (mostly applicable for OBT systems with explicit tx channel assignments)
+    def get_freq(self, chan, is_tx=False):
         # Short-circuit invalid frequencies
         if not self.is_chan(chan, is_tx):
             if self.debug >= 5:
@@ -478,10 +482,12 @@ class osw_receiver(object):
         # Round to 5 decimal places to eliminate accumulated floating point errors
         return round(freq, 5)
 
-    def get_group_str(self, is_group): # Convert is-group bit to human-readable string
+    # Convert is-group bit to human-readable string
+    def get_group_str(self, is_group):
         return "G" if is_group != 0 else "I"
 
-    def get_band(self, band): # Convert index into string of the frequency band
+    # Convert index into string of the frequency band
+    def get_band(self, band):
         if band == 0:
             return "800 international splinter"
         elif band == 1:
@@ -499,7 +505,8 @@ class osw_receiver(object):
         else:
             return "%s" % (band)
 
-    def get_connect_tone(self, connect_tone_index): # Convert index into connect tone (Hz)
+    # Convert index into connect tone (Hz)
+    def get_connect_tone(self, connect_tone_index):
         if connect_tone_index == 0:
             return 105.88
         elif connect_tone_index == 1:
@@ -519,7 +526,8 @@ class osw_receiver(object):
         else:
             return None
 
-    def get_features_str(self, feat): # Convert features into a string showing the meaning
+    # Convert features into a string showing the meaning
+    def get_features_str(self, feat):
         failsoft    = (feat & 0x31 == 0)
         voc         = (feat & 0x20) >> 5
         wide_area   = (feat & 0x10) >> 4
@@ -550,7 +558,8 @@ class osw_receiver(object):
 
         return feat_str[:-2]
 
-    def get_call_options_str(self, tgid): # Convert TGID into a string showing the call options
+    # Convert TGID into a string showing the call options; exclude "CLEAR" prefix if include_clear=False
+    def get_call_options_str(self, tgid, include_clear=True):
         is_encrypted = (tgid & 0x8) >> 3
         options      = (tgid & 0x7)
 
