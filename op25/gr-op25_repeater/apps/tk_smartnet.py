@@ -776,7 +776,7 @@ class osw_receiver(object):
                             type_str = self.get_call_options_str(osw2_addr, include_clear=False)
                             sub_tgid = osw2_addr
                             if self.debug >= 11:
-                                sys.stderr.write("%s [%d] SMARTNET %s CANCEL sub_tgid(%05d/0x%03x)\n" % (log_ts.get(), self.msgq_id, type_str, sub_tgid, sub_tgid >> 4))
+                                sys.stderr.write("%s [%d] SMARTNET %s CANCEL tgid(%05d/0x%03x)\n" % (log_ts.get(), self.msgq_id, type_str, tgid, tgid >> 4))
                         # Unknown extended function
                         else:
                             tgid = osw2_addr
