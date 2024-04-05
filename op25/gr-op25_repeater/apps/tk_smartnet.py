@@ -40,6 +40,7 @@ TGID_HOLD_TIME          = 2.0   # Number of seconds to give previously active tg
 TGID_SKIP_TIME          = 4.0   # Number of seconds to blacklist a previously skipped tgid
 TGID_EXPIRY_TIME        = 1.0   # Number of seconds to allow tgid to remain active with no updates received
 EXPIRY_TIMER            = 0.2   # Number of seconds between checks for expirations
+PATCH_EXPIRY_TIME       = 20.0  # Number of seconds until patch expiry
 ADJ_SITE_EXPIRY_TIME    = 300.0 # Number of seconds until adjacent site expiry
 
 #################
@@ -178,6 +179,7 @@ class osw_receiver(object):
         self.osw_q = deque(maxlen=OSW_QUEUE_SIZE)
         self.voice_frequencies = {}
         self.talkgroups = {}
+        self.patches = {}
         self.skiplist = {}
         self.blacklist = {}
         self.whitelist = None
@@ -320,8 +322,12 @@ class osw_receiver(object):
 
         rc = False
         rc |= self.process_osws()
-        rc |= self.expire_talkgroups(curr_time)
-        rc |= self.expire_adjacent_sites(curr_time)
+
+        if curr_time >= self.last_expiry_check + EXPIRY_TIMER:
+            rc |= self.expire_talkgroups(curr_time)
+            rc |= self.expire_patches(curr_time)
+            rc |= self.expire_adjacent_sites(curr_time)
+
         return rc
 
     # Is the current config for an OBT system
@@ -589,6 +595,31 @@ class osw_receiver(object):
 
         return options_str
 
+    # Convert TGID into a set of letter flags showing the call options
+    def get_call_options_flags_str(self, tgid):
+        is_encrypted = (tgid & 0x8) >> 3
+        options      = (tgid & 0x7)
+
+        options_str = "E " if is_encrypted else ""
+
+        if options != 0:
+            if options == 1:
+                options_str += "Ann"
+            elif options == 2:
+                options_str += "Em"
+            elif options == 3:
+                options_str += "P"
+            elif options == 4:
+                options_str += "Em P"
+            elif options == 5:
+                options_str += "Em MS"
+            elif options == 6:
+                options_str += "UNDEF"
+            elif options == 7:
+                options_str += "MS"
+
+        return options_str
+
     # Do the TG's call options indicate a patch group
     def is_patch_group(self, tgid):
         return tgid & 0x7 == 3 or tgid & 0x7 == 4
@@ -774,7 +805,8 @@ class osw_receiver(object):
                         # Patch/multiselect cancel
                         if osw1_addr == 0x2021 and (self.is_patch_group(osw2_addr) or self.is_multiselect_group(osw2_addr)):
                             type_str = self.get_call_options_str(osw2_addr, include_clear=False)
-                            sub_tgid = osw2_addr
+                            tgid = osw2_addr & 0xfff0
+                            rc |= self.delete_patches(tgid)
                             if self.debug >= 11:
                                 sys.stderr.write("%s [%d] SMARTNET %s CANCEL tgid(%05d/0x%03x)\n" % (log_ts.get(), self.msgq_id, type_str, tgid, tgid >> 4))
                         # Unknown extended function
@@ -916,6 +948,8 @@ class osw_receiver(object):
                 type_str = self.get_call_options_str(osw2_addr, include_clear=False)
                 tgid = (osw1_addr & 0xfff) << 4
                 sub_tgid = osw2_addr & 0xfff0
+                mode = osw2_addr & 0xf
+                rc |= self.add_patch(osw1_t, tgid, sub_tgid, mode)
                 if self.debug >= 11:
                     if tgid == sub_tgid:
                         sys.stderr.write("%s [%d] SMARTNET %s tgid(%05d/0x%03x)\n" % (log_ts.get(), self.msgq_id, type_str, tgid, tgid >> 4))
@@ -1025,9 +1059,6 @@ class osw_receiver(object):
         return True
 
     def expire_adjacent_sites(self, curr_time):
-        if curr_time < self.last_expiry_check + EXPIRY_TIMER:
-            return False
-
         for f in list(self.adjacent_sites.keys()):
             if curr_time > self.adjacent_sites[f]['time'] + ADJ_SITE_EXPIRY_TIME:
                 site = self.adjacent_sites[f]['site']
@@ -1060,13 +1091,13 @@ class osw_receiver(object):
         self.voice_frequencies[frequency]['time'] = time.time()
         return rc
 
-        #if tgid in self.patches:
-        #    for ptgid in self.patches[tgid]['ga']:
-        #        rc |= self.update_talkgroup(frequency, ptgid, srcaddr)
-        #        if self.debug >= 5:
-        #            sys.stderr.write('%s update_talkgroups: sg(%d) patched tgid(%d)\n' % (log_ts.get(), tgid, ptgid))
     def update_talkgroups(self, ts, frequency, tgid, srcaddr, mode=-1):
         rc = self.update_talkgroup(ts, frequency, tgid, srcaddr, mode)
+        if tgid in self.patches:
+            for sub_tgid in self.patches[tgid]['sub_tgid']:
+                self.update_talkgroup(ts, frequency, sub_tgid, srcaddr, mode)
+                if self.debug >= 5:
+                    sys.stderr.write('%s [%d] update_talkgroups: tgid(%d) patched sub_tgid(%d)\n' % (log_ts.get(), self.msgq_id, tgid, sub_tgid))
         return rc
 
     def update_talkgroup(self, ts, frequency, tgid, srcaddr, mode=-1):
@@ -1108,9 +1139,6 @@ class osw_receiver(object):
             self.talkgroups[tgid]['status'] = 0
 
     def expire_talkgroups(self, curr_time):
-        if curr_time < self.last_expiry_check + EXPIRY_TIMER:
-            return False
-
         rc = False
         self.last_expiry_check = curr_time
         for tgid in self.talkgroups:
@@ -1120,6 +1148,45 @@ class osw_receiver(object):
                 self.talkgroups[tgid]['receiver'].expire_talkgroup(reason="expiry")
                 rc = True
         return rc
+
+    def add_patch(self, ts, tgid, sub_tgid, mode):
+        if tgid not in self.patches:
+            self.patches[tgid] = {}
+
+        if (sub_tgid != tgid):
+            is_update = sub_tgid in self.patches[tgid]
+            self.patches[tgid][sub_tgid] = {'time': ts, 'mode': mode}
+            if self.debug >= 5:
+                action_str = "updated" if is_update else "added"
+                sys.stderr.write("%s [%d] add_patch: %s patch to tgid(%d) from sub_tgid(%d)\n" % (log_ts.get(), self.msgq_id, action_str, tgid, sub_tgid))
+
+        return True
+
+    def delete_patches(self, tgid):
+        if tgid not in self.patches:
+            return False
+
+        del self.patches[tgid]
+        if self.debug >= 5:
+            sys.stderr.write("%s [%d] delete_patches: deleted all patches to tgid(%d)\n" % (log_ts.get(), self.msgq_id, tgid))
+
+        return True
+
+    def expire_patches(self, curr_time):
+        deleted = 0
+        for tgid in list(self.patches.keys()):
+            for sub_tgid in list(self.patches[tgid].keys()):
+                if curr_time > (self.patches[tgid][sub_tgid]['time'] + PATCH_EXPIRY_TIME):
+                    deleted += 1
+                    del self.patches[tgid][sub_tgid]
+                    if self.debug >= 5:
+                        sys.stderr.write("%s [%d] expire_patches: expired patch to tgid(%d) from sub_tgid(%d)\n" % (log_ts.get(), self.msgq_id, tgid, sub_tgid))
+            if len(list(self.patches[tgid].keys())) == 0:
+                del self.patches[tgid]
+                if self.debug >= 5:
+                    sys.stderr.write("%s [%d] expire_patches: expired all patches to tgid(%d)\n" % (log_ts.get(), self.msgq_id, tgid))
+
+        return deleted
 
     def dump_tgids(self):
         sys.stderr.write("Known tgids: { ")
@@ -1137,6 +1204,7 @@ class osw_receiver(object):
         d['secondary']      = ""
         d['frequencies']    = {}
         d['frequency_data'] = {}
+        d['patch_data']     = {}
         d['adjacent_data']  = {}
         d['last_tsbk']      = self.last_osw
         t = time.time()
@@ -1162,6 +1230,16 @@ class osw_receiver(object):
             else:
                 d['frequencies'][f] = 'voice frequency %f tgid [           ] %s ago count %d' %  ((f/1e6), time_ago_str, self.voice_frequencies[f]['counter'])
                 d['frequency_data'][f] = {'tgids': [], 'last_activity': '%s' % (time_ago_str), 'counter': self.voice_frequencies[f]['counter']}
+
+        for tgid in sorted(self.patches.keys()):
+            d['patch_data'][tgid] = {}
+            for sub_tgid in sorted(self.patches[tgid].keys()):
+                tgid_dec = "%5d" % (tgid)
+                tgid_hex = "0x%03x" % (tgid >> 4)
+                sub_tgid_dec = "%5d" % (sub_tgid)
+                sub_tgid_hex = "0x%03x" % (sub_tgid >> 4)
+                mode = self.get_call_options_flags_str(self.patches[tgid][sub_tgid]['mode'])
+                d['patch_data'][tgid][sub_tgid] = {'tgid_dec': tgid_dec, 'tgid_hex': tgid_hex, 'sub_tgid_dec': sub_tgid_dec, 'sub_tgid_hex': sub_tgid_hex, 'mode': mode}
 
         for f in list(self.adjacent_sites.keys()):
             d['adjacent_data'][f] = {'stid': self.adjacent_sites[f]['site'], 'uplink': self.adjacent_sites[f]['cc_tx_freq']}

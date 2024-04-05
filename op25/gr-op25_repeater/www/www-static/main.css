@@ -158,9 +158,9 @@ div.system {
 	border: 0px solid #d00
 }
 
-/* adjacent sites container that holds the table */
+/* right column container that holds the adjacent sites and patch tables */
 
-div.adjacent {
+div.right_column {
 
 	position: relative;
 	top: 10px;

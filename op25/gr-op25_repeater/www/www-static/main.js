@@ -424,16 +424,57 @@ function channel_status() {
         s2_trk.value = "tracking on";
 }
 
+// patches table
+
+function patches(d) {
+    if (d['patch_data'] == undefined || Object.keys(d['patch_data']).length < 1) {
+        return "";
+    }
+
+    // Only support Type II to start
+    if (d['type'] != "smartnet") {
+        return ""
+    }
+
+    var html = "<table border=1 borderwidth=0 cellpadding=0 cellspacing=0 width=100%>";
+    html += "<tr><th colspan=99 style=\"align: center\">Patches</th></tr>";
+    html += "<tr><th colspan=2>TG</th><th colspan=2>Sub TG</th><th>Mode</th></tr>";
+    var ct = 0;
+    for (var tgid in d['patch_data']) {
+        var color = "#d0d0d0";
+        if ((ct & 1) == 0)
+            color = "#c0c0c0";
+        ct += 1;
+
+        num_sub_tgids = Object.keys(d['patch_data'][tgid]).length
+        var index = 0;
+        for (var sub_tgid in d['patch_data'][tgid]) {
+            if (++index == 1) {
+                html += "<tr style=\"background-color: " + color + ";\">";
+                html += "<td rowspan=" + num_sub_tgids + ">" + d['patch_data'][tgid][sub_tgid]['tgid_dec'] + "</td><td rowspan=" + num_sub_tgids + ">" + d['patch_data'][tgid][sub_tgid]['tgid_hex'] + "</td>";
+            } else {
+                html += "<tr style=\"background-color: " + color + ";\">";
+            }
+            html += "<td>" + d['patch_data'][tgid][sub_tgid]['sub_tgid_dec'] + "</td><td>" + d['patch_data'][tgid][sub_tgid]['sub_tgid_hex'] + "</td>";
+            html += "<td>" + d['patch_data'][tgid][sub_tgid]['mode'] + "</td>";
+            html += "</tr>";
+        }
+    }
+    html += "</table><br>";
+
+// end patch table
+
+    return html;
+}
+
 // adjacent sites table
 
 function adjacent_data(d) {
-    if (d['adjacent_data'] != null && Object.keys(d['adjacent_data']).length < 1) {
-        var html = "</div>";
-        return html;
+    if (d['adjacent_data'] == undefined || Object.keys(d['adjacent_data']).length < 1) {
+        return "";
     }
     var is_p25 = (d['type'] == "p25");
-    var html = "<div class=\"adjacent\">";
-    html += "<table border=1 borderwidth=0 cellpadding=0 cellspacing=0 width=100%>";
+    var html = "<table border=1 borderwidth=0 cellpadding=0 cellspacing=0 width=100%>";
     html += "<tr><th colspan=99 style=\"align: center\">Adjacent Sites</th></tr>";
     html += "<tr><th>Frequency</th>";
     if (is_p25) // Only P25 has RFSS
@@ -450,7 +491,7 @@ function adjacent_data(d) {
             html += "<td>" + d['adjacent_data'][freq]["rfid"] + "</td>";
         html += "<td>" + d['adjacent_data'][freq]["stid"] + "</td><td>" + (d['adjacent_data'][freq]["uplink"] / 1000000.0).toFixed(6) + "</td></tr>";
     }
-    html += "</table></div></div><br><br>";
+    html += "</table><br>";
 
 // end adjacent sites table
 
@@ -556,7 +597,10 @@ function trunk_update(d) {
 
 // end system freqencies table
 
+        html += "<div class=\"right_column\">";
+        html += patches(d[nac]);
         html += adjacent_data(d[nac]);
+        html += "</div></div></div>";
     }
 
     if (d['srcaddr'] != undefined)

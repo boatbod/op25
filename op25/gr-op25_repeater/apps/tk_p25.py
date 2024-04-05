@@ -1471,7 +1471,7 @@ class p25_system(object):
                 updated += 1
                 del self.patches[sg]
                 if self.debug >= 5:
-                    sys.stderr.write("%s [%s] expired_patches: expiring patch sg(%d)\n" % (log_ts.get(), self.sysname, sg))
+                    sys.stderr.write("%s [%s] expire_patches: expiring patch sg(%d)\n" % (log_ts.get(), self.sysname, sg))
         return updated
 
     def get_rid_tag(self, srcaddr):
