@@ -32,7 +32,16 @@ from gnuradio import gr
 
 #################
 
-OSW_QUEUE_SIZE          = 5     # Some messages can be 3 OSWs long, plus up to two IDLEs can be inserted in between useful messages
+# Message queue message types (defined in lib/op25_msg_types.h)
+M_SMARTNET_TIMEOUT      = -1
+M_SMARTNET_OSW          =  0
+M_SMARTNET_END_PTT      = 15
+
+# OSW queue values
+OSW_QUEUE_SIZE          = 5     # Some messages can be 3 OSWs long, plus up to two IDLEs can be inserted in between
+                                # useful messages.
+
+# SmartNet trunking constants
 CC_TIMEOUT_RETRIES      = 3     # Number of control channel framing timeouts before hunting
 VC_TIMEOUT_RETRIES      = 3     # Number of voice channel framing timeouts before expiry
 TGID_DEFAULT_PRIO       = 3     # Default tgid priority when unassigned
@@ -303,14 +312,14 @@ class osw_receiver(object):
         m_rxid = int(msg.arg1()) >> 1
         m_ts = float(msg.arg2())
 
-        if (m_type == -1):  # Control Channel Timeout
+        if m_type == M_SMARTNET_TIMEOUT:  # Control Channel Timeout
             if self.debug > 10:
                 sys.stderr.write("%s [%d] control channel timeout\n" % (log_ts.get(), self.msgq_id))
             self.cc_retries += 1
             if self.cc_retries >= CC_TIMEOUT_RETRIES:
                 self.tune_next_cc()
 
-        elif (m_type == 0): # OSW Received
+        elif m_type == M_SMARTNET_OSW: # OSW Received
             s = msg.to_string()
             osw_addr = get_ordinals(s[0:2])
             osw_grp  = get_ordinals(s[2:3])
