@@ -34,12 +34,14 @@ from gnuradio import gr
 
 # Message queue message types (defined in lib/op25_msg_types.h)
 M_SMARTNET_TIMEOUT      = -1
+M_SMARTNET_BAD_OSW      = -2
 M_SMARTNET_OSW          =  0
 M_SMARTNET_END_PTT      = 15
 
 # OSW queue values
-OSW_QUEUE_SIZE          = 5     # Some messages can be 3 OSWs long, plus up to two IDLEs can be inserted in between
-                                # useful messages.
+OSW_QUEUE_SIZE          = 5 + 1 # Some messages can be 3 OSWs long, plus up to two IDLEs can be inserted in between
+                                # useful messages. Additionally, keep one slot for a QUEUE RESET message.
+OSW_QUEUE_RESET_CMD     = 0xffe # OSW command representing QUEUE RESET took place; not a valid cmd so it won't conflict
 
 # SmartNet trunking constants
 CC_TIMEOUT_RETRIES      = 3     # Number of control channel framing timeouts before hunting
@@ -312,14 +314,27 @@ class osw_receiver(object):
         m_rxid = int(msg.arg1()) >> 1
         m_ts = float(msg.arg2())
 
-        if m_type == M_SMARTNET_TIMEOUT:  # Control Channel Timeout
+        # Control Channel Timeout
+        if m_type == M_SMARTNET_TIMEOUT:
             if self.debug > 10:
                 sys.stderr.write("%s [%d] control channel timeout\n" % (log_ts.get(), self.msgq_id))
             self.cc_retries += 1
             if self.cc_retries >= CC_TIMEOUT_RETRIES:
                 self.tune_next_cc()
 
-        elif m_type == M_SMARTNET_OSW: # OSW Received
+        # Bad OSW received (sync failure or bad CRC)
+        elif m_type == M_SMARTNET_BAD_OSW:
+            # Clear the OSW queue - this avoids us incorrectly trying to parse multi-OSW messages across the bad OSW.
+            # This increases decoding accuracy at the cost of reduced "performance" in extremely marginal conditions,
+            # though odds are we'd be incorrectly parsing the messages we received anyway.
+            self.osw_q.clear()
+
+            # Enqueue a "QUEUE RESET" message that we can identify so that we know any OSWs after it that we fail to
+            # parse may be due to a missing first OSW in a multi-OSW sequence.
+            self.enqueue(0xffff, 0x1, OSW_QUEUE_RESET_CMD, m_ts)
+
+        # Good OSW received
+        elif m_type == M_SMARTNET_OSW:
             s = msg.to_string()
             osw_addr = get_ordinals(s[0:2])
             osw_grp  = get_ordinals(s[2:3])
@@ -328,6 +343,11 @@ class osw_receiver(object):
             self.stats['osw_count'] += 1
             self.last_osw = m_ts
             self.cc_retries = 0
+
+        # Some message we don't know about or expect
+        else:
+            if self.debug > 10:
+                sys.stderr.write("%s [%d] unknown queue message type %d\n" % (log_ts.get(), self.msgq_id, m_type))
 
         rc = False
         rc |= self.process_osws()
@@ -670,6 +690,41 @@ class osw_receiver(object):
         osw2_addr, osw2_grp, osw2_cmd, osw2_ch_rx, osw2_ch_tx, osw2_f_rx, osw2_f_tx, osw2_t = self.osw_q.popleft()
         grp2_str = self.get_group_str(osw2_grp)
 
+        is_unknown_osw = False
+        is_queue_reset = False
+
+        # Identify the QUEUE RESET message if present. This means that we have received a bad OSW (lost sync or bad CRC)
+        # that caused us to dump the queue. If we see one (and sometimes there are several in a row), we should treat
+        # any unknown OSWs that follow specially for logging - identify them as potentially due to a missing first OSW
+        # in a multi-OSW sequence rather than just being unknown.
+        while osw2_cmd == OSW_QUEUE_RESET_CMD:
+            is_queue_reset = True
+
+            # Save the queue reset message for later - if we end up with an unknown OSW, we'll keep putting it back at
+            # the head of the queue until we successfully parse an OSW, since that is the likely cause of unknown OSWs
+            queue_reset_addr  = osw2_addr
+            queue_reset_grp   = osw2_grp
+            queue_reset_cmd   = osw2_cmd
+            queue_reset_ch_rx = osw2_ch_rx
+            queue_reset_ch_tx = osw2_ch_tx
+            queue_reset_f_rx  = osw2_f_rx
+            queue_reset_f_tx  = osw2_f_tx
+            queue_reset_t     = osw2_t
+
+            # Get the next message until it is a good OSW
+            osw2_addr, osw2_grp, osw2_cmd, osw2_ch_rx, osw2_ch_tx, osw2_f_rx, osw2_f_tx, osw2_t = self.osw_q.popleft()
+            grp2_str = self.get_group_str(osw2_grp)
+
+        if is_queue_reset:
+            # If we only had a single queue reset message, continue to process the OSWs (queue was sized accordingly)
+            if len(self.osw_q) == OSW_QUEUE_SIZE - 2:
+                if self.debug >= 11:
+                    sys.stderr.write("%s [%d] SMARTNET QUEUE RESET DUE TO BAD OSW\n" % (log_ts.get(), self.msgq_id))
+            # If we only had more than one queue reset message, we need to put one back and wait for more OSWs
+            else:
+                self.osw_q.appendleft((queue_reset_addr, queue_reset_grp, queue_reset_cmd, queue_reset_ch_rx, queue_reset_ch_tx, queue_reset_f_rx, queue_reset_f_tx, queue_reset_t))
+                return rc
+
         # Parsing for OBT-specific commands. OBT systems sometimes (always?) use explicit commands that provide tx and
         # rx channels separately for certain system information, and for voice grants. Check for them specifically
         # first, but then fall back to non-OBT-specific parsing if that fails.
@@ -701,13 +756,15 @@ class osw_receiver(object):
                             sys.stderr.write(" cc_tx_freq(%f)" % (cc_tx_freq))
                         sys.stderr.write("\n")
                 else:
-                    # Put back unused OSW0
+                    # Track that we got an unknown OSW and put back unused OSW0
+                    is_unknown_osw = True
                     self.osw_q.appendleft((osw0_addr, osw0_grp, osw0_cmd, osw0_ch_rx, osw0_ch_tx, osw0_f_rx, osw0_f_tx, osw0_t))
 
                     if self.debug >= 11:
                         ts = log_ts.get()
-                        sys.stderr.write("%s [%d] SMARTNET OBT UNKNOWN OSW (0x%04x,%s,0x%03x)\n" % (ts, self.msgq_id, osw2_addr, grp2_str, osw2_cmd))
-                        sys.stderr.write("%s [%d] SMARTNET OBT UNKNOWN OSW (0x%04x,%s,0x%03x)\n" % (ts, self.msgq_id, osw1_addr, grp1_str, osw1_cmd))
+                        type_str = "UNKNOWN OSW AFTER BAD OSW\n" if is_queue_reset else "UNKNOWN OSW"
+                        sys.stderr.write("%s [%d] SMARTNET OBT %s (0x%04x,%s,0x%03x)\n" % (ts, self.msgq_id, type_str, osw2_addr, grp2_str, osw2_cmd))
+                        sys.stderr.write("%s [%d] SMARTNET OBT %s (0x%04x,%s,0x%03x)\n" % (ts, self.msgq_id, type_str, osw1_addr, grp1_str, osw1_cmd))
             # Two-OSW group voice grant command
             elif osw1_ch_rx and osw2_grp and osw1_grp and (osw1_addr != 0) and (osw2_addr != 0):
                 mode = 0 if osw2_grp else 1
@@ -723,11 +780,13 @@ class osw_receiver(object):
                         sys.stderr.write(" vc_tx_freq(%f)" % (vc_tx_freq))
                     sys.stderr.write("\n")
             else:
-                # Put back unused OSW1
+                # Track that we got an unknown OSW and put back unused OSW1
+                is_unknown_osw = True
                 self.osw_q.appendleft((osw1_addr, osw1_grp, osw1_cmd, osw1_ch_rx, osw1_ch_tx, osw1_f_rx, osw1_f_tx, osw1_t))
 
                 if self.debug >= 11:
-                    sys.stderr.write("%s [%d] SMARTNET OBT UNKNOWN OSW (0x%04x,%s,0x%03x)\n" % (log_ts.get(), self.msgq_id, osw2_addr, grp2_str, osw2_cmd))
+                    type_str = "UNKNOWN OSW AFTER BAD OSW\n" if is_queue_reset else "UNKNOWN OSW"
+                    sys.stderr.write("%s [%d] SMARTNET OBT %s (0x%04x,%s,0x%03x)\n" % (log_ts.get(), self.msgq_id, type_str, osw2_addr, grp2_str, osw2_cmd))
         # One-OSW voice update
         elif osw2_ch_rx and osw2_grp:
             dst_tgid = osw2_addr
@@ -935,13 +994,15 @@ class osw_receiver(object):
                     if self.debug >= 11:
                         sys.stderr.write("%s [%d] SMARTNET %s sys(0x%04x) site(%02d) band(%s) features(%s) cc_freq(%f)\n" % (log_ts.get(), self.msgq_id, type_str, sysid, site, self.get_band(band), self.get_features_str(feat), cc_rx_freq))
                 else:
-                    # Put back unused OSW0
+                    # Track that we got an unknown OSW and put back unused OSW0
+                    is_unknown_osw = True
                     self.osw_q.appendleft((osw0_addr, osw0_grp, osw0_cmd, osw0_ch_rx, osw0_ch_tx, osw0_f_rx, osw0_f_tx, osw0_t))
 
                     if self.debug >= 11:
                         ts = log_ts.get()
-                        sys.stderr.write("%s [%d] SMARTNET UNKNOWN OSW (0x%04x,%s,0x%03x)\n" % (ts, self.msgq_id, osw2_addr, grp2_str, osw2_cmd))
-                        sys.stderr.write("%s [%d] SMARTNET UNKNOWN OSW (0x%04x,%s,0x%03x)\n" % (ts, self.msgq_id, osw1_addr, grp1_str, osw1_cmd))
+                        type_str = "UNKNOWN OSW AFTER BAD OSW\n" if is_queue_reset else "UNKNOWN OSW"
+                        sys.stderr.write("%s [%d] SMARTNET %s (0x%04x,%s,0x%03x)\n" % (ts, self.msgq_id, type_str, osw2_addr, grp2_str, osw2_cmd))
+                        sys.stderr.write("%s [%d] SMARTNET %s (0x%04x,%s,0x%03x)\n" % (ts, self.msgq_id, type_str, osw1_addr, grp1_str, osw1_cmd))
             # Two-OSW date/time
             elif osw1_cmd == 0x322 and osw2_grp and osw1_grp:
                 year   = ((osw2_addr & 0xfe00) >> 9) + 2000
@@ -965,10 +1026,13 @@ class osw_receiver(object):
                     else:
                         sys.stderr.write("%s [%d] SMARTNET %s tgid(%05d/0x%03x) sub_tgid(%05d/0x%03x)\n" % (log_ts.get(), self.msgq_id, type_str, tgid, tgid >> 4, sub_tgid, sub_tgid >> 4))
             else:
-                # OSW1 did not match, so put it back in the queue
+                # Track that we got an unknown OSW; OSW1 did not match, so put it back in the queue
+                is_unknown_osw = True
                 self.osw_q.appendleft((osw1_addr, osw1_grp, osw1_cmd, osw1_ch_rx, osw1_ch_tx, osw1_f_rx, osw1_f_tx, osw1_t))
+
                 if self.debug >= 11:
-                    sys.stderr.write("%s [%d] SMARTNET UNKNOWN OSW (0x%04x,%s,0x%03x)\n" % (log_ts.get(), self.msgq_id, osw2_addr, grp2_str, osw2_cmd))
+                    type_str = "UNKNOWN OSW AFTER BAD OSW\n" if is_queue_reset else "UNKNOWN OSW"
+                    sys.stderr.write("%s [%d] SMARTNET %s (0x%04x,%s,0x%03x)\n" % (log_ts.get(), self.msgq_id, type_str, osw2_addr, grp2_str, osw2_cmd))
         # Two-OSW command
         elif osw2_cmd == 0x321:
             # Get next OSW in the queue
@@ -983,8 +1047,13 @@ class osw_receiver(object):
                 if self.debug >= 11:
                     sys.stderr.write("%s [%d] SMARTNET DIGITAL %s GROUP GRANT src(%05d) tgid(%05d/0x%03x) vc_freq(%f)\n" % (log_ts.get(), self.msgq_id, self.get_call_options_str(dst_tgid), src_rid, dst_tgid, dst_tgid >> 4, vc_freq))
             else:
-                # OSW1 did not match, so put it back in the queue
+                # Track that we got an unknown OSW; OSW1 did not match, so put it back in the queue
+                is_unknown_osw = True
                 self.osw_q.appendleft((osw1_addr, osw1_grp, osw1_cmd, osw1_ch_rx, osw1_ch_tx, osw1_f_rx, osw1_f_tx, osw1_t))
+
+                if self.debug >= 11:
+                    type_str = "UNKNOWN OSW AFTER BAD OSW\n" if is_queue_reset else "UNKNOWN OSW"
+                    sys.stderr.write("%s [%d] SMARTNET %s (0x%04x,%s,0x%03x)\n" % (log_ts.get(), self.msgq_id, type_str, osw2_addr, grp2_str, osw2_cmd))
         # One-OSW system ID / scan marker
         elif osw2_cmd == 0x32b and not osw2_grp:
             system   = osw2_addr
@@ -1051,8 +1120,16 @@ class osw_receiver(object):
                 if self.debug >= 11:
                     sys.stderr.write("%s [%d] SMARTNET %s STATUS type(%s) opcode(0x%x) data(0x%04x)\n" % (log_ts.get(), self.msgq_id, scope, grp2_str, opcode, data))
         else:
+            # Track that we got an unknown OSW
+            is_unknown_osw = True
             if self.debug >= 11:
-                sys.stderr.write("%s [%d] SMARTNET UNKNOWN OSW (0x%04x,%s,0x%03x)\n" % (log_ts.get(), self.msgq_id, osw2_addr, grp2_str, osw2_cmd))
+                type_str = "UNKNOWN OSW AFTER BAD OSW\n" if is_queue_reset else "UNKNOWN OSW"
+                sys.stderr.write("%s [%d] SMARTNET %s (0x%04x,%s,0x%03x)\n" % (log_ts.get(), self.msgq_id, type_str, osw2_addr, grp2_str, osw2_cmd))
+
+        # If we got an unknown OSW after a queue reset, put back the queue reset message so that we know the next
+        # unknown OSW is likely caused by the queue reset as well
+        if is_unknown_osw and is_queue_reset:
+            self.osw_q.appendleft((queue_reset_addr, queue_reset_grp, queue_reset_cmd, queue_reset_ch_rx, queue_reset_ch_tx, queue_reset_f_rx, queue_reset_f_tx, queue_reset_t))
 
         return rc
 
