@@ -469,7 +469,7 @@ function patches(d) {
 
 // adjacent sites table
 
-function adjacent_data(d) {
+function adjacent_sites(d) {
     if (d['adjacent_data'] == undefined || Object.keys(d['adjacent_data']).length < 1) {
         return "";
     }
@@ -599,7 +599,7 @@ function trunk_update(d) {
 
         html += "<div class=\"right_column\">";
         html += patches(d[nac]);
-        html += adjacent_data(d[nac]);
+        html += adjacent_sites(d[nac]);
         html += "</div></div></div>";
     }
 

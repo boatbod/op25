@@ -685,7 +685,7 @@ class osw_receiver(object):
                     cc_rx_freq = self.get_freq(osw0_addr & 0x3ff)
                     cc_tx_freq = osw2_f_tx
                     if osw0_grp:
-                        self.update_adjacent_site(osw1_t, site, cc_rx_freq, cc_tx_freq)
+                        self.add_adjacent_site(osw1_t, site, cc_rx_freq, cc_tx_freq)
                     if self.debug >= 11:
                         sys.stderr.write("%s [%d] SMARTNET OBT %s sys(0x%04x) site(%02d) band(%s) features(%s) cc_rx_freq(%f)" % (log_ts.get(), self.msgq_id, type_str, sysid, site, self.get_band(band), self.get_features_str(feat), cc_rx_freq))
                         if cc_tx_freq != 0.0:
@@ -922,7 +922,7 @@ class osw_receiver(object):
                     cc_rx_freq = self.get_freq(osw0_addr & 0x03ff)
                     cc_tx_freq = self.get_freq(osw0_addr & 0x03ff, is_tx=True)
                     if osw0_grp:
-                        self.update_adjacent_site(osw1_t, site, cc_rx_freq, cc_tx_freq)
+                        self.add_adjacent_site(osw1_t, site, cc_rx_freq, cc_tx_freq)
                     if self.debug >= 11:
                         sys.stderr.write("%s [%d] SMARTNET %s sys(0x%04x) site(%02d) band(%s) features(%s) cc_freq(%f)\n" % (log_ts.get(), self.msgq_id, type_str, sysid, site, self.get_band(band), self.get_features_str(feat), cc_rx_freq))
                 else:
@@ -1047,26 +1047,6 @@ class osw_receiver(object):
 
         return rc
 
-    def update_adjacent_site(self, ts, site, float_cc_rx_freq, float_cc_tx_freq):
-        if not float_cc_rx_freq or not float_cc_tx_freq:
-            return False
-
-        # Use integers in data we send up to the display layer
-        cc_rx_freq = int(float_cc_rx_freq * 1e6)
-        cc_tx_freq = int(float_cc_tx_freq * 1e6)
-
-        self.adjacent_sites[cc_rx_freq] = {'time': ts, 'site': site, 'cc_tx_freq': cc_tx_freq}
-        return True
-
-    def expire_adjacent_sites(self, curr_time):
-        for f in list(self.adjacent_sites.keys()):
-            if curr_time > self.adjacent_sites[f]['time'] + ADJ_SITE_EXPIRY_TIME:
-                site = self.adjacent_sites[f]['site']
-                del self.adjacent_sites[f]
-                if self.debug >= 5:
-                    sys.stderr.write("%s [%d] expire_adjacent_sites: expiring site(%d)\n" % (log_ts.get(), self.msgq_id, site))
-        return True
-
     def update_voice_frequency(self, ts, float_freq, tgid=None, srcaddr=-1, mode=-1):
         if not float_freq:    # e.g., channel identifier not yet known
             return False
@@ -1188,6 +1168,22 @@ class osw_receiver(object):
 
         return deleted
 
+    def add_adjacent_site(self, ts, site, cc_rx_freq, cc_tx_freq):
+        is_update = site in self.adjacent_sites
+        self.adjacent_sites[site] = {'time': ts, 'cc_rx_freq': cc_rx_freq, 'cc_tx_freq': cc_tx_freq}
+        if self.debug >= 5:
+            action_str = "updated" if is_update else "added"
+            sys.stderr.write("%s [%d] add_adjacent_site: %s adjacent site(%d)\n" % (log_ts.get(), self.msgq_id, action_str, site))
+        return True
+
+    def expire_adjacent_sites(self, curr_time):
+        for site in list(self.adjacent_sites.keys()):
+            if curr_time > self.adjacent_sites[site]['time'] + ADJ_SITE_EXPIRY_TIME:
+                del self.adjacent_sites[site]
+                if self.debug >= 5:
+                    sys.stderr.write("%s [%d] expire_adjacent_sites: expired site(%d)\n" % (log_ts.get(), self.msgq_id, site))
+        return True
+
     def dump_tgids(self):
         sys.stderr.write("Known tgids: { ")
         for tgid in sorted(self.talkgroups.keys()):
@@ -1241,8 +1237,11 @@ class osw_receiver(object):
                 mode = self.get_call_options_flags_str(self.patches[tgid][sub_tgid]['mode'])
                 d['patch_data'][tgid][sub_tgid] = {'tgid_dec': tgid_dec, 'tgid_hex': tgid_hex, 'sub_tgid_dec': sub_tgid_dec, 'sub_tgid_hex': sub_tgid_hex, 'mode': mode}
 
-        for f in list(self.adjacent_sites.keys()):
-            d['adjacent_data'][f] = {'stid': self.adjacent_sites[f]['site'], 'uplink': self.adjacent_sites[f]['cc_tx_freq']}
+        for site in sorted(self.adjacent_sites.keys()):
+            # Use integers in data we send up to the display layer
+            cc_rx_freq = int(self.adjacent_sites[site]['cc_rx_freq'] * 1e6)
+            cc_tx_freq = int(self.adjacent_sites[site]['cc_tx_freq'] * 1e6)
+            d['adjacent_data'][cc_rx_freq] = {'stid': site, 'uplink': cc_tx_freq}
 
         return json.dumps(d)
 
