@@ -447,9 +447,9 @@ function patches(d) {
         ct += 1;
 
         num_sub_tgids = Object.keys(d['patch_data'][tgid]).length
-        var index = 0;
+        var row_num = 0;
         for (var sub_tgid in d['patch_data'][tgid]) {
-            if (++index == 1) {
+            if (++row_num == 1) {
                 html += "<tr style=\"background-color: " + color + ";\">";
                 html += "<td rowspan=" + num_sub_tgids + ">" + d['patch_data'][tgid][sub_tgid]['tgid_dec'] + "</td><td rowspan=" + num_sub_tgids + ">" + d['patch_data'][tgid][sub_tgid]['tgid_hex'] + "</td>";
             } else {
@@ -476,20 +476,45 @@ function adjacent_sites(d) {
     var is_p25 = (d['type'] == "p25");
     var html = "<table border=1 borderwidth=0 cellpadding=0 cellspacing=0 width=100%>";
     html += "<tr><th colspan=99 style=\"align: center\">Adjacent Sites</th></tr>";
-    html += "<tr><th>Frequency</th>";
-    if (is_p25) // Only P25 has RFSS
-        html += "<th>RFSS</th>";
-    html += "<th>Site</th><th>Uplink</th></tr>";
-    var ct = 0;
-    for (var freq in d['adjacent_data']) {
-        var color = "#d0d0d0";
-        if ((ct & 1) == 0)
-            color = "#c0c0c0";
-        ct += 1;
-        html += "<tr style=\"background-color: " + color + ";\"><td>" + (freq / 1000000.0).toFixed(6) + "</td>";
-        if (is_p25)
-            html += "<td>" + d['adjacent_data'][freq]["rfid"] + "</td>";
-        html += "<td>" + d['adjacent_data'][freq]["stid"] + "</td><td>" + (d['adjacent_data'][freq]["uplink"] / 1000000.0).toFixed(6) + "</td></tr>";
+    if (d['type'] == "p25") {
+        html += "<tr><th>RFSS</th><th>Site</th><th>Frequency</th><th>Uplink</th></tr>";
+        var ct = 0;
+        // Ordered by RFSS then site number
+        for (var freq in d['adjacent_data']) {
+            var rfss = d['adjacent_data'][freq]["rfid"];
+            var site = d['adjacent_data'][freq]["stid"];
+            adjacent_by_rfss[rfss] = {};
+            adjacent_by_rfss[rfss][site] = {};
+            adjacent_by_rfss[rfss][site]['cc_rx_freq'] = (freq / 1000000.0).toFixed(6);
+            adjacent_by_rfss[rfss][site]['cc_tx_freq'] = (d['adjacent_data'][freq]["uplink"] / 1000000.0).toFixed(6);
+        }
+        for (var rfss in adjacent_by_rfss) {
+            for (var site in adjacent_by_rfss[rfss]) {
+                var color = "#d0d0d0";
+                if ((ct & 1) == 0)
+                    color = "#c0c0c0";
+                ct += 1;
+                html += "<tr style=\"background-color: " + color + ";\"><td>" + rfss + "</td><td>" + site + "</td><td>" + adjacent_by_rfss[rfss][site]["cc_rx_freq"] + "</td><td>" + adjacent_by_rfss[rfss][site]["cc_tx_freq"] + "</td></tr>";
+            }
+        }
+    } else if (d['type'] == "smartnet") {
+        html += "<tr><th>Site</th><th>Frequency</th><th>Uplink</th></tr>";
+        var ct = 0;
+        // Ordered by site number
+        var adjacent_by_site = {};
+        for (var freq in d['adjacent_data']) {
+            var site = d['adjacent_data'][freq]["stid"];
+            adjacent_by_site[site] = {};
+            adjacent_by_site[site]['cc_rx_freq'] = (freq / 1000000.0).toFixed(6);
+            adjacent_by_site[site]['cc_tx_freq'] = (d['adjacent_data'][freq]["uplink"] / 1000000.0).toFixed(6);
+        }
+        for (var site in adjacent_by_site) {
+            var color = "#d0d0d0";
+            if ((ct & 1) == 0)
+                color = "#c0c0c0";
+            ct += 1;
+            html += "<tr style=\"background-color: " + color + ";\"><td>" + site + "</td><td>" + adjacent_by_site[site]["cc_rx_freq"] + "</td><td>" + adjacent_by_site[site]["cc_tx_freq"] + "</td></tr>";
+        }
     }
     html += "</table><br>";
 
