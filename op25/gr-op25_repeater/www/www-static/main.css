@@ -153,7 +153,7 @@ div.system {
 	position: absolute;
 	top: 10px;
 	left: 0;
-	width: 54%;
+	width: 60%;
 	height: auto;
 	border: 0px solid #d00
 }
@@ -164,7 +164,7 @@ div.right_column {
 
 	position: relative;
 	top: 10px;
-	width: 42%;
+	width: 36%;
 	float: right;
 	height: auto;
 	border: 0px solid #00f;

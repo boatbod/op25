@@ -628,28 +628,50 @@ class osw_receiver(object):
 
         return options_str
 
-    # Convert TGID into a set of letter flags showing the call options
-    def get_call_options_flags_str(self, tgid):
+    # Convert mode and TGID into a set of letter flags showing the call options
+    def get_call_options_flags_str(self, tgid, mode=None):
         is_encrypted = (tgid & 0x8) >> 3
         options      = (tgid & 0x7)
 
-        options_str = "E " if is_encrypted else ""
+        if mode == None:    options_str = ""
+        elif mode == 0:     options_str = "A"
+        elif mode == 1:     options_str = "D"
+        else:               options_str = "U"
+
+        options_str += "E " if is_encrypted else "  "
 
         if options != 0:
-            if options == 1:
-                options_str += "Ann"
-            elif options == 2:
-                options_str += "Em"
-            elif options == 3:
-                options_str += "P"
-            elif options == 4:
-                options_str += "Em P"
-            elif options == 5:
-                options_str += "Em MS"
-            elif options == 6:
-                options_str += "UNDEF"
-            elif options == 7:
-                options_str += "MS"
+            if options == 1:    options_str += "   Ann"
+            elif options == 2:  options_str += "Em"
+            elif options == 3:  options_str += "   P"
+            elif options == 4:  options_str += "Em P"
+            elif options == 5:  options_str += "Em MS"
+            elif options == 6:  options_str += "UNDEF"
+            elif options == 7:  options_str += "   MS"
+
+        return options_str
+
+    # Convert mode and TGID into a set of letter flags showing the call options, but for web interface
+    def get_call_options_flags_web_str(self, tgid, mode=None):
+        is_encrypted = (tgid & 0x8) >> 3
+        options      = (tgid & 0x7)
+
+        if mode == None:    options_str = ""
+        elif mode == 0:     options_str = "A"
+        elif mode == 1:     options_str = "D"
+        else:               options_str = "U"
+
+        options_str += "E" if is_encrypted else "&nbsp;"
+        options_str += "&nbsp;"
+
+        if options != 0:
+            if options == 1:    options_str += "Ann"
+            elif options == 2:  options_str += "Em"
+            elif options == 3:  options_str += "P"
+            elif options == 4:  options_str += "Em&nbsp;P"
+            elif options == 5:  options_str += "Em&nbsp;MS"
+            elif options == 6:  options_str += "UNDEF"
+            elif options == 7:  options_str += "MS"
 
         return options_str
 
@@ -1164,7 +1186,7 @@ class osw_receiver(object):
         rc = self.update_talkgroups(ts, frequency, tgid, srcaddr, mode)
 
         base_tgid = tgid & 0xfff0
-        tgid_stat = tgid & 0x000f
+        flags     = tgid & 0x000f
         if frequency not in self.voice_frequencies:
             self.voice_frequencies[frequency] = {'counter':0}
             sorted_freqs = collections.OrderedDict(sorted(self.voice_frequencies.items()))
@@ -1172,11 +1194,16 @@ class osw_receiver(object):
             if self.debug >= 5:
                 sys.stderr.write('%s [%d] new freq=%f\n' % (log_ts.get(), self.msgq_id, (frequency/1e6)))
 
-        if 'tgid' not in self.voice_frequencies[frequency]:
-            self.voice_frequencies[frequency]['tgid'] = [None]
         self.voice_frequencies[frequency]['tgid'] = base_tgid
+        self.voice_frequencies[frequency]['flags'] = flags
+        # If we get a valid mode, store it
+        if mode != -1:
+            self.voice_frequencies[frequency]['mode'] = mode
+        # Or if the previous TG has expired and we don't know the mode, just store the unknown state
+        elif 'time' not in self.voice_frequencies[frequency] or ts > self.voice_frequencies[frequency]['time'] + TGID_EXPIRY_TIME:
+            self.voice_frequencies[frequency]['mode'] = mode
         self.voice_frequencies[frequency]['counter'] += 1
-        self.voice_frequencies[frequency]['time'] = time.time()
+        self.voice_frequencies[frequency]['time'] = ts
         return rc
 
     def update_talkgroups(self, ts, frequency, tgid, srcaddr, mode=-1):
@@ -1335,10 +1362,35 @@ class osw_receiver(object):
 
         t = time.time()
 
-        for f in list(self.voice_frequencies.keys()):
+        # Get all current frequencies we know about (CC, alternate CC, VC)
+        all_freqs = list(self.voice_frequencies.keys()) + list(self.alternate_cc_freqs.keys())
+        if self.rx_cc_freq != None:
+            all_freqs += [int(self.rx_cc_freq)]
+
+        for f in all_freqs:
+            # Type-specific parameters
+            time_ago = None
+            count = 0
+            if f in self.voice_frequencies:
+                chan_type = "voice"
+                time_ago = t - self.voice_frequencies[f]['time']
+                count = self.voice_frequencies[f]['counter']
+            if f in self.alternate_cc_freqs:
+                chan_type = "alternate"
+            if f == self.rx_cc_freq:
+                chan_type = "control"
+                time_ago = t - self.last_osw
+
             # Show time in appropriate units based on how long ago - useful for some high-capacity/low-traffic sites
-            time_ago = t - self.voice_frequencies[f]['time']
-            if time_ago < (60.0):
+            tgids = []
+            if time_ago == None:
+                time_ago_str = "Never"
+            elif time_ago < TGID_EXPIRY_TIME:
+                time_ago_str = "  Now"
+                # Only show TGID if we believe the call is currently ongoing
+                if f in self.voice_frequencies:
+                    tgids = ["0x%03x" % (self.voice_frequencies[f]['tgid'] >> 4), "%5d" % (self.voice_frequencies[f]['tgid'])]
+            elif time_ago < (60.0):
                 time_ago_str = "%4.1fs" % (time_ago)
             elif time_ago < (60.0 * 60.0):
                 time_ago_str = "%4.1fm" % (time_ago / 60.0)
@@ -1347,16 +1399,23 @@ class osw_receiver(object):
             else:
                 time_ago_str = "%4.1fd" % (time_ago / 60.0 / 60.0 / 24.0)
 
-            # Only show TGID if we believe the call is currently ongoing
-            tgid_dec = "%5d" % (self.voice_frequencies[f]['tgid'])
-            tgid_hex = "0x%03x" % (self.voice_frequencies[f]['tgid'] >> 4)
-            if t < self.voice_frequencies[f]['time'] + TGID_EXPIRY_TIME:
-                d['frequencies'][f] = 'voice frequency %f tgid [%s %s]   Now     count %d' %  ((f/1e6), tgid_dec, tgid_hex, self.voice_frequencies[f]['counter'])
-                # Co-opt the P25 phase 2 TG slots to show both dec and hex for users who are into that
-                d['frequency_data'][f] = {'tgids': [tgid_hex, tgid_dec], 'last_activity': 'Now', 'counter': self.voice_frequencies[f]['counter']}
+            # Format here to show in theses console viewer
+            time_ago_ncurses_str = time_ago_str + " ago" if time_ago_str != "Never" and time_ago_str != "  Now" else time_ago_str + "    "
+
+            mode_str_web = ""
+            if chan_type == "control":
+                d['frequencies'][f] = '- %f  tgid [----- CC -----][--------]  %s' % ((f / 1e6), time_ago_ncurses_str)
+            elif chan_type == "alternate" and len(tgids) == 0:
+                d['frequencies'][f] = '- %f  tgid [              ][ Alt CC ]  %s  count %d' % ((f / 1e6), time_ago_ncurses_str, count)
+            elif len(tgids) != 0:
+                mode_str = (self.get_call_options_flags_str(self.voice_frequencies[f]['flags'], self.voice_frequencies[f]['mode']) + "        ")[:8]
+                mode_str_web = self.get_call_options_flags_web_str(self.voice_frequencies[f]['flags'], self.voice_frequencies[f]['mode'])
+                d['frequencies'][f] = '- %f  tgid [ %s  %s ][%s]  %s  count %d' % ((f / 1e6), tgids[1], tgids[0], mode_str, time_ago_ncurses_str, count)
             else:
-                d['frequencies'][f] = 'voice frequency %f tgid [           ] %s ago count %d' %  ((f/1e6), time_ago_str, self.voice_frequencies[f]['counter'])
-                d['frequency_data'][f] = {'tgids': [], 'last_activity': '%s' % (time_ago_str), 'counter': self.voice_frequencies[f]['counter']}
+                d['frequencies'][f] = '- %f  tgid [              ][        ]  %s  count %d' % ((f / 1e6), time_ago_ncurses_str, count)
+
+            # The easy part: send pure JSON and let the display layer handle formatting
+            d['frequency_data'][f] = {'type': chan_type, 'tgids': tgids, 'last_activity': time_ago_str, 'counter': count, 'mode': mode_str_web}
 
         # Patches
         for tgid in sorted(self.patches.keys()):
@@ -1367,7 +1426,7 @@ class osw_receiver(object):
                 sub_tgid_dec = "%5d" % (sub_tgid)
                 sub_tgid_hex = "0x%03x" % (sub_tgid >> 4)
                 mode = self.get_call_options_flags_str(self.patches[tgid][sub_tgid]['mode'])
-                d['patch_data'][tgid][sub_tgid] = {'tgid_dec': tgid_dec, 'tgid_hex': tgid_hex, 'sub_tgid_dec': sub_tgid_dec, 'sub_tgid_hex': sub_tgid_hex, 'mode': mode}
+                d['patch_data'][tgid][sub_tgid] = {'tgid_dec': tgid_dec, 'tgid_hex': tgid_hex, 'sub_tgid_dec': sub_tgid_dec, 'sub_tgid_hex': sub_tgid_hex, 'mode': mode.strip()}
 
         # Adjacent sites
         for site in sorted(self.adjacent_sites.keys()):
