@@ -34,7 +34,7 @@
 }
 
 hr {
-	width: 730px;
+	width: 830px;
 	float: left;
 	padding: 0px;
 }
@@ -115,7 +115,7 @@ but can be safely left in place even when using a fixed width
 
 .flex-container {
 	display: flex;
-	width: 730px;
+	width: 830px;
 	justify-content: space-between;
 
 }
@@ -134,7 +134,7 @@ but can be safely left in place even when using a fixed width
 div.info {
 
 	position: relative;
-	width: 730px;
+	width: 830px;
 	height: auto;
 	border: 0px solid #000;
 }
@@ -224,7 +224,7 @@ div.right_column {
 	border: 1px solid #999;
 	height: auto;
 	overflow: auto;
-	width: 720px;
+	width: 820px;
 	padding: 5px;
 	background: LightGray; /* For browsers that do not support gradients */
 	background: linear-gradient(White, Silver);
@@ -330,7 +330,7 @@ div.right_column {
 }
 
 .nav-bar {
-	width: 730px;
+	width: 830px;
 	padding: 0;
 	border: 1px solid #000;
 }
