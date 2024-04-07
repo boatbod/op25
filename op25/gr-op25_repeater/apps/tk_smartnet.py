@@ -204,6 +204,7 @@ class osw_receiver(object):
         self.last_osw = 0.0
         self.rx_cc_freq = None
         self.rx_sys_id = None
+        self.rx_site_id = None
         self.stats = {}
         self.stats['osw_count'] = 0
         self.sysname = config['sysname']
@@ -744,7 +745,6 @@ class osw_receiver(object):
                 # The information returned here may be for this site, or may be for other adjacent sites
                 if osw0_cmd == 0x30b and osw0_addr & 0xfc00 == 0x6000:
                     type_str = "ADJACENT SITE" if osw0_grp else "ALTERNATE CONTROL CHANNEL"
-                    sysid = osw2_addr
                     system = osw2_addr
                     # Sites are encoded as 0-indexed but usually referred to as 1-indexed
                     site = ((osw1_addr & 0xfc00) >> 10) + 1
@@ -758,6 +758,7 @@ class osw_receiver(object):
                     if osw0_grp:
                         self.add_adjacent_site(osw1_t, site, cc_rx_freq, cc_tx_freq)
                     else:
+                        self.rx_site_id = site
                         self.add_alternate_cc_freq(osw1_t, cc_rx_freq, cc_tx_freq)
                     if self.debug >= 11:
                         sys.stderr.write("%s [%d] SMARTNET OBT %s sys(0x%04x) site(%02d) band(%s) features(%s) cc_rx_freq(%f)" % (log_ts.get(), self.msgq_id, type_str, system, site, self.get_band(band), self.get_features_str(feat), cc_rx_freq))
@@ -1077,12 +1078,14 @@ class osw_receiver(object):
         elif osw2_cmd == 0x32b and not osw2_grp:
             system   = osw2_addr
             type_str = "II"
+            self.rx_sys_id = system
             if self.debug >= 11:
                 sys.stderr.write("%s [%d] SMARTNET SYSTEM sys(0x%04x) type(%s)\n" % (log_ts.get(), self.msgq_id, system, type_str))
         # One-OSW AMSS (Automatic Multiple Site Select) message
         elif osw2_cmd >= 0x360 and osw2_cmd <= 0x39f and osw2_grp:
             # Sites are encoded as 0-indexed but usually referred to as 1-indexed
             site = osw2_cmd - 0x360 + 1
+            self.rx_site_id = site
             if self.debug >= 11:
                 sys.stderr.write("%s [%d] SMARTNET AMSS site(%02d)\n" % (log_ts.get(), self.msgq_id, site))
         # One-OSW system status update
@@ -1313,12 +1316,16 @@ class osw_receiver(object):
         sys.stderr.write("}\n")
 
     def to_json(self):  # ugly but required for compatibility with P25 trunking and terminal modules
+        system_id_str = "%04X" % (self.rx_sys_id) if self.rx_sys_id is not None else "----"
+        site_id_str   = "%02d" % (self.rx_site_id) if self.rx_site_id is not None else "--"
+
         d = {}
         d['type']           = 'smartnet'
         d['system']         = self.sysname
-        d['top_line']       = 'SmartNet/SmartZone SysId 0x%04x' % (self.rx_sys_id if self.rx_sys_id is not None else 0)
-        d['top_line']      += ' Control Ch %f' % ((self.rx_cc_freq if self.rx_cc_freq is not None else self.cc_list[self.cc_index]) / 1e6)
-        d['top_line']      += ' OSW count %d' % (self.stats['osw_count'])
+        d['top_line']       = 'SmartNet ' if self.rx_site_id is None else 'SmartZone'
+        d['top_line']      += '   System ID %s  Site %s' % (system_id_str, site_id_str)
+        d['top_line']      += '   CC %f' % ((self.rx_cc_freq if self.rx_cc_freq is not None else self.cc_list[self.cc_index]) / 1e6)
+        d['top_line']      += '   OSW count %d' % (self.stats['osw_count'])
         d['secondary']      = list(self.alternate_cc_freqs.keys())
         d['frequencies']    = {}
         d['frequency_data'] = {}
