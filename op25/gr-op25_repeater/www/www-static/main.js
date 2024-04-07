@@ -559,15 +559,22 @@ function trunk_update(d) {
         html += d[nac]['top_line'];
         html += "</span><br>";
 
+        var is_p25 = d[nac]['type'] == "p25"
         if (d[nac]['rfid'] != undefined)
             html += "<span class=\"label\">RFSS ID: </span><span class=\"value\">" + d[nac]['rfid'] + " </span>";
         if (d[nac]['stid'] != undefined)
             html += "<span class=\"label\">Site ID: </span><span class=\"value\">" + d[nac]['stid'] + "</span><br>";
         if (d[nac]['secondary'] != undefined && d[nac]["secondary"].length) {
-            html += "<span class=\"label\">Secondary control channel(s): </span><span class=\"value\"> ";
+            html += "<span class=\"label\">";
+            if (is_p25)
+                html += "Secondary";
+            else
+                html += "Alternate";
+            html += " control channel(s): </span><span class=\"value\"> ";
             for (i=0; i<d[nac]["secondary"].length; i++) {
+                if (i != 0)
+                    html += ", ";
                 html += (d[nac]["secondary"][i] / 1000000.0).toFixed(6);
-                html += " ";
             }
             html += "</span><br>";
         }

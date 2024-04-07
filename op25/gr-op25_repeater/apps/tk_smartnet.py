@@ -52,6 +52,7 @@ TGID_SKIP_TIME          = 4.0   # Number of seconds to blacklist a previously sk
 TGID_EXPIRY_TIME        = 1.0   # Number of seconds to allow tgid to remain active with no updates received
 EXPIRY_TIMER            = 0.2   # Number of seconds between checks for expirations
 PATCH_EXPIRY_TIME       = 20.0  # Number of seconds until patch expiry
+ALT_CC_EXPIRY_TIME      = 120.0 # Number of seconds until alternate CC expiry
 ADJ_SITE_EXPIRY_TIME    = 300.0 # Number of seconds until adjacent site expiry
 
 #################
@@ -194,6 +195,7 @@ class osw_receiver(object):
         self.skiplist = {}
         self.blacklist = {}
         self.whitelist = None
+        self.alternate_cc_freqs = {}
         self.adjacent_sites = {}
         self.cc_list = []
         self.cc_index = -1
@@ -355,6 +357,7 @@ class osw_receiver(object):
         if curr_time >= self.last_expiry_check + EXPIRY_TIMER:
             rc |= self.expire_talkgroups(curr_time)
             rc |= self.expire_patches(curr_time)
+            rc |= self.expire_alternate_cc_freqs(curr_time)
             rc |= self.expire_adjacent_sites(curr_time)
 
         return rc
@@ -742,16 +745,22 @@ class osw_receiver(object):
                 if osw0_cmd == 0x30b and osw0_addr & 0xfc00 == 0x6000:
                     type_str = "ADJACENT SITE" if osw0_grp else "ALTERNATE CONTROL CHANNEL"
                     sysid = osw2_addr
+                    system = osw2_addr
                     # Sites are encoded as 0-indexed but usually referred to as 1-indexed
                     site = ((osw1_addr & 0xfc00) >> 10) + 1
                     band = (osw1_addr & 0x380) >> 7
                     feat = (osw1_addr & 0x3f)
-                    cc_rx_freq = self.get_freq(osw0_addr & 0x3ff)
+                    cc_rx_chan = osw0_addr & 0x3ff
+                    cc_rx_freq = self.get_freq(cc_rx_chan)
                     cc_tx_freq = osw2_f_tx
+                    self.rx_sys_id = system
+                    self.rx_cc_freq = cc_rx_freq * 1e6
                     if osw0_grp:
                         self.add_adjacent_site(osw1_t, site, cc_rx_freq, cc_tx_freq)
+                    else:
+                        self.add_alternate_cc_freq(osw1_t, cc_rx_freq, cc_tx_freq)
                     if self.debug >= 11:
-                        sys.stderr.write("%s [%d] SMARTNET OBT %s sys(0x%04x) site(%02d) band(%s) features(%s) cc_rx_freq(%f)" % (log_ts.get(), self.msgq_id, type_str, sysid, site, self.get_band(band), self.get_features_str(feat), cc_rx_freq))
+                        sys.stderr.write("%s [%d] SMARTNET OBT %s sys(0x%04x) site(%02d) band(%s) features(%s) cc_rx_freq(%f)" % (log_ts.get(), self.msgq_id, type_str, system, site, self.get_band(band), self.get_features_str(feat), cc_rx_freq))
                         if cc_tx_freq != 0.0:
                             sys.stderr.write(" cc_tx_freq(%f)" % (cc_tx_freq))
                         sys.stderr.write("\n")
@@ -865,9 +874,14 @@ class osw_receiver(object):
                     elif (osw1_addr & 0xfc00) == 0x6000:
                         type_str = "ADJACENT" if osw1_grp else "ALTERNATE"
                         system = osw2_addr
-                        cc_freq = self.get_freq(osw1_addr & 0x3ff)
+                        cc_chan = osw1_addr & 0x3ff
+                        cc_rx_freq = self.get_freq(cc_chan)
+                        cc_tx_freq = self.get_freq(cc_chan, is_tx=True)
+                        self.rx_sys_id = system
+                        if not osw1_grp:
+                            self.add_alternate_cc_freq(osw1_t, cc_rx_freq, cc_tx_freq)
                         if self.debug >= 11:
-                            sys.stderr.write("%s [%d] SMARTNET %s CONTROL CHANNEL sys(0x%04x) cc_freq(%f)\n" % (log_ts.get(), self.msgq_id, type_str, system, cc_freq))
+                            sys.stderr.write("%s [%d] SMARTNET %s CONTROL CHANNEL sys(0x%04x) cc_freq(%f)\n" % (log_ts.get(), self.msgq_id, type_str, system, cc_rx_freq))
                     # Extended functions on groups
                     elif osw1_grp:
                         # Patch/multiselect cancel
@@ -982,17 +996,22 @@ class osw_receiver(object):
                 # The information returned here may be for this site, or may be for other adjacent sites
                 if osw0_cmd == 0x30b and osw0_addr & 0xfc00 == 0x6000:
                     type_str = "ADJACENT SITE" if osw0_grp else "ALTERNATE CONTROL CHANNEL"
-                    sysid = osw2_addr
+                    system = osw2_addr
                     # Sites are encoded as 0-indexed but usually referred to as 1-indexed
                     site = ((osw1_addr & 0xfc00) >> 10) + 1
                     band = (osw1_addr & 0x380) >> 7
                     feat = (osw1_addr & 0x3f)
-                    cc_rx_freq = self.get_freq(osw0_addr & 0x03ff)
-                    cc_tx_freq = self.get_freq(osw0_addr & 0x03ff, is_tx=True)
+                    cc_chan = osw0_addr & 0x03ff
+                    cc_rx_freq = self.get_freq(cc_chan)
+                    cc_tx_freq = self.get_freq(cc_chan, is_tx=True)
+                    self.rx_sys_id = system
                     if osw0_grp:
                         self.add_adjacent_site(osw1_t, site, cc_rx_freq, cc_tx_freq)
+                    else:
+                        self.rx_site_id = site
+                        self.add_alternate_cc_freq(osw1_t, cc_rx_freq, cc_tx_freq)
                     if self.debug >= 11:
-                        sys.stderr.write("%s [%d] SMARTNET %s sys(0x%04x) site(%02d) band(%s) features(%s) cc_freq(%f)\n" % (log_ts.get(), self.msgq_id, type_str, sysid, site, self.get_band(band), self.get_features_str(feat), cc_rx_freq))
+                        sys.stderr.write("%s [%d] SMARTNET %s sys(0x%04x) site(%02d) band(%s) features(%s) cc_freq(%f)\n" % (log_ts.get(), self.msgq_id, type_str, system, site, self.get_band(band), self.get_features_str(feat), cc_rx_freq))
                 else:
                     # Track that we got an unknown OSW and put back unused OSW0
                     is_unknown_osw = True
@@ -1254,6 +1273,23 @@ class osw_receiver(object):
 
         return deleted
 
+    def add_alternate_cc_freq(self, ts, cc_rx_freq, cc_tx_freq):
+        cc_freq_key = int(cc_rx_freq * 1e6)
+        is_update = cc_freq_key in self.alternate_cc_freqs
+        self.alternate_cc_freqs[cc_freq_key] = {'time': ts, 'cc_rx_freq': cc_rx_freq, 'cc_tx_freq': cc_tx_freq}
+        if self.debug >= 5:
+            action_str = "updated" if is_update else "added"
+            sys.stderr.write("%s [%d] add_alternate_cc_freq: %s alternate cc_freq(%f)\n" % (log_ts.get(), self.msgq_id, action_str, cc_rx_freq))
+        return True
+
+    def expire_alternate_cc_freqs(self, curr_time):
+        for freq in list(self.alternate_cc_freqs.keys()):
+            if curr_time > self.alternate_cc_freqs[freq]['time'] + ALT_CC_EXPIRY_TIME:
+                del self.alternate_cc_freqs[freq]
+                if self.debug >= 5:
+                    sys.stderr.write("%s [%d] expire_alternate_cc_freqs: expired cc_freq(%f)\n" % (log_ts.get(), self.msgq_id, freq / 1e6))
+        return True
+
     def add_adjacent_site(self, ts, site, cc_rx_freq, cc_tx_freq):
         is_update = site in self.adjacent_sites
         self.adjacent_sites[site] = {'time': ts, 'cc_rx_freq': cc_rx_freq, 'cc_tx_freq': cc_tx_freq}
@@ -1283,13 +1319,15 @@ class osw_receiver(object):
         d['top_line']       = 'SmartNet/SmartZone SysId 0x%04x' % (self.rx_sys_id if self.rx_sys_id is not None else 0)
         d['top_line']      += ' Control Ch %f' % ((self.rx_cc_freq if self.rx_cc_freq is not None else self.cc_list[self.cc_index]) / 1e6)
         d['top_line']      += ' OSW count %d' % (self.stats['osw_count'])
-        d['secondary']      = ""
+        d['secondary']      = list(self.alternate_cc_freqs.keys())
         d['frequencies']    = {}
         d['frequency_data'] = {}
         d['patch_data']     = {}
         d['adjacent_data']  = {}
         d['last_tsbk']      = self.last_osw
+
         t = time.time()
+
         for f in list(self.voice_frequencies.keys()):
             # Show time in appropriate units based on how long ago - useful for some high-capacity/low-traffic sites
             time_ago = t - self.voice_frequencies[f]['time']
@@ -1313,6 +1351,7 @@ class osw_receiver(object):
                 d['frequencies'][f] = 'voice frequency %f tgid [           ] %s ago count %d' %  ((f/1e6), time_ago_str, self.voice_frequencies[f]['counter'])
                 d['frequency_data'][f] = {'tgids': [], 'last_activity': '%s' % (time_ago_str), 'counter': self.voice_frequencies[f]['counter']}
 
+        # Patches
         for tgid in sorted(self.patches.keys()):
             d['patch_data'][tgid] = {}
             for sub_tgid in sorted(self.patches[tgid].keys()):
@@ -1323,6 +1362,7 @@ class osw_receiver(object):
                 mode = self.get_call_options_flags_str(self.patches[tgid][sub_tgid]['mode'])
                 d['patch_data'][tgid][sub_tgid] = {'tgid_dec': tgid_dec, 'tgid_hex': tgid_hex, 'sub_tgid_dec': sub_tgid_dec, 'sub_tgid_hex': sub_tgid_hex, 'mode': mode}
 
+        # Adjacent sites
         for site in sorted(self.adjacent_sites.keys()):
             # Use integers in data we send up to the display layer
             cc_rx_freq = int(self.adjacent_sites[site]['cc_rx_freq'] * 1e6)
