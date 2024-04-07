@@ -2,7 +2,6 @@
 <html>
 
 <head>
-
 	<title>OP25</title>
 	<link rel="stylesheet" type="text/css" href="main.css">
 	<script src="main.js"></script>
@@ -17,41 +16,41 @@
 
 <div class="nav-bar">
 <ul class="nav-ul">
-<li id="li1" class="nav-li"><input id="b1" class="nav-button" type="button" name="B1" value="Home" method="post" action="" onclick="javascript:f_select(&quot;status&quot;);"></li>
-<li id="li2" class="nav-li"><input id="b2" class="nav-button" type="button" name="B2" value="Plot" method="post" action="" onclick="javascript:f_select(&quot;plot&quot;);"></li>
-<li id="li3" class="nav-li"><input id="b3" class="nav-button" type="button" name="B3" value="About" method="post" action="" onclick="javascript:f_select(&quot;about&quot;);"></li>
-<li id="li4"><span class="copyr"> &copy; 2017-2024 Max H. Parke & Graham J. Norbury [boatbod version]</span></li>
+	<li id="li1" class="nav-li"><input id="b1" class="nav-button" type="button" name="B1" value="Home" method="post" action="" onclick="javascript:f_select(&quot;status&quot;);"></li>
+	<li id="li2" class="nav-li"><input id="b2" class="nav-button" type="button" name="B2" value="Plot" method="post" action="" onclick="javascript:f_select(&quot;plot&quot;);"></li>
+	<li id="li3" class="nav-li"><input id="b3" class="nav-button" type="button" name="B3" value="About" method="post" action="" onclick="javascript:f_select(&quot;about&quot;);"></li>
+	<li id="li4"><span class="copyr"> &copy; 2017-2024 Max H. Parke & Graham J. Norbury [boatbod version]</span></li>
 </ul>
 </div>
 <div id="div_debug" style="display: none;">
-<br>
+	<br>
 </div>
 <!-- control buttons -->
 
 <div id="controls1" class="flex-container">
 
 	<div>
-	<input type="button" class="scan-button" name="skip" value="SKIP" title="Skip current tgid" onclick="javascript:f_scan_button(&quot;skip&quot;);">
+		<input type="button" class="scan-button" name="skip" value="SKIP" title="Skip current tgid" onclick="javascript:f_scan_button(&quot;skip&quot;);">
 	</div>
 
 	<div>
-	<input type="button" class="scan-button" name="hold" value="HOLD" title="Hold current tgid" onclick="javascript:f_scan_button(&quot;hold&quot;);">
+		<input type="button" class="scan-button" name="hold" value="HOLD" title="Hold current tgid" onclick="javascript:f_scan_button(&quot;hold&quot;);">
 	</div>
 
 	<div>
-	<input type="button" class="scan-button" name="goto" value="GOTO" title="Go to tgid" onclick="javascript:f_scan_button(&quot;goto&quot;);">
+		<input type="button" class="scan-button" name="goto" value="GOTO" title="Go to tgid" onclick="javascript:f_scan_button(&quot;goto&quot;);">
 	</div>
 
 	<div>
-	<input type="button" class="scan-button" name="lockout" value="B/LIST" title="Blacklist tgid" onclick="javascript:f_scan_button(&quot;lockout&quot;);">
+		<input type="button" class="scan-button" name="lockout" value="B/LIST" title="Blacklist tgid" onclick="javascript:f_scan_button(&quot;lockout&quot;);">
 	</div>
 
 	<div>
-	<input type="button" class="scan-button" name="whitelist" value="W/LIST" title="Whitelist tgid" onclick="javascript:f_scan_button(&quot;whitelist&quot;);">
+		<input type="button" class="scan-button" name="whitelist" value="W/LIST" title="Whitelist tgid" onclick="javascript:f_scan_button(&quot;whitelist&quot;);">
 	</div>
 
 	<div>
-	<input type="button" class="scan-button" name="log" value="LOG/V" title="Log verbosity" onclick="javascript:f_scan_button(&quot;set_debug&quot;);">
+		<input type="button" class="scan-button" name="log" value="LOG/V" title="Log verbosity" onclick="javascript:f_scan_button(&quot;set_debug&quot;);">
 	</div>
 
 	<div>
@@ -59,19 +58,19 @@
 	</div>
 
 	<div>
-	<input type="button" class="scan-button" id="t1_D" name="<<" value="<<">
+		<input type="button" class="scan-button" id="t1_D" name="<<" value="<<">
 	</div>
 
 	<div>
-	<input type="button" class="scan-button" id="t1_d" name="<" value="<">
+		<input type="button" class="scan-button" id="t1_d" name="<" value="<">
 	</div>
 
 	<div>
-	<input type="button" class="scan-button" id="t1_u" name=">" value=">">
+		<input type="button" class="scan-button" id="t1_u" name=">" value=">">
 	</div>
 
 	<div>
-	<input type="button" class="scan-button" id="t1_U" name=">>" value=">>">
+		<input type="button" class="scan-button" id="t1_U" name=">>" value=">>">
 	</div>
 
 </div>
@@ -79,27 +78,27 @@
 <div id="controls2" class="flex-container" style="display: none;">
 
 	<div>
-	<input type="button" class="scan-button" name="pl1" value="FFT" title="Toggle Spectrum Plot" onclick="javascript:f_plot_button(1);">
+		<input type="button" class="scan-button" name="pl1" value="FFT" title="Toggle Spectrum Plot" onclick="javascript:f_plot_button(1);">
 	</div>
 
 	<div>
-	<input type="button" class="scan-button" name="pl2" value="Con" title="Toggle Constellation Plot" onclick="javascript:f_plot_button(2);">
+		<input type="button" class="scan-button" name="pl2" value="Con" title="Toggle Constellation Plot" onclick="javascript:f_plot_button(2);">
 	</div>
 
 	<div>
-	<input type="button" class="scan-button" name="pl3" value="Sym" title="Toggle Symbol Plot" onclick="javascript:f_plot_button(3);">
+		<input type="button" class="scan-button" name="pl3" value="Sym" title="Toggle Symbol Plot" onclick="javascript:f_plot_button(3);">
 	</div>
 
 	<div>
-	<input type="button" class="scan-button" name="pl4" value="Dat" title="Toggle Datascope Plot" onclick="javascript:f_plot_button(4);">
+		<input type="button" class="scan-button" name="pl4" value="Dat" title="Toggle Datascope Plot" onclick="javascript:f_plot_button(4);">
 	</div>
 
 	<div>
-	<input type="button" class="scan-button" name="pl5" value="Mix" title="Toggle Mixer Plot" onclick="javascript:f_plot_button(5);">
+		<input type="button" class="scan-button" name="pl5" value="Mix" title="Toggle Mixer Plot" onclick="javascript:f_plot_button(5);">
 	</div>
 
 	<div>
-	<input type="button" class="scan-button" name="pl6" value="Tune" title="Toggle Tuner Plot" onclick="javascript:f_plot_button(6);">
+		<input type="button" class="scan-button" name="pl6" value="Tune" title="Toggle Tuner Plot" onclick="javascript:f_plot_button(6);">
 	</div>
 
 	<div>
@@ -107,19 +106,19 @@
 	</div>
 
 	<div>
-	<input type="button" class="scan-button" id="t2_D" name="<<" value="<<">
+		<input type="button" class="scan-button" id="t2_D" name="<<" value="<<">
 	</div>
 
 	<div>
-	<input type="button" class="scan-button" id="t2_d" name="<" value="<">
+		<input type="button" class="scan-button" id="t2_d" name="<" value="<">
 	</div>
 
 	<div>
-	<input type="button" class="scan-button" id="t2_u" name=">" value=">">
+		<input type="button" class="scan-button" id="t2_u" name=">" value=">">
 	</div>
 
 	<div>
-	<input type="button" class="scan-button" id="t2_U" name=">>" value=">>">
+		<input type="button" class="scan-button" id="t2_U" name=">>" value=">>">
 	</div>
 
 </div>
@@ -128,15 +127,14 @@
 
 <div id="div_about" style="display:none;">
 	<div class="copyright-text">
-	This program comes with ABSOLUTELY NO WARRANTY.<br>
-	OP25 is free software, and you are welcome to redistribute it<br>
-	under certain conditions.  For further details refer to the "License"
-        link (below).<p>
+		This program comes with ABSOLUTELY NO WARRANTY.<br>
+		OP25 is free software, and you are welcome to redistribute it under certain conditions.<br>
+		For further details refer to the "License" link (below).
+	<p>
 	<table border=0>
 	<tr><td>License:</td><td><a href="https://www.gnu.org/licenses/gpl-3.0.en.html" target="_blank">https://www.gnu.org/licenses/gpl-3.0.en.html</a></td></tr>
 	<tr><td>Mailing list:</td><td><a href="https://groups.yahoo.com/neo/groups/op25-dev" target="_blank2">https://groups.yahoo.com/neo/groups/op25-dev</a></td></tr>
-	<tr><td>Download:</td><td><tt>git clone https://git.osmocom.org/op25 &nbsp&nbsp&nbsp[original]
-                                  <br>git clone https://github.com/boatbod/op25 [boatbod fork]</tt></td></tr>
+	<tr><td>Download:</td><td><tt>git clone https://git.osmocom.org/op25 &nbsp&nbsp&nbsp[original]<br>git clone https://github.com/boatbod/op25 [boatbod fork]</tt></td></tr>
 	<tr><td>Web site:</td><td><a href="http://op25.osmocom.org" target="_blank3">http://op25.osmocom.org</a></td></tr>
 	</table>
 	</div>
@@ -149,36 +147,35 @@
 <div id="div_status" style="display: none;">
 
 	<div id="div_s2" class="s2"> <!-- table -->
-            <div class="s2_row">
-	        <div class="s2_cell_a"><span class="label">Frequency:</span></div>
-	        <div class="s2_cell_b1" id="s2_freq">&nbsp</div>
-	        <div class="s2_cell_c" id="s2_ch_lbl" style="display:none;"><span class="label">Channel:</span></div>
-	        <div class="s2_cell_d" id="s2_ch_txt" style="display:none;">&nbsp</div>
-	        <div class="s2_cell_e" id="s2_ch_dn" style="display:none;"><input type="button" class="chan-button" name="c_dn" value="<" title="Prev Channel" onclick="javascript:f_chan_button(-1);"></div>
-	        <div class="s2_cell_f" id="s2_ch_dmp" style="display:none;"><input type="button" class="chan-button" name="c_dmp" value="d" title="Log TGs" onclick="javascript:f_dump_button(0);"></div>
-	        <div class="s2_cell_g" id="s2_ch_up" style="display:none;"><input type="button" class="chan-button" name="c_up>" value=">" title="Next Channel" onclick="javascript:f_chan_button(1);"></div>
-            </div>
-            <div class="s2_row">
-	        <div class="s2_cell_a"><span class="label">Talkgroup:</span></div>
-	        <div class="s2_cell_b2" id="s2_tg">&nbsp</div>
-	        <div class="s2_cell_h" id="s2_ch_cap" style="display:none;"><input type="button" class="cap-button" id="cap_bn" name="c_cap" value="start capture" title="Capture" onclick="javascript:f_cap_button(0);"></div>
-            </div>
-            <div class="s2_row">
-	        <div class="s2_cell_a"><span class="label">Group Addr:</span></div>
-	        <div class="s2_cell_b2" id="s2_grp">&nbsp</div>
-	        <div class="s2_cell_h" id="s2_ch_trk" style="display:none;"><input type="button" class="cap-button" id="trk_bn" name="c_trk" value="tracking" title="Tracking" onclick="javascript:f_trk_button(-1);"></div>
-            </div>
-            <div class="s2_row">
-	        <div class="s2_cell_a"><span class="label">Source Addr:</span></div>
-	        <div class="s2_cell_b" id="s2_src">&nbsp</div>
-            </div>
+		<div class="s2_row">
+			<div class="s2_cell_a"><span class="label">Frequency:</span></div>
+			<div class="s2_cell_b1" id="s2_freq">&nbsp</div>
+			<div class="s2_cell_c" id="s2_ch_lbl" style="display:none;"><span class="label">Channel:</span></div>
+			<div class="s2_cell_d" id="s2_ch_txt" style="display:none;">&nbsp</div>
+			<div class="s2_cell_e" id="s2_ch_dn" style="display:none;"><input type="button" class="chan-button" name="c_dn" value="<" title="Prev Channel" onclick="javascript:f_chan_button(-1);"></div>
+			<div class="s2_cell_f" id="s2_ch_dmp" style="display:none;"><input type="button" class="chan-button" name="c_dmp" value="d" title="Log TGs" onclick="javascript:f_dump_button(0);"></div>
+			<div class="s2_cell_g" id="s2_ch_up" style="display:none;"><input type="button" class="chan-button" name="c_up>" value=">" title="Next Channel" onclick="javascript:f_chan_button(1);"></div>
+		</div>
+		<div class="s2_row">
+			<div class="s2_cell_a"><span class="label">Talkgroup:</span></div>
+			<div class="s2_cell_b2" id="s2_tg">&nbsp</div>
+			<div class="s2_cell_h" id="s2_ch_cap" style="display:none;"><input type="button" class="cap-button" id="cap_bn" name="c_cap" value="start capture" title="Capture" onclick="javascript:f_cap_button(0);"></div>
+		</div>
+		<div class="s2_row">
+			<div class="s2_cell_a"><span class="label">Group Addr:</span></div>
+			<div class="s2_cell_b2" id="s2_grp">&nbsp</div>
+			<div class="s2_cell_h" id="s2_ch_trk" style="display:none;"><input type="button" class="cap-button" id="trk_bn" name="c_trk" value="tracking" title="Tracking" onclick="javascript:f_trk_button(-1);"></div>
+		</div>
+		<div class="s2_row">
+			<div class="s2_cell_a"><span class="label">Source Addr:</span></div>
+			<div class="s2_cell_b" id="s2_src">&nbsp</div>
+		</div>
 	</div> <!-- end table -->
 
 	<br>
 
 	<div id="div_s1" class="s1">
 	<!-- system freq -->
-
 		Waiting for data...
 	</div>
 	<br>
