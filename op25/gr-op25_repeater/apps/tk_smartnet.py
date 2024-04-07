@@ -1119,7 +1119,7 @@ class osw_receiver(object):
                 type_ii              = (data & 0x1000) >> 12
                 type_str             = "II" if type_ii else "I"
                 dispatch_timeout     = (data & 0xe00) >> 9
-                connect_tone         = (data & 0x1e0) >> 5
+                connect_tone         = (data & 0xe0) >> 5
                 connect_tone_str     = self.get_connect_tone(connect_tone)
                 interconnect_timeout = (data & 0x1f)
                 if self.debug >= 11:
