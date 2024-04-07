@@ -844,6 +844,16 @@ class osw_receiver(object):
             osw1_addr, osw1_grp, osw1_cmd, osw1_ch_rx, osw1_ch_tx, osw1_f_rx, osw1_f_tx, osw1_t = self.osw_q.popleft()
             grp1_str = self.get_group_str(osw1_grp)
 
+            # One-OSW system idle sometimes ends up in the middle of a multi-OSW command... bit wonky. If that happens,
+            # reorder it (process it first) and then just take the next OSW in the queue.
+            if osw1_cmd == 0x2f8 and not osw1_grp:
+                grp_str = grp1_str
+                data = osw1_addr
+                osw1_addr, osw1_grp, osw1_cmd, osw1_ch_rx, osw1_ch_tx, osw1_f_rx, osw1_f_tx, osw1_t = self.osw_q.popleft()
+                grp1_str = self.get_group_str(osw1_grp)
+                if self.debug >= 11:
+                    sys.stderr.write("%s [%d] SMARTNET IDLE REORDERED POSITION 2 data(%s,0x%04x)\n" % (log_ts.get(), self.msgq_id, grp_str, data))
+
             # Two-OSW system ID + control channel broadcast
             if osw1_ch_rx and not osw1_grp and ((osw1_addr & 0xff00) == 0x1f00):
                 system = osw2_addr
@@ -865,6 +875,17 @@ class osw_receiver(object):
             elif osw1_cmd == 0x30b:
                 # Get next OSW in the queue
                 osw0_addr, osw0_grp, osw0_cmd, osw0_ch_rx, osw0_ch_tx, osw0_f_rx, osw0_f_tx, osw0_t = self.osw_q.popleft()
+                grp0_str = self.get_group_str(osw0_grp)
+
+                # One-OSW system idle sometimes ends up in the middle of a multi-OSW command... bit wonky. If that
+                # happens, reorder it (process it first) and then just take the next OSW in the queue.
+                if osw0_cmd == 0x2f8 and not osw0_grp:
+                    grp_str = grp0_str
+                    data = osw0_addr
+                    osw0_addr, osw0_grp, osw0_cmd, osw0_ch_rx, osw0_ch_tx, osw0_f_rx, osw0_f_tx, osw0_t = self.osw_q.popleft()
+                    grp0_str = self.get_group_str(osw0_grp)
+                    if self.debug >= 11:
+                        sys.stderr.write("%s [%d] SMARTNET IDLE REORDERED POSITION 3 data(%s,0x%04x)\n" % (log_ts.get(), self.msgq_id, grp_str, data))
 
                 # Three-OSW system ID + control channel broadcast
                 if (
@@ -1015,6 +1036,17 @@ class osw_receiver(object):
             elif osw1_cmd == 0x320:
                 # Get OSW0
                 osw0_addr, osw0_grp, osw0_cmd, osw0_ch_rx, osw0_ch_tx, osw0_f_rx, osw0_f_tx, osw0_t = self.osw_q.popleft()
+                grp0_str = self.get_group_str(osw0_grp)
+
+                # One-OSW system idle sometimes ends up in the middle of a multi-OSW command... bit wonky. If that
+                # happens, reorder it (process it first) and then just take the next OSW in the queue.
+                if osw0_cmd == 0x2f8 and not osw0_grp:
+                    grp_str = grp0_str
+                    data = osw0_addr
+                    osw0_addr, osw0_grp, osw0_cmd, osw0_ch_rx, osw0_ch_tx, osw0_f_rx, osw0_f_tx, osw0_t = self.osw_q.popleft()
+                    grp0_str = self.get_group_str(osw0_grp)
+                    if self.debug >= 11:
+                        sys.stderr.write("%s [%d] SMARTNET IDLE REORDERED POSITION 3 data(%s,0x%04x)\n" % (log_ts.get(), self.msgq_id, grp_str, data))
 
                 # The information returned here may be for this site, or may be for other adjacent sites
                 if osw0_cmd == 0x30b and osw0_addr & 0xfc00 == 0x6000:
@@ -1042,7 +1074,7 @@ class osw_receiver(object):
 
                     if self.debug >= 11:
                         ts = log_ts.get()
-                        type_str = "UNKNOWN OSW AFTER BAD OSW\n" if is_queue_reset else "UNKNOWN OSW"
+                        type_str = "UNKNOWN OSW AFTER BAD OSW" if is_queue_reset else "UNKNOWN OSW"
                         sys.stderr.write("%s [%d] SMARTNET %s (0x%04x,%s,0x%03x)\n" % (ts, self.msgq_id, type_str, osw2_addr, grp2_str, osw2_cmd))
                         sys.stderr.write("%s [%d] SMARTNET %s (0x%04x,%s,0x%03x)\n" % (ts, self.msgq_id, type_str, osw1_addr, grp1_str, osw1_cmd))
             # Two-OSW date/time
@@ -1079,6 +1111,17 @@ class osw_receiver(object):
         elif osw2_cmd == 0x321:
             # Get next OSW in the queue
             osw1_addr, osw1_grp, osw1_cmd, osw1_ch_rx, osw1_ch_tx, osw1_f_rx, osw1_f_tx, osw1_t = self.osw_q.popleft()
+            grp1_str = self.get_group_str(osw1_grp)
+
+            # One-OSW system idle sometimes ends up in the middle of a multi-OSW command... bit wonky. If that happens,
+            # reorder it (process it first) and then just take the next OSW in the queue.
+            if osw1_cmd == 0x2f8 and not osw1_grp:
+                grp_str = grp1_str
+                data = osw1_addr
+                osw1_addr, osw1_grp, osw1_cmd, osw1_ch_rx, osw1_ch_tx, osw1_f_rx, osw1_f_tx, osw1_t = self.osw_q.popleft()
+                grp1_str = self.get_group_str(osw1_grp)
+                if self.debug >= 11:
+                    sys.stderr.write("%s [%d] SMARTNET IDLE REORDERED POSITION 2 data(%s,0x%04x)\n" % (log_ts.get(), self.msgq_id, grp_str, data))
 
             # Two-OSW digital group voice grant
             if osw1_ch_rx and osw2_grp and osw1_grp and (osw1_addr != 0):
