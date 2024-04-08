@@ -797,7 +797,7 @@ class osw_receiver(object):
                         sys.stderr.write("%s [%d] SMARTNET OBT %s (0x%04x,%s,0x%03x)\n" % (ts, self.msgq_id, type_str, osw2_addr, grp2_str, osw2_cmd))
                         sys.stderr.write("%s [%d] SMARTNET OBT %s (0x%04x,%s,0x%03x)\n" % (ts, self.msgq_id, type_str, osw1_addr, grp1_str, osw1_cmd))
             # Two-OSW group voice grant command
-            elif osw1_ch_rx and osw2_grp and osw1_grp and (osw1_addr != 0) and (osw2_addr != 0):
+            elif osw1_ch_rx and osw1_grp and (osw1_addr != 0) and (osw2_addr != 0):
                 mode = 0 if osw2_grp else 1
                 type_str = "ANALOG" if osw2_grp else "DIGITAL"
                 src_rid = osw2_addr
@@ -1146,12 +1146,14 @@ class osw_receiver(object):
             if self.debug >= 11:
                 sys.stderr.write("%s [%d] SMARTNET SYSTEM sys(0x%04x) type(%s)\n" % (log_ts.get(), self.msgq_id, system, type_str))
         # One-OSW AMSS (Automatic Multiple Site Select) message
-        elif osw2_cmd >= 0x360 and osw2_cmd <= 0x39f and osw2_grp:
+        elif osw2_cmd >= 0x360 and osw2_cmd <= 0x39f:
             # Sites are encoded as 0-indexed but usually referred to as 1-indexed
             site = osw2_cmd - 0x360 + 1
+            grp_str = grp2_str
+            data = osw2_addr
             self.rx_site_id = site
             if self.debug >= 11:
-                sys.stderr.write("%s [%d] SMARTNET AMSS site(%02d)\n" % (log_ts.get(), self.msgq_id, site))
+                sys.stderr.write("%s [%d] SMARTNET AMSS site(%02d) data(%s,0x%04x)\n" % (log_ts.get(), self.msgq_id, site, grp_str, data))
         # One-OSW system status update
         elif osw2_cmd == 0x3bf or osw2_cmd == 0x3c0:
             scope = "SYSTEM" if osw2_cmd == 0x3c0 else "NETWORK"
