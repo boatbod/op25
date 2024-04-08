@@ -1148,11 +1148,14 @@ class osw_receiver(object):
         elif osw2_cmd >= 0x360 and osw2_cmd <= 0x39f:
             # Sites are encoded as 0-indexed but usually referred to as 1-indexed
             site = osw2_cmd - 0x360 + 1
-            grp_str = grp2_str
-            data = osw2_addr
+            if osw2_grp and (osw2_addr == 0x00000 or osw2_addr == 0xffff):
+                data_str = ""
+            else:
+                # No idea what the data means if it's marked as individual
+                data_str = " data(%s,0x%04x)" % (grp2_str, osw2_addr)
             self.rx_site_id = site
             if self.debug >= 11:
-                sys.stderr.write("%s [%d] SMARTNET AMSS site(%02d) data(%s,0x%04x)\n" % (log_ts.get(), self.msgq_id, site, grp_str, data))
+                sys.stderr.write("%s [%d] SMARTNET AMSS site(%02d)%s\n" % (log_ts.get(), self.msgq_id, site, data_str))
         # One-OSW system status update
         elif osw2_cmd == 0x3bf or osw2_cmd == 0x3c0:
             scope = "SYSTEM" if osw2_cmd == 0x3c0 else "NETWORK"
