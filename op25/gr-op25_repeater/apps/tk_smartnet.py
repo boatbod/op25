@@ -641,7 +641,7 @@ class osw_receiver(object):
         options_str += "E " if is_encrypted else "  "
 
         if options != 0:
-            if options == 1:    options_str += "   Ann"
+            if options == 1:    options_str += "Ann"
             elif options == 2:  options_str += "Em"
             elif options == 3:  options_str += "   P"
             elif options == 4:  options_str += "Em P"
