@@ -776,7 +776,6 @@ class osw_receiver(object):
                     cc_rx_freq = self.get_freq(cc_rx_chan)
                     cc_tx_freq = osw2_f_tx
                     self.rx_sys_id = system
-                    self.rx_cc_freq = cc_rx_freq * 1e6
                     if osw0_grp:
                         self.add_adjacent_site(osw1_t, site, cc_rx_freq, cc_tx_freq)
                     else:
