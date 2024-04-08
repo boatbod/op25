@@ -796,7 +796,7 @@ class osw_receiver(object):
                         sys.stderr.write("%s [%d] SMARTNET OBT %s (0x%04x,%s,0x%03x)\n" % (ts, self.msgq_id, type_str, osw2_addr, grp2_str, osw2_cmd))
                         sys.stderr.write("%s [%d] SMARTNET OBT %s (0x%04x,%s,0x%03x)\n" % (ts, self.msgq_id, type_str, osw1_addr, grp1_str, osw1_cmd))
             # Two-OSW group voice grant command
-            elif osw1_ch_rx and osw1_grp and (osw1_addr != 0) and (osw2_addr != 0):
+            elif osw2_ch_tx and osw1_ch_rx and osw1_grp and (osw1_addr != 0) and (osw2_addr != 0):
                 mode = 0 if osw2_grp else 1
                 type_str = "ANALOG" if osw2_grp else "DIGITAL"
                 src_rid = osw2_addr
