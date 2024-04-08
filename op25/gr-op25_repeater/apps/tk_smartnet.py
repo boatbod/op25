@@ -652,26 +652,25 @@ class osw_receiver(object):
         return options_str
 
     # Convert mode and TGID into a set of letter flags showing the call options, but for web interface
-    def get_call_options_flags_web_str(self, tgid, mode=None):
+    def get_call_options_flags_web_str(self, tgid, mode):
         is_encrypted = (tgid & 0x8) >> 3
         options      = (tgid & 0x7)
 
-        if mode == None:    options_str = ""
-        elif mode == 0:     options_str = "A"
-        elif mode == 1:     options_str = "D"
-        else:               options_str = "U"
+        if mode == 0:   options_str = "A"
+        elif mode == 1: options_str = "D"
+        else:           options_str = "U"
 
         options_str += "E" if is_encrypted else "&nbsp;"
         options_str += "&nbsp;"
 
-        if options != 0:
-            if options == 1:    options_str += "Ann"
-            elif options == 2:  options_str += "Em"
-            elif options == 3:  options_str += "P"
-            elif options == 4:  options_str += "Em&nbsp;P"
-            elif options == 5:  options_str += "Em&nbsp;MS"
-            elif options == 6:  options_str += "UNDEF"
-            elif options == 7:  options_str += "MS"
+        if options == 0:    options_str += "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"
+        elif options == 1:  options_str += "Ann" + "&nbsp;&nbsp;"
+        elif options == 2:  options_str += "Em" + "&nbsp;&nbsp;&nbsp;"
+        elif options == 3:  options_str += "P" + "&nbsp;&nbsp;&nbsp;&nbsp;"
+        elif options == 4:  options_str += "Em" + "&nbsp;" + "P" + "&nbsp;"
+        elif options == 5:  options_str += "Em" + "&nbsp;" + "MS"
+        elif options == 6:  options_str += "UNDEF"
+        elif options == 7:  options_str += "MS" + "&nbsp;&nbsp;&nbsp;"
 
         return options_str
 

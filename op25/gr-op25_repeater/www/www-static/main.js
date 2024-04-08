@@ -641,7 +641,7 @@ function trunk_update(d) {
             }
             else {
                 if (tg1 != null || tg2 != null)
-                    mode_str = "<td>" + mode + "</td>"
+                    mode_str = "<td style=\"text-align:center;\">" + mode + "</td>"
                 if (tg1 == null)
                     tg1 = "&nbsp&nbsp-&nbsp&nbsp";
                 if (tg2 == null)
