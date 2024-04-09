@@ -636,7 +636,9 @@ function trunk_update(d) {
             // Now actually handle the appropriate channel type if not alternate
             if (chan_type == 'control') {
                 tg_str = "<td style=\"text-align:center;\" colspan=2>Control</td>";
-                mode_str = "<td style=\"text-align:center;\">CC</td>"
+                // Deliberately 8 characters wide, to ensure the column stays the right width without flickering when
+                // call status flags come and go with calls
+                mode_str = "<td style=\"text-align:center;\">&nbsp;&nbsp;&nbsp;CC&nbsp;&nbsp;&nbsp;</td>"
                 count = "";
             }
             else {
