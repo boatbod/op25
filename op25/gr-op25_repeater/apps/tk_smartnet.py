@@ -869,6 +869,12 @@ class osw_receiver(object):
                 rc |= self.update_voice_frequency(osw1_t, vc_freq, dst_tgid, src_rid, mode=0)
                 if self.debug >= 11:
                     sys.stderr.write("%s [%d] SMARTNET ANALOG %s GROUP GRANT src(%05d) tgid(%05d/0x%03x) vc_freq(%f)\n" % (log_ts.get(), self.msgq_id, self.get_call_options_str(dst_tgid), src_rid, dst_tgid, dst_tgid >> 4, vc_freq))
+            # Two-OSW dynamic regroup (unknown whether OSWs are group or individual)
+            elif osw1_cmd == 0x30a:
+                src_rid = osw2_addr
+                tgid = osw1_addr
+                if self.debug >= 11:
+                    sys.stderr.write("%s [%d] SMARTNET DYNAMIC REGROUP src(%05d) tgid(%05d/0x%03x)\n" % (log_ts.get(), self.msgq_id, src_rid, tgid, tgid >> 4))
             # One of many possible two- or three-OSW meanings...
             elif osw1_cmd == 0x30b:
                 # Get next OSW in the queue
@@ -1018,12 +1024,6 @@ class osw_receiver(object):
                             code = osw1_addr
                             if self.debug >= 11:
                                 sys.stderr.write("%s [%d] SMARTNET INDIVIDUAL EXTENDED FUNCTION src(%05d) code(0x%04x)\n" % (log_ts.get(), self.msgq_id, src_rid, code))
-            # Two-OSW dynamic regroup (unknown whether OSWs are group or individual)
-            elif osw1_cmd == 0x30a:
-                src_rid = osw2_addr
-                tgid = osw1_addr
-                if self.debug >= 11:
-                    sys.stderr.write("%s [%d] SMARTNET DYNAMIC REGROUP src(%05d) tgid(%05d/0x%03x)\n" % (log_ts.get(), self.msgq_id, src_rid, tgid, tgid >> 4))
             # Two-OSW affiliation
             elif osw1_cmd == 0x310 and not osw2_grp and not osw1_grp:
                 src_rid = osw2_addr
