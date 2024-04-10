@@ -1181,9 +1181,9 @@ class osw_receiver(object):
                 cvsd_echo_delay  = (data & 0x3e) >> 1
                 bit0             = (data & 0x1)
                 # Try to make it more human-readable
-                secure_str       = "None" if no_secure else ("Upgraded" if secure_upgrade else "Standard")
-                data_str         = "None" if no_data else ("Full" if full_data else "Reduced")
-                otar_str         = "Reduced" if reduced_otar else "Full"
+                secure_str       = "none" if no_secure else ("upgraded" if secure_upgrade else "standard")
+                data_str         = "none" if no_data else ("full" if full_data else "reduced")
+                otar_str         = "reduced" if reduced_otar else "full"
                 multikey_buf_str = "B" if multikey_buf_b else "A"
                 if self.debug >= 11:
                     sys.stderr.write("%s [%d] SMARTNET %s STATUS data(%s) secure(%s)" % (log_ts.get(), self.msgq_id, scope, data_str, secure_str))
