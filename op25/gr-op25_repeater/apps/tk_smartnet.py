@@ -1240,14 +1240,21 @@ class osw_receiver(object):
             if self.debug >= 5:
                 sys.stderr.write('%s [%d] new freq=%f\n' % (log_ts.get(), self.msgq_id, (frequency/1e6)))
 
-        self.voice_frequencies[frequency]['tgid'] = base_tgid
-        self.voice_frequencies[frequency]['flags'] = flags
         # If we get a valid mode, store it
         if mode != -1:
             self.voice_frequencies[frequency]['mode'] = mode
-        # Or if the previous TG has expired and we don't know the mode, just store the unknown state
-        elif 'time' not in self.voice_frequencies[frequency] or ts > self.voice_frequencies[frequency]['time'] + TGID_EXPIRY_TIME:
+        # If the TG is already there and has not changed under us (or has not expired), leave it be
+        elif (
+            ('tgid' in self.voice_frequencies[frequency] and self.voice_frequencies[frequency]['tgid'] == base_tgid) or
+            ('time' in self.voice_frequencies[frequency] and ts <= self.voice_frequencies[frequency]['time'] + TGID_EXPIRY_TIME)
+        ):
+            pass
+        # Otherwise store the unknown state
+        else:
             self.voice_frequencies[frequency]['mode'] = mode
+
+        self.voice_frequencies[frequency]['tgid'] = base_tgid
+        self.voice_frequencies[frequency]['flags'] = flags
         self.voice_frequencies[frequency]['counter'] += 1
         self.voice_frequencies[frequency]['time'] = ts
         return rc
