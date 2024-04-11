@@ -74,6 +74,7 @@ namespace gr{
                 if (d_debug >= 10) {
                     fprintf(stderr, "%s SMARTNET sync lost\n", logts.get(d_msgq_id));
                 }
+                rx_smartnet::bad_osw();
                 d_in_sync = false;
                 d_rx_count = 0;
                 return;
@@ -91,6 +92,7 @@ namespace gr{
                 if (d_debug >= 10) {
                     fprintf(stderr,"%s SMARTNET crc fail\n", logts.get(d_msgq_id));
                 }
+                rx_smartnet::bad_osw();
                 return;
             }
 
