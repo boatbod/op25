@@ -598,9 +598,10 @@ class osw_receiver(object):
         if active:
             feat_str += "active, "
 
+        # Trim the trailing comma and space
         return feat_str[:-2]
 
-    # Convert TGID into a string showing the call options; exclude "CLEAR" prefix if include_clear=False
+    # Convert TGID options into a string showing the call options; exclude "CLEAR" prefix if include_clear=False
     def get_call_options_str(self, tgid, include_clear=True):
         is_encrypted = (tgid & 0x8) >> 3
         options      = (tgid & 0x7)
@@ -628,7 +629,7 @@ class osw_receiver(object):
 
         return options_str
 
-    # Convert mode and TGID into a set of letter flags showing the call options
+    # Convert mode and TGID options into a set of letter flags showing the call options
     def get_call_options_flags_str(self, tgid, mode=None):
         is_encrypted = (tgid & 0x8) >> 3
         options      = (tgid & 0x7)
@@ -651,7 +652,7 @@ class osw_receiver(object):
 
         return options_str
 
-    # Convert mode and TGID into a set of letter flags showing the call options, but for web interface
+    # Convert mode and TGID options into a set of letter flags showing the call options, but for web interface
     def get_call_options_flags_web_str(self, tgid, mode):
         is_encrypted = (tgid & 0x8) >> 3
         options      = (tgid & 0x7)
@@ -663,6 +664,7 @@ class osw_receiver(object):
         options_str += "E" if is_encrypted else "&nbsp;"
         options_str += "&nbsp;"
 
+        # Ensure the string is always length 8, but use non-breaking space, because web
         if options == 0:    options_str += "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"
         elif options == 1:  options_str += "Ann" + "&nbsp;&nbsp;"
         elif options == 2:  options_str += "Em" + "&nbsp;&nbsp;&nbsp;"
