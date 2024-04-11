@@ -1,117 +1,90 @@
 
-August 2022
-=============
+This file contains notes on the current OP25 P25 receiver (`rx.py`) and multi receiver (`multi_rx.py`):
 
-This file contains notes on the current OP25 P25 receiver (rx.py) and
-multi receiver (multi_rx.py):
+## Example command line
 
-EXAMPLE COMMAND LINE
-====================
+```
 ./rx.py  --args 'rtl' --gains 'lna:49' -T tsys.tsv -q -1 -2 -S 1000000 -P symbol -o 50000 -w 2> stderr.2
+```
 
-Running stderr to a file (e.g., "2> stderr.2") is recommended to avoid 
-screen misprinting.
+Running stderr to a file (e.g., `2> stderr.2`) is recommended to avoid screen misprinting.
 
-NOTE 1: For phase1 voice the "-V" option is not used.  Instead the 
-"-w" option is used (see AUDIO SERVER section, below).  For P25 phase 2/TDMA audio decode,
-the "-2" option is required in addition to the "-w" option.
+NOTE 1: For phase1 voice the `-V` option is not used.  Instead the `-w` option is used (see AUDIO SERVER section, below).  For P25 phase 2/TDMA audio decode, the `-2` option is required in addition to the `-w` option.
 
-NOTE 2: For systems with a TDMA control channel the --tdma-cc option is required
+NOTE 2: For systems with a TDMA control channel the `--tdma-cc` option is required.
 
-TERMINAL OPERATION
-==================
-After starting rx.py if plotting is in use a separate gnuplot window
-should open.  You must click on the terminal window to restore it to
-focus, otherwise all keystrokes are consumed by gnuplot.  Once in the
-terminal window there are several keyboard commands:
- B - dynamically add tgid to blacklist
- d - dump list of known tgids to log
- h - hold
- H - hold/goto the specified tgid
- l - lockout
- q - quit program
- s - skip
- v - dynamically change log level
- W - dynamically add tgid to Whitelist
- , - decrease fine tune by 100Hz
- . - increase fine tune by 100Hz
- < - decrease fine tune by 1200Hz
- > - increase fine tune by 1200Hz
- 1 - toggle fft plot
- 2 - toggle constellation plot (cqpsk)
- 3 - toggle symbol plot
- 4 - toggle datascope plot
- 5 - toggle raw mixer plot
- 6 - toggle tuned mixer plot
- <cursor left> / <cursor right> - cycle through avaiable receivers (multi_rx only)
+## Terminal Operation
 
-REMOTE TERMINAL
-===============
-Adding (for example) "-l 56111" to the rx.py command starts rx.py but does
-not attach a curses terminal.  Instead the program runs as normal in the
-foreground (hit CTRL-C to end rx.py as desired).  To connect to a running 
-instance of rx.py, (in this example)
-    ./terminal.py 127.0.0.1 56111
-NOTE: rx.py and terminal.py need not run on the same machine.  The machine
-where terminal.py is running need not have an SDR device directly attached;
-but GNU Radio (and OP25) must be available.
+After starting `rx.py` if plotting is in use a separate gnuplot window should open.  You must click on the terminal window to restore it to focus, otherwise all keystrokes are consumed by gnuplot.  Once in the terminal window there are several keyboard commands:
 
-WARNING: there is no security or encryption on the UDP port.
+- `B`: dynamically add tgid to blacklist
+- `d`: dump list of known tgids to log
+- `h`: hold
+- `H`: hold/goto the specified tgid
+- `l`: lockout
+- `q`: quit program
+- `s`: skip
+- `v`: dynamically change log level
+- `W`: dynamically add tgid to Whitelist
+- `,`: decrease fine tune by 100Hz
+- `.`: increase fine tune by 100Hz
+- `<`: decrease fine tune by 1200Hz
+- `>`: increase fine tune by 1200Hz
+- `1`: toggle fft plot
+- `2`: toggle constellation plot (cqpsk)
+- `3`: toggle symbol plot
+- `4`: toggle datascope plot
+- `5`: toggle raw mixer plot
+- `6`: toggle tuned mixer plot
+- <cursor left> / <cursor right>: cycle through avaiable receivers (`multi_rx.py` only)
 
-EXTERNAL UDP AUDIO SERVER
-=========================
-Starting rx.py with the "-w -W host" options directs udp audio data to
-be sent over the network to the specified remote host.  It can then be
-received and played back with either of the following methods:
-1. Execute ./audio.sh on a remote machine equipped with python2.7,
-   libasound.so.2 and the sockaudio.py file. 
--or-
-2. Execute the command: 
-   nc -kluvw 1 127.0.0.1 23456 | aplay -c1 -f S16_LE -r 8000
--or-
-3. Execute the command:
-   vlc.exe --clock-jitter=500 --network-caching=0 --demux=rawaud --rawaud-channels 1 --rawaud-samplerate 8000 udp://@:23456
+## Remote Terminal
 
-NOTE: audio underruns are to be expected when using nc | aplay as the
-pcm stream is interrupted every time a radio transmission ends.  The
-sockaudio player is designed to handle this more gracefully, and generally
-only underruns due to high cpu utilization or reception/decoding errors.
+Adding (for example) `-l 56111` to the `rx.py` command starts `rx.py` but does not attach a curses terminal.  Instead the program runs as normal in the foreground (hit CTRL-C to end `rx.py` as desired).  To connect to a running instance of `rx.py`, (in this example)
+```
+./terminal.py 127.0.0.1 56111
+```
 
-INTERNAL AUDIO SERVER
-=====================
-Starting rx.py with the "-U" command line option enables an internal udp
-audio server which will play received audio through the default ALSA
-device.  Optionally you may specify which ALSA device to use by setting
-the "-O audio_out" option along with "-U".
+**Note:** `rx.py` and `terminal.py` need not run on the same machine.  The machine where `terminal.py` is running need not have an SDR device directly attached; but GNU Radio (and OP25) must be available.
 
-It is still necessary to specify the "-w" (wireshark) option if using
-either the internal or external audio server.
+**Warning:** there is no security or encryption on the UDP port.
 
-PLOT MODES
-==========
+## External UDP Audio Server
+Starting `rx.py` with the `-w -W host` options directs udp audio data to be sent over the network to the specified remote host.  It can then be received and played back with any of the following methods:
+
+1. Execute `./audio.sh` on a remote machine equipped with python2.7, `libasound.so.2` and the `sockaudio.py` file. **OR**
+2. Execute the command: `nc -kluvw 1 127.0.0.1 23456 | aplay -c1 -f S16_LE -r 8000` **OR**
+3. Execute the command: `vlc.exe --clock-jitter=500 --network-caching=0 --demux=rawaud --rawaud-channels 1 --rawaud-samplerate 8000 udp://@:23456`
+
+**Note:** audio underruns are to be expected when using `nc | aplay` as the pcm stream is interrupted every time a radio transmission ends.  The sockaudio player is designed to handle this more gracefully, and generally only underruns due to high cpu utilization or reception/decoding errors.
+
+## Internal Audio Server
+
+Starting `rx.py` with the `-U` command line option enables an internal udp audio server which will play received audio through the default ALSA device.  Optionally you may specify which ALSA device to use by setting the `-O audio_out` option along with `-U`.
+
+It is still necessary to specify the `-w` (wireshark) option if using either the internal or external audio server.
+
+## Plot Modes
+
 Six types of plotting are currently implemented, via the -P parameter:
- * fft
- * constellation
- * symbol
- * datascope
- * mixer
- * fll
-The symbol and datascope mode is allowed both in fsk4 and cqpsk modes.
-The constellation mode only works when the cqpsk demod mode is selected
-(or defaulted).
+- fft
+- constellation
+- symbol
+- datascope
+- mixer
+- fll
+
+The symbol and datascope mode is allowed both in fsk4 and cqpsk modes.  The constellation mode only works when the cqpsk demod mode is selected (or defaulted).
 
 A couple of notes specific to plot mode:
 
-1. At program startup time the gnuplot window is given the focus after
-it opens.  Before you can enter terminal commands you need to click on
-the terminal window once to make it the active window.
+**Note 1:** At program startup time the gnuplot window is given the focus after it opens.  Before you can enter terminal commands you need to click on the terminal window once to make it the active window.
 
-2. In some cases the gnuplot window is displayed on top of the terminal
-window used by OP25.  If so it may be necessary to move one or the other
-of the two windows.
+**Note 2:** In some cases the gnuplot window is displayed on top of the terminal window used by OP25.  If so it may be necessary to move one or the other of the two windows.
 
-COMMAND LINE OPTIONS
-====================
+## Command Line Options
+
+```
 Usage: rx.py [options]
 
 Options:
@@ -191,42 +164,30 @@ Options:
   --tdma-cc             enable tdma control channel
   -Z DECIM_AMT, --decim-amt=DECIM_AMT
                         spectrum decimation
+```
 
-HTTP CONSOLE
-============
-The OP25 dashboard can be made accessible to any web browser over HTTP by 
-include the option "-l http:<host>:<port>" when starting the rx.py app,
-where <host> is either "127.0.0.1" to limit access from only this host, or
-"0.0.0.0" if HTTP access from anywhere is to be allowed*.  After rx.py has
-started it begins listening on the specified port for incoming connections.
+## HTTP Console
 
-Once connected the status page should automatically update to show trunking
-system status, frequency list, adjacent sites, and other data.
+The OP25 dashboard can be made accessible to any web browser over HTTP by including the option `-l http:<host>:<port>` when starting the `rx.py` app, where `<host>` is either `127.0.0.1` to limit access from only this host, or `0.0.0.0` if HTTP access from anywhere is to be allowed*.  After `rx.py` has started it begins listening on the specified port for incoming connections.
 
-Example:  you have started rx.py with the option "-l http:127.0.0.1:8080".
-To connect, set your web browser URL to "http://127.0.0.1:8080".
+Once connected the status page should automatically update to show trunking system status, frequency list, adjacent sites, and other data.
 
-If one or more plot modes has been selected using the "-P" option you may
-view them by clicking the "PLOT" button.  The plots are updated approx.
-every five seconds.  Click "STATUS" to return to the main status page.
+Example:  you have started `rx.py` with the option `-l http:127.0.0.1:8080`. To connect, set your web browser URL to [http://127.0.0.1:8080](http://127.0.0.1:8080).
 
-*WARNING*: there is no security or encryption.  Be careful when using "0.0.0.0"
-as the listening address since anyone with access to the network can connect.
+If one or more plot modes has been selected using the `-P` option you may view them by clicking the "PLOT" button.  The plots are updated approx. every five seconds.  Click "STATUS" to return to the main status page.
 
-MULTI-RECEIVER
-==============
-The multi_rx.py app allows an arbitrary number of SDR devices and channels
-to be defined.  Each channel may have one or more plot windows attached.
+**Warning:** there is no security or encryption.  Be careful when using `0.0.0.0` as the listening address since anyone with access to the network can connect.
 
-Configuration is achieved via a json file (see cfg.json for an example).
-In this version, channels are automatically assigned to the first device
-found whose frequency span includes the selected frequency.
+## Multi-receiver
 
-As of this writing (summer 2020), P25 Trunking and Motorola Smartnet/Smartzone
-are fully supported by multi_rx.py.  The rx.py app can still be used for single
-receiver P25 trunking.
+The `multi_rx.py` app allows an arbitrary number of SDR devices and channels to be defined.  Each channel may have one or more plot windows attached.
+
+Configuration is achieved via a json file (see `cfg.json` for an example). In this version, channels are automatically assigned to the first device found whose frequency span includes the selected frequency.
+
+As of this writing (summer 2020), P25 Trunking and Motorola SmartNet/SmartZone are fully supported by `multi_rx.py`.  The `rx.py` app can still be used for single receiver P25 trunking.
 
 Below is a summary of the major config file keys used under the channel section:
+```
 demod_type:     'cqpsk' for qpsk p25 only
                 'fsk4' for ysf/dstar/dmr/fsk4 p25
                 'fsk' for Smartnet/Smartzone control channel
@@ -237,12 +198,12 @@ plot:           'fft', 'constellation', 'datascope', 'symbol', 'mixer', 'fll'
                 [if more than one plot desired, provide a comma-separated list]
 destination:    'udp://host:port' or 'file://<filename>'
 name:           arbitrary string used to identify channels and devices
+```
 
-Note: DMR audio for the second time slot is sent on the specified port number
-plus two.  In the example 'udp://127.0.0.1:56122', audio for the first slot
-would use 56122; and 56124 for the second.
+**Note:** DMR audio for the second time slot is sent on the specified port number plus two.  In the example `udp://127.0.0.1:56122`, audio for the first slot would use 56122; and 56124 for the second.
 
 The command line options for multi_rx:
+```
 Usage: multi_rx.py [options]
 
 Options:
@@ -252,10 +213,9 @@ Options:
   -v VERBOSITY, --verbosity=VERBOSITY
                         message debug level
   -p, --pause           block on startup
+```
 
-ENCRYPTION
-==========
-P25 ADP/RC4 (algid 0xAA) decryption with a known key is now supported by both rx.py and multi_rx.py.
-See the example configurations: p25_rtl_example.json, p25_conventional_example.json and also the
-example json formatting of the keys file: example_keys.json
+## Encryption
+
+P25 ADP/RC4 (algid `0xAA`) decryption with a known key is now supported by both `rx.py` and `multi_rx.py`.  See the example configurations: `p25_rtl_example.json`, `p25_conventional_example.json` and also the example json formatting of the keys file: `example_keys.json`.
 
