@@ -480,6 +480,7 @@ function adjacent_sites(d) {
         html += "<tr><th>RFSS</th><th>Site</th><th>Frequency</th><th>Uplink</th></tr>";
         var ct = 0;
         // Ordered by RFSS then site number
+        var adjacent_by_rfss = {};
         for (var freq in d['adjacent_data']) {
             var rfss = d['adjacent_data'][freq]["rfid"];
             var site = d['adjacent_data'][freq]["stid"];
