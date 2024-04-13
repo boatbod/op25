@@ -1421,10 +1421,10 @@ class osw_receiver(object):
         return rc
 
     def add_patch(self, ts, tgid, sub_tgid, mode):
-        if tgid not in self.patches:
+        if tgid not in self.patches and sub_tgid != tgid:
             self.patches[tgid] = {}
 
-        if (sub_tgid != tgid):
+        if sub_tgid != tgid:
             is_update = sub_tgid in self.patches[tgid]
             self.patches[tgid][sub_tgid] = {'time': ts, 'mode': mode}
             if self.debug >= 5:
@@ -1523,6 +1523,7 @@ class osw_receiver(object):
         if self.rx_cc_freq != None:
             all_freqs += [int(self.rx_cc_freq)]
 
+        self.expire_talkgroups(t)
         for f in all_freqs:
             # Type-specific parameters
             time_ago = None
@@ -1574,6 +1575,7 @@ class osw_receiver(object):
             d['frequency_data'][f] = {'type': chan_type, 'tgids': tgids, 'last_activity': time_ago_str, 'counter': count, 'mode': mode_str_web}
 
         # Patches
+        self.expire_patches(t)
         for tgid in sorted(self.patches.keys()):
             d['patch_data'][tgid] = {}
             for sub_tgid in sorted(self.patches[tgid].keys()):
@@ -1585,6 +1587,7 @@ class osw_receiver(object):
                 d['patch_data'][tgid][sub_tgid] = {'tgid_dec': tgid_dec, 'tgid_hex': tgid_hex, 'sub_tgid_dec': sub_tgid_dec, 'sub_tgid_hex': sub_tgid_hex, 'mode': mode.strip()}
 
         # Adjacent sites
+        self.expire_adjacent_sites(t)
         for site in sorted(self.adjacent_sites.keys()):
             # Use integers in data we send up to the display layer
             cc_rx_freq = int(self.adjacent_sites[site]['cc_rx_freq'] * 1e6)
