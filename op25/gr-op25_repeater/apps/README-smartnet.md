@@ -76,8 +76,11 @@ Federal Medical Center Devens (https://www.radioreference.com/db/sid/6990)
 ## Startup
 
 Much like op25's `rx.py`, `multi_rx.py` is best started using a shell script.
-     `./multi_rx.py -v 9 -c smartnet_example.json 2> stderr.2`
+```
+./multi_rx.py -v 9 -c smartnet_example.json 2> stderr.2
+```
 
 ## Known Issues & Limitations
 
 There is currently no support for 'f' or 't' terminal commands
+
