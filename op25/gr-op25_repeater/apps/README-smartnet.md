@@ -82,5 +82,5 @@ Much like op25's `rx.py`, `multi_rx.py` is best started using a shell script.
 
 ## Known Issues & Limitations
 
-There is currently no support for 'f' or 't' terminal commands
+There is currently no support for `f` or `t` terminal commands
 
