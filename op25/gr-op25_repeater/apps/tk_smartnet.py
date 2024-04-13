@@ -1561,7 +1561,7 @@ class osw_receiver(object):
 
             mode_str_web = ""
             if chan_type == "control":
-                d['frequencies'][f] = '- %f  tgid [----- CC -----][--------]  %s' % ((f / 1e6), time_ago_ncurses_str)
+                d['frequencies'][f] = '- %f       [----- CC -----][--------]  %s' % ((f / 1e6), time_ago_ncurses_str)
             elif chan_type == "alternate" and len(tgids) == 0:
                 d['frequencies'][f] = '- %f  tgid [              ][ Alt CC ]  %s  count %d' % ((f / 1e6), time_ago_ncurses_str, count)
             elif len(tgids) != 0:

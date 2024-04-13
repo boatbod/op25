@@ -1563,7 +1563,7 @@ class p25_system(object):
             time_ago_ncurses_str = time_ago_str + " ago" if time_ago_str != "Never" and time_ago_str != "  Now" else time_ago_str + "    "
 
             if chan_type == "control":
-                d['frequencies'][f] = '- %f  tgid [--- Control ---]  %s' % ((f / 1e6), time_ago_ncurses_str)
+                d['frequencies'][f] = '- %f       [--- Control ---]  %s' % ((f / 1e6), time_ago_ncurses_str)
             elif chan_type == "alternate" and len(tgids) == 0:
                 d['frequencies'][f] = '- %f  tgid [   Secondary   ]  %s  count %d' % ((f / 1e6), time_ago_ncurses_str, count)
             elif len(tgids) == 1 or (len(tgids) == 2 and tgids[0] == tgids[1]):
