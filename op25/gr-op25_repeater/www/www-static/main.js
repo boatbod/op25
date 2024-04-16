@@ -374,8 +374,16 @@ function channel_status() {
     }
 
     html = "";
-    if (c_tag != null) {
+    if (c_tag != 0) {
         html += "<span class=\"value\">" + c_tag + "</span>";
+        if ((current_tgid != null) && (c_emergency)) {
+            html += "<span class=\"value\"> [EMERGENCY]</span>";
+        }
+        if ((current_tgid != null) && (c_encrypted)) {
+            html += "<span class=\"value\"> [ENCRYPTED]</span>";
+        }
+    else if (current_tgid != null) {
+	html += "<span class=\"value\">" + current_tgid + "</span>";
         if ((current_tgid != null) && (c_emergency)) {
             html += "<span class=\"value\"> [EMERGENCY]</span>";
         }
