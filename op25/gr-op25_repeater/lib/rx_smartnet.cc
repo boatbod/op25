@@ -74,6 +74,7 @@ namespace gr{
                 if (d_debug >= 10) {
                     fprintf(stderr, "%s SMARTNET sync lost\n", logts.get(d_msgq_id));
                 }
+                rx_smartnet::bad_osw();
                 d_in_sync = false;
                 d_rx_count = 0;
                 return;
@@ -91,6 +92,7 @@ namespace gr{
                 if (d_debug >= 10) {
                     fprintf(stderr,"%s SMARTNET crc fail\n", logts.get(d_msgq_id));
                 }
+                rx_smartnet::bad_osw();
                 return;
             }
 
@@ -225,6 +227,21 @@ namespace gr{
             }
             if (d_debug >= 10) {
                 fprintf(stderr, "%s rx_smartnet::sync_timeout:\n", logts.get(d_msgq_id));
+            }
+            reset_timer();
+        }
+
+        void rx_smartnet::bad_osw()
+        {
+            if ((d_msgq_id >= 0) && (!d_msg_queue->full_p())) {
+                std::string m_buf;
+                gr::message::sptr msg;
+                msg = gr::message::make_from_string(m_buf, get_msg_type(PROTOCOL_SMARTNET, M_SMARTNET_BAD_OSW), (d_msgq_id << 1), logts.get_ts());
+                if (!d_msg_queue->full_p())
+                    d_msg_queue->insert_tail(msg);
+            }
+            if (d_debug >= 10) {
+                fprintf(stderr, "%s rx_smartnet::bad_osw:\n", logts.get(d_msgq_id));
             }
             reset_timer();
         }

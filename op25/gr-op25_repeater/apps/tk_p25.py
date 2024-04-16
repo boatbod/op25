@@ -1471,7 +1471,7 @@ class p25_system(object):
                 updated += 1
                 del self.patches[sg]
                 if self.debug >= 5:
-                    sys.stderr.write("%s [%s] expired_patches: expiring patch sg(%d)\n" % (log_ts.get(), self.sysname, sg))
+                    sys.stderr.write("%s [%s] expire_patches: expiring patch sg(%d)\n" % (log_ts.get(), self.sysname, sg))
         return updated
 
     def get_rid_tag(self, srcaddr):
@@ -1493,39 +1493,101 @@ class p25_system(object):
         sys.stderr.write("}\n") 
 
     def to_json(self):  # ugly but required for compatibility with P25 trunking and terminal modules
+        wacn_system_id_str = "%05X.%03X" % (self.ns_wacn, self.ns_syid) if self.ns_syid is not None else "---------"
+        rfss_site_id_str   = "%d.%d" % (self.rfss_rfid, self.rfss_stid) if (self.rfss_rfid is not None and self.rfss_stid is not None) else "--"
+
         d = {}
+        d['type']           = 'p25'
         d['system']         = self.sysname
-        d['top_line']       = 'P25 NAC 0x%x' % (self.nac)
-        d['top_line']      += ' WACN 0x%x' % (self.ns_wacn if self.ns_wacn is not None else 0)
-        d['top_line']      += ' SYSID 0x%x' % (self.ns_syid if self.ns_syid is not None else 0)
-        d['top_line']      += ' %f' % ((self.rfss_chan if self.rfss_chan is not None else self.cc_list[self.cc_index]) / 1e6)
-        d['top_line']      += '/%f' % ((self.rfss_txchan if self.rfss_txchan is not None else 0) / 1e6)
-        d['top_line']      += ' tsbks %d' % (self.stats['tsbk_count'])
-        d['nac'] = self.nac
-        d['syid'] = self.rfss_syid
-        d['rfid'] = self.rfss_rfid
-        d['stid'] = self.rfss_stid
-        d['sysid'] = self.ns_syid
-        d['rxchan'] = self.rfss_chan
-        d['txchan'] = self.rfss_txchan
-        d['wacn'] = self.ns_wacn
-        d['secondary'] = list(self.secondary.keys())
+        d['top_line']       = 'P25'
+        d['top_line']      += '  System %s' % (wacn_system_id_str)
+        d['top_line']      += '  Site %s' % (rfss_site_id_str)
+        d['top_line']      += '  NAC %3X' % (self.nac)
+        d['top_line']      += '  CC %f' % ((self.rfss_chan if self.rfss_chan is not None else self.cc_list[self.cc_index]) / 1e6)
+        d['top_line']      += '  tsbks %d' % (self.stats['tsbk_count'])
+        d['nac']            = self.nac
+        d['syid']           = self.rfss_syid
+        d['rfid']           = self.rfss_rfid
+        d['stid']           = self.rfss_stid
+        d['sysid']          = self.ns_syid
+        d['rxchan']         = self.rfss_chan
+        d['txchan']         = self.rfss_txchan
+        d['wacn']           = self.ns_wacn
+        d['secondary']      = list(self.secondary.keys())
         d['frequencies']    = {}
         d['frequency_data'] = {}
-        d['last_tsbk'] = self.last_tsbk
-        t = time.time()
-        self.expire_voice_frequencies(t)
-        for f in list(self.voice_frequencies.keys()):
-            vc0 = get_tgid(self.voice_frequencies[f]['tgid'][0])
-            vc1 = get_tgid(self.voice_frequencies[f]['tgid'][1])
-            if vc0 == vc1:  # if vc0 matches vc1 the channel is either idle or in phase 1 mode
-                vc_tgs = "[   %5s   ]" % vc0
-            else:
-                vc_tgs = "[%5s|%5s]" % (vc1, vc0)
-            d['frequencies'][f] = 'voice freq %f, active tgids %s, last seen %4.1fs, count %d' %  ((f/1e6), vc_tgs, t - self.voice_frequencies[f]['time'], self.voice_frequencies[f]['counter'])
+        d['patch_data']     = {}
+        d['last_tsbk']      = self.last_tsbk
 
-            d['frequency_data'][f] = {'tgids': self.voice_frequencies[f]['tgid'], 'last_activity': '%7.1f' % (t - self.voice_frequencies[f]['time']), 'counter': self.voice_frequencies[f]['counter']}
+        t = time.time()
+
+        # Get all current frequencies we know about (CC, alternate CC, VC)
+        self.expire_voice_frequencies(t)
+        all_freqs = list(self.voice_frequencies.keys()) + list(self.secondary.keys())
+        if self.rfss_chan != None:
+            all_freqs += [int(self.rfss_chan)]
+
+        for f in all_freqs:
+            # Type-specific parameters
+            time_ago = None
+            count = 0
+            if f in self.voice_frequencies:
+                chan_type = "voice"
+                time_ago = t - self.voice_frequencies[f]['time']
+                count = self.voice_frequencies[f]['counter']
+            if f in self.secondary:
+                chan_type = "alternate"
+            if f == self.rfss_chan:
+                chan_type = "control"
+                time_ago = t - self.last_tsbk
+
+            # Show time in appropriate units based on how long ago - useful for some high-capacity/low-traffic sites
+            tgids = []
+            if time_ago == None:
+                time_ago_str = "Never"
+            elif time_ago < TGID_EXPIRY_TIME:
+                time_ago_str = "  Now"
+                # Only show TGID if we believe the call is currently ongoing
+                if f in self.voice_frequencies:
+                    tgids = [get_tgid(self.voice_frequencies[f]['tgid'][0]), get_tgid(self.voice_frequencies[f]['tgid'][1])]
+            elif time_ago < (60.0):
+                time_ago_str = "%4.1fs" % (time_ago)
+            elif time_ago < (60.0 * 60.0):
+                time_ago_str = "%4.1fm" % (time_ago / 60.0)
+            elif time_ago < (60.0 * 60.0 * 24.0):
+                time_ago_str = "%4.1fh" % (time_ago / 60.0 / 60.0)
+            else:
+                time_ago_str = "%4.1fd" % (time_ago / 60.0 / 60.0 / 24.0)
+
+            # Format here to show in theses console viewer
+            time_ago_ncurses_str = time_ago_str + " ago" if time_ago_str != "Never" and time_ago_str != "  Now" else time_ago_str + "    "
+
+            if chan_type == "control":
+                d['frequencies'][f] = '- %f       [--- Control ---]  %s' % ((f / 1e6), time_ago_ncurses_str)
+            elif chan_type == "alternate" and len(tgids) == 0:
+                d['frequencies'][f] = '- %f  tgid [   Secondary   ]  %s  count %d' % ((f / 1e6), time_ago_ncurses_str, count)
+            elif len(tgids) == 1 or (len(tgids) == 2 and tgids[0] == tgids[1]):
+                d['frequencies'][f] = '- %f  tgid [     %5s     ]  %s  count %d' % ((f / 1e6), tgids[0], time_ago_ncurses_str, count)
+            elif len(tgids) == 2:
+                d['frequencies'][f] = '- %f  tgid [ %5s | %5s ]  %s  count %d' % ((f / 1e6), tgids[1], tgids[0], time_ago_ncurses_str, count)
+            else:
+                d['frequencies'][f] = '- %f  tgid [               ]  %s  count %d' % ((f / 1e6), time_ago_ncurses_str, count)
+
+            # The easy part: send pure JSON and let the display layer handle formatting
+            d['frequency_data'][f] = {'type': chan_type, 'tgids': tgids, 'last_activity': time_ago_str, 'counter': count}
+
+        # Patches
+        self.expire_patches()
+        for sg in sorted(self.patches.keys()):
+            d['patch_data'][sg] = {}
+            for ga in sorted(self.patches[sg]['ga']):
+                sg_dec = "%5d" % (sg)
+                ga_dec = "%5d" % (ga)
+                d['patch_data'][sg][ga] = {'sg': sg_dec, 'ga': ga_dec}
+
+        # Adjacent sites
         d['adjacent_data'] = self.adjacent_data
+
         return json.dumps(d)
 
 #################
