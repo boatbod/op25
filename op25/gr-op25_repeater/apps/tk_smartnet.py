@@ -1099,6 +1099,13 @@ class osw_receiver(object):
                             code = osw1_addr
                             if self.debug >= 11:
                                 sys.stderr.write("%s [%d] SMARTNET INDIVIDUAL EXTENDED FUNCTION src(%05d) code(0x%04x)\n" % (log_ts.get(), self.msgq_id, src_rid, code))
+            # Two-OSW status
+            elif osw1_cmd == 0x30d and not osw2_grp and not osw1_grp:
+                src_rid = osw2_addr
+                dst_tgid = osw1_addr & 0xfff0
+                status = (osw1_addr & 0xf) + 1
+                if self.debug >= 11:
+                    sys.stderr.write("%s [%d] SMARTNET STATUS src(%05d) tgid(%05d/0x%03x) status(%02d)\n" % (log_ts.get(), self.msgq_id, src_rid, dst_tgid, dst_tgid >> 4, status))
             # Two-OSW affiliation
             elif osw1_cmd == 0x310 and not osw2_grp and not osw1_grp:
                 src_rid = osw2_addr
