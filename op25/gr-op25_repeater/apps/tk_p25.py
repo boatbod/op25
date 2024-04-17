@@ -1540,6 +1540,7 @@ class p25_system(object):
             if f == self.rfss_chan:
                 chan_type = "control"
                 time_ago = t - self.last_tsbk
+                count = self.stats['tsbk_count']
 
             # Show time in appropriate units based on how long ago - useful for some high-capacity/low-traffic sites
             tgids = []
