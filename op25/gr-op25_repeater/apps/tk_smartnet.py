@@ -1254,7 +1254,7 @@ class osw_receiver(object):
             if osw2_grp and (osw2_addr == 0x00000 or osw2_addr == 0xffff):
                 data_str = ""
             else:
-                # No idea what the data means if it's marked as individual
+                # No idea what the data means if it's marked as individual, or group with a value
                 data_str = " data(%s,0x%04x)" % (grp2_str, osw2_addr)
             self.rx_site_id = site
             if self.debug >= 11:
