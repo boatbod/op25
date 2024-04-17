@@ -1562,16 +1562,28 @@ class p25_system(object):
             # Format here to show in theses console viewer
             time_ago_ncurses_str = time_ago_str + " ago" if time_ago_str != "Never" and time_ago_str != "  Now" else time_ago_str + "    "
 
+            #if chan_type == "control":
+            #    d['frequencies'][f] = '- %f       [--- Control ---]  %s' % ((f / 1e6), time_ago_ncurses_str)
+            #elif chan_type == "alternate" and len(tgids) == 0:
+            #    d['frequencies'][f] = '- %f  tgid [   Secondary   ]  %s  count %d' % ((f / 1e6), time_ago_ncurses_str, count)
+            #elif len(tgids) == 1 or (len(tgids) == 2 and tgids[0] == tgids[1]):
+            #    d['frequencies'][f] = '- %f  tgid [     %5s     ]  %s  count %d' % ((f / 1e6), tgids[0], time_ago_ncurses_str, count)
+            #elif len(tgids) == 2:
+            #    d['frequencies'][f] = '- %f  tgid [ %5s | %5s ]  %s  count %d' % ((f / 1e6), tgids[1], tgids[0], time_ago_ncurses_str, count)
+            #else:
+            #    d['frequencies'][f] = '- %f  tgid [               ]  %s  count %d' % ((f / 1e6), time_ago_ncurses_str, count)
             if chan_type == "control":
-                d['frequencies'][f] = '- %f       [--- Control ---]  %s' % ((f / 1e6), time_ago_ncurses_str)
-            elif chan_type == "alternate" and len(tgids) == 0:
-                d['frequencies'][f] = '- %f  tgid [   Secondary   ]  %s  count %d' % ((f / 1e6), time_ago_ncurses_str, count)
-            elif len(tgids) == 1 or (len(tgids) == 2 and tgids[0] == tgids[1]):
-                d['frequencies'][f] = '- %f  tgid [     %5s     ]  %s  count %d' % ((f / 1e6), tgids[0], time_ago_ncurses_str, count)
-            elif len(tgids) == 2:
-                d['frequencies'][f] = '- %f  tgid [ %5s | %5s ]  %s  count %d' % ((f / 1e6), tgids[1], tgids[0], time_ago_ncurses_str, count)
+                f_type = "pri-cc"
+            elif chan_type == "alternate":
+                f_type = "alt-cc"
             else:
-                d['frequencies'][f] = '- %f  tgid [               ]  %s  count %d' % ((f / 1e6), time_ago_ncurses_str, count)
+                f_type = "voice "
+            if len(tgids) == 1 or (len(tgids) == 2 and tgids[0] == tgids[1]):
+                d['frequencies'][f] = '- %f  %s [     %5s     ]  %s  count %d' % ((f / 1e6), f_type, tgids[0], time_ago_ncurses_str, count)
+            elif len(tgids) == 2:
+                d['frequencies'][f] = '- %f  %s [ %5s | %5s ]  %s  count %d' % ((f / 1e6), f_type, tgids[1], tgids[0], time_ago_ncurses_str, count)
+            else:
+                d['frequencies'][f] = '- %f  %s [               ]  %s  count %d' % ((f / 1e6), f_type, time_ago_ncurses_str, count)
 
             # The easy part: send pure JSON and let the display layer handle formatting
             d['frequency_data'][f] = {'type': chan_type, 'tgids': tgids, 'last_activity': time_ago_str, 'counter': count}
