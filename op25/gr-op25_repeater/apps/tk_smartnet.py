@@ -1304,11 +1304,17 @@ class osw_receiver(object):
                 cvsd_mod_str = "4" if cvsd_mod_4 else "2"
                 trespass     = (data & 0x100) >> 8
                 voc          = (data & 0x80) >> 7
-                bit6_2       = (data & 0x7c) >> 2
+                bit6_5       = (data & 0x60) >> 5
+                # Occurs immediately before and after voice grant on VOC
+                voc_active   = (data & 0x10) >> 4
+                bit3_2       = (data & 0xc) >> 2
                 site_trunk   = (data & 0x2) >> 1
                 wide_area    = (data & 0x1)
                 if self.debug >= 11:
-                    sys.stderr.write("%s [%d] SMARTNET %s STATUS rotation(%d) wide_pulse(%d) cvsd_mod(%s) trespass(%d) voc(%d) site_trunk(%d) wide_area(%d) bit6_2(0x%02x)\n" % (log_ts.get(), self.msgq_id, scope, rotation, wide_pulse, cvsd_mod_str, trespass, voc, site_trunk, wide_area, bit6_2))
+                    sys.stderr.write("%s [%d] SMARTNET %s STATUS rotation(%d) wide_pulse(%d) cvsd_mod(%s) trespass(%d) voc(%d)" % (log_ts.get(), self.msgq_id, scope, rotation, wide_pulse, cvsd_mod_str, trespass, voc))
+                    if voc or voc_active:
+                        sys.stderr.write(" voc_active(%d)\n" % (voc_active))
+                    sys.stderr.write(" site_trunk(%d) wide_area(%d) bit6_5(0x%01x) bit3(%d)\n" % (log_ts.get(), site_trunk, wide_area, bit6_5, bit3_2))
             else:
                 if self.debug >= 11:
                     sys.stderr.write("%s [%d] SMARTNET %s STATUS type(%s) opcode(0x%x) data(0x%04x)\n" % (log_ts.get(), self.msgq_id, scope, grp2_str, opcode, data))
