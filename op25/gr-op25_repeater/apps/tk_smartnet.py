@@ -1264,6 +1264,7 @@ class osw_receiver(object):
             scope = "SYSTEM" if osw2_cmd == 0x3c0 else "NETWORK"
             opcode = (osw2_addr & 0xe000) >> 13
             data = osw2_addr & 0x1fff
+            bitG = grp2_str
             if opcode == 1:
                 type_ii              = (data & 0x1000) >> 12
                 type_str             = "II" if type_ii else "I"
@@ -1272,7 +1273,7 @@ class osw_receiver(object):
                 connect_tone_str     = self.get_connect_tone(connect_tone)
                 interconnect_timeout = (data & 0x1f)
                 if self.debug >= 11:
-                    sys.stderr.write("%s [%d] SMARTNET %s STATUS type(%s) connect_tone(%.02f) dispatch_timeout(%d) interconnect_timeout(%d)\n" % (log_ts.get(), self.msgq_id, scope, type_str, connect_tone_str, dispatch_timeout, interconnect_timeout))
+                    sys.stderr.write("%s [%d] SMARTNET %s STATUS type(%s) connect_tone(%.02f) dispatch_timeout(%d) interconnect_timeout(%d) bitG(%s)\n" % (log_ts.get(), self.msgq_id, scope, type_str, connect_tone_str, dispatch_timeout, interconnect_timeout, bitG))
             elif opcode == 2:
                 no_secure        = (data & 0x1000) >> 12
                 secure_upgrade   = (data & 0x800) >> 11
@@ -1296,7 +1297,7 @@ class osw_receiver(object):
                         if no_data == 0:
                             sys.stderr.write(" otar(%s)" % (otar_str))
                         sys.stderr.write(" multikey_buf(%s) cvsd_echo_delay(%02d)" % (multikey_buf_str, cvsd_echo_delay))
-                    sys.stderr.write(" bit6(%d) bit0(%d)\n" % (bit6, bit0))
+                    sys.stderr.write(" bit6(%d) bit0(%d) bitG(%s)\n" % (bit6, bit0, bitG))
             elif opcode == 3:
                 rotation     = (data & 0x800) >> 11
                 wide_pulse   = (data & 0x400) >> 10
@@ -1314,10 +1315,10 @@ class osw_receiver(object):
                     sys.stderr.write("%s [%d] SMARTNET %s STATUS rotation(%d) wide_pulse(%d) cvsd_mod(%s) trespass(%d) voc(%d)" % (log_ts.get(), self.msgq_id, scope, rotation, wide_pulse, cvsd_mod_str, trespass, voc))
                     if voc or voc_active:
                         sys.stderr.write(" voc_active(%d)\n" % (voc_active))
-                    sys.stderr.write(" site_trunk(%d) wide_area(%d) bit6_5(0x%01x) bit3(%d)\n" % (log_ts.get(), site_trunk, wide_area, bit6_5, bit3_2))
+                    sys.stderr.write(" site_trunk(%d) wide_area(%d) bit6_5(0x%01x) bit3(%d), bitG(%s)\n" % (log_ts.get(), site_trunk, wide_area, bit6_5, bit3_2, bitG))
             else:
                 if self.debug >= 11:
-                    sys.stderr.write("%s [%d] SMARTNET %s STATUS type(%s) opcode(0x%x) data(0x%04x)\n" % (log_ts.get(), self.msgq_id, scope, grp2_str, opcode, data))
+                    sys.stderr.write("%s [%d] SMARTNET %s STATUS type(%s) opcode(0x%x) data(0x%04x) bitG(%s)\n" % (log_ts.get(), self.msgq_id, scope, grp2_str, opcode, data, bitG))
         else:
             # Track that we got an unknown OSW
             is_unknown_osw = True
