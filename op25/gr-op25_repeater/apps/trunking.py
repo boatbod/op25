@@ -819,7 +819,7 @@ class trunked_system (object):
         sa    = get_ordinals(msg[12:15])
         ga    = get_ordinals(msg[15:17])
         if self.debug >= 10:
-            sys.stderr.write('%s [0] mac_ptt: mi: %x algid: %x keyid:%x ga: %d sa: %d\n' % (log_ts.get(), mi, algid, keyid, ga, sa))
+            sys.stderr.write('%s [0] mac_ptt: mi: %018x algid: %02x keyid:%04x ga: %d sa: %d\n' % (log_ts.get(), mi, algid, keyid, ga, sa))
         updated += self.update_talkgroup_srcaddr(curr_time, ga, sa)
         updated += self.update_talkgroup_encrypted(curr_time, ga, (algid != 0x80))
         self.rxctl.current_encrypted = (algid != 0x80)
