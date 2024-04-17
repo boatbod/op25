@@ -880,7 +880,7 @@ class osw_receiver(object):
                 grp0_str = self.get_group_str(osw0_grp)
 
                 # Valid two-OSW system idle (next command is not the continuation of a two- or three-OSW message)
-                if osw0_cmd not in [0x30a, 0x30b, 0x30d, 0x310, 0x311, 0x320, 0x322, 0x340]:
+                if osw0_cmd not in [0x30a, 0x30b, 0x30d, 0x310, 0x311, 0x319, 0x320, 0x322, 0x340]:
                     # Put back unused OSW0
                     self.osw_q.appendleft((osw0_addr, osw0_grp, osw0_cmd, osw0_ch_rx, osw0_ch_tx, osw0_f_rx, osw0_f_tx, osw0_t))
 
@@ -1122,6 +1122,12 @@ class osw_receiver(object):
                 message = (osw1_addr & 0xf) + 1
                 if self.debug >= 11:
                     sys.stderr.write("%s [%d] SMARTNET MESSAGE src(%05d) tgid(%05d/0x%03x) msg(%02d)\n" % (log_ts.get(), self.msgq_id, src_rid, dst_tgid, dst_tgid >> 4, message))
+            # Two-OSW call alert
+            elif osw1_cmd == 0x319 and not osw2_grp and not osw1_grp:
+                dst_rid = osw2_addr
+                src_rid = osw1_addr
+                if self.debug >= 11:
+                    sys.stderr.write("%s [%d] SMARTNET CALL ALERT src(%05d) dst(%05d)\n" % (log_ts.get(), self.msgq_id, src_rid, dst_rid))
             # Three-OSW system information
             elif osw1_cmd == 0x320:
                 # Get OSW0
