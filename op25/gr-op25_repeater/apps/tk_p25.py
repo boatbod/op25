@@ -917,7 +917,7 @@ class p25_system(object):
         sa    = get_ordinals(msg[12:15])
         ga    = get_ordinals(msg[15:17])
         if self.debug >= 10:
-            sys.stderr.write('%s [%d] mac_ptt: mi: %018x algid: %02x keyid: %04x ga: %d sa: %d\n' % (log_ts.get(), m_rxid, mi, algid, keyid, ga, sa))
+            sys.stderr.write('%s [%d] mac_ptt: mi: %x algid: %x keyid:%x ga: %d sa: %d\n' % (log_ts.get(), m_rxid, mi, algid, keyid, ga, sa))
         return self.update_talkgroup_srcaddr(curr_time, ga, sa)
 
     def decode_tdma_endptt(self, m_rxid, msg, curr_time):
@@ -1802,7 +1802,7 @@ class p25_receiver(object):
                 sa    = get_ordinals(s[12:15])
                 ga    = get_ordinals(s[15:17])
                 if self.debug >= 10:
-                    sys.stderr.write('%s [%d] mac_ptt: mi: %018x algid: %02x keyid: %04x ga: %d sa: %d\n' % (log_ts.get(), m_rxid, mi, algid, keyid, ga, sa))
+                    sys.stderr.write('%s [%d] mac_ptt: mi: %x algid: %x keyid:%x ga: %d sa: %d\n' % (log_ts.get(), m_rxid, mi, algid, keyid, ga, sa))
                 updated += self.system.update_talkgroup_srcaddr(curr_time, ga, sa)
                 if algid != 0x80: # log and save encryption information
                     if self.debug >= 5 and (algid != self.talkgroups[ga]['algid'] or keyid != self.talkgroups[ga]['keyid']):
