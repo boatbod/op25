@@ -1042,6 +1042,11 @@ class osw_receiver(object):
                             src_rid = osw2_addr
                             if self.debug >= 11:
                                 sys.stderr.write("%s [%d] SMARTNET DENIED PRIVATE CALL ENHANCED TARGET OFFLINE src(%05d)\n" % (log_ts.get(), self.msgq_id, src_rid))
+                        # Call alert target offline
+                        elif osw1_addr == 0x2c4f:
+                            src_rid = osw2_addr
+                            if self.debug >= 11:
+                                sys.stderr.write("%s [%d] SMARTNET DENIED CALL ALERT TARGET OFFLINE src(%05d)\n" % (log_ts.get(), self.msgq_id, src_rid))
                         # Failsoft assign
                         elif osw1_addr == 0x8301:
                             tgt_rid = osw2_addr
