@@ -1032,6 +1032,16 @@ class osw_receiver(object):
                             src_rid = osw2_addr
                             if self.debug >= 11:
                                 sys.stderr.write("%s [%d] SMARTNET DEAFFILIATION src(%05d)\n" % (log_ts.get(), self.msgq_id, src_rid))
+                        # Private call target offline (PC II)
+                        elif osw1_addr == 0x2c41:
+                            src_rid = osw2_addr
+                            if self.debug >= 11:
+                                sys.stderr.write("%s [%d] SMARTNET DENIED PRIVATE CALL TARGET OFFLINE src(%05d)\n" % (log_ts.get(), self.msgq_id, src_rid))
+                        # Private call target offline (enhanced)
+                        elif osw1_addr == 0x2c48:
+                            src_rid = osw2_addr
+                            if self.debug >= 11:
+                                sys.stderr.write("%s [%d] SMARTNET DENIED PRIVATE CALL ENHANCED TARGET OFFLINE src(%05d)\n" % (log_ts.get(), self.msgq_id, src_rid))
                         # Failsoft assign
                         elif osw1_addr == 0x8301:
                             tgt_rid = osw2_addr
