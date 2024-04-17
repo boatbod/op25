@@ -880,7 +880,7 @@ class osw_receiver(object):
                 grp0_str = self.get_group_str(osw0_grp)
 
                 # Valid two-OSW system idle (next command is not the continuation of a two- or three-OSW message)
-                if osw0_cmd not in [0x30a, 0x30b, 0x30d, 0x310, 0x311, 0x319, 0x31a, 0x320, 0x322, 0x340]:
+                if osw0_cmd not in [0x30a, 0x30b, 0x30d, 0x310, 0x311, 0x319, 0x31a, 0x320, 0x322, 0x32e, 0x340]:
                     # Put back unused OSW0
                     self.osw_q.appendleft((osw0_addr, osw0_grp, osw0_cmd, osw0_ch_rx, osw0_ch_tx, osw0_f_rx, osw0_f_tx, osw0_t))
 
@@ -1195,6 +1195,12 @@ class osw_receiver(object):
                 minute = osw1_addr & 0xff
                 if self.debug >= 11:
                     sys.stderr.write("%s [%d] SMARTNET DATE/TIME %04d-%02d-%02d %02d:%02d data(0x%01x)\n" % (log_ts.get(), self.msgq_id, year, month, day, hour, minute, data))
+            # Two-OSW emergency PTT
+            elif osw1_cmd == 0x32e and osw2_grp and osw1_grp:
+                src_rid = osw2_addr
+                dst_tgid = osw1_addr & 0xfff0
+                if self.debug >= 11:
+                    sys.stderr.write("%s [%d] SMARTNET EMEREGENCY PTT src(%05d) tgid(%05d/0x%03x)\n" % (log_ts.get(), self.msgq_id, src_rid, dst_tgid, dst_tgid >> 4))
             # Two-OSW patch/multiselect
             elif osw1_cmd == 0x340 and osw2_grp and osw1_grp and (self.is_patch_group(osw2_addr) or self.is_multiselect_group(osw2_addr)):
                 type_str = self.get_call_options_str(osw2_addr, include_clear=False)
