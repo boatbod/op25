@@ -1111,6 +1111,11 @@ class osw_receiver(object):
                             message = (osw0_addr & 0xf) + 1
                             if self.debug >= 11:
                                 sys.stderr.write("%s [%d] SMARTNET MESSAGE ACK src(%05d) msg(%d)\n" % (log_ts.get(), self.msgq_id, src_rid, message))
+                        # No private call
+                        elif osw1_addr == 0x2c14:
+                            src_rid = osw2_addr
+                            if self.debug >= 11:
+                                sys.stderr.write("%s [%d] SMARTNET DENIED NO PRIVATE CALL src(%05d)\n" % (log_ts.get(), self.msgq_id, src_rid))
                         # Private call invalid ID
                         elif osw1_addr == 0x2c15:
                             src_rid = osw2_addr
