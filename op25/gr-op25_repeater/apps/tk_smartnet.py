@@ -1151,6 +1151,11 @@ class osw_receiver(object):
                             src_rid = osw2_addr
                             if self.debug >= 11:
                                 sys.stderr.write("%s [%d] SMARTNET DENIED PRIVATE CALL TARGET OFFLINE src(%05d)\n" % (log_ts.get(), self.msgq_id, src_rid))
+                        # Group busy (call in progress)
+                        elif osw1_addr == 0x2c47:
+                            src_rid = osw2_addr
+                            if self.debug >= 11:
+                                sys.stderr.write("%s [%d] SMARTNET DENIED GROUP BUSY CALL IN PROGRESS src(%05d)\n" % (log_ts.get(), self.msgq_id, src_rid))
                         # Private call target offline (enhanced)
                         elif osw1_addr == 0x2c48:
                             src_rid = osw2_addr
