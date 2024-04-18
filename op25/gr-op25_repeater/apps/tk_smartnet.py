@@ -1116,6 +1116,11 @@ class osw_receiver(object):
                             src_rid = osw2_addr
                             if self.debug >= 11:
                                 sys.stderr.write("%s [%d] SMARTNET DENIED INVALID TALKGROUP src(%05d)\n" % (log_ts.get(), self.msgq_id, src_rid))
+                        # Clear TX only
+                        elif osw1_addr == 0x2c12:
+                            src_rid = osw2_addr
+                            if self.debug >= 11:
+                                sys.stderr.write("%s [%d] SMARTNET DENIED CLEAR TX ONLY src(%05d)\n" % (log_ts.get(), self.msgq_id, src_rid))
                         # No private call
                         elif osw1_addr == 0x2c14:
                             src_rid = osw2_addr
