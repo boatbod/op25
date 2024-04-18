@@ -1126,6 +1126,11 @@ class osw_receiver(object):
                             src_rid = osw2_addr
                             if self.debug >= 11:
                                 sys.stderr.write("%s [%d] SMARTNET DENIED CALL ALERT TARGET OFFLINE src(%05d)\n" % (log_ts.get(), self.msgq_id, src_rid))
+                        # Denied radio wrong modulation (e.g. radio digital, talkgroup analog)
+                        elif osw1_addr == 0x2c56:
+                            src_rid = osw2_addr
+                            if self.debug >= 11:
+                                sys.stderr.write("%s [%d] SMARTNET DENIED RADIO WRONG MODULATION src(%05d)\n" % (log_ts.get(), self.msgq_id, src_rid))
                         # OmniLink trespass rejected
                         elif osw1_addr == 0x2c60:
                             src_rid = osw2_addr
