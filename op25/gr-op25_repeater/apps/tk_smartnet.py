@@ -1463,6 +1463,11 @@ class osw_receiver(object):
                 if self.debug >= 11:
                     type_str = "UNKNOWN OSW AFTER BAD OSW" if is_queue_reset else "UNKNOWN OSW"
                     sys.stderr.write("%s [%d] SMARTNET %s (0x%04x,%s,0x%03x)\n" % (log_ts.get(), self.msgq_id, type_str, osw2_addr, grp2_str, osw2_cmd))
+        # One-OSW interconnect reject
+        elif osw2_cmd == 0x324 and not osw2_grp:
+            src_rid = osw2_addr
+            if self.debug >= 11:
+                sys.stderr.write("%s [%d] SMARTNET INTERCONNECT REJECT src(%05d)\n" % (log_ts.get(), self.msgq_id, src_rid))
         # One-OSW send affiliation request
         elif osw2_cmd == 0x32a and osw2_grp:
             tgt_rid = osw2_addr
