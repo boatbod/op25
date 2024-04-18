@@ -1176,6 +1176,11 @@ class osw_receiver(object):
                             src_rid = osw2_addr
                             if self.debug >= 11:
                                 sys.stderr.write("%s [%d] SMARTNET DENIED OMNILINK TRESPASS src(%05d)\n" % (log_ts.get(), self.msgq_id, src_rid))
+                        # Denied talkgroup ID
+                        elif osw1_addr == 0x2c66:
+                            src_rid = osw2_addr
+                            if self.debug >= 11:
+                                sys.stderr.write("%s [%d] SMARTNET DENIED TALKGROUP ID src(%05d)\n" % (log_ts.get(), self.msgq_id, src_rid))
                         # Private call target busy
                         elif osw1_addr == 0x2c96:
                             src_rid = osw2_addr
