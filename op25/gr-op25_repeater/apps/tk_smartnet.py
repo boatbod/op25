@@ -1116,6 +1116,11 @@ class osw_receiver(object):
                             src_rid = osw2_addr
                             if self.debug >= 11:
                                 sys.stderr.write("%s [%d] SMARTNET DENIED INVALID TALKGROUP src(%05d)\n" % (log_ts.get(), self.msgq_id, src_rid))
+                        # Announcement listen only
+                        elif osw1_addr == 0x2c11:
+                            src_rid = osw2_addr
+                            if self.debug >= 11:
+                                sys.stderr.write("%s [%d] SMARTNET DENIED ANNOUNCEMENT LISTEN ONLY src(%05d)\n" % (log_ts.get(), self.msgq_id, src_rid))
                         # Clear TX only
                         elif osw1_addr == 0x2c12:
                             src_rid = osw2_addr
