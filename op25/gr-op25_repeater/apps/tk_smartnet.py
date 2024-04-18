@@ -1411,7 +1411,7 @@ class osw_receiver(object):
                 if self.debug >= 11:
                     sys.stderr.write("%s [%d] SMARTNET %s STATUS rotation(%d) wide_pulse(%d) cvsd_mod(%s) trespass(%d) voc(%d)" % (log_ts.get(), self.msgq_id, scope, rotation, wide_pulse, cvsd_mod_str, trespass, voc))
                     if voc or voc_active:
-                        sys.stderr.write(" voc_active(%d)\n" % (voc_active))
+                        sys.stderr.write(" voc_active(%d)" % (voc_active))
                     sys.stderr.write(" site_trunk(%d) wide_area(%d) bit6_5(0x%01x) bit3(%d) bitG(%s)\n" % (site_trunk, wide_area, bit6_5, bit3_2, bitG))
             else:
                 if self.debug >= 11:
