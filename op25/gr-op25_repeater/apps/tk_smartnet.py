@@ -1141,6 +1141,11 @@ class osw_receiver(object):
                             src_rid = osw2_addr
                             if self.debug >= 11:
                                 sys.stderr.write("%s [%d] SMARTNET DENIED PRIVATE CALL INVALID ID src(%05d)\n" % (log_ts.get(), self.msgq_id, src_rid))
+                        # No interconnect
+                        elif osw1_addr == 0x2c16:
+                            src_rid = osw2_addr
+                            if self.debug >= 11:
+                                sys.stderr.write("%s [%d] SMARTNET DENIED NO INTERCONNECT src(%05d)\n" % (log_ts.get(), self.msgq_id, src_rid))
                         # Unsupported mode (CVSD, digital)
                         elif osw1_addr == 0x2c20:
                             src_rid = osw2_addr
