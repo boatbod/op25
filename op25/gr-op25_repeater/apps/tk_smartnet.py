@@ -1111,6 +1111,11 @@ class osw_receiver(object):
                             message = (osw0_addr & 0xf) + 1
                             if self.debug >= 11:
                                 sys.stderr.write("%s [%d] SMARTNET MESSAGE ACK src(%05d) msg(%d)\n" % (log_ts.get(), self.msgq_id, src_rid, message))
+                        # Unsupported mode (CVSD, digital)
+                        elif osw1_addr == 0x2c20:
+                            src_rid = osw2_addr
+                            if self.debug >= 11:
+                                sys.stderr.write("%s [%d] SMARTNET DENIED UNSUPPORTED MODE src(%05d)\n" % (log_ts.get(), self.msgq_id, src_rid))
                         # Private call target offline (PC II)
                         elif osw1_addr == 0x2c41:
                             src_rid = osw2_addr
