@@ -1094,6 +1094,12 @@ class osw_receiver(object):
                             src_rid = osw2_addr
                             if self.debug >= 11:
                                 sys.stderr.write("%s [%d] SMARTNET DEAFFILIATION src(%05d)\n" % (log_ts.get(), self.msgq_id, src_rid))
+                        # Status acknowledgement
+                        elif osw1_addr >= 0x26e0 and osw1_addr <= 0x26e7:
+                            src_rid = osw2_addr
+                            status = (osw1_addr & 0x7) + 1
+                            if self.debug >= 11:
+                                sys.stderr.write("%s [%d] SMARTNET STATUS ACK src(%05d) status(%02d)\n" % (log_ts.get(), self.msgq_id, src_rid, status))
                         # Private call target offline (PC II)
                         elif osw1_addr == 0x2c41:
                             src_rid = osw2_addr
