@@ -1105,6 +1105,12 @@ class osw_receiver(object):
                             src_rid = osw2_addr
                             if self.debug >= 11:
                                 sys.stderr.write("%s [%d] SMARTNET EMERGENCY ACK src(%05d)\n" % (log_ts.get(), self.msgq_id, src_rid))
+                        # Message acknowledgement
+                        elif osw1_addr >= 0x26f0 and osw1_addr <= 0x26ff:
+                            src_rid = osw2_addr
+                            message = (osw0_addr & 0xf) + 1
+                            if self.debug >= 11:
+                                sys.stderr.write("%s [%d] SMARTNET MESSAGE ACK src(%05d) msg(%d)\n" % (log_ts.get(), self.msgq_id, src_rid, message))
                         # Private call target offline (PC II)
                         elif osw1_addr == 0x2c41:
                             src_rid = osw2_addr
