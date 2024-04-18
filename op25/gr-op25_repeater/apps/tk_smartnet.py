@@ -871,6 +871,11 @@ class osw_receiver(object):
             data = osw2_addr
             if self.debug >= 11:
                 sys.stderr.write("%s [%d] SMARTNET IDLE data(%s,0x%04x)\n" % (log_ts.get(), self.msgq_id, grp_str, data))
+        # One-OSW group busy queued
+        elif osw2_cmd == 0x300 and osw2_grp:
+            tgid = osw2_addr
+            if self.debug >= 11:
+                sys.stderr.write("%s [%d] SMARTNET GROUP BUSY QUEUED tgid(%05d/0x%03x)\n" % (log_ts.get(), self.msgq_id, tgid, tgid >> 4))
         # Two- or three-OSW message
         elif osw2_cmd == 0x308:
             # Get next OSW in the queue
@@ -940,6 +945,12 @@ class osw_receiver(object):
                     data = osw1_addr
                     if self.debug >= 11:
                         sys.stderr.write("%s [%d] SMARTNET IDLE DELAYED 1-1 data(%s,0x%04x)\n" % (log_ts.get(), self.msgq_id, grp_str, data))
+            # Two-OSW group busy queued
+            elif osw1_cmd == 0x300 and osw1_grp:
+                src_rid = osw2_addr
+                tgid = osw1_addr
+                if self.debug >= 11:
+                    sys.stderr.write("%s [%d] SMARTNET GROUP BUSY QUEUED src(%05d) tgid(%05d/0x%03x)\n" % (log_ts.get(), self.msgq_id, src_rid, tgid, tgid >> 4))
             # Possible out-of-order two-OSW system idle
             elif osw1_cmd == 0x308:
                 # Get next OSW in the queue
