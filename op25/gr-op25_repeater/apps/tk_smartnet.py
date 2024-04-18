@@ -951,6 +951,12 @@ class osw_receiver(object):
                 tgid = osw1_addr
                 if self.debug >= 11:
                     sys.stderr.write("%s [%d] SMARTNET GROUP BUSY QUEUED src(%05d) tgid(%05d/0x%03x)\n" % (log_ts.get(), self.msgq_id, src_rid, tgid, tgid >> 4))
+            # Two-OSW private call busy queued
+            elif osw1_cmd == 0x302 and not osw1_grp:
+                src_rid = osw2_addr
+                tgt_rid = osw1_addr
+                if self.debug >= 11:
+                    sys.stderr.write("%s [%d] SMARTNET PRIVATE CALL BUSY QUEUED src(%05d) tgt(%05d)\n" % (log_ts.get(), self.msgq_id, src_rid, tgt_rid))
             # Possible out-of-order two-OSW system idle
             elif osw1_cmd == 0x308:
                 # Get next OSW in the queue
