@@ -834,6 +834,16 @@ class osw_receiver(object):
                     if vc_tx_freq != 0.0:
                         sys.stderr.write(" vc_tx_freq(%f)" % (vc_tx_freq))
                     sys.stderr.write("\n")
+            # Two-OSW interconnect call voice grant/update (sent for duration of the call)
+            elif osw2_ch_tx and osw1_ch_rx and not osw2_grp and not osw1_grp and (osw1_addr != 0) and (osw2_addr == 0):
+                src_rid = osw1_addr
+                vc_rx_freq = osw1_f_rx
+                vc_tx_freq = osw2_f_tx
+                if self.debug >= 11:
+                    sys.stderr.write("%s [%d] SMARTNET OBT INTERCONNECT CALL src(%05d) vc_rx_freq(%f)" % (log_ts.get(), self.msgq_id, src_rid, vc_rx_freq))
+                    if vc_tx_freq != 0.0:
+                        sys.stderr.write(" vc_tx_freq(%f)" % (vc_tx_freq))
+                    sys.stderr.write("\n")
             else:
                 # Track that we got an unknown OSW and put back unused OSW1
                 is_unknown_osw = True
@@ -891,6 +901,12 @@ class osw_receiver(object):
                 vc_freq = osw1_f_rx
                 if self.debug >= 11:
                     sys.stderr.write("%s [%d] SMARTNET PRIVATE CALL src(%05d) dst(%05d) vc_freq(%f)\n" % (log_ts.get(), self.msgq_id, src_rid, dst_rid, vc_freq))
+            # Two-OSW interconnect call voice grant/update (sent for duration of the call)
+            elif osw1_ch_rx and not osw1_grp and (osw1_addr != 0) and (osw2_addr == 0):
+                src_rid = osw1_addr
+                vc_freq = osw1_f_rx
+                if self.debug >= 11:
+                    sys.stderr.write("%s [%d] SMARTNET INTERCONNECT CALL src(%05d) vc_freq(%f)\n" % (log_ts.get(), self.msgq_id, src_rid, vc_freq))
             # One- or two-OSW system idle
             elif osw1_cmd == 0x2f8:
                 # Get next OSW in the queue
