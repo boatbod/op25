@@ -1,19 +1,19 @@
 
 // Copyright 2017, 2018 Max H. Parke KA1RBI
 // Copyright 2018, 2019, 2020, 2021 gnorbury@bondcar.com
-// 
+//
 // This file is part of OP25
-// 
+//
 // OP25 is free software; you can redistribute it and/or modify it
 // under the terms of the GNU General Public License as published by
 // the Free Software Foundation; either version 3, or (at your option)
 // any later version.
-// 
+//
 // OP25 is distributed in the hope that it will be useful, but WITHOUT
 // ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
 // or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public
 // License for more details.
-// 
+//
 // You should have received a copy of the GNU General Public License
 // along with OP25; see the file COPYING. If not, write to the Free
 // Software Foundation, Inc., 51 Franklin Street, Boston, MA
@@ -271,7 +271,7 @@ function channel_update(d) {
     var s2_ht = document.getElementById("s2_ch_trk");
 
     if (d['channels'] != undefined) {
-        channel_list = d['channels'];    
+        channel_list = d['channels'];
 
         if (channel_list.length > 0) {
             // if this is the first update, find the default_channel if specified
@@ -406,7 +406,7 @@ function channel_status() {
     s2_grp.innerHTML = html;
 
     html = "";
-    if ((c_srcaddr != 0) && (c_srcaddr != 0xffffff)) 
+    if ((c_srcaddr != 0) && (c_srcaddr != 0xffffff))
         if (c_srctag != "")
             html += "<span class=\"value\">" + c_srctag + "</span>";
         else
@@ -424,26 +424,123 @@ function channel_status() {
         s2_trk.value = "tracking on";
 }
 
-// adjacent sites table
+// patches table
 
-function adjacent_data(d) {
-    if (Object.keys(d).length < 1) {
-        var html = "</div>";
-        return html;
+function patches(d) {
+    if (d['patch_data'] == undefined || Object.keys(d['patch_data']).length < 1) {
+        return "";
     }
-    var html = "<div class=\"adjacent\">";
-    html += "<table border=1 borderwidth=0 cellpadding=0 cellspacing=0 width=100%>";
-    html += "<tr><th colspan=99 style=\"align: center\">Adjacent Sites</th></tr>";
-    html += "<tr><th>Frequency</th><th>RFSS</th><th>Site</th><th>Uplink</th></tr>";
+
+    var is_p25 = (d['type'] == 'p25');
+    var is_smartnet = (d['type'] == 'smartnet');
+
+    // Only supported on P25 and Type II currently
+    if (!is_p25 && !is_smartnet) {
+        return "";
+    }
+
+    var html = "<table border=1 borderwidth=0 cellpadding=0 cellspacing=0 width=100%>";
+    html += "<tr><th colspan=99 style=\"align: center\">Patches</th></tr>";
+    if (is_p25) {
+        html += "<tr><th>Supergroup</th><th>Group</th></tr>";
+    } else if (is_smartnet) {
+        html += "<tr><th colspan=2>TG</th><th colspan=2>Sub TG</th><th>Mode</th></tr>";
+    }
     var ct = 0;
-    for (var freq in d) {
+    for (var tgid in d['patch_data']) {
         var color = "#d0d0d0";
         if ((ct & 1) == 0)
             color = "#c0c0c0";
         ct += 1;
-        html += "<tr style=\"background-color: " + color + ";\"><td>" + (freq / 1000000.0).toFixed(6) + "</td><td>" + d[freq]["rfid"] + "</td><td>" + d[freq]["stid"] + "</td><td>" + (d[freq]["uplink"] / 1000000.0).toFixed(6) + "</td></tr>";
+
+        num_sub_tgids = Object.keys(d['patch_data'][tgid]).length
+        var row_num = 0;
+        for (var sub_tgid in d['patch_data'][tgid]) {
+            if (++row_num == 1) {
+                html += "<tr style=\"background-color: " + color + ";\">";
+                if (is_p25) {
+                    html += "<td rowspan=" + num_sub_tgids + ">" + d['patch_data'][tgid][sub_tgid]['sg_dec'] + "</td>";
+                } else if (is_smartnet) {
+                    html += "<td rowspan=" + num_sub_tgids + ">" + d['patch_data'][tgid][sub_tgid]['tgid_dec'] + "</td><td rowspan=" + num_sub_tgids + ">" + d['patch_data'][tgid][sub_tgid]['tgid_hex'] + "</td>";
+                }
+            } else {
+                html += "<tr style=\"background-color: " + color + ";\">";
+            }
+            if (is_p25) {
+                html += "<td>" + d['patch_data'][tgid][sub_tgid]['ga_dec'] + "</td>";
+            } else if (is_smartnet) {
+                html += "<td>" + d['patch_data'][tgid][sub_tgid]['sub_tgid_dec'] + "</td><td>" + d['patch_data'][tgid][sub_tgid]['sub_tgid_hex'] + "</td>";
+                html += "<td>" + d['patch_data'][tgid][sub_tgid]['mode'] + "</td>";
+            }
+            html += "</tr>";
+        }
     }
-    html += "</table></div></div><br><br>";
+    html += "</table><br>";
+
+// end patch table
+
+    return html;
+}
+
+// adjacent sites table
+
+function adjacent_sites(d) {
+    if (d['adjacent_data'] == undefined || Object.keys(d['adjacent_data']).length < 1) {
+        return "";
+    }
+
+    var is_p25 = (d['type'] == 'p25');
+    var is_smartnet = (d['type'] == 'smartnet');
+
+    // Only supported on P25 and Type II currently
+    if (!is_p25 && !is_smartnet) {
+        return "";
+    }
+
+    var html = "<table border=1 borderwidth=0 cellpadding=0 cellspacing=0 width=100%>";
+    html += "<tr><th colspan=99 style=\"align: center\">Adjacent Sites</th></tr>";
+    if (is_p25) {
+        html += "<tr><th>RFSS</th><th>Site</th><th>Frequency</th><th>Uplink</th></tr>";
+        var ct = 0;
+        // Ordered by RFSS then site number
+        var adjacent_by_rfss = {};
+        for (var freq in d['adjacent_data']) {
+            var rfss = d['adjacent_data'][freq]["rfid"];
+            var site = d['adjacent_data'][freq]["stid"];
+            adjacent_by_rfss[rfss] = {};
+            adjacent_by_rfss[rfss][site] = {};
+            adjacent_by_rfss[rfss][site]['cc_rx_freq'] = (freq / 1000000.0).toFixed(6);
+            adjacent_by_rfss[rfss][site]['cc_tx_freq'] = (d['adjacent_data'][freq]["uplink"] / 1000000.0).toFixed(6);
+        }
+        for (var rfss in adjacent_by_rfss) {
+            for (var site in adjacent_by_rfss[rfss]) {
+                var color = "#d0d0d0";
+                if ((ct & 1) == 0)
+                    color = "#c0c0c0";
+                ct += 1;
+                html += "<tr style=\"background-color: " + color + ";\"><td>" + rfss + "</td><td>" + site + "</td><td>" + adjacent_by_rfss[rfss][site]["cc_rx_freq"] + "</td><td>" + adjacent_by_rfss[rfss][site]["cc_tx_freq"] + "</td></tr>";
+            }
+        }
+    } else if (is_smartnet) {
+        html += "<tr><th>Site</th><th>Frequency</th><th>Uplink</th></tr>";
+        var ct = 0;
+        // Ordered by site number
+        var adjacent_by_site = {};
+        for (var freq in d['adjacent_data']) {
+            var site = d['adjacent_data'][freq]["stid"];
+            adjacent_by_site[site] = {};
+            adjacent_by_site[site]['cc_rx_freq'] = (freq / 1000000.0).toFixed(6);
+            adjacent_by_site[site]['cc_tx_freq'] = (d['adjacent_data'][freq]["uplink"] / 1000000.0).toFixed(6);
+        }
+        for (var site in adjacent_by_site) {
+            var color = "#d0d0d0";
+            if ((ct & 1) == 0)
+                color = "#c0c0c0";
+            ct += 1;
+            html += "<tr style=\"background-color: " + color + ";\"><td>" + site + "</td><td>" + adjacent_by_site[site]["cc_rx_freq"] + "</td><td>" + adjacent_by_site[site]["cc_tx_freq"] + "</td></tr>";
+        }
+    }
+    html += "</table><br>";
 
 // end adjacent sites table
 
@@ -486,15 +583,24 @@ function trunk_update(d) {
         html += d[nac]['top_line'];
         html += "</span><br>";
 
+        var is_p25 = (d[nac]['type'] == 'p25');
+        var is_smartnet = (d[nac]['type'] == 'smartnet');
+
         if (d[nac]['rfid'] != undefined)
             html += "<span class=\"label\">RFSS ID: </span><span class=\"value\">" + d[nac]['rfid'] + " </span>";
         if (d[nac]['stid'] != undefined)
             html += "<span class=\"label\">Site ID: </span><span class=\"value\">" + d[nac]['stid'] + "</span><br>";
         if (d[nac]['secondary'] != undefined && d[nac]["secondary"].length) {
-            html += "<span class=\"label\">Secondary control channel(s): </span><span class=\"value\"> ";
+            html += "<span class=\"label\">";
+            if (is_p25)
+                html += "Secondary";
+            else
+                html += "Alternate";
+            html += " control channel(s): </span><span class=\"value\"> ";
             for (i=0; i<d[nac]["secondary"].length; i++) {
+                if (i != 0)
+                    html += ", ";
                 html += (d[nac]["secondary"][i] / 1000000.0).toFixed(6);
-                html += " ";
             }
             html += "</span><br>";
         }
@@ -517,39 +623,88 @@ function trunk_update(d) {
         html += "<div class=\"info\"><div class=\"system\">";
         html += "<table border=1 borderwidth=0 cellpadding=0 cellspacing=0 width=100%>"; // was width=350
         html += "<colgroup>";
-        html += "<col span=\"1\" style=\"width:25%;\">";
+        html += "<col span=\"1\" style=\"width:20%;\">";
+        html += "<col span=\"1\" style=\"width:12.5%;\">";
+        html += "<col span=\"1\" style=\"width:20%;\">";
+        html += "<col span=\"1\" style=\"width:20%;\">";
         html += "<col span=\"1\" style=\"width:15%;\">";
-        html += "<col span=\"1\" style=\"width:24%;\">";
-        html += "<col span=\"1\" style=\"width:24%;\">";
-        html += "<col span=\"1\" style=\"width:12%;\">";
+        html += "<col span=\"1\" style=\"width:12.5%;\">";
         html += "</colgroup>";
         html += "<tr><th colspan=99 style=\"align: center\">System Frequencies</th></tr>";
-        html += "<tr><th>Voice Frequency</th><th>Last Used</th><th colspan=2>Active Talkgoup&nbspId</th><th>Count</th></tr>";
+        html += "<tr><th>Frequency</th><th>Last Used</th><th colspan=2>Active Talkgoup&nbspID</th><th>Mode</th><th>Voice Count</th></tr>";
         var ct = 0;
         for (var freq in d[nac]['frequency_data']) {
+            chan_type = d[nac]['frequency_data'][freq]['type'];
+            last_activity = d[nac]['frequency_data'][freq]['last_activity'];
             tg1 = d[nac]['frequency_data'][freq]['tgids'][0];
             tg2 = d[nac]['frequency_data'][freq]['tgids'][1];
-            if (tg1 == null)
-                tg1 = "&nbsp&nbsp-&nbsp&nbsp";
-            if (tg2 == null)
-                tg2 = "&nbsp&nbsp-&nbsp&nbsp";
-            if (tg1 == tg2) {
-                tg_str = "<td style=\"text-align:center;\" colspan=2>" + tg1 + "</td>";
+            mode = d[nac]['frequency_data'][freq]['mode'];
+            count = d[nac]['frequency_data'][freq]['counter'];
+            var mode_str = "<td></td>"
+            // Do alternate first because active TGs will deliberately overwrite the mode
+            if (chan_type == 'alternate') {
+                if (is_p25)
+                    mode_str = "<td style=\"text-align:center;\">Sec CC</td>"
+                else if (is_smartnet)
+                    mode_str = "<td style=\"text-align:center;\">Alt CC</td>"
+                else
+                    mode_str = "<td style=\"text-align:center;\">Alt CC</td>"
+            }
+            // Now actually handle the appropriate channel type if not alternate
+            if (chan_type == 'control') {
+                tg_str = "<td style=\"text-align:center;\" colspan=2>Control</td>";
+                // Deliberately 6 or 8 characters wide, to ensure the column stays the right width without flickering
+                // when call status flags come and go with calls
+                if (is_p25)
+                    mode_str = "<td style=\"text-align:center;\">&nbsp;&nbsp;CC&nbsp;&nbsp;</td>"
+                else if (is_smartnet)
+                    mode_str = "<td style=\"text-align:center;\">&nbsp;&nbsp;&nbsp;CC&nbsp;&nbsp;&nbsp;</td>"
+                else
+                    mode_str = "<td style=\"text-align:center;\">CC</td>"
+                count = "";
             }
             else {
-                tg_str = "<td style=\"text-align:center;\">" + tg2 + "</td><td style=\"text-align:center;\">" + tg1 + "</td>";
+                if (is_smartnet && (tg1 != null || tg2 != null))
+                    mode_str = "<td style=\"text-align:center;\">" + mode + "</td>"
+
+                if (tg1 == null && tg2 == null) {
+                    tg_str = "<td style=\"text-align:center;\" colspan=2>&nbsp&nbsp-&nbsp&nbsp</td>";
+                }
+                else if (tg1 == tg2) {
+                    if (is_p25)
+                        mode_str = "<td style=\"text-align:center;\">FDMA</td>"
+                    tg_str = "<td style=\"text-align:center;\" colspan=2>" + tg1 + "</td>";
+                }
+                else {
+                    if (is_p25)
+                        mode_str = "<td style=\"text-align:center;\">TDMA</td>"
+                    if (tg1 == null)
+                        tg1 = "&nbsp&nbsp-&nbsp&nbsp";
+                    if (tg2 == null)
+                        tg2 = "&nbsp&nbsp-&nbsp&nbsp";
+                    tg_str = "<td style=\"text-align:center;\">" + tg2 + "</td><td style=\"text-align:center;\">" + tg1 + "</td>";
+                }
             }
             var color = "#d0d0d0";
             if ((ct & 1) == 0)
                 color = "#c0c0c0";
             ct += 1;
-            html += "<tr style=\"background-color: " + color + ";\"><td>" + (parseInt(freq) / 1000000.0).toFixed(6) + "</td><td style=\"text-align:right;\">" + d[nac]['frequency_data'][freq]['last_activity'] + "</td>" + tg_str + "<td style=\"text-align:right;\">" + d[nac]['frequency_data'][freq]['counter'] + "</td></tr>";
+            html += "<tr style=\"background-color: " + color + ";\">";
+            html += "<td>" + (parseInt(freq) / 1000000.0).toFixed(6) + "</td>";
+            html += "<td style=\"text-align:right;\">" + last_activity + "</td>";
+            html += tg_str;
+            html += mode_str;
+            html += "<td style=\"text-align:right;\">" + count + "</td>";
+            html += "</tr>";
         }
         html += "</table></div>";
 
 // end system freqencies table
 
-        html += adjacent_data(d[nac]['adjacent_data']);
+        html += "<div class=\"right_column\">";
+        html += patches(d[nac]);
+        html += adjacent_sites(d[nac]);
+        html += "</div></div></div>";
     }
 
     if (d['srcaddr'] != undefined)

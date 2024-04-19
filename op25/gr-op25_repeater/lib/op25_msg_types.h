@@ -64,6 +64,7 @@ static const int16_t M_DMR_SLOT_ESB     =  9;
 
 // SMARTNET Messages
 static const int16_t M_SMARTNET_TIMEOUT = -1;
+static const int16_t M_SMARTNET_BAD_OSW = -2;
 static const int16_t M_SMARTNET_OSW     =  0;
 static const int16_t M_SMARTNET_END_PTT = 15;
 
