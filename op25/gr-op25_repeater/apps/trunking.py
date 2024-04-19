@@ -144,7 +144,7 @@ class trunked_system (object):
                 vc_tgs = "[%5s|%5s]" % (vc1, vc0)
             d['frequencies'][f] = 'voice freq %f, active tgids %s, last seen %4.1fs, count %d' %  (f / 1000000.0, vc_tgs, t - self.voice_frequencies[f]['time'], self.voice_frequencies[f]['counter'])
 
-            d['frequency_data'][f] = {'tgids': self.voice_frequencies[f]['tgid'], 'last_activity': '%7.1f' % (t - self.voice_frequencies[f]['time']), 'counter': self.voice_frequencies[f]['counter']}
+            d['frequency_data'][f] = {'type': 'voice', 'tgids': self.voice_frequencies[f]['tgid'], 'last_activity': '%7.1f' % (t - self.voice_frequencies[f]['time']), 'counter': self.voice_frequencies[f]['counter']}
         d['adjacent_data'] = self.adjacent_data
         return json.dumps(d)
 
@@ -819,7 +819,7 @@ class trunked_system (object):
         sa    = get_ordinals(msg[12:15])
         ga    = get_ordinals(msg[15:17])
         if self.debug >= 10:
-            sys.stderr.write('%s [0] mac_ptt: mi: %x algid: %x keyid:%x ga: %d sa: %d\n' % (log_ts.get(), mi, algid, keyid, ga, sa))
+            sys.stderr.write('%s [0] mac_ptt: mi: %018x algid: %02x keyid:%04x ga: %d sa: %d\n' % (log_ts.get(), mi, algid, keyid, ga, sa))
         updated += self.update_talkgroup_srcaddr(curr_time, ga, sa)
         updated += self.update_talkgroup_encrypted(curr_time, ga, (algid != 0x80))
         self.rxctl.current_encrypted = (algid != 0x80)

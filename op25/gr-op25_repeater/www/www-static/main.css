@@ -5,10 +5,10 @@
 
 }
 
-#div_status table { 
+#div_status table {
 
-	border-style: solid; 
-	background-color: #336699; 
+	border-style: solid;
+	background-color: #336699;
 	border-collapse: collapse;
 	font-family: "Courier New", Courier, Monospace;
 
@@ -34,9 +34,9 @@
 }
 
 hr {
-	width:   730px;
+	width: 830px;
 	float: left;
-        padding: 0px;
+	padding: 0px;
 }
 
 /* the buttons */
@@ -109,23 +109,23 @@ hr {
 /* flex container for top buttons */
 
 /*
-the flex properties are more useful when a variable-width is applied, 
+the flex properties are more useful when a variable-width is applied,
 but can be safely left in place even when using a fixed width
 */
 
 .flex-container {
-  display: flex;
-  width: 730px;
-  justify-content: space-between;
+	display: flex;
+	width: 830px;
+	justify-content: space-between;
 
 }
 
 .flex-container > div {
-  width: 100px;
-  margin: 0px;
-  text-align: center;
-  line-height: 75px;
-  font-size: 30px;
+	width: 100px;
+	margin: 0px;
+	text-align: center;
+	line-height: 75px;
+	font-size: 30px;
 }
 
 
@@ -134,7 +134,7 @@ but can be safely left in place even when using a fixed width
 div.info {
 
 	position: relative;
-	width: 730px;
+	width: 830px;
 	height: auto;
 	border: 0px solid #000;
 }
@@ -153,18 +153,18 @@ div.system {
 	position: absolute;
 	top: 10px;
 	left: 0;
-	width: 54%;
+	width: 60%;
 	height: auto;
 	border: 0px solid #d00
 }
 
-/* adjacent sites container that holds the table */
+/* right column container that holds the adjacent sites and patch tables */
 
-div.adjacent {
+div.right_column {
 
 	position: relative;
 	top: 10px;
-	width: 42%;
+	width: 36%;
 	float: right;
 	height: auto;
 	border: 0px solid #00f;
@@ -176,7 +176,7 @@ div.adjacent {
 
 	font-family: Arial, Helvetica, sans-serif;
 	font-size: 14px;
-        padding: 20px;
+	padding: 20px;
 	color: #484848;
 	float: right;
 }
@@ -224,7 +224,7 @@ div.adjacent {
 	border: 1px solid #999;
 	height: auto;
 	overflow: auto;
-	width: 720px;
+	width: 820px;
 	padding: 5px;
 	background: LightGray; /* For browsers that do not support gradients */
 	background: linear-gradient(White, Silver);
@@ -330,7 +330,7 @@ div.adjacent {
 }
 
 .nav-bar {
-	width: 730px;
+	width: 830px;
 	padding: 0;
 	border: 1px solid #000;
 }

@@ -80,6 +80,7 @@ namespace gr{
                 void deinterleave(const uint8_t* buf);
                 void error_correction();
                 bool crc_check();
+                void bad_osw();
                 void send_msg(const char* buf);
 
                 int d_debug;
