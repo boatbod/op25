@@ -823,6 +823,27 @@ class osw_receiver(object):
                     if vc_tx_freq != 0.0:
                         sys.stderr.write(" vc_tx_freq(%f)" % (vc_tx_freq))
                     sys.stderr.write("\n")
+            # Two-OSW private call voice grant/update (sent for duration of the call)
+            elif osw2_ch_tx and osw1_ch_rx and not osw2_grp and not osw1_grp and (osw1_addr != 0) and (osw2_addr != 0):
+                dst_rid = osw2_addr
+                src_rid = osw1_addr
+                vc_rx_freq = osw1_f_rx
+                vc_tx_freq = osw2_f_tx
+                if self.debug >= 11:
+                    sys.stderr.write("%s [%d] SMARTNET OBT PRIVATE CALL src(%05d) dst(%05d) vc_rx_freq(%f)" % (log_ts.get(), self.msgq_id, src_rid, dst_rid, vc_rx_freq))
+                    if vc_tx_freq != 0.0:
+                        sys.stderr.write(" vc_tx_freq(%f)" % (vc_tx_freq))
+                    sys.stderr.write("\n")
+            # Two-OSW interconnect call voice grant/update (sent for duration of the call)
+            elif osw2_ch_tx and osw1_ch_rx and not osw2_grp and not osw1_grp and (osw1_addr != 0) and (osw2_addr == 0):
+                src_rid = osw1_addr
+                vc_rx_freq = osw1_f_rx
+                vc_tx_freq = osw2_f_tx
+                if self.debug >= 11:
+                    sys.stderr.write("%s [%d] SMARTNET OBT INTERCONNECT CALL src(%05d) vc_rx_freq(%f)" % (log_ts.get(), self.msgq_id, src_rid, vc_rx_freq))
+                    if vc_tx_freq != 0.0:
+                        sys.stderr.write(" vc_tx_freq(%f)" % (vc_tx_freq))
+                    sys.stderr.write("\n")
             else:
                 # Track that we got an unknown OSW and put back unused OSW1
                 is_unknown_osw = True
@@ -850,6 +871,16 @@ class osw_receiver(object):
             data = osw2_addr
             if self.debug >= 11:
                 sys.stderr.write("%s [%d] SMARTNET IDLE data(%s,0x%04x)\n" % (log_ts.get(), self.msgq_id, grp_str, data))
+        # One-OSW group busy queued
+        elif osw2_cmd == 0x300 and osw2_grp:
+            tgid = osw2_addr
+            if self.debug >= 11:
+                sys.stderr.write("%s [%d] SMARTNET GROUP BUSY QUEUED tgid(%05d/0x%03x)\n" % (log_ts.get(), self.msgq_id, tgid, tgid >> 4))
+        # One-OSW emergency busy queued
+        elif osw2_cmd == 0x303 and osw2_grp:
+            tgid = osw2_addr
+            if self.debug >= 11:
+                sys.stderr.write("%s [%d] SMARTNET EMERGENCY BUSY QUEUED tgid(%05d/0x%03x)\n" % (log_ts.get(), self.msgq_id, tgid, tgid >> 4))
         # Two- or three-OSW message
         elif osw2_cmd == 0x308:
             # Get next OSW in the queue
@@ -873,6 +904,19 @@ class osw_receiver(object):
                 rc |= self.update_voice_frequency(osw1_t, vc_freq, dst_tgid, src_rid, mode=0)
                 if self.debug >= 11:
                     sys.stderr.write("%s [%d] SMARTNET ANALOG %s GROUP GRANT src(%05d) tgid(%05d/0x%03x) vc_freq(%f)\n" % (log_ts.get(), self.msgq_id, self.get_call_options_str(dst_tgid), src_rid, dst_tgid, dst_tgid >> 4, vc_freq))
+            # Two-OSW private call voice grant/update (sent for duration of the call)
+            elif osw1_ch_rx and not osw1_grp and (osw1_addr != 0) and (osw2_addr != 0):
+                dst_rid = osw2_addr
+                src_rid = osw1_addr
+                vc_freq = osw1_f_rx
+                if self.debug >= 11:
+                    sys.stderr.write("%s [%d] SMARTNET PRIVATE CALL src(%05d) dst(%05d) vc_freq(%f)\n" % (log_ts.get(), self.msgq_id, src_rid, dst_rid, vc_freq))
+            # Two-OSW interconnect call voice grant/update (sent for duration of the call)
+            elif osw1_ch_rx and not osw1_grp and (osw1_addr != 0) and (osw2_addr == 0):
+                src_rid = osw1_addr
+                vc_freq = osw1_f_rx
+                if self.debug >= 11:
+                    sys.stderr.write("%s [%d] SMARTNET INTERCONNECT CALL src(%05d) vc_freq(%f)\n" % (log_ts.get(), self.msgq_id, src_rid, vc_freq))
             # One- or two-OSW system idle
             elif osw1_cmd == 0x2f8:
                 # Get next OSW in the queue
@@ -906,6 +950,24 @@ class osw_receiver(object):
                     data = osw1_addr
                     if self.debug >= 11:
                         sys.stderr.write("%s [%d] SMARTNET IDLE DELAYED 1-1 data(%s,0x%04x)\n" % (log_ts.get(), self.msgq_id, grp_str, data))
+            # Two-OSW group busy queued
+            elif osw1_cmd == 0x300 and osw1_grp:
+                src_rid = osw2_addr
+                tgid = osw1_addr
+                if self.debug >= 11:
+                    sys.stderr.write("%s [%d] SMARTNET GROUP BUSY QUEUED src(%05d) tgid(%05d/0x%03x)\n" % (log_ts.get(), self.msgq_id, src_rid, tgid, tgid >> 4))
+            # Two-OSW private call busy queued
+            elif osw1_cmd == 0x302 and not osw1_grp:
+                src_rid = osw2_addr
+                tgt_rid = osw1_addr
+                if self.debug >= 11:
+                    sys.stderr.write("%s [%d] SMARTNET PRIVATE CALL BUSY QUEUED src(%05d) tgt(%05d)\n" % (log_ts.get(), self.msgq_id, src_rid, tgt_rid))
+            # Two-OSW emergency busy queued
+            elif osw1_cmd == 0x303 and osw1_grp:
+                src_rid = osw2_addr
+                tgid = osw1_addr
+                if self.debug >= 11:
+                    sys.stderr.write("%s [%d] SMARTNET EMERGENCY BUSY QUEUED src(%05d) tgid(%05d/0x%03x)\n" % (log_ts.get(), self.msgq_id, src_rid, tgid, tgid >> 4))
             # Possible out-of-order two-OSW system idle
             elif osw1_cmd == 0x308:
                 # Get next OSW in the queue
@@ -1032,21 +1094,113 @@ class osw_receiver(object):
                             src_rid = osw2_addr
                             if self.debug >= 11:
                                 sys.stderr.write("%s [%d] SMARTNET DEAFFILIATION src(%05d)\n" % (log_ts.get(), self.msgq_id, src_rid))
+                        # Status acknowledgement
+                        elif osw1_addr >= 0x26e0 and osw1_addr <= 0x26e7:
+                            src_rid = osw2_addr
+                            status = (osw1_addr & 0x7) + 1
+                            if self.debug >= 11:
+                                sys.stderr.write("%s [%d] SMARTNET STATUS ACK src(%05d) status(%02d)\n" % (log_ts.get(), self.msgq_id, src_rid, status))
+                        # Emergency acknowledgement
+                        elif osw1_addr == 0x26e8:
+                            src_rid = osw2_addr
+                            if self.debug >= 11:
+                                sys.stderr.write("%s [%d] SMARTNET EMERGENCY ACK src(%05d)\n" % (log_ts.get(), self.msgq_id, src_rid))
+                        # Message acknowledgement
+                        elif osw1_addr >= 0x26f0 and osw1_addr <= 0x26ff:
+                            src_rid = osw2_addr
+                            message = (osw0_addr & 0xf) + 1
+                            if self.debug >= 11:
+                                sys.stderr.write("%s [%d] SMARTNET MESSAGE ACK src(%05d) msg(%d)\n" % (log_ts.get(), self.msgq_id, src_rid, message))
+                        # Invalid talkgroup (e.g. TGID 0xfff)
+                        elif osw1_addr == 0x2c04:
+                            src_rid = osw2_addr
+                            if self.debug >= 11:
+                                sys.stderr.write("%s [%d] SMARTNET DENIED INVALID TALKGROUP src(%05d)\n" % (log_ts.get(), self.msgq_id, src_rid))
+                        # Announcement listen only
+                        elif osw1_addr == 0x2c11:
+                            src_rid = osw2_addr
+                            if self.debug >= 11:
+                                sys.stderr.write("%s [%d] SMARTNET DENIED ANNOUNCEMENT LISTEN ONLY src(%05d)\n" % (log_ts.get(), self.msgq_id, src_rid))
+                        # Clear TX only
+                        elif osw1_addr == 0x2c12:
+                            src_rid = osw2_addr
+                            if self.debug >= 11:
+                                sys.stderr.write("%s [%d] SMARTNET DENIED CLEAR TX ONLY src(%05d)\n" % (log_ts.get(), self.msgq_id, src_rid))
+                        # Listen only
+                        elif osw1_addr == 0x2c13:
+                            src_rid = osw2_addr
+                            if self.debug >= 11:
+                                sys.stderr.write("%s [%d] SMARTNET DENIED LISTEN ONLY src(%05d)\n" % (log_ts.get(), self.msgq_id, src_rid))
+                        # No private call
+                        elif osw1_addr == 0x2c14:
+                            src_rid = osw2_addr
+                            if self.debug >= 11:
+                                sys.stderr.write("%s [%d] SMARTNET DENIED NO PRIVATE CALL src(%05d)\n" % (log_ts.get(), self.msgq_id, src_rid))
+                        # Private call invalid ID
+                        elif osw1_addr == 0x2c15:
+                            src_rid = osw2_addr
+                            if self.debug >= 11:
+                                sys.stderr.write("%s [%d] SMARTNET DENIED PRIVATE CALL INVALID ID src(%05d)\n" % (log_ts.get(), self.msgq_id, src_rid))
+                        # No interconnect
+                        elif osw1_addr == 0x2c16:
+                            src_rid = osw2_addr
+                            if self.debug >= 11:
+                                sys.stderr.write("%s [%d] SMARTNET DENIED NO INTERCONNECT src(%05d)\n" % (log_ts.get(), self.msgq_id, src_rid))
+                        # Unsupported mode (CVSD, digital)
+                        elif osw1_addr == 0x2c20:
+                            src_rid = osw2_addr
+                            if self.debug >= 11:
+                                sys.stderr.write("%s [%d] SMARTNET DENIED UNSUPPORTED MODE src(%05d)\n" % (log_ts.get(), self.msgq_id, src_rid))
                         # Private call target offline (PC II)
                         elif osw1_addr == 0x2c41:
                             src_rid = osw2_addr
                             if self.debug >= 11:
                                 sys.stderr.write("%s [%d] SMARTNET DENIED PRIVATE CALL TARGET OFFLINE src(%05d)\n" % (log_ts.get(), self.msgq_id, src_rid))
+                        # Group busy (call in progress)
+                        elif osw1_addr == 0x2c47:
+                            src_rid = osw2_addr
+                            if self.debug >= 11:
+                                sys.stderr.write("%s [%d] SMARTNET DENIED GROUP BUSY CALL IN PROGRESS src(%05d)\n" % (log_ts.get(), self.msgq_id, src_rid))
                         # Private call target offline (enhanced)
                         elif osw1_addr == 0x2c48:
                             src_rid = osw2_addr
                             if self.debug >= 11:
                                 sys.stderr.write("%s [%d] SMARTNET DENIED PRIVATE CALL ENHANCED TARGET OFFLINE src(%05d)\n" % (log_ts.get(), self.msgq_id, src_rid))
+                        # Call alert invalid ID
+                        elif osw1_addr == 0x2c4e:
+                            src_rid = osw2_addr
+                            if self.debug >= 11:
+                                sys.stderr.write("%s [%d] SMARTNET DENIED CALL ALERT INVALID ID src(%05d)\n" % (log_ts.get(), self.msgq_id, src_rid))
                         # Call alert target offline
                         elif osw1_addr == 0x2c4f:
                             src_rid = osw2_addr
                             if self.debug >= 11:
                                 sys.stderr.write("%s [%d] SMARTNET DENIED CALL ALERT TARGET OFFLINE src(%05d)\n" % (log_ts.get(), self.msgq_id, src_rid))
+                        # Denied radio wrong modulation (e.g. radio digital, talkgroup analog)
+                        elif osw1_addr == 0x2c56:
+                            src_rid = osw2_addr
+                            if self.debug >= 11:
+                                sys.stderr.write("%s [%d] SMARTNET DENIED RADIO WRONG MODULATION src(%05d)\n" % (log_ts.get(), self.msgq_id, src_rid))
+                        # OmniLink trespass rejected
+                        elif osw1_addr == 0x2c60:
+                            src_rid = osw2_addr
+                            if self.debug >= 11:
+                                sys.stderr.write("%s [%d] SMARTNET DENIED OMNILINK TRESPASS src(%05d)\n" % (log_ts.get(), self.msgq_id, src_rid))
+                        # Denied talkgroup ID
+                        elif osw1_addr == 0x2c66:
+                            src_rid = osw2_addr
+                            if self.debug >= 11:
+                                sys.stderr.write("%s [%d] SMARTNET DENIED TALKGROUP ID src(%05d)\n" % (log_ts.get(), self.msgq_id, src_rid))
+                        # Group busy (call is just starting)
+                        elif osw1_addr == 0x2c90:
+                            src_rid = osw2_addr
+                            if self.debug >= 11:
+                                sys.stderr.write("%s [%d] SMARTNET DENIED GROUP BUSY CALL STARTING src(%05d)\n" % (log_ts.get(), self.msgq_id, src_rid))
+                        # Private call target busy
+                        elif osw1_addr == 0x2c96:
+                            src_rid = osw2_addr
+                            if self.debug >= 11:
+                                sys.stderr.write("%s [%d] SMARTNET DENIED PRIVATE CALL TARGET BUSY src(%05d)\n" % (log_ts.get(), self.msgq_id, src_rid))
                         # Failsoft assign
                         elif osw1_addr == 0x8301:
                             tgt_rid = osw2_addr
@@ -1314,6 +1468,11 @@ class osw_receiver(object):
                 if self.debug >= 11:
                     type_str = "UNKNOWN OSW AFTER BAD OSW" if is_queue_reset else "UNKNOWN OSW"
                     sys.stderr.write("%s [%d] SMARTNET %s (0x%04x,%s,0x%03x)\n" % (log_ts.get(), self.msgq_id, type_str, osw2_addr, grp2_str, osw2_cmd))
+        # One-OSW interconnect reject
+        elif osw2_cmd == 0x324 and not osw2_grp:
+            src_rid = osw2_addr
+            if self.debug >= 11:
+                sys.stderr.write("%s [%d] SMARTNET INTERCONNECT REJECT src(%05d)\n" % (log_ts.get(), self.msgq_id, src_rid))
         # One-OSW send affiliation request
         elif osw2_cmd == 0x32a and osw2_grp:
             tgt_rid = osw2_addr
@@ -1393,7 +1552,7 @@ class osw_receiver(object):
                 if self.debug >= 11:
                     sys.stderr.write("%s [%d] SMARTNET %s STATUS rotation(%d) wide_pulse(%d) cvsd_mod(%s) trespass(%d) voc(%d)" % (log_ts.get(), self.msgq_id, scope, rotation, wide_pulse, cvsd_mod_str, trespass, voc))
                     if voc or voc_active:
-                        sys.stderr.write(" voc_active(%d)\n" % (voc_active))
+                        sys.stderr.write(" voc_active(%d)" % (voc_active))
                     sys.stderr.write(" site_trunk(%d) wide_area(%d) bit6_5(0x%01x) bit3(%d) bitG(%s)\n" % (site_trunk, wide_area, bit6_5, bit3_2, bitG))
             else:
                 if self.debug >= 11:
