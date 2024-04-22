@@ -1000,8 +1000,8 @@ class osw_receiver(object):
                     if self.debug >= 11:
                         type_str = "UNKNOWN OSW AFTER BAD OSW" if is_queue_reset else "UNKNOWN OSW"
                         sys.stderr.write("%s [%d] SMARTNET %s (0x%04x,%s,0x%03x)\n" % (log_ts.get(), self.msgq_id, type_str, osw2_addr, grp2_str, osw2_cmd))
-            # Two-OSW dynamic regroup (unknown whether OSWs are group or individual)
-            elif osw1_cmd == 0x30a:
+            # Two-OSW dynamic regroup
+            elif osw1_cmd == 0x30a and not osw2_grp and not osw1_grp:
                 src_rid = osw2_addr
                 tgid = osw1_addr
                 if self.debug >= 11:
