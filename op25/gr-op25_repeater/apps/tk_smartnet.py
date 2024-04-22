@@ -1079,9 +1079,9 @@ class osw_receiver(object):
                         # Unknown extended function
                         else:
                             tgid = osw2_addr
-                            code = osw1_addr
+                            opcode = osw1_addr
                             if self.debug >= 11:
-                                sys.stderr.write("%s [%d] SMARTNET GROUP EXTENDED FUNCTION tgid(%05d/0x%03x) code(0x%04x)\n" % (log_ts.get(), self.msgq_id, tgid, tgid >> 4, code))
+                                sys.stderr.write("%s [%d] SMARTNET GROUP EXTENDED FUNCTION tgid(%05d/0x%03x) opcode(0x%04x)\n" % (log_ts.get(), self.msgq_id, tgid, tgid >> 4, opcode))
                     # Extended functions on individuals
                     else:
                         # Radio check
@@ -1275,9 +1275,9 @@ class osw_receiver(object):
                         # Unknown extended function
                         else:
                             src_rid = osw2_addr
-                            code = osw1_addr
+                            opcode = osw1_addr
                             if self.debug >= 11:
-                                sys.stderr.write("%s [%d] SMARTNET INDIVIDUAL EXTENDED FUNCTION src(%05d) code(0x%04x)\n" % (log_ts.get(), self.msgq_id, src_rid, code))
+                                sys.stderr.write("%s [%d] SMARTNET INDIVIDUAL EXTENDED FUNCTION src(%05d) opcode(0x%04x)\n" % (log_ts.get(), self.msgq_id, src_rid, opcode))
             # Two-OSW status
             elif osw1_cmd == 0x30d and not osw2_grp and not osw1_grp:
                 src_rid = osw2_addr
