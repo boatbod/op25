@@ -1278,16 +1278,21 @@ class osw_receiver(object):
                             opcode = osw1_addr
                             if self.debug >= 11:
                                 sys.stderr.write("%s [%d] SMARTNET INDIVIDUAL EXTENDED FUNCTION src(%05d) opcode(0x%04x)\n" % (log_ts.get(), self.msgq_id, src_rid, opcode))
-            # Two-OSW status
+            # Two-OSW status / emergency / dynamic regroup acknowledgement
             elif osw1_cmd == 0x30d and not osw2_grp and not osw1_grp:
                 src_rid = osw2_addr
                 dst_tgid = osw1_addr & 0xfff0
-                status = (osw1_addr & 0xf) + 1
+                opcode = osw1_addr & 0xf
                 if self.debug >= 11:
-                    if status == 9:
-                        sys.stderr.write("%s [%d] SMARTNET EMERGENCY src(%05d) tgid(%05d/0x%03x)\n" % (log_ts.get(), self.msgq_id, src_rid, dst_tgid, dst_tgid >> 4))
-                    else:
+                    if opcode < 0x8:
+                        status = opcode + 1
                         sys.stderr.write("%s [%d] SMARTNET STATUS src(%05d) tgid(%05d/0x%03x) status(%02d)\n" % (log_ts.get(), self.msgq_id, src_rid, dst_tgid, dst_tgid >> 4, status))
+                    elif opcode == 0x8:
+                        sys.stderr.write("%s [%d] SMARTNET EMERGENCY src(%05d) tgid(%05d/0x%03x)\n" % (log_ts.get(), self.msgq_id, src_rid, dst_tgid, dst_tgid >> 4))
+                    elif opcode == 0xa:
+                        sys.stderr.write("%s [%d] SMARTNET DYNAMIC REGROUP ACK src(%05d) tgid(%05d/0x%03x)\n" % (log_ts.get(), self.msgq_id, src_rid, dst_tgid, dst_tgid >> 4))
+                    else:
+                        sys.stderr.write("%s [%d] SMARTNET UNKNOWN STATUS src(%05d) tgid(%05d/0x%03x) opcode(%02d)\n" % (log_ts.get(), self.msgq_id, src_rid, dst_tgid, dst_tgid >> 4, opcode))
             # Two-OSW affiliation
             elif osw1_cmd == 0x310 and not osw2_grp and not osw1_grp:
                 src_rid = osw2_addr
