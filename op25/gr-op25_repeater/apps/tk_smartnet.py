@@ -1546,6 +1546,24 @@ class osw_receiver(object):
             self.rx_site_id = site
             if self.debug >= 11:
                 sys.stderr.write("%s [%d] SMARTNET AMSS site(%02d)%s\n" % (log_ts.get(), self.msgq_id, site, data_str))
+        # One-OSW base station identification / diagnostic
+        elif osw2_cmd == 0x3a0 and osw2_grp:
+            opcode = (osw2_addr & 0xf000) >> 12
+
+            if opcode == 0xe or opcode == 0xf:
+                action_str = "BSI" if opcode == 0xf else "END BSI"
+                if self.debug >= 11:
+                    if self.is_chan(osw2_addr & 0x3ff):
+                        data = (osw2_addr & 0xc00) >> 10
+                        vc_freq = self.get_freq(osw2_addr & 0x3ff)
+                        sys.stderr.write("%s [%d] SMARTNET %s data(0x%01x) vc_freq(%f)\n" % (log_ts.get(), self.msgq_id, action_str, data, vc_freq))
+                    else:
+                        data = osw2_addr & 0xfff
+                        sys.stderr.write("%s [%d] SMARTNET %s data(0x%03x)\n" % (log_ts.get(), self.msgq_id, action_str, data, vc_freq))
+            else:
+                data = osw2_addr & 0x3ff
+                if self.debug >= 11:
+                    sys.stderr.write("%s [%d] SMARTNET DIAGNOSTIC opcode(0x%01x) data(0x%03x)\n" % (log_ts.get(), self.msgq_id, opcode, data))
         # One-OSW system status update
         elif osw2_cmd == 0x3bf or osw2_cmd == 0x3c0:
             scope = "SYSTEM" if osw2_cmd == 0x3c0 else "NETWORK"
