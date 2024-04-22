@@ -1384,14 +1384,30 @@ class osw_receiver(object):
                         sys.stderr.write("%s [%d] SMARTNET %s (0x%04x,%s,0x%03x)\n" % (ts, self.msgq_id, type_str, osw1_addr, grp1_str, osw1_cmd))
             # Two-OSW date/time
             elif osw1_cmd == 0x322 and osw2_grp and osw1_grp:
-                year   = ((osw2_addr & 0xfe00) >> 9) + 2000
-                month  = (osw2_addr & 0x1e0) >> 5
-                day    = (osw2_addr & 0x1f)
-                data   = (osw1_addr & 0xe000) >> 13
-                hour   = (osw1_addr & 0x1f00) >> 8
-                minute = osw1_addr & 0xff
+                year      = ((osw2_addr & 0xfe00) >> 9) + 2000
+                month     = (osw2_addr & 0x1e0) >> 5
+                day       = (osw2_addr & 0x1f)
+                dayofweek = (osw1_addr & 0xe000) >> 13
+                if dayofweek == 0:
+                    dayofweek_str = "Sunday"
+                elif dayofweek == 1:
+                    dayofweek_str = "Monday"
+                elif dayofweek == 2:
+                    dayofweek_str = "Tuesday"
+                elif dayofweek == 3:
+                    dayofweek_str = "Wednesday"
+                elif dayofweek == 4:
+                    dayofweek_str = "Thursday"
+                elif dayofweek == 5:
+                    dayofweek_str = "Friday"
+                elif dayofweek == 6:
+                    dayofweek_str = "Saturday"
+                else:
+                    dayofweek_str = "unknown day of week"
+                hour      = (osw1_addr & 0x1f00) >> 8
+                minute    = osw1_addr & 0xff
                 if self.debug >= 11:
-                    sys.stderr.write("%s [%d] SMARTNET DATE/TIME %04d-%02d-%02d %02d:%02d data(0x%01x)\n" % (log_ts.get(), self.msgq_id, year, month, day, hour, minute, data))
+                    sys.stderr.write("%s [%d] SMARTNET DATE/TIME %04d-%02d-%02d %02d:%02d (%s)\n" % (log_ts.get(), self.msgq_id, year, month, day, hour, minute, dayofweek_str))
             # Two-OSW emergency PTT
             elif osw1_cmd == 0x32e and osw2_grp and osw1_grp:
                 src_rid = osw2_addr
