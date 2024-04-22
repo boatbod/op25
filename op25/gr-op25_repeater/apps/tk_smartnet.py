@@ -904,13 +904,13 @@ class osw_receiver(object):
                 rc |= self.update_voice_frequency(osw1_t, vc_freq, dst_tgid, src_rid, mode=0)
                 if self.debug >= 11:
                     sys.stderr.write("%s [%d] SMARTNET ANALOG %s GROUP GRANT src(%05d) tgid(%05d/0x%03x) vc_freq(%f)\n" % (log_ts.get(), self.msgq_id, self.get_call_options_str(dst_tgid), src_rid, dst_tgid, dst_tgid >> 4, vc_freq))
-            # Two-OSW private call voice grant/update (sent for duration of the call)
+            # Two-OSW analog private call voice grant/update (sent for duration of the call)
             elif osw1_ch_rx and not osw1_grp and (osw1_addr != 0) and (osw2_addr != 0):
                 dst_rid = osw2_addr
                 src_rid = osw1_addr
                 vc_freq = osw1_f_rx
                 if self.debug >= 11:
-                    sys.stderr.write("%s [%d] SMARTNET PRIVATE CALL src(%05d) dst(%05d) vc_freq(%f)\n" % (log_ts.get(), self.msgq_id, src_rid, dst_rid, vc_freq))
+                    sys.stderr.write("%s [%d] SMARTNET ANALOG PRIVATE CALL src(%05d) dst(%05d) vc_freq(%f)\n" % (log_ts.get(), self.msgq_id, src_rid, dst_rid, vc_freq))
             # Two-OSW interconnect call voice grant/update (sent for duration of the call)
             elif osw1_ch_rx and not osw1_grp and (osw1_addr != 0) and (osw2_addr == 0):
                 src_rid = osw1_addr
@@ -1425,6 +1425,13 @@ class osw_receiver(object):
                 rc |= self.update_voice_frequency(osw1_t, vc_freq, dst_tgid, src_rid, mode=1)
                 if self.debug >= 11:
                     sys.stderr.write("%s [%d] SMARTNET DIGITAL %s GROUP GRANT src(%05d) tgid(%05d/0x%03x) vc_freq(%f)\n" % (log_ts.get(), self.msgq_id, self.get_call_options_str(dst_tgid), src_rid, dst_tgid, dst_tgid >> 4, vc_freq))
+            # Two-OSW digital private call voice grant/update (sent for duration of the call)
+            elif osw1_ch_rx and not osw1_grp and (osw1_addr != 0) and (osw2_addr != 0):
+                dst_rid = osw2_addr
+                src_rid = osw1_addr
+                vc_freq = osw1_f_rx
+                if self.debug >= 11:
+                    sys.stderr.write("%s [%d] SMARTNET DIGITAL PRIVATE CALL src(%05d) dst(%05d) vc_freq(%f)\n" % (log_ts.get(), self.msgq_id, src_rid, dst_rid, vc_freq))
             # One- or two-OSW system idle
             elif osw1_cmd == 0x2f8:
                 # Get next OSW in the queue
