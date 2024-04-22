@@ -1325,6 +1325,12 @@ class osw_receiver(object):
                 src_rid = osw1_addr
                 if self.debug >= 11:
                     sys.stderr.write("%s [%d] SMARTNET CALL ALERT ACK src(%05d) dst(%05d)\n" % (log_ts.get(), self.msgq_id, src_rid, dst_rid))
+            # Two-OSW OmniLink trespass permitted
+            elif osw1_cmd == 0x31b and not osw2_grp and not osw1_grp:
+                src_rid = osw2_addr
+                system = osw1_addr
+                if self.debug >= 11:
+                    sys.stderr.write("%s [%d] SMARTNET OMNILINK TRESPASS PERMITTED sys(0x%04x) src(%05d)\n" % (log_ts.get(), self.msgq_id, system, src_rid))
             # Three-OSW system information
             elif osw1_cmd == 0x320:
                 # Get OSW0
