@@ -1099,7 +1099,7 @@ class osw_receiver(object):
                             src_rid = osw2_addr
                             status = (osw1_addr & 0x7) + 1
                             if self.debug >= 11:
-                                sys.stderr.write("%s [%d] SMARTNET STATUS ACK src(%05d) status(%02d)\n" % (log_ts.get(), self.msgq_id, src_rid, status))
+                                sys.stderr.write("%s [%d] SMARTNET STATUS ACK src(%05d) status(%01d)\n" % (log_ts.get(), self.msgq_id, src_rid, status))
                         # Emergency acknowledgement
                         elif osw1_addr == 0x26e8:
                             src_rid = osw2_addr
@@ -1286,7 +1286,7 @@ class osw_receiver(object):
                 if self.debug >= 11:
                     if opcode < 0x8:
                         status = opcode + 1
-                        sys.stderr.write("%s [%d] SMARTNET STATUS src(%05d) tgid(%05d/0x%03x) status(%02d)\n" % (log_ts.get(), self.msgq_id, src_rid, dst_tgid, dst_tgid >> 4, status))
+                        sys.stderr.write("%s [%d] SMARTNET STATUS src(%05d) tgid(%05d/0x%03x) status(%01d)\n" % (log_ts.get(), self.msgq_id, src_rid, dst_tgid, dst_tgid >> 4, status))
                     elif opcode == 0x8:
                         sys.stderr.write("%s [%d] SMARTNET EMERGENCY src(%05d) tgid(%05d/0x%03x)\n" % (log_ts.get(), self.msgq_id, src_rid, dst_tgid, dst_tgid >> 4))
                     elif opcode == 0xa:
