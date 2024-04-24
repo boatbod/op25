@@ -1546,11 +1546,34 @@ class osw_receiver(object):
             self.rx_site_id = site
             if self.debug >= 11:
                 sys.stderr.write("%s [%d] SMARTNET AMSS site(%02d)%s\n" % (log_ts.get(), self.msgq_id, site, data_str))
-        # One-OSW base station identification / diagnostic
+        # One-OSW BSI / diagnostic
         elif osw2_cmd == 0x3a0 and osw2_grp:
+            # Note that this is still highly speculative - it seems correct for the values that are defined below, but
+            # all other combinations are truly unknown
             opcode = (osw2_addr & 0xf000) >> 12
 
-            if opcode == 0xe or opcode == 0xf:
+            if opcode == 0x8 or opcode == 0x9:
+                status = (osw2_addr & 0xf00) >> 8
+                if status == 0xa:
+                    status_str = "enabled"
+                elif status == 0xb:
+                    status_str = "disabled"
+                elif status == 0xc:
+                    status_str = "malfunction"
+                else:
+                    status_str = "unknown 0x%01x" % (status)
+
+                component = (osw2_addr & 0xff)
+                if component >= 0x30 and component <= 0x4b:
+                    component_str = "receiver %02d" % (component - 0x30 + 1)
+                elif component >= 0x60 and component <= 0x7b:
+                    component_str = "transmitter %02d" % (component - 0x60 + 1)
+                else:
+                    component_str = "unknown 0x%02x" % (component)
+
+                if self.debug >= 11:
+                    sys.stderr.write("%s [%d] SMARTNET DIAGNOSTIC STATUS opcode(0x%01x) component(%s) status(%s)\n" % (log_ts.get(), self.msgq_id, opcode, component_str, status_str))
+            elif opcode == 0xe or opcode == 0xf:
                 action_str = "BSI" if opcode == 0xf else "END BSI"
                 if self.debug >= 11:
                     if self.is_chan(osw2_addr & 0x3ff):
