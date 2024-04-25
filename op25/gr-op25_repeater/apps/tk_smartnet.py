@@ -1151,7 +1151,7 @@ class osw_receiver(object):
                             src_rid = osw2_addr
                             if self.debug >= 11:
                                 sys.stderr.write("%s [%d] SMARTNET DENIED UNSUPPORTED MODE src(%05d)\n" % (log_ts.get(), self.msgq_id, src_rid))
-                        # Private call target offline (PC II)
+                        # Private call target offline
                         elif osw1_addr == 0x2c41:
                             src_rid = osw2_addr
                             if self.debug >= 11:
@@ -1161,11 +1161,11 @@ class osw_receiver(object):
                             src_rid = osw2_addr
                             if self.debug >= 11:
                                 sys.stderr.write("%s [%d] SMARTNET DENIED GROUP BUSY CALL IN PROGRESS src(%05d)\n" % (log_ts.get(), self.msgq_id, src_rid))
-                        # Private call target offline (enhanced)
+                        # Private call ring target offline
                         elif osw1_addr == 0x2c48:
                             src_rid = osw2_addr
                             if self.debug >= 11:
-                                sys.stderr.write("%s [%d] SMARTNET DENIED PRIVATE CALL ENHANCED TARGET OFFLINE src(%05d)\n" % (log_ts.get(), self.msgq_id, src_rid))
+                                sys.stderr.write("%s [%d] SMARTNET DENIED PRIVATE CALL RING TARGET OFFLINE src(%05d)\n" % (log_ts.get(), self.msgq_id, src_rid))
                         # Radio ID and/or talkgroup forbidden on site
                         elif osw1_addr == 0x2c4a:
                             src_rid = osw2_addr
