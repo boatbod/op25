@@ -1836,13 +1836,15 @@ class osw_receiver(object):
 
     def to_json(self):  # ugly but required for compatibility with P25 trunking and terminal modules
         system_id_str = "%04X" % (self.rx_sys_id) if self.rx_sys_id is not None else "----"
-        site_id_str   = "%02d" % (self.rx_site_id) if self.rx_site_id is not None else "--"
 
         d = {}
         d['type']           = 'smartnet'
         d['system']         = self.sysname
-        d['top_line']       = 'SmartNet ' if self.rx_site_id is None else 'SmartZone'
-        d['top_line']      += '   System ID %s  Site %s' % (system_id_str, site_id_str)
+        if self.rx_site_id is None:
+            d['top_line']   = 'SmartNet    System ID %s         ' % (system_id_str)
+        else:
+            site_id_str     = "%02d" % (self.rx_site_id)
+            d['top_line']   = 'SmartZone   System ID %s  Site %s' % (system_id_str, site_id_str)
         d['top_line']      += '   CC %f' % ((self.rx_cc_freq if self.rx_cc_freq is not None else self.cc_list[self.cc_index]) / 1e6)
         d['top_line']      += '   OSW count %d' % (self.stats['osw_count'])
         d['secondary']      = list(self.alternate_cc_freqs.keys())
