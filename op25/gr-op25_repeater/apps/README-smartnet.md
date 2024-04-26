@@ -20,25 +20,71 @@ Control over which TGIDs are candidates for monitoring is via the `blacklist` an
 
 ## Bandplan
 
-Motorola Type II SmartNet/SmartZone systems send a channel identifier command in their group voice grant messaging to identify the actual voice frequency being used.  Translation of this numeric ID to an actual frequency depends on the setting of the `bandplan` trunking parameter in conjunction with the nine associated `bp_` parameters: `bp_base`, `bp_mid`, `bp_high`, `bp_base_spacing`, `bp_mid_spacing`, `bp_high_spacing`, `bp_base_offset`, `bp_mid_offset`, `bp_high_offset`.
+Motorola Type II SmartNet/SmartZone systems send a channel identifier command in their group voice grant messaging to identify the actual voice frequency being used.  Translation of this numeric ID to an actual frequency depends on the setting of the `bandplan` trunking parameter.
 
-In the USA, most legacy 800Mhz systems should be configured with bandplan set to `800_reband` with no further information necessary.  VHF and UHF systems are considered "Other Band Trunking" (OBT), and require the bandplan set to `OBT` along with values populated in the `bp_` frequency, spacing, and offset parameters.  These can usually be found on the RadioReference wiki as "Custom Frequency Tables" or "Custom Band Plan".
+### Standard configuration
 
-OBT systems may optionally have the nine `bp_tx_` parameters set as well; if not set they default to values based on the `bp_` parameters.  These behave identically to the `bp_` parameters but are used to translate subscriber transmit (uplink) numeric IDs to actual frequencies.  This is not required for simply listening to a system; the functionality is added for more involved debugging of outbound service words (OSWs) as may be necessary for a system admin.  Transmit frequencies are logged to stderr along with detailed OSW meanings when verbosity is set to at least 11, or full raw OSWs can be logged with a verbosity of at least 13.
+In the USA, most legacy 800 MHz systems should be configured with `bandplan` set to `800_reband` with no further information necessary.
+
+### Supported bandplans
+
+Several standard bandplans (and `bandplan` settings) exist and are supported:
+
+- 800 MHz
+    - Standard (`800_standard`)
+    - Splinter (`800_splinter`)
+    - Rebanded (`800_reband`)
+- 900 MHz (`900`)
+- VHF/UHF Other Band Trunking (`OBT`)
+
+### Other Band Trunking (OBT)
+
+#### Required configuration
+
+VHF and UHF systems are considered "Other Band Trunking" (OBT), and require `bandplan` set to `OBT` in conjunction with additional configuration in the nine associated `bp_` parameters:
+
+- Base frequency
+    - `bp_base`
+    - `bp_mid`
+    - `bp_high`
+- Channel spacing
+    - `bp_base_spacing`
+    - `bp_mid_spacing`
+    - `bp_high_spacing`
+- Channel number offset
+    - `bp_base_offset`
+    - `bp_mid_offset`
+    - `bp_high_offset`
+
+These can usually be found on the RadioReference wiki as "Custom Frequency Tables" or "Custom Band Plan".
+
+#### Optional configuration
+
+OBT systems may optionally have the nine `bp_tx_` parameters set as well; if not set they default to values based on the `bp_` parameters.  These behave identically to the `bp_` parameters but are used to translate subscriber transmit (uplink) numeric IDs to actual frequencies.
+
+This is not required for simply listening to a system; the functionality is added for more involved debugging of outbound service words (OSWs) as may be necessary for a system admin.  Transmit frequencies are logged to `stderr` along with detailed OSW meanings when verbosity is set to at least 11, or full raw OSWs can be logged with a verbosity of at least 13.
 
 ## Examples
 
 ### 800 MHz system, rebanded bandplan
 
-Anne Arundel County (https://www.radioreference.com/apps/db/?sid=187)
+#### [Anne Arundel County](https://www.radioreference.com/db/sid/187)
+
 ```
     "control_channel_list": "854.3375,854.4125,854.8125,855.1625",
     "bandplan": "800_reband"
 ```
 
-## OBT (VHF) system with receive-only parameters populated
+### OBT (VHF) system with receive-only parameters populated
 
-Bell FleetNet Ontario (https://www.radioreference.com/apps/db/?sid=2560)
+#### [Bell FleetNet Ontario](https://www.radioreference.com/db/sid/861)
+
+| Range    | Base freq   | Spacing | Offset |
+|----------|-------------|---------|--------|
+| **Low**  | 141.015 MHz | 15 kHz  | 380    |
+| **Mid**  | 151.730 MHz | 15 kHz  | 579    |
+| **High** | 154.320 MHz | 15 kHz  | 632    |
+
 ```
     "control_channel_list": "142.500",
     "bandplan": "OBT",
@@ -55,9 +101,17 @@ Bell FleetNet Ontario (https://www.radioreference.com/apps/db/?sid=2560)
 
 ### OBT (UHF) system with subscriber uplink parameters populated
 
-Federal Medical Center Devens (https://www.radioreference.com/db/sid/6990)
+#### [Federal Medical Center Devens](https://www.radioreference.com/db/sid/6990)
+
+| Range       | Base freq | Spacing  | Offset |
+|-------------|-----------|----------|--------|
+| **Rx Low**  | 406.0 MHz | 12.5 kHz | 380    |
+| **Rx Mid**  | 409.0 MHz | 12.5 kHz | 744    |
+| **Tx Low**  | 415.0 MHz | 12.5 kHz | 0      |
+| **Tx Mid**  | 418.0 MHz | 12.5 kHz | 364    |
+
 ```
-    "control_channel_list": "406.8125,407.4125,408.25,409.0125",
+    "control_channel_list": "406.8125,407.4125,408.25,409.0125,409.4125",
     "bandplan": "OBT",
     "bp_base": 406.0,
     "bp_base_spacing": 0.0125,
