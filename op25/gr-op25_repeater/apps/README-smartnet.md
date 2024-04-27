@@ -36,15 +36,15 @@ In the USA, most legacy 800 MHz systems should be configured with `bandplan` set
 
 SmartNet/SmartZone systems have a handful of standard bandplans (and corresponding `bandplan` settings):
 
-| Band        | Subtype                | Standard                  | Shuffled                  |
-|-------------|------------------------|---------------------------|---------------------------|
-| **VHF/UHF** |                        | `OBT` *(see below)*       | N/A                       |
-| **800 MHz** | Rebanded               | `800_rebanded`            | *Not currently supported* |
-|             | Domestic               | `800_domestic`            | *Not currently supported* |
-|             | Domestic splinter      | `800_domestic_splinter`   | *Not currently supported* |
-|             | International          | *Not currently supported* | *Not currently supported* |
-|             | International splinter | *Not currently supported* | *Not currently supported* |
-| **900 MHz** |                        | `900`                     | N/A                       |
+| Band        | Subtype                | Standard                     | Shuffled                              |
+|-------------|------------------------|------------------------------|---------------------------------------|
+| **VHF/UHF** |                        | `OBT` *(see below)*          | N/A                                   |
+| **800 MHz** | Rebanded               | `800_rebanded`               | *Not currently supported*             |
+|             | Domestic               | `800_domestic`               | *Not currently supported*             |
+|             | Domestic splinter      | `800_domestic_splinter`      | *Not currently supported*             |
+|             | International          | `800_international`          | `800_international_shuffled`          |
+|             | International splinter | `800_international_splinter` | `800_international_splinter_shuffled` |
+| **900 MHz** |                        | `900`                        | N/A                                   |
 
 ### Other Band Trunking (OBT)
 

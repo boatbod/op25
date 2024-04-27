@@ -418,22 +418,34 @@ class osw_receiver(object):
 
     # Is the 'chan' a valid frequency; uplink channel if is_tx=True (mostly applicable for OBT systems with explicit tx channel assignments)
     def is_chan(self, chan, is_tx=False):
-        band, is_rebanded, is_international, is_splinter, is_shuffled = self.get_bandplan_details()
+        band, is_rebanded, is_international, _, is_shuffled = self.get_bandplan_details()
+
+        # Negative channels are obviously invalid
+        if chan < 0:
+            return False
 
         if band == "800":
-            # TODO: International and shuffled bandplans are not yet supported
-            if is_international or is_shuffled:
-                return False
-            if is_rebanded and chan > 0x22f:
-                return False
-            if ((chan >= 0 and chan <= 0x2f7) or
-                (chan >= 0x32f and chan <= 0x33f) or
-                (chan >= 0x3c1 and chan <= 0x3fe) or
-                (chan == 0x3be)):
-                return True
+            # Domestic site
+            # TODO: Shuffled domestic bandplans are not yet supported
+            if not is_international and not is_shuffled:
+                # Upper channels are the same across all US band plans
+                if ((chan >= 0x2d0 and chan <= 0x2f7) or
+                    (chan >= 0x32f and chan <= 0x33f) or
+                    (chan >= 0x3c1 and chan <= 0x3fe) or
+                    (chan == 0x3be)):
+                    return True
+                # Lower channels vary between the various US band plans
+                if is_rebanded and chan <= 0x22f:
+                    return True
+                elif chan <= 0x2cf:
+                    return True
+            # International site
+            elif is_international:
+                if chan <= 0x2f7:
+                    return True
 
         elif band == "900":
-            if chan >= 0 and chan <= 0x1de:
+            if chan <= 0x1de:
                 return True
 
         elif band == "OBT":
@@ -461,27 +473,49 @@ class osw_receiver(object):
         band, is_rebanded, is_international, is_splinter, is_shuffled = self.get_bandplan_details()
 
         if band == "800":
-            if chan <= 0x2cf:
+            # Lower channels vary between the various US band plans
+            if not is_international and not is_shuffled:
                 # Rebanded site
                 if is_rebanded:
-                    if chan < 0x1b8:
+                    if chan <= 0x1b7:
                         freq = 851.0125 + (0.025 * chan)
-                    if chan >= 0x1b8 and chan <= 0x22f:
+                    elif chan >= 0x1b8 and chan <= 0x22f:
                         freq = 851.0250 + (0.025 * (chan - 0x1b8))
-                # Splinter site
-                elif is_splinter and chan <= 0x257:
-                    freq = 851.0 + (0.025 * chan)
-                # Standard site
+                # Domestic splinter site
+                elif is_splinter:
+                    if chan <= 0x257:
+                        freq = 851.0000 + (0.025 * chan)
+                    elif chan >= 0x258 and chan <= 0x2cf:
+                        freq = 866.0125 + (0.025 * (chan - 0x258))
+                # Domestic standard site
                 else:
-                    freq = 851.0125 + (0.025 * chan)
-            elif chan <= 0x2f7:
-                freq = 866.0000 + (0.025 * (chan - 0x2d0))
-            elif chan >= 0x32f and chan <= 0x33f:
-                freq = 867.0000 + (0.025 * (chan - 0x32f))
-            elif chan == 0x3be:
-                freq = 868.9750
-            elif chan >= 0x3c1 and chan <= 0x3fe:
-                freq = 867.4250 + (0.025 * (chan - 0x3c1))
+                    if chan <= 0x2cf:
+                        freq = 851.0125 + (0.025 * chan)
+                # Remaining channels are the same across all US band plans
+                if chan >= 0x2d0 and chan <= 0x2f7:
+                    freq = 866.0000 + (0.025 * (chan - 0x2d0))
+                elif chan >= 0x32f and chan <= 0x33f:
+                    freq = 867.0000 + (0.025 * (chan - 0x32f))
+                elif chan == 0x3be:
+                    freq = 868.9750
+                elif chan >= 0x3c1 and chan <= 0x3fe:
+                    freq = 867.4250 + (0.025 * (chan - 0x3c1))
+
+            # International site
+            elif is_international:
+                # Standard
+                if not is_splinter:
+                    if not is_shuffled:
+                        freq = 851.0125 + (0.025 * chan)
+                    else:
+                        freq = 869.9875 - (0.025 * chan)
+                # Splinter
+                else:
+                    if not is_shuffled:
+                        freq = 851.0000 + (0.025 * chan)
+                    else:
+                        freq = 869.9750 - (0.025 * chan)
+
             if is_tx and freq != 0.0:
                 freq -= 45.0 # Standard tx offset for 800 band
 
