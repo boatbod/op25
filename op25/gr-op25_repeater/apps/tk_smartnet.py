@@ -529,7 +529,7 @@ class osw_receiver(object):
         return "G" if is_group != 0 else "I"
 
     # Convert index into string of the frequency band
-    def get_band(self, band):
+    def get_band_str(self, band):
         if band == 0:
             return "800 international splinter"
         elif band == 1:
@@ -783,7 +783,7 @@ class osw_receiver(object):
                         self.rx_site_id = site
                         self.add_alternate_cc_freq(osw1_t, cc_rx_freq, cc_tx_freq)
                     if self.debug >= 11:
-                        sys.stderr.write("%s [%d] SMARTNET OBT %s sys(0x%04x) site(%02d) band(%s) features(%s) cc_rx_freq(%f)" % (log_ts.get(), self.msgq_id, type_str, system, site, self.get_band(band), self.get_features_str(feat), cc_rx_freq))
+                        sys.stderr.write("%s [%d] SMARTNET OBT %s sys(0x%04x) site(%02d) band(%s) features(%s) cc_rx_freq(%f)" % (log_ts.get(), self.msgq_id, type_str, system, site, self.get_band_str(band), self.get_features_str(feat), cc_rx_freq))
                         if cc_tx_freq != 0.0:
                             sys.stderr.write(" cc_tx_freq(%f)" % (cc_tx_freq))
                         sys.stderr.write("\n")
@@ -1355,7 +1355,7 @@ class osw_receiver(object):
                         self.rx_site_id = site
                         self.add_alternate_cc_freq(osw1_t, cc_rx_freq, cc_tx_freq)
                     if self.debug >= 11:
-                        sys.stderr.write("%s [%d] SMARTNET %s sys(0x%04x) site(%02d) band(%s) features(%s) cc_freq(%f)\n" % (log_ts.get(), self.msgq_id, type_str, system, site, self.get_band(band), self.get_features_str(feat), cc_rx_freq))
+                        sys.stderr.write("%s [%d] SMARTNET %s sys(0x%04x) site(%02d) band(%s) features(%s) cc_freq(%f)\n" % (log_ts.get(), self.msgq_id, type_str, system, site, self.get_band_str(band), self.get_features_str(feat), cc_rx_freq))
                 else:
                     # Track that we got an unknown OSW and put back unused OSW0
                     is_unknown_osw = True
