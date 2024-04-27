@@ -30,18 +30,21 @@ Motorola Type II SmartNet/SmartZone systems send a channel identifier command in
 
 ### Standard configuration
 
-In the USA, most legacy 800 MHz systems should be configured with `bandplan` set to `800_reband` with no further information necessary.
+In the USA, most legacy 800 MHz systems should be configured with `bandplan` set to `800_rebanded` with no further information necessary.
 
 ### Supported bandplans
 
-Several standard bandplans (and `bandplan` settings) exist and are supported:
+SmartNet/SmartZone systems have a handful of standard bandplans (and corresponding `bandplan` settings):
 
-- 800 MHz
-    - Standard (`800_standard`)
-    - Splinter (`800_splinter`)
-    - Rebanded (`800_reband`)
-- 900 MHz (`900`)
-- VHF/UHF Other Band Trunking (`OBT`)
+| Band        | Subtype                | Standard                  | Shuffled                  |
+|-------------|------------------------|---------------------------|---------------------------|
+| **VHF/UHF** |                        | `OBT` *(see below)*       | N/A                       |
+| **800 MHz** | Rebanded               | `800_rebanded`            | *Not currently supported* |
+|             | Domestic               | `800_domestic`            | *Not currently supported* |
+|             | Domestic splinter      | `800_domestic_splinter`   | *Not currently supported* |
+|             | International          | *Not currently supported* | *Not currently supported* |
+|             | International splinter | *Not currently supported* | *Not currently supported* |
+| **900 MHz** |                        | `900`                     | N/A                       |
 
 ### Other Band Trunking (OBT)
 
@@ -49,11 +52,11 @@ Several standard bandplans (and `bandplan` settings) exist and are supported:
 
 VHF and UHF systems are considered "Other Band Trunking" (OBT), and require `bandplan` set to `OBT` in conjunction with additional configuration in the nine associated `bp_` parameters:
 
-- Base frequency
+- Base frequency (MHz)
     - `bp_base`
     - `bp_mid`
     - `bp_high`
-- Channel spacing
+- Channel spacing (MHz)
     - `bp_base_spacing`
     - `bp_mid_spacing`
     - `bp_high_spacing`
@@ -78,7 +81,7 @@ This is not required for simply listening to a system; the functionality is adde
 
 ```
     "control_channel_list": "854.3375,854.4125,854.8125,855.1625",
-    "bandplan": "800_reband"
+    "bandplan": "800_rebanded"
 ```
 
 ### OBT (VHF) system with receive-only parameters populated

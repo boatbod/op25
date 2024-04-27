@@ -363,11 +363,35 @@ class osw_receiver(object):
 
         return rc
 
+    # Split a bandplan string into its constituent subtypes
+    def get_bandplan_details(self):
+        bandplan = from_dict(self.config, 'bandplan', "800_rebanded")
+
+        # Still accept 'reband', 'standard', and 'splinter' for backwards compatiblity
+        if bandplan == "800_reband":
+            bandplan = "800_rebanded"
+        if bandplan == "800_standard":
+            bandplan = "800_domestic"
+        if bandplan == "800_splinter":
+            bandplan = "800_domestic_splinter"
+
+        # Still accept '400' for backwards compatibility
+        if bandplan == "400":
+            bandplan = "OBT"
+
+        # Figure out the various subtypes
+        band = bandplan[:3]
+        is_rebanded = (bandplan == "800_rebanded")
+        is_international = "international" in bandplan
+        is_splinter = "splinter" in bandplan
+        is_shuffled = "shuffled" in bandplan
+
+        return (band, is_rebanded, is_international, is_splinter, is_shuffled)
+
     # Is the current config for an OBT system
     def is_obt_system(self):
-        bandplan = from_dict(self.config, 'bandplan', "800_reband")
-        band = bandplan[:3]
-        return band == "OBT" or band == "400" # Still accept '400' for backwards compatibility
+        band, _, _, _, _ = self.get_bandplan_details()
+        return band == "OBT"
 
     # Attempt to auto-compute transmit offsets based on typical USA/Canada band plans
     def get_expected_obt_tx_freq(self, rx_freq):
@@ -394,21 +418,25 @@ class osw_receiver(object):
 
     # Is the 'chan' a valid frequency; uplink channel if is_tx=True (mostly applicable for OBT systems with explicit tx channel assignments)
     def is_chan(self, chan, is_tx=False):
-        bandplan = from_dict(self.config, 'bandplan', "800_reband")
-        band = bandplan[:3]
-        subtype = bandplan[3:len(bandplan)].lower().lstrip("_-:")
+        band, is_rebanded, is_international, is_splinter, is_shuffled = self.get_bandplan_details()
 
         if band == "800":
-            if subtype == "reband" and chan > 0x22f:
+            # TODO: International and shuffled bandplans are not yet supported
+            if is_international or is_shuffled:
                 return False
-            if (chan >= 0 and chan <= 0x2f7) or (chan >= 0x32f and chan <= 0x33f) or (chan >= 0x3c1 and chan <= 0x3fe) or chan == 0x3be:
+            if is_rebanded and chan > 0x22f:
+                return False
+            if ((chan >= 0 and chan <= 0x2f7) or
+                (chan >= 0x32f and chan <= 0x33f) or
+                (chan >= 0x3c1 and chan <= 0x3fe) or
+                (chan == 0x3be)):
                 return True
 
         elif band == "900":
             if chan >= 0 and chan <= 0x1de:
                 return True
 
-        elif band == "OBT" or band == "400": # Still accept '400' for backwards compatibility
+        elif band == "OBT":
             bp_base_offset    = int(from_dict(self.config, 'bp_base_offset', 380))
             bp_tx_base_offset = int(from_dict(self.config, 'bp_tx_base_offset', 0))
             if is_tx and (chan >= bp_tx_base_offset) and (chan < 380):
@@ -430,20 +458,18 @@ class osw_receiver(object):
             return 0.0
 
         freq = 0.0
-        bandplan = from_dict(self.config, 'bandplan', "800_reband")
-        band = bandplan[:3]
-        subtype = bandplan[3:len(bandplan)].lower().lstrip("_-:")
+        band, is_rebanded, is_international, is_splinter, is_shuffled = self.get_bandplan_details()
 
         if band == "800":
             if chan <= 0x2cf:
                 # Rebanded site
-                if subtype == "reband":
+                if is_rebanded:
                     if chan < 0x1b8:
                         freq = 851.0125 + (0.025 * chan)
                     if chan >= 0x1b8 and chan <= 0x22f:
                         freq = 851.0250 + (0.025 * (chan - 0x1b8))
                 # Splinter site
-                elif subtype == "splinter" and chan <= 0x257:
+                elif is_splinter and chan <= 0x257:
                     freq = 851.0 + (0.025 * chan)
                 # Standard site
                 else:
@@ -464,7 +490,7 @@ class osw_receiver(object):
             if is_tx and freq != 0.0:
                 freq -= 39.0 # Standard tx offset for 900 band
 
-        elif band == "OBT" or band == "400": # Still accept '400' for backwards compatibility
+        elif band == "OBT":
             # For OBT operation, we need a band plan. At minimum the user must provide a base frequency, and either
             # global or per-range spacing, so we read those directly rather than using from_dict() with a default value.
 
