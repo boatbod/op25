@@ -6,9 +6,15 @@ This is experimental, use at your own risk and sanity!
 
 The SmartNet decoder is part of `multi_rx.py`, so configuration requires the creation of a .json file based on `smartnet_example.json`.  The latter is probably more useful as a starting point since it is solely focused on trunking using commonly available RTL sdr hardware.
 
-In the .json file, a "channel" is considered to be the receiver as it encapsulates demodulation, framing, and decoding in one logical entity.  For a SmartNet system there will be a minimum of two "channel" entries and either one or two "device" entries depending on the hardware you are using.  Each channel is associated with a device by specifying the device name inside the channel definition.  SDR hardware with a high sample rate can be shared between channels, but only if tuning is disabled (tunable=false).  Tunable devices have to have a one-to-one relationship with the channel to which they are assigned.
+### `channels` list
 
-Trunking requires configuration of the appropriate trunking module name (`tk_smartnet.py`), the control channel list, and bandplan. Valid values for the `bandplan` parameter are:  `800_reband`, `800_standard`, `800_splinter`, `900`, and `OBT`.  VHF/UHF trunking is considered OBT (other-band-trunking) and requires additional configuration of the `bp_` parameters (see "Bandplan" section below).
+In the .json file, a "channel" is considered to be the receiver as it encapsulates demodulation, framing, and decoding in one logical entity.  For a SmartNet system there will be a minimum of two "channel" entries and either one or two "device" entries depending on the hardware you are using.  Each channel is associated with a device by specifying the device name inside the channel definition.
+
+SDR hardware with a high sample rate can be shared between channels, but only if tuning is disabled (`"tunable": false`).  Tunable devices have to have a one-to-one relationship with the channel to which they are assigned.
+
+### `trunking` object
+
+The `trunking` object must have the appropriate module (`tk_smartnet.py`) set in the `module` parameter.  Each system will have an entry in the `chans` list specifying the `control_channel_list` (comma-separated frequencies in MHz) and the `bandplan` (see "Bandplan" section below).
 
 ## Blacklist/whitelist
 
