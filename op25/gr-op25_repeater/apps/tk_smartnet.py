@@ -1307,12 +1307,18 @@ class osw_receiver(object):
                 message = (osw1_addr & 0xf) + 1
                 if self.debug >= 11:
                     sys.stderr.write("%s [%d] SMARTNET MESSAGE src(%05d) tgid(%05d/0x%03x) msg(%02d)\n" % (log_ts.get(), self.msgq_id, src_rid, dst_tgid, dst_tgid >> 4, message))
-            # Two-OSW private call ring
+            # Two-OSW encrypted private call ring
+            elif osw1_cmd == 0x315 and not osw2_grp and not osw1_grp:
+                dst_rid = osw2_addr
+                src_rid = osw1_addr
+                if self.debug >= 11:
+                    sys.stderr.write("%s [%d] SMARTNET ANALOG ENCRYPTED PRIVATE CALL RING src(%05d) dst(%05d)\n" % (log_ts.get(), self.msgq_id, src_rid, dst_rid))
+            # Two-OSW clear private call ring
             elif osw1_cmd == 0x317 and not osw2_grp and not osw1_grp:
                 dst_rid = osw2_addr
                 src_rid = osw1_addr
                 if self.debug >= 11:
-                    sys.stderr.write("%s [%d] SMARTNET ANALOG PRIVATE CALL RING src(%05d) dst(%05d)\n" % (log_ts.get(), self.msgq_id, src_rid, dst_rid))
+                    sys.stderr.write("%s [%d] SMARTNET ANALOG CLEAR PRIVATE CALL RING src(%05d) dst(%05d)\n" % (log_ts.get(), self.msgq_id, src_rid, dst_rid))
             # Two-OSW private call ring acknowledgement
             elif osw1_cmd == 0x318 and not osw2_grp and not osw1_grp:
                 dst_rid = osw2_addr
@@ -1493,12 +1499,18 @@ class osw_receiver(object):
                     data = osw1_addr
                     if self.debug >= 11:
                         sys.stderr.write("%s [%d] SMARTNET IDLE DELAYED 1-2 data(%s,0x%04x)\n" % (log_ts.get(), self.msgq_id, grp_str, data))
-            # Two-OSW private call ring
+            # Two-OSW encrypted private call ring
+            elif osw1_cmd == 0x315 and not osw2_grp and not osw1_grp:
+                dst_rid = osw2_addr
+                src_rid = osw1_addr
+                if self.debug >= 11:
+                    sys.stderr.write("%s [%d] SMARTNET DIGITAL ENCRYPTED PRIVATE CALL RING src(%05d) dst(%05d)\n" % (log_ts.get(), self.msgq_id, src_rid, dst_rid))
+            # Two-OSW clear private call ring
             elif osw1_cmd == 0x317 and not osw2_grp and not osw1_grp:
                 dst_rid = osw2_addr
                 src_rid = osw1_addr
                 if self.debug >= 11:
-                    sys.stderr.write("%s [%d] SMARTNET DIGITAL PRIVATE CALL RING src(%05d) dst(%05d)\n" % (log_ts.get(), self.msgq_id, src_rid, dst_rid))
+                    sys.stderr.write("%s [%d] SMARTNET DIGITAL CLEAR PRIVATE CALL RING src(%05d) dst(%05d)\n" % (log_ts.get(), self.msgq_id, src_rid, dst_rid))
             # Two-OSW private call ring acknowledgement
             elif osw1_cmd == 0x318 and not osw2_grp and not osw1_grp:
                 dst_rid = osw2_addr
