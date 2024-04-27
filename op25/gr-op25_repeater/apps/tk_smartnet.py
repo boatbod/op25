@@ -824,13 +824,14 @@ class osw_receiver(object):
                         sys.stderr.write(" vc_tx_freq(%f)" % (vc_tx_freq))
                     sys.stderr.write("\n")
             # Two-OSW private call voice grant/update (sent for duration of the call)
-            elif osw2_ch_tx and osw1_ch_rx and not osw2_grp and not osw1_grp and (osw1_addr != 0) and (osw2_addr != 0):
+            elif osw2_ch_tx and osw1_ch_rx and not osw1_grp and (osw1_addr != 0) and (osw2_addr != 0):
+                type_str = "ENCRYPTED" if osw2_grp else "CLEAR"
                 dst_rid = osw2_addr
                 src_rid = osw1_addr
                 vc_rx_freq = osw1_f_rx
                 vc_tx_freq = osw2_f_tx
                 if self.debug >= 11:
-                    sys.stderr.write("%s [%d] SMARTNET OBT PRIVATE CALL src(%05d) dst(%05d) vc_rx_freq(%f)" % (log_ts.get(), self.msgq_id, src_rid, dst_rid, vc_rx_freq))
+                    sys.stderr.write("%s [%d] SMARTNET OBT %s PRIVATE CALL src(%05d) dst(%05d) vc_rx_freq(%f)" % (log_ts.get(), self.msgq_id, type_str, src_rid, dst_rid, vc_rx_freq))
                     if vc_tx_freq != 0.0:
                         sys.stderr.write(" vc_tx_freq(%f)" % (vc_tx_freq))
                     sys.stderr.write("\n")
