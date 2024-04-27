@@ -1324,7 +1324,7 @@ class osw_receiver(object):
                 dst_rid = osw2_addr
                 src_rid = osw1_addr
                 if self.debug >= 11:
-                    sys.stderr.write("%s [%d] SMARTNET ANALOG PRIVATE CALL RING ACK src(%05d) dst(%05d)\n" % (log_ts.get(), self.msgq_id, src_rid, dst_rid))
+                    sys.stderr.write("%s [%d] SMARTNET PRIVATE CALL RING ACK src(%05d) dst(%05d)\n" % (log_ts.get(), self.msgq_id, src_rid, dst_rid))
             # Two-OSW call alert
             elif osw1_cmd == 0x319 and not osw2_grp and not osw1_grp:
                 dst_rid = osw2_addr
@@ -1511,12 +1511,6 @@ class osw_receiver(object):
                 src_rid = osw1_addr
                 if self.debug >= 11:
                     sys.stderr.write("%s [%d] SMARTNET DIGITAL CLEAR PRIVATE CALL RING src(%05d) dst(%05d)\n" % (log_ts.get(), self.msgq_id, src_rid, dst_rid))
-            # Two-OSW private call ring acknowledgement
-            elif osw1_cmd == 0x318 and not osw2_grp and not osw1_grp:
-                dst_rid = osw2_addr
-                src_rid = osw1_addr
-                if self.debug >= 11:
-                    sys.stderr.write("%s [%d] SMARTNET DIGITAL PRIVATE CALL RING ACK src(%05d) dst(%05d)\n" % (log_ts.get(), self.msgq_id, src_rid, dst_rid))
             else:
                 # Track that we got an unknown OSW; OSW1 did not match, so put it back in the queue
                 is_unknown_osw = True
