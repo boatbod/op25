@@ -364,11 +364,37 @@ class osw_receiver(object):
 
         return rc
 
+    # Split a bandplan string into its constituent subtypes
+    def get_bandplan_details(self):
+        # A bandplan is mandatory, so we read it directly rather than using from_dict() with a default value
+        bandplan = self.config['bandplan']
+
+        # Still accept legacy bandplan names for backwards compatiblity
+        if bandplan == "400":
+            bandplan = "OBT"
+        if bandplan == "800_reband":
+            bandplan = "800_rebanded"
+        if bandplan == "800_standard":
+            bandplan = "800_domestic"
+        if bandplan == "800_splinter":
+            bandplan = "800_domestic_splinter"
+
+        # Terminate with a _ so we can safely read substrings below
+        bandplan = bandplan + "_"
+
+        # Figure out the various subtypes
+        band = bandplan[:3]
+        is_rebanded = (bandplan == "800_rebanded")
+        is_international = "_international_" in bandplan
+        is_splinter = "_splinter_" in bandplan
+        is_shuffled = "_shuffled_" in bandplan
+
+        return (band, is_rebanded, is_international, is_splinter, is_shuffled)
+
     # Is the current config for an OBT system
     def is_obt_system(self):
-        bandplan = from_dict(self.config, 'bandplan', "800_reband")
-        band = bandplan[:3]
-        return band == "OBT" or band == "400" # Still accept '400' for backwards compatibility
+        band, _, _, _, _ = self.get_bandplan_details()
+        return band == "OBT"
 
     # Attempt to auto-compute transmit offsets based on typical USA/Canada band plans
     def get_expected_obt_tx_freq(self, rx_freq):
@@ -395,21 +421,38 @@ class osw_receiver(object):
 
     # Is the 'chan' a valid frequency; uplink channel if is_tx=True (mostly applicable for OBT systems with explicit tx channel assignments)
     def is_chan(self, chan, is_tx=False):
-        bandplan = from_dict(self.config, 'bandplan', "800_reband")
-        band = bandplan[:3]
-        subtype = bandplan[3:len(bandplan)].lower().lstrip("_-:")
+        band, is_rebanded, is_international, _, is_shuffled = self.get_bandplan_details()
+
+        # Negative channels are obviously invalid
+        if chan < 0:
+            return False
 
         if band == "800":
-            if subtype == "reband" and chan > 0x22f:
-                return False
-            if (chan >= 0 and chan <= 0x2f7) or (chan >= 0x32f and chan <= 0x33f) or (chan >= 0x3c1 and chan <= 0x3fe) or chan == 0x3be:
-                return True
+            # TODO: Shuffled domestic and rebanded bandplans are not yet supported
+            # Domestic site
+            if not is_international and not is_shuffled:
+                # Upper channels are the same across all US band plans
+                if ((chan >= 0x2d0 and chan <= 0x2f7) or
+                    (chan >= 0x32f and chan <= 0x33f) or
+                    (chan >= 0x3c1 and chan <= 0x3fe) or
+                    (chan == 0x3be)):
+                    return True
+                # Lower channels vary between the various US band plans
+                if is_rebanded and chan <= 0x22f:
+                    return True
+                elif chan <= 0x2cf:
+                    return True
+
+            # International site
+            elif is_international:
+                if chan <= 0x2f7:
+                    return True
 
         elif band == "900":
-            if chan >= 0 and chan <= 0x1de:
+            if chan <= 0x1de:
                 return True
 
-        elif band == "OBT" or band == "400": # Still accept '400' for backwards compatibility
+        elif band == "OBT":
             bp_base_offset    = int(from_dict(self.config, 'bp_base_offset', 380))
             bp_tx_base_offset = int(from_dict(self.config, 'bp_tx_base_offset', 0))
             if is_tx and (chan >= bp_tx_base_offset) and (chan < 380):
@@ -431,32 +474,50 @@ class osw_receiver(object):
             return 0.0
 
         freq = 0.0
-        bandplan = from_dict(self.config, 'bandplan', "800_reband")
-        band = bandplan[:3]
-        subtype = bandplan[3:len(bandplan)].lower().lstrip("_-:")
+        band, is_rebanded, is_international, is_splinter, is_shuffled = self.get_bandplan_details()
 
         if band == "800":
-            if chan <= 0x2cf:
+            # TODO: Shuffled domestic and rebanded bandplans are not yet supported
+            # Lower channels vary between the various US band plans
+            if not is_international and not is_shuffled:
                 # Rebanded site
-                if subtype == "reband":
-                    if chan < 0x1b8:
+                if is_rebanded:
+                    if chan <= 0x1b7:
                         freq = 851.0125 + (0.025 * chan)
-                    if chan >= 0x1b8 and chan <= 0x22f:
+                    elif chan >= 0x1b8 and chan <= 0x22f:
                         freq = 851.0250 + (0.025 * (chan - 0x1b8))
-                # Splinter site
-                elif subtype == "splinter" and chan <= 0x257:
-                    freq = 851.0 + (0.025 * chan)
-                # Standard site
+                # Domestic splinter site
+                elif is_splinter:
+                    if chan <= 0x257:
+                        freq = 851.0000 + (0.025 * chan)
+                    elif chan >= 0x258 and chan <= 0x2cf:
+                        freq = 866.0125 + (0.025 * (chan - 0x258))
+                # Domestic standard site
                 else:
+                    if chan <= 0x2cf:
+                        freq = 851.0125 + (0.025 * chan)
+                # Remaining channels are the same across all US band plans
+                if chan >= 0x2d0 and chan <= 0x2f7:
+                    freq = 866.0000 + (0.025 * (chan - 0x2d0))
+                elif chan >= 0x32f and chan <= 0x33f:
+                    freq = 867.0000 + (0.025 * (chan - 0x32f))
+                elif chan >= 0x3c1 and chan <= 0x3fe:
+                    freq = 867.4250 + (0.025 * (chan - 0x3c1))
+                elif chan == 0x3be:
+                    freq = 868.9750
+
+            # International site
+            elif is_international:
+                # Shuffled band plan is described in US patent US7546085: channel numbers are negative starting from 759
+                if is_shuffled and chan <= 759:
+                    chan = 759 - chan
+                # Standard
+                if not is_splinter:
                     freq = 851.0125 + (0.025 * chan)
-            elif chan <= 0x2f7:
-                freq = 866.0000 + (0.025 * (chan - 0x2d0))
-            elif chan >= 0x32f and chan <= 0x33f:
-                freq = 867.0000 + (0.025 * (chan - 0x32f))
-            elif chan == 0x3be:
-                freq = 868.9750
-            elif chan >= 0x3c1 and chan <= 0x3fe:
-                freq = 867.4250 + (0.025 * (chan - 0x3c1))
+                # Splinter
+                else:
+                    freq = 851.0000 + (0.025 * chan)
+
             if is_tx and freq != 0.0:
                 freq -= 45.0 # Standard tx offset for 800 band
 
@@ -465,7 +526,7 @@ class osw_receiver(object):
             if is_tx and freq != 0.0:
                 freq -= 39.0 # Standard tx offset for 900 band
 
-        elif band == "OBT" or band == "400": # Still accept '400' for backwards compatibility
+        elif band == "OBT":
             # For OBT operation, we need a band plan. At minimum the user must provide a base frequency, and either
             # global or per-range spacing, so we read those directly rather than using from_dict() with a default value.
 
@@ -530,7 +591,7 @@ class osw_receiver(object):
         return "G" if is_group != 0 else "I"
 
     # Convert index into string of the frequency band
-    def get_band(self, band):
+    def get_band_str(self, band):
         if band == 0:
             return "800 international splinter"
         elif band == 1:
@@ -784,7 +845,7 @@ class osw_receiver(object):
                         self.rx_site_id = site
                         self.add_alternate_cc_freq(osw1_t, cc_rx_freq, cc_tx_freq)
                     if self.debug >= 11:
-                        sys.stderr.write("%s [%d] SMARTNET OBT %s sys(0x%04x) site(%02d) band(%s) features(%s) cc_rx_freq(%f)" % (log_ts.get(), self.msgq_id, type_str, system, site, self.get_band(band), self.get_features_str(feat), cc_rx_freq))
+                        sys.stderr.write("%s [%d] SMARTNET OBT %s sys(0x%04x) site(%02d) band(%s) features(%s) cc_rx_freq(%f)" % (log_ts.get(), self.msgq_id, type_str, system, site, self.get_band_str(band), self.get_features_str(feat), cc_rx_freq))
                         if cc_tx_freq != 0.0:
                             sys.stderr.write(" cc_tx_freq(%f)" % (cc_tx_freq))
                         sys.stderr.write("\n")
@@ -825,13 +886,14 @@ class osw_receiver(object):
                         sys.stderr.write(" vc_tx_freq(%f)" % (vc_tx_freq))
                     sys.stderr.write("\n")
             # Two-OSW private call voice grant/update (sent for duration of the call)
-            elif osw2_ch_tx and osw1_ch_rx and not osw2_grp and not osw1_grp and (osw1_addr != 0) and (osw2_addr != 0):
+            elif osw2_ch_tx and osw1_ch_rx and not osw1_grp and (osw1_addr != 0) and (osw2_addr != 0):
+                type_str = "ENCRYPTED" if osw2_grp else "CLEAR"
                 dst_rid = osw2_addr
                 src_rid = osw1_addr
                 vc_rx_freq = osw1_f_rx
                 vc_tx_freq = osw2_f_tx
                 if self.debug >= 11:
-                    sys.stderr.write("%s [%d] SMARTNET OBT PRIVATE CALL src(%05d) dst(%05d) vc_rx_freq(%f)" % (log_ts.get(), self.msgq_id, src_rid, dst_rid, vc_rx_freq))
+                    sys.stderr.write("%s [%d] SMARTNET OBT %s PRIVATE CALL src(%05d) dst(%05d) vc_rx_freq(%f)" % (log_ts.get(), self.msgq_id, type_str, src_rid, dst_rid, vc_rx_freq))
                     if vc_tx_freq != 0.0:
                         sys.stderr.write(" vc_tx_freq(%f)" % (vc_tx_freq))
                     sys.stderr.write("\n")
@@ -905,13 +967,13 @@ class osw_receiver(object):
                 rc |= self.update_voice_frequency(osw1_t, vc_freq, dst_tgid, src_rid, mode=0)
                 if self.debug >= 11:
                     sys.stderr.write("%s [%d] SMARTNET ANALOG %s GROUP GRANT src(%05d) tgid(%05d/0x%03x) vc_freq(%f)\n" % (log_ts.get(), self.msgq_id, self.get_call_options_str(dst_tgid), src_rid, dst_tgid, dst_tgid >> 4, vc_freq))
-            # Two-OSW private call voice grant/update (sent for duration of the call)
+            # Two-OSW analog private call voice grant/update (sent for duration of the call)
             elif osw1_ch_rx and not osw1_grp and (osw1_addr != 0) and (osw2_addr != 0):
                 dst_rid = osw2_addr
                 src_rid = osw1_addr
                 vc_freq = osw1_f_rx
                 if self.debug >= 11:
-                    sys.stderr.write("%s [%d] SMARTNET PRIVATE CALL src(%05d) dst(%05d) vc_freq(%f)\n" % (log_ts.get(), self.msgq_id, src_rid, dst_rid, vc_freq))
+                    sys.stderr.write("%s [%d] SMARTNET ANALOG PRIVATE CALL src(%05d) dst(%05d) vc_freq(%f)\n" % (log_ts.get(), self.msgq_id, src_rid, dst_rid, vc_freq))
             # Two-OSW interconnect call voice grant/update (sent for duration of the call)
             elif osw1_ch_rx and not osw1_grp and (osw1_addr != 0) and (osw2_addr == 0):
                 src_rid = osw1_addr
@@ -1001,8 +1063,8 @@ class osw_receiver(object):
                     if self.debug >= 11:
                         type_str = "UNKNOWN OSW AFTER BAD OSW" if is_queue_reset else "UNKNOWN OSW"
                         sys.stderr.write("%s [%d] SMARTNET %s (0x%04x,%s,0x%03x)\n" % (log_ts.get(), self.msgq_id, type_str, osw2_addr, grp2_str, osw2_cmd))
-            # Two-OSW dynamic regroup (unknown whether OSWs are group or individual)
-            elif osw1_cmd == 0x30a:
+            # Two-OSW dynamic regroup
+            elif osw1_cmd == 0x30a and not osw2_grp and not osw1_grp:
                 src_rid = osw2_addr
                 tgid = osw1_addr
                 if self.debug >= 11:
@@ -1080,9 +1142,9 @@ class osw_receiver(object):
                         # Unknown extended function
                         else:
                             tgid = osw2_addr
-                            code = osw1_addr
+                            opcode = osw1_addr
                             if self.debug >= 11:
-                                sys.stderr.write("%s [%d] SMARTNET GROUP EXTENDED FUNCTION tgid(%05d/0x%03x) code(0x%04x)\n" % (log_ts.get(), self.msgq_id, tgid, tgid >> 4, code))
+                                sys.stderr.write("%s [%d] SMARTNET GROUP EXTENDED FUNCTION tgid(%05d/0x%03x) opcode(0x%04x)\n" % (log_ts.get(), self.msgq_id, tgid, tgid >> 4, opcode))
                     # Extended functions on individuals
                     else:
                         # Radio check
@@ -1100,12 +1162,12 @@ class osw_receiver(object):
                             src_rid = osw2_addr
                             status = (osw1_addr & 0x7) + 1
                             if self.debug >= 11:
-                                sys.stderr.write("%s [%d] SMARTNET STATUS ACK src(%05d) status(%02d)\n" % (log_ts.get(), self.msgq_id, src_rid, status))
+                                sys.stderr.write("%s [%d] SMARTNET STATUS ACK src(%05d) status(%01d)\n" % (log_ts.get(), self.msgq_id, src_rid, status))
                         # Emergency acknowledgement
                         elif osw1_addr == 0x26e8:
                             src_rid = osw2_addr
                             if self.debug >= 11:
-                                sys.stderr.write("%s [%d] SMARTNET EMERGENCY ACK src(%05d)\n" % (log_ts.get(), self.msgq_id, src_rid))
+                                sys.stderr.write("%s [%d] SMARTNET EMERGENCY ALARM ACK src(%05d)\n" % (log_ts.get(), self.msgq_id, src_rid))
                         # Message acknowledgement
                         elif osw1_addr >= 0x26f0 and osw1_addr <= 0x26ff:
                             src_rid = osw2_addr
@@ -1152,7 +1214,7 @@ class osw_receiver(object):
                             src_rid = osw2_addr
                             if self.debug >= 11:
                                 sys.stderr.write("%s [%d] SMARTNET DENIED UNSUPPORTED MODE src(%05d)\n" % (log_ts.get(), self.msgq_id, src_rid))
-                        # Private call target offline (PC II)
+                        # Private call target offline
                         elif osw1_addr == 0x2c41:
                             src_rid = osw2_addr
                             if self.debug >= 11:
@@ -1162,11 +1224,16 @@ class osw_receiver(object):
                             src_rid = osw2_addr
                             if self.debug >= 11:
                                 sys.stderr.write("%s [%d] SMARTNET DENIED GROUP BUSY CALL IN PROGRESS src(%05d)\n" % (log_ts.get(), self.msgq_id, src_rid))
-                        # Private call target offline (enhanced)
+                        # Private call ring target offline
                         elif osw1_addr == 0x2c48:
                             src_rid = osw2_addr
                             if self.debug >= 11:
-                                sys.stderr.write("%s [%d] SMARTNET DENIED PRIVATE CALL ENHANCED TARGET OFFLINE src(%05d)\n" % (log_ts.get(), self.msgq_id, src_rid))
+                                sys.stderr.write("%s [%d] SMARTNET DENIED PRIVATE CALL RING TARGET OFFLINE src(%05d)\n" % (log_ts.get(), self.msgq_id, src_rid))
+                        # Radio ID and/or talkgroup forbidden on site
+                        elif osw1_addr == 0x2c4a:
+                            src_rid = osw2_addr
+                            if self.debug >= 11:
+                                sys.stderr.write("%s [%d] SMARTNET DENIED FORBIDDEN ON SITE src(%05d)\n" % (log_ts.get(), self.msgq_id, src_rid))
                         # Call alert invalid ID
                         elif osw1_addr == 0x2c4e:
                             src_rid = osw2_addr
@@ -1187,6 +1254,11 @@ class osw_receiver(object):
                             src_rid = osw2_addr
                             if self.debug >= 11:
                                 sys.stderr.write("%s [%d] SMARTNET DENIED OMNILINK TRESPASS src(%05d)\n" % (log_ts.get(), self.msgq_id, src_rid))
+                        # Denied radio ID
+                        elif osw1_addr == 0x2c65:
+                            src_rid = osw2_addr
+                            if self.debug >= 11:
+                                sys.stderr.write("%s [%d] SMARTNET DENIED RADIO ID src(%05d)\n" % (log_ts.get(), self.msgq_id, src_rid))
                         # Denied talkgroup ID
                         elif osw1_addr == 0x2c66:
                             src_rid = osw2_addr
@@ -1266,19 +1338,24 @@ class osw_receiver(object):
                         # Unknown extended function
                         else:
                             src_rid = osw2_addr
-                            code = osw1_addr
+                            opcode = osw1_addr
                             if self.debug >= 11:
-                                sys.stderr.write("%s [%d] SMARTNET INDIVIDUAL EXTENDED FUNCTION src(%05d) code(0x%04x)\n" % (log_ts.get(), self.msgq_id, src_rid, code))
-            # Two-OSW status
+                                sys.stderr.write("%s [%d] SMARTNET INDIVIDUAL EXTENDED FUNCTION src(%05d) opcode(0x%04x)\n" % (log_ts.get(), self.msgq_id, src_rid, opcode))
+            # Two-OSW status / emergency / dynamic regroup acknowledgement
             elif osw1_cmd == 0x30d and not osw2_grp and not osw1_grp:
                 src_rid = osw2_addr
                 dst_tgid = osw1_addr & 0xfff0
-                status = (osw1_addr & 0xf) + 1
+                opcode = osw1_addr & 0xf
                 if self.debug >= 11:
-                    if status == 9:
-                        sys.stderr.write("%s [%d] SMARTNET EMERGENCY src(%05d) tgid(%05d/0x%03x)\n" % (log_ts.get(), self.msgq_id, src_rid, dst_tgid, dst_tgid >> 4))
+                    if opcode < 0x8:
+                        status = opcode + 1
+                        sys.stderr.write("%s [%d] SMARTNET STATUS src(%05d) tgid(%05d/0x%03x) status(%01d)\n" % (log_ts.get(), self.msgq_id, src_rid, dst_tgid, dst_tgid >> 4, status))
+                    elif opcode == 0x8:
+                        sys.stderr.write("%s [%d] SMARTNET EMERGENCY ALARM src(%05d) tgid(%05d/0x%03x)\n" % (log_ts.get(), self.msgq_id, src_rid, dst_tgid, dst_tgid >> 4))
+                    elif opcode == 0xa:
+                        sys.stderr.write("%s [%d] SMARTNET DYNAMIC REGROUP ACK src(%05d) tgid(%05d/0x%03x)\n" % (log_ts.get(), self.msgq_id, src_rid, dst_tgid, dst_tgid >> 4))
                     else:
-                        sys.stderr.write("%s [%d] SMARTNET STATUS src(%05d) tgid(%05d/0x%03x) status(%02d)\n" % (log_ts.get(), self.msgq_id, src_rid, dst_tgid, dst_tgid >> 4, status))
+                        sys.stderr.write("%s [%d] SMARTNET UNKNOWN STATUS src(%05d) tgid(%05d/0x%03x) opcode(%02d)\n" % (log_ts.get(), self.msgq_id, src_rid, dst_tgid, dst_tgid >> 4, opcode))
             # Two-OSW affiliation
             elif osw1_cmd == 0x310 and not osw2_grp and not osw1_grp:
                 src_rid = osw2_addr
@@ -1292,18 +1369,24 @@ class osw_receiver(object):
                 message = (osw1_addr & 0xf) + 1
                 if self.debug >= 11:
                     sys.stderr.write("%s [%d] SMARTNET MESSAGE src(%05d) tgid(%05d/0x%03x) msg(%02d)\n" % (log_ts.get(), self.msgq_id, src_rid, dst_tgid, dst_tgid >> 4, message))
-            # Two-OSW private call ring
+            # Two-OSW encrypted private call ring
+            elif osw1_cmd == 0x315 and not osw2_grp and not osw1_grp:
+                dst_rid = osw2_addr
+                src_rid = osw1_addr
+                if self.debug >= 11:
+                    sys.stderr.write("%s [%d] SMARTNET ANALOG ENCRYPTED PRIVATE CALL RING src(%05d) dst(%05d)\n" % (log_ts.get(), self.msgq_id, src_rid, dst_rid))
+            # Two-OSW clear private call ring
             elif osw1_cmd == 0x317 and not osw2_grp and not osw1_grp:
                 dst_rid = osw2_addr
                 src_rid = osw1_addr
                 if self.debug >= 11:
-                    sys.stderr.write("%s [%d] SMARTNET ANALOG PRIVATE CALL RING src(%05d) dst(%05d)\n" % (log_ts.get(), self.msgq_id, src_rid, dst_rid))
+                    sys.stderr.write("%s [%d] SMARTNET ANALOG CLEAR PRIVATE CALL RING src(%05d) dst(%05d)\n" % (log_ts.get(), self.msgq_id, src_rid, dst_rid))
             # Two-OSW private call ring acknowledgement
             elif osw1_cmd == 0x318 and not osw2_grp and not osw1_grp:
                 dst_rid = osw2_addr
                 src_rid = osw1_addr
                 if self.debug >= 11:
-                    sys.stderr.write("%s [%d] SMARTNET ANALOG PRIVATE CALL RING ACK src(%05d) dst(%05d)\n" % (log_ts.get(), self.msgq_id, src_rid, dst_rid))
+                    sys.stderr.write("%s [%d] SMARTNET PRIVATE CALL RING ACK src(%05d) dst(%05d)\n" % (log_ts.get(), self.msgq_id, src_rid, dst_rid))
             # Two-OSW call alert
             elif osw1_cmd == 0x319 and not osw2_grp and not osw1_grp:
                 dst_rid = osw2_addr
@@ -1316,6 +1399,12 @@ class osw_receiver(object):
                 src_rid = osw1_addr
                 if self.debug >= 11:
                     sys.stderr.write("%s [%d] SMARTNET CALL ALERT ACK src(%05d) dst(%05d)\n" % (log_ts.get(), self.msgq_id, src_rid, dst_rid))
+            # Two-OSW OmniLink trespass permitted
+            elif osw1_cmd == 0x31b and not osw2_grp and not osw1_grp:
+                src_rid = osw2_addr
+                system = osw1_addr
+                if self.debug >= 11:
+                    sys.stderr.write("%s [%d] SMARTNET OMNILINK TRESPASS PERMITTED sys(0x%04x) src(%05d)\n" % (log_ts.get(), self.msgq_id, system, src_rid))
             # Three-OSW system information
             elif osw1_cmd == 0x320:
                 # Get OSW0
@@ -1356,7 +1445,7 @@ class osw_receiver(object):
                         self.rx_site_id = site
                         self.add_alternate_cc_freq(osw1_t, cc_rx_freq, cc_tx_freq)
                     if self.debug >= 11:
-                        sys.stderr.write("%s [%d] SMARTNET %s sys(0x%04x) site(%02d) band(%s) features(%s) cc_freq(%f)\n" % (log_ts.get(), self.msgq_id, type_str, system, site, self.get_band(band), self.get_features_str(feat), cc_rx_freq))
+                        sys.stderr.write("%s [%d] SMARTNET %s sys(0x%04x) site(%02d) band(%s) features(%s) cc_freq(%f)\n" % (log_ts.get(), self.msgq_id, type_str, system, site, self.get_band_str(band), self.get_features_str(feat), cc_rx_freq))
                 else:
                     # Track that we got an unknown OSW and put back unused OSW0
                     is_unknown_osw = True
@@ -1369,14 +1458,30 @@ class osw_receiver(object):
                         sys.stderr.write("%s [%d] SMARTNET %s (0x%04x,%s,0x%03x)\n" % (ts, self.msgq_id, type_str, osw1_addr, grp1_str, osw1_cmd))
             # Two-OSW date/time
             elif osw1_cmd == 0x322 and osw2_grp and osw1_grp:
-                year   = ((osw2_addr & 0xfe00) >> 9) + 2000
-                month  = (osw2_addr & 0x1e0) >> 5
-                day    = (osw2_addr & 0x1f)
-                data   = (osw1_addr & 0xe000) >> 13
-                hour   = (osw1_addr & 0x1f00) >> 8
-                minute = osw1_addr & 0xff
+                year      = ((osw2_addr & 0xfe00) >> 9) + 2000
+                month     = (osw2_addr & 0x1e0) >> 5
+                day       = (osw2_addr & 0x1f)
+                dayofweek = (osw1_addr & 0xe000) >> 13
+                if dayofweek == 0:
+                    dayofweek_str = "Sunday"
+                elif dayofweek == 1:
+                    dayofweek_str = "Monday"
+                elif dayofweek == 2:
+                    dayofweek_str = "Tuesday"
+                elif dayofweek == 3:
+                    dayofweek_str = "Wednesday"
+                elif dayofweek == 4:
+                    dayofweek_str = "Thursday"
+                elif dayofweek == 5:
+                    dayofweek_str = "Friday"
+                elif dayofweek == 6:
+                    dayofweek_str = "Saturday"
+                else:
+                    dayofweek_str = "unknown day of week"
+                hour      = (osw1_addr & 0x1f00) >> 8
+                minute    = osw1_addr & 0xff
                 if self.debug >= 11:
-                    sys.stderr.write("%s [%d] SMARTNET DATE/TIME %04d-%02d-%02d %02d:%02d data(0x%01x)\n" % (log_ts.get(), self.msgq_id, year, month, day, hour, minute, data))
+                    sys.stderr.write("%s [%d] SMARTNET DATE/TIME %04d-%02d-%02d %02d:%02d (%s)\n" % (log_ts.get(), self.msgq_id, year, month, day, hour, minute, dayofweek_str))
             # Two-OSW emergency PTT
             elif osw1_cmd == 0x32e and osw2_grp and osw1_grp:
                 src_rid = osw2_addr
@@ -1416,6 +1521,13 @@ class osw_receiver(object):
                 rc |= self.update_voice_frequency(osw1_t, vc_freq, dst_tgid, src_rid, mode=1)
                 if self.debug >= 11:
                     sys.stderr.write("%s [%d] SMARTNET DIGITAL %s GROUP GRANT src(%05d) tgid(%05d/0x%03x) vc_freq(%f)\n" % (log_ts.get(), self.msgq_id, self.get_call_options_str(dst_tgid), src_rid, dst_tgid, dst_tgid >> 4, vc_freq))
+            # Two-OSW digital private call voice grant/update (sent for duration of the call)
+            elif osw1_ch_rx and not osw1_grp and (osw1_addr != 0) and (osw2_addr != 0):
+                dst_rid = osw2_addr
+                src_rid = osw1_addr
+                vc_freq = osw1_f_rx
+                if self.debug >= 11:
+                    sys.stderr.write("%s [%d] SMARTNET DIGITAL PRIVATE CALL src(%05d) dst(%05d) vc_freq(%f)\n" % (log_ts.get(), self.msgq_id, src_rid, dst_rid, vc_freq))
             # One- or two-OSW system idle
             elif osw1_cmd == 0x2f8:
                 # Get next OSW in the queue
@@ -1449,18 +1561,18 @@ class osw_receiver(object):
                     data = osw1_addr
                     if self.debug >= 11:
                         sys.stderr.write("%s [%d] SMARTNET IDLE DELAYED 1-2 data(%s,0x%04x)\n" % (log_ts.get(), self.msgq_id, grp_str, data))
-            # Two-OSW private call ring
+            # Two-OSW encrypted private call ring
+            elif osw1_cmd == 0x315 and not osw2_grp and not osw1_grp:
+                dst_rid = osw2_addr
+                src_rid = osw1_addr
+                if self.debug >= 11:
+                    sys.stderr.write("%s [%d] SMARTNET DIGITAL ENCRYPTED PRIVATE CALL RING src(%05d) dst(%05d)\n" % (log_ts.get(), self.msgq_id, src_rid, dst_rid))
+            # Two-OSW clear private call ring
             elif osw1_cmd == 0x317 and not osw2_grp and not osw1_grp:
                 dst_rid = osw2_addr
                 src_rid = osw1_addr
                 if self.debug >= 11:
-                    sys.stderr.write("%s [%d] SMARTNET DIGITAL PRIVATE CALL RING src(%05d) dst(%05d)\n" % (log_ts.get(), self.msgq_id, src_rid, dst_rid))
-            # Two-OSW private call ring acknowledgement
-            elif osw1_cmd == 0x318 and not osw2_grp and not osw1_grp:
-                dst_rid = osw2_addr
-                src_rid = osw1_addr
-                if self.debug >= 11:
-                    sys.stderr.write("%s [%d] SMARTNET DIGITAL PRIVATE CALL RING ACK src(%05d) dst(%05d)\n" % (log_ts.get(), self.msgq_id, src_rid, dst_rid))
+                    sys.stderr.write("%s [%d] SMARTNET DIGITAL CLEAR PRIVATE CALL RING src(%05d) dst(%05d)\n" % (log_ts.get(), self.msgq_id, src_rid, dst_rid))
             else:
                 # Track that we got an unknown OSW; OSW1 did not match, so put it back in the queue
                 is_unknown_osw = True
@@ -1486,6 +1598,11 @@ class osw_receiver(object):
             self.rx_sys_id = system
             if self.debug >= 11:
                 sys.stderr.write("%s [%d] SMARTNET SYSTEM sys(0x%04x) type(%s)\n" % (log_ts.get(), self.msgq_id, system, type_str))
+        # One-OSW roaming
+        elif osw2_cmd == 0x32c and not osw2_grp:
+            src_rid = osw2_addr
+            if self.debug >= 11:
+                sys.stderr.write("%s [%d] SMARTNET ROAMING src(%05d)\n" % (log_ts.get(), self.msgq_id, src_rid))
         # One-OSW AMSS (Automatic Multiple Site Select) message
         elif osw2_cmd >= 0x360 and osw2_cmd <= 0x39f:
             # Sites are encoded as 0-indexed but usually referred to as 1-indexed
@@ -1498,6 +1615,47 @@ class osw_receiver(object):
             self.rx_site_id = site
             if self.debug >= 11:
                 sys.stderr.write("%s [%d] SMARTNET AMSS site(%02d)%s\n" % (log_ts.get(), self.msgq_id, site, data_str))
+        # One-OSW BSI / diagnostic
+        elif osw2_cmd == 0x3a0 and osw2_grp:
+            # Note that this is still highly speculative - it seems correct for the values that are defined below, but
+            # all other combinations are truly unknown
+            opcode = (osw2_addr & 0xf000) >> 12
+
+            if opcode == 0x8 or opcode == 0x9:
+                status = (osw2_addr & 0xf00) >> 8
+                if status == 0xa:
+                    status_str = "enabled"
+                elif status == 0xb:
+                    status_str = "disabled"
+                elif status == 0xc:
+                    status_str = "malfunction"
+                else:
+                    status_str = "unknown 0x%01x" % (status)
+
+                component = (osw2_addr & 0xff)
+                if component >= 0x30 and component <= 0x4b:
+                    component_str = "receiver %02d" % (component - 0x30 + 1)
+                elif component >= 0x60 and component <= 0x7b:
+                    component_str = "transmitter %02d" % (component - 0x60 + 1)
+                else:
+                    component_str = "unknown 0x%02x" % (component)
+
+                if self.debug >= 11:
+                    sys.stderr.write("%s [%d] SMARTNET DIAGNOSTIC STATUS opcode(0x%01x) component(%s) status(%s)\n" % (log_ts.get(), self.msgq_id, opcode, component_str, status_str))
+            elif opcode == 0xe or opcode == 0xf:
+                action_str = "BSI" if opcode == 0xf else "END BSI"
+                if self.debug >= 11:
+                    if self.is_chan(osw2_addr & 0x3ff):
+                        data = (osw2_addr & 0xc00) >> 10
+                        vc_freq = self.get_freq(osw2_addr & 0x3ff)
+                        sys.stderr.write("%s [%d] SMARTNET %s data(0x%01x) vc_freq(%f)\n" % (log_ts.get(), self.msgq_id, action_str, data, vc_freq))
+                    else:
+                        data = osw2_addr & 0xfff
+                        sys.stderr.write("%s [%d] SMARTNET %s data(0x%03x)\n" % (log_ts.get(), self.msgq_id, action_str, data, vc_freq))
+            else:
+                data = osw2_addr & 0x3ff
+                if self.debug >= 11:
+                    sys.stderr.write("%s [%d] SMARTNET DIAGNOSTIC opcode(0x%01x) data(0x%03x)\n" % (log_ts.get(), self.msgq_id, opcode, data))
         # One-OSW system status update
         elif osw2_cmd == 0x3bf or osw2_cmd == 0x3c0:
             scope = "SYSTEM" if osw2_cmd == 0x3c0 else "NETWORK"
@@ -1547,14 +1705,15 @@ class osw_receiver(object):
                 bit6_5       = (data & 0x60) >> 5
                 # Occurs immediately before and after voice grant on VOC
                 voc_active   = (data & 0x10) >> 4
-                bit3_2       = (data & 0xc) >> 2
+                bit3         = (data & 0x8) >> 3
+                simulcast    = (data & 0x4) >> 2
                 site_trunk   = (data & 0x2) >> 1
-                wide_area    = (data & 0x1)
+                bit0         = (data & 0x1)
                 if self.debug >= 11:
                     sys.stderr.write("%s [%d] SMARTNET %s STATUS rotation(%d) wide_pulse(%d) cvsd_mod(%s) trespass(%d) voc(%d)" % (log_ts.get(), self.msgq_id, scope, rotation, wide_pulse, cvsd_mod_str, trespass, voc))
                     if voc or voc_active:
                         sys.stderr.write(" voc_active(%d)" % (voc_active))
-                    sys.stderr.write(" site_trunk(%d) wide_area(%d) bit6_5(0x%01x) bit3(%d) bitG(%s)\n" % (site_trunk, wide_area, bit6_5, bit3_2, bitG))
+                    sys.stderr.write(" simulcast(%d) site_trunk(%d) bit6_5(0x%01x) bit3(%d) bit0(%d) bitG(%s)\n" % (simulcast, site_trunk, bit6_5, bit3, bit0, bitG))
             else:
                 if self.debug >= 11:
                     sys.stderr.write("%s [%d] SMARTNET %s STATUS opcode(0x%x) data(0x%04x) bitG(%s)\n" % (log_ts.get(), self.msgq_id, scope, grp2_str, opcode, data, bitG))
@@ -1746,13 +1905,15 @@ class osw_receiver(object):
 
     def to_json(self):  # ugly but required for compatibility with P25 trunking and terminal modules
         system_id_str = "%04X" % (self.rx_sys_id) if self.rx_sys_id is not None else "----"
-        site_id_str   = "%02d" % (self.rx_site_id) if self.rx_site_id is not None else "--"
 
         d = {}
         d['type']           = 'smartnet'
         d['system']         = self.sysname
-        d['top_line']       = 'SmartNet ' if self.rx_site_id is None else 'SmartZone'
-        d['top_line']      += '   System ID %s  Site %s' % (system_id_str, site_id_str)
+        if self.rx_site_id is None:
+            d['top_line']   = 'SmartNet    System ID %s         ' % (system_id_str)
+        else:
+            site_id_str     = "%02d" % (self.rx_site_id)
+            d['top_line']   = 'SmartZone   System ID %s  Site %s' % (system_id_str, site_id_str)
         d['top_line']      += '   CC %f' % ((self.rx_cc_freq if self.rx_cc_freq is not None else self.cc_list[self.cc_index]) / 1e6)
         d['top_line']      += '   OSW count %d' % (self.stats['osw_count'])
         d['secondary']      = list(self.alternate_cc_freqs.keys())
