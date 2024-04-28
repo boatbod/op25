@@ -365,9 +365,12 @@ class osw_receiver(object):
 
     # Split a bandplan string into its constituent subtypes
     def get_bandplan_details(self):
-        bandplan = from_dict(self.config, 'bandplan', "800_rebanded")
+        # A bandplan is mandatory, so we read it directly rather than using from_dict() with a default value
+        bandplan = self.config['bandplan']
 
-        # Still accept 'reband', 'standard', and 'splinter' for backwards compatiblity
+        # Still accept legacy bandplan names for backwards compatiblity
+        if bandplan == "400":
+            bandplan = "OBT"
         if bandplan == "800_reband":
             bandplan = "800_rebanded"
         if bandplan == "800_standard":
@@ -375,16 +378,15 @@ class osw_receiver(object):
         if bandplan == "800_splinter":
             bandplan = "800_domestic_splinter"
 
-        # Still accept '400' for backwards compatibility
-        if bandplan == "400":
-            bandplan = "OBT"
+        # Terminate with a _ so we can safely read substrings below
+        bandplan = bandplan + "_"
 
         # Figure out the various subtypes
         band = bandplan[:3]
         is_rebanded = (bandplan == "800_rebanded")
-        is_international = "international" in bandplan
-        is_splinter = "splinter" in bandplan
-        is_shuffled = "shuffled" in bandplan
+        is_international = "_international_" in bandplan
+        is_splinter = "_splinter_" in bandplan
+        is_shuffled = "_shuffled_" in bandplan
 
         return (band, is_rebanded, is_international, is_splinter, is_shuffled)
 
@@ -425,8 +427,8 @@ class osw_receiver(object):
             return False
 
         if band == "800":
+            # TODO: Shuffled domestic and rebanded bandplans are not yet supported
             # Domestic site
-            # TODO: Shuffled domestic bandplans are not yet supported
             if not is_international and not is_shuffled:
                 # Upper channels are the same across all US band plans
                 if ((chan >= 0x2d0 and chan <= 0x2f7) or
@@ -439,6 +441,7 @@ class osw_receiver(object):
                     return True
                 elif chan <= 0x2cf:
                     return True
+
             # International site
             elif is_international:
                 if chan <= 0x2f7:
@@ -473,6 +476,7 @@ class osw_receiver(object):
         band, is_rebanded, is_international, is_splinter, is_shuffled = self.get_bandplan_details()
 
         if band == "800":
+            # TODO: Shuffled domestic and rebanded bandplans are not yet supported
             # Lower channels vary between the various US band plans
             if not is_international and not is_shuffled:
                 # Rebanded site
@@ -496,25 +500,22 @@ class osw_receiver(object):
                     freq = 866.0000 + (0.025 * (chan - 0x2d0))
                 elif chan >= 0x32f and chan <= 0x33f:
                     freq = 867.0000 + (0.025 * (chan - 0x32f))
-                elif chan == 0x3be:
-                    freq = 868.9750
                 elif chan >= 0x3c1 and chan <= 0x3fe:
                     freq = 867.4250 + (0.025 * (chan - 0x3c1))
+                elif chan == 0x3be:
+                    freq = 868.9750
 
             # International site
             elif is_international:
+                # Shuffled band plan is described in US patent US7546085: channel numbers are negative starting from 759
+                if is_shuffled and chan <= 759:
+                    chan = 759 - chan
                 # Standard
                 if not is_splinter:
-                    if not is_shuffled:
-                        freq = 851.0125 + (0.025 * chan)
-                    else:
-                        freq = 869.9875 - (0.025 * chan)
+                    freq = 851.0125 + (0.025 * chan)
                 # Splinter
                 else:
-                    if not is_shuffled:
-                        freq = 851.0000 + (0.025 * chan)
-                    else:
-                        freq = 869.9750 - (0.025 * chan)
+                    freq = 851.0000 + (0.025 * chan)
 
             if is_tx and freq != 0.0:
                 freq -= 45.0 # Standard tx offset for 800 band
