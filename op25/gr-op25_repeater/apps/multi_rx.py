@@ -1054,7 +1054,10 @@ class rx_main(object):
             if options.config_file is None:
                 parser.print_help()
                 exit(1)
-            config = json.loads(open(options.config_file).read())
+            if sys.version[0] == '2':
+                config = json.loads(open(options.config_file).read())
+            else:
+                config = json.loads(open(options.config_file, encoding="utf-8-sig").read())
         self.tb = rx_block(options.verbosity, config = byteify(config))
         self.q_watcher = du_queue_watcher(self.tb.ui_out_q, self.process_qmsg)
         sys.stderr.write('python version detected: %s\n' % sys.version)
