@@ -732,7 +732,7 @@ class trunked_system (object):
                 self.freq_table[iden]['frequency'] = f1 * 5
                 self.freq_table[iden]['tdma'] = slots_per_carrier[channel_type]
                 if self.debug >= 10:
-                    sys.stderr.write('%s [0] tsbk(0x33) iden_up_tdma: %d freq: %d toff: %d spac: %d slots/carrier: %d\n' % (log_ts.get(), iden, self.freq_table[iden]['frequency'], self.freq_table[iden]['offset'], self.freq_table[iden]['step'], self.freq_table[iden]['tdma']))
+                    sys.stderr.write('%s [0] tsbk(0x33) iden_up_tdma: %d freq: %f toff: %f spac: %f slots/carrier: %d\n' % (log_ts.get(), iden, self.freq_table[iden]['frequency']/1e6, self.freq_table[iden]['offset']/1e6, self.freq_table[iden]['step']/1e3, self.freq_table[iden]['tdma']))
         elif opcode == 0x3d:   # iden_up
             iden = (tsbk >> 76) & 0xf
             bw   = (tsbk >> 67) & 0x1ff
@@ -1059,7 +1059,7 @@ class trunked_system (object):
             self.freq_table[iden]['frequency'] = base_f * 5
             self.freq_table[iden]['tdma'] = slots_per_carrier[ch_type]
             if self.debug >= 10:
-                sys.stderr.write('%s [0] tdma(0xf3) iden_up_tdma: id: %d base_f: %d offset: %d spacing: %d slots/carrier %d\n' % (log_ts.get(), iden, base_f, tx_off, ch_spac, slots_per_carrier[ch_type]))
+                sys.stderr.write('%s [0] tdma(0xf3) iden_up_tdma: id: %d base_f: %f offset: %f spacing: %f slots/carrier %d\n' % (log_ts.get(), iden, base_f/1e6, tx_off/1e6, ch_spac/1e3, slots_per_carrier[ch_type]))
         elif op == 0xfa: # RFSS Status Broadcast Explicit
             syid = get_ordinals(msg[2:4]) & 0xfff
             rfid = get_ordinals(msg[4:5])
