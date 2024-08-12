@@ -75,6 +75,7 @@ namespace gr {
                 if (d_sync)
                     d_sync->crypt_key(j["keyid"].get<uint16_t>(), j["keyid"].get<uint8_t>(), j["key"].get<std::vector<uint8_t>>());
             } else if (cmd == "set_debug") {
+                d_debug = j["debug"].get<int>();
                 if (d_sync)
                     d_sync->set_debug(j["debug"].get<int>());
             } else {
@@ -85,6 +86,7 @@ namespace gr {
         }
 
         void frame_assembler_impl::set_debug(int debug) {
+            d_debug = debug;
             if (d_sync)
                 d_sync->set_debug(debug);
         }
