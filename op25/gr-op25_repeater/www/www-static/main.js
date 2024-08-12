@@ -507,8 +507,12 @@ function adjacent_sites(d) {
         for (var freq in d['adjacent_data']) {
             var rfss = d['adjacent_data'][freq]["rfid"];
             var site = d['adjacent_data'][freq]["stid"];
-            adjacent_by_rfss[rfss] = {};
-            adjacent_by_rfss[rfss][site] = {};
+            if (!(rfss in adjacent_by_rfss)) {
+                adjacent_by_rfss[rfss] = {};
+            }
+            if (!(site in adjacent_by_rfss[rfss])) {
+                adjacent_by_rfss[rfss][site] = {};
+            }
             adjacent_by_rfss[rfss][site]['cc_rx_freq'] = (freq / 1000000.0).toFixed(6);
             adjacent_by_rfss[rfss][site]['cc_tx_freq'] = (d['adjacent_data'][freq]["uplink"] / 1000000.0).toFixed(6);
         }
