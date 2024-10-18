@@ -53,5 +53,5 @@ out (input)
 # Change the "host", "password", and "mount" strings appropriately first!
 # For metadata to work properly, the host address given here MUST MATCH the address in op25's meta.json file
 #
-#output.icecast(%mp3(bitrate=16, samplerate=22050, stereo=false), description="op25", genre="Public Safety", url="", fallible=false, icy_metadata="false", host="localhost", port=8000, mount="mountpoint", password="hackme", mean(input))
+#output.icecast(%mp3(bitrate=16, samplerate=22050, stereo=false), description="op25", genre="Public Safety", url="", fallible=false, host="localhost", port=8000, mount="mountpoint", password="hackme", mean(input))
 
