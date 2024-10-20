@@ -67,7 +67,7 @@ input = normalize(input, gain_max = 3.0, gain_min = -3.0, target = -16.0, thresh
 # For metadata to work properly, the host address given here MUST MATCH the address in op25's meta.json file
 #
 # Mono Stream
-output.icecast(%mp3(bitrate=16, samplerate=22050, stereo=false), description="op25", genre="Public Safety", url="", fallible=false, icy_metadata="false", host="localhost", port=8000, mount="op25", password="hackme", mean(input))
+output.icecast(%mp3(bitrate=16, samplerate=22050, stereo=false), description="op25", genre="Public Safety", url="", fallible=false, host="localhost", port=8000, mount="op25", password="hackme", mean(input))
 #
 # Stereo Stream
-#output.icecast(%mp3(bitrate=16, samplerate=22050, stereo=true), description="op25", genre="Public Safety", url="", fallible=false, icy_metadata="false", host="localhost", port=8000, mount="op25", password="hackme", input)
+#output.icecast(%mp3(bitrate=16, samplerate=22050, stereo=true), description="op25", genre="Public Safety", url="", fallible=false, host="localhost", port=8000, mount="op25", password="hackme", input)
