@@ -284,6 +284,8 @@ void p25_crypt_algs::adp_keystream_gen() {
     }
 }
 
+/* DES */
+// Written by Ali Elmasry, adapted by Joey Absi
 std::string p25_crypt_algs::hex2bin(std::string s) 
 { 
 	// hexadecimal to binary conversion 
