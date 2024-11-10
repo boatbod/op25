@@ -49,8 +49,8 @@
 #include "op25_audio.h"
 #include "op25_msg_types.h"
 
-namespace gr{
-    namespace op25_repeater{
+namespace gr {
+    namespace op25_repeater {
 
 void rx_sync::cbuf_insert(const uint8_t c) {
 	d_cbuf[d_cbuf_idx] = c;
@@ -140,6 +140,12 @@ void rx_sync::set_slot_key(int mask) {
 		fprintf(stderr, "%s rx_sync::set_slot_key: current(%d), new(%d)\n", logts.get(d_msgq_id), d_slot_key, mask);
 	}
 	d_slot_key = mask;
+}
+
+void rx_sync::crypt_behavior(int behavior) {
+	d_behavior = behavior;
+	p25fdma.crypt_behavior(behavior);
+	p25tdma.crypt_behavior(behavior);
 }
 
 void rx_sync::set_debug(int debug) {

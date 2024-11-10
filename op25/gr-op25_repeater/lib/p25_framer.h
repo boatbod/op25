@@ -30,12 +30,14 @@ class p25_framer
         int d_msgq_id;
         uint32_t d_expected_nac;
         int d_unexpected_nac;
+        int d_behavior;
         log_ts& logts;
 
     public:
         p25_framer(log_ts& logger, int debug = 0, int msgq_id = 0);
         ~p25_framer ();	// destructor
         void set_nac(uint32_t nac) { d_expected_nac = nac; }
+        void crypt_behavior(int behavior) { d_behavior = behavior; };
         void set_debug(int debug) { d_debug = debug; }
         bool rx_sym(uint8_t dibit) ;
         uint32_t load_nid(const uint8_t *syms, int nsyms, const uint64_t fs);

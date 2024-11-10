@@ -152,6 +152,12 @@ void p25p2_tdma::crypt_key(uint16_t keyid, uint8_t algid, const std::vector<uint
 	crypt_algs.key(keyid, algid, key);
 }
 
+void p25p2_tdma::crypt_behavior(int behavior)
+{
+    d_behavior = behavior;
+    //p2framer->crypt_behavior(behavior);
+}
+
 p25p2_tdma::~p25p2_tdma()	// destructor
 {
 	delete[](tdma_xormask);
@@ -506,15 +512,46 @@ void p25p2_tdma::handle_voice_frame(const uint8_t dibits[], int slot, int voice_
 	int16_t snd;
 	int K;
 	int rc = -1;
+	char log_str[40];
 	frame_type fr_type;
 
 	// Deinterleave and figure out frame type:
 	errs = vf.process_vcw(&errs_mp, dibits, b, u);
-	if (d_debug >= 9) {
-		char log_str[40];
+	if (d_debug >= 9 && !encrypted() && d_behavior == -1) {
 		vf.pack_cw(p_cw, u);
 		strcpy(log_str, logts.get(d_msgq_id)); // param eval order not guaranteed; force timestamp computation first
+		p_cw[0] = 0xF8;
+        p_cw[1] = 0x01;
+        p_cw[2] = 0xA9;
+        p_cw[3] = 0x9F;
+        p_cw[4] = 0x8C;
+        p_cw[5] = 0xE0;
+        p_cw[6] = 0x00;
+        vf.unpack_cw(p_cw, u);
+        vf.unpack_b(b, u);
 		fprintf(stderr, "%s AMBE %02x %02x %02x %02x %02x %02x %02x errs %lu err_rate %f, dt %f\n",
+			    log_str,
+			    p_cw[0], p_cw[1], p_cw[2], p_cw[3], p_cw[4], p_cw[5], p_cw[6], errs, errs_mp.ER,
+				logts.get_tdiff());            // dt is time in seconds since last AMBE frame processed
+		logts.mark_ts();
+	}
+	else if(d_debug < 9 && !encrypted() && d_behavior == -1) {
+		packed_codeword p_cw;
+        // Force mute clear voice
+        p_cw[0] = 0xF8;
+        p_cw[1] = 0x01;
+        p_cw[2] = 0xA9;
+        p_cw[3] = 0x9F;
+        p_cw[4] = 0x8C;
+        p_cw[5] = 0xE0;
+        p_cw[6] = 0x00;
+        vf.unpack_cw(p_cw, u);
+        vf.unpack_b(b, u);
+	}
+	else if (d_debug >= 9 && !encrypted() && d_behavior != -1) {
+		packed_codeword p_cw;
+        vf.pack_cw(p_cw, u);
+        fprintf(stderr, "%s AMBE %02x %02x %02x %02x %02x %02x %02x errs %lu err_rate %f, dt %f\n",
 			    log_str,
 			    p_cw[0], p_cw[1], p_cw[2], p_cw[3], p_cw[4], p_cw[5], p_cw[6], errs, errs_mp.ER,
 				logts.get_tdiff());            // dt is time in seconds since last AMBE frame processed
@@ -544,7 +581,12 @@ void p25p2_tdma::handle_voice_frame(const uint8_t dibits[], int slot, int voice_
 		audio_valid = crypt_algs.process(p_cw, fr_type, voice_subframe);
 		if (!audio_valid)
 			return;
-        vf.unpack_cw(p_cw, u);  // unpack plaintext codewords
+        strcpy(log_str, logts.get(d_msgq_id));
+        fprintf(stderr, "%s AMBE %02x %02x %02x %02x %02x %02x %02x errs %lu err_rate %f, dt %f\n",
+			    log_str,
+			    p_cw[0], p_cw[1], p_cw[2], p_cw[3], p_cw[4], p_cw[5], p_cw[6], errs, errs_mp.ER,
+				logts.get_tdiff());
+		vf.unpack_cw(p_cw, u);  // unpack plaintext codewords
         vf.unpack_b(b, u);      // for unencrypted traffic this is done inside vf.process_vcw()
 	}
 
