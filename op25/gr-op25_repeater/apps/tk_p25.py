@@ -30,6 +30,7 @@ import ast
 from helper_funcs import *
 from log_ts import log_ts
 from gnuradio import gr
+import gnuradio.op25_repeater as op25_repeater
 
 #################
 
@@ -318,7 +319,10 @@ class p25_system(object):
             self.cc_rate = 6000
 
         self.crypt_behavior = int(from_dict(self.config, 'crypt_behavior', 1))
-        #if 'crypt_keys' in self.config and self.config['crypt_keys'] != "":
+        #sys.stderr.write("%s crypt behavior: %d\n" % (log_ts.get(), self.crypt_behavior))
+        # export crypt_behavior to c
+        #self.fa_ctrl({'tuner': self.msgq_id, 'cmd': 'crypt_behavior', 'behavior': self.crypt_behavior})
+        # if 'crypt_keys' in self.config and self.config['crypt_keys'] != "":
         #    sys.stderr.write("%s [%s] reading system crypt_keys file: %s\n" % (log_ts.get(), self.sysname, self.config['crypt_keys']))
         #    self.crypt_keys = get_key_dict(self.config['crypt_keys'], self.sysname)
 
@@ -1662,6 +1666,9 @@ class p25_receiver(object):
         self.hold_mode = False
         self.tgid_hold_time = TGID_HOLD_TIME
         self.vc_retries = 0
+        
+        self.fa_ctrl({'tuner': self.msgq_id, 'cmd': 'crypt_behavior', 'behavior': self.crypt_behavior})
+        sys.stderr.write("%s crypt behavior: %d\n" % (log_ts.get(), self.crypt_behavior))
 
     def set_debug(self, dbglvl):
         self.debug = dbglvl
@@ -1696,7 +1703,7 @@ class p25_receiver(object):
     def set_nac(self, nac):
         if self.current_nac != nac:
             self.current_nac = nac
-            self.fa_ctrl({'tuner': self.msgq_id, 'cmd': 'set_nac', 'nac': nac})
+            self.fa_ctrl({'tuner': self.msgq_id, 'cmd': 'set_nac', 'nac': nac})		
 
     def idle_rx(self):
         if not (self.tuner_idle or self.system.has_cc(self.msgq_id)): # don't idle a control channel or an already idle receiver
@@ -1840,6 +1847,8 @@ class p25_receiver(object):
                 self.talkgroups[self.current_tgid]['keyid'] = keyid
 
             updated += self.system.update_talkgroup_srcaddr(curr_time, self.current_tgid, srcaddr)
+            
+            #self.fa_ctrl({'tuner': self.msgq_id, 'cmd': 'crypt_behavior', 'behavior': self.crypt_behavior})
 
             if self.crypt_behavior > 1:
                 if self.talkgroups[self.current_tgid]['encrypted'] == 1:

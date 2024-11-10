@@ -52,13 +52,13 @@ import traceback
 import osmosdr
 import importlib
 
-from gnuradio import audio, eng_notation, gr, gru, filter, blocks, fft, analog, digital
+from gnuradio import audio, eng_notation, gr, filter, blocks, fft, analog, digital
 from gnuradio.eng_option import eng_option
 from math import pi
 from optparse import OptionParser
 
-import op25
-import op25_repeater
+import gnuradio.op25 as op25
+import gnuradio.op25_repeater as op25_repeater
 import p25_demodulator_dev as p25_demodulator
 import op25_nbfm
 import op25_iqsrc
@@ -243,7 +243,13 @@ class channel(object):
             self.crypt_keys = get_key_dict(self.crypt_keys_file, self.msgq_id)
             for keyid in self.crypt_keys.keys():
                 self.decoder.control(json.dumps({'tuner': self.msgq_id, 'cmd': 'crypt_key', 'keyid': int(keyid), 'algid': int(self.crypt_keys[keyid]['algid']), 'key': self.crypt_keys[keyid]['key']}))
-
+        
+        # Load crypt_behavior
+        # self.crypt_behavior = int(from_dict(config, 'crypt_behavior', 0))
+        # export crypt_behavior to c
+        # self.decoder.control(json.dumps({'tuner': self.msgq_id, 'cmd': 'crypt_behavior', 'behavior': self.crypt_behavior})) 
+        # sys.stderr.write("%s crypt behavior: %d\n" % (log_ts.get(), self.crypt_behavior))
+        
         # Relative-tune the demodulator
         if not self.demod.set_relative_frequency((dev.frequency + dev.offset + dev.fractional_corr) - self.frequency):
             sys.stderr.write("%s [%d] Unable to initialize demod to freq: %d, using device freq: %d\n" % (log_ts.get(), self.msgq_id, self.frequency, dev.frequency))
@@ -1093,6 +1099,7 @@ class rx_main(object):
 
 if __name__ == "__main__":
     if sys.version[0] > '2':
-        sys.stderr = io.TextIOWrapper(sys.stderr.detach().detach(), write_through=True) # disable stderr buffering
+        pass
+        #sys.stderr = io.TextIOWrapper(sys.stderr.detach().detach(), write_through=True) # disable stderr buffering
     rx = rx_main()
     rx.run()
