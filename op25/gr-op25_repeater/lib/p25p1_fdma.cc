@@ -196,6 +196,12 @@ namespace gr {
             if (d_debug >= 10)
                 fprintf(stderr, "%s p25p1_fdma::set_nac: 0x%03x\n", logts.get(d_msgq_id), d_nac);
         }
+        
+        void p25p1_fdma::crypt_behavior(int behavior)
+        {
+			d_behavior = behavior;
+			framer->crypt_behavior(behavior);
+		}
 
         p25p1_fdma::p25p1_fdma(const op25_audio& udp, log_ts& logger, int debug, bool do_imbe, bool do_output, bool do_msgq, gr::msg_queue::sptr queue, std::deque<int16_t> &output_queue, bool do_audio_output, int msgq_id) :
             write_bufp(0),
@@ -206,6 +212,7 @@ namespace gr {
             d_msgq_id(msgq_id),
             d_do_audio_output(do_audio_output),
             d_nac(0),
+            d_behavior(0),
             d_msg_queue(queue),
             output_queue(output_queue),
             framer(new p25_framer(logger, debug, msgq_id)),
@@ -543,8 +550,9 @@ namespace gr {
 
         void p25p1_fdma::process_voice(const bit_vector& A, const frame_type fr_type) {
             if (d_do_imbe || d_do_audio_output) {
-                if (encrypted())
+                if (encrypted()) {
                     crypt_algs.prepare(ess_algid, ess_keyid, PT_P25_PHASE1, ess_mi);
+                }
 
                 for(size_t i = 0; i < nof_voice_codewords; ++i) {
                     voice_codeword cw(voice_codeword_sz);
@@ -556,20 +564,63 @@ namespace gr {
                     imbe_deinterleave(A, cw, i);
 
                     errs = imbe_header_decode(cw, u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7], E0, ET);
+                    
 
-                    if (d_debug >= 9) {
+                    if (d_debug >= 9 && !encrypted() && d_behavior == -1) {
                         packed_codeword p_cw;
                         imbe_pack(p_cw, u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7]);
+                        // Force mute clear voice
+                        p_cw[0] = 0x04;
+                        p_cw[1] = 0x0C;
+                        p_cw[2] = 0xFD;
+                        p_cw[3] = 0x7B;
+                        p_cw[4] = 0xFB;
+                        p_cw[5] = 0x7D;
+                        p_cw[6] = 0xF2;
+                        p_cw[7] = 0x7B;
+                        p_cw[8] = 0x3D;
+                        p_cw[9] = 0x9E;
+                        p_cw[10] = 0x44;
+                        imbe_unpack(p_cw, u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7]);
                         sprintf(s,"%02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x",
                                 p_cw[0], p_cw[1], p_cw[2], p_cw[3], p_cw[4], p_cw[5],
                                 p_cw[6], p_cw[7], p_cw[8], p_cw[9], p_cw[10]);
                         fprintf(stderr, "%s IMBE %s errs %lu\n", logts.get(d_msgq_id), s, errs); // print to log in one operation
                     }
-
+                    else if(d_debug < 9 && !encrypted() && d_behavior == -1) {
+						packed_codeword p_cw;
+                        // Force mute clear voice
+                        p_cw[0] = 0x04;
+                        p_cw[1] = 0x0C;
+                        p_cw[2] = 0xFD;
+                        p_cw[3] = 0x7B;
+                        p_cw[4] = 0xFB;
+                        p_cw[5] = 0x7D;
+                        p_cw[6] = 0xF2;
+                        p_cw[7] = 0x7B;
+                        p_cw[8] = 0x3D;
+                        p_cw[9] = 0x9E;
+                        p_cw[10] = 0x44;
+                        imbe_unpack(p_cw, u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7]);
+					}
+					else if (d_debug >= 9 && !encrypted() && d_behavior != -1) {
+						packed_codeword p_cw;
+                        imbe_pack(p_cw, u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7]);
+                        sprintf(s,"%02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x",
+                                p_cw[0], p_cw[1], p_cw[2], p_cw[3], p_cw[4], p_cw[5],
+                                p_cw[6], p_cw[7], p_cw[8], p_cw[9], p_cw[10]);
+                        fprintf(stderr, "%s IMBE %s errs %lu\n", logts.get(d_msgq_id), s, errs); // print to log in one operation
+					}
+					
+					
                     if (encrypted()) {
                         packed_codeword ciphertext;
                         imbe_pack(ciphertext, u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7]);
                         audio_valid = crypt_algs.process(ciphertext, fr_type, i);
+                        sprintf(s,"%02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x",
+                                ciphertext[0], ciphertext[1], ciphertext[2], ciphertext[3], ciphertext[4], ciphertext[5],
+                                ciphertext[6], ciphertext[7], ciphertext[8], ciphertext[9], ciphertext[10]);
+                        fprintf(stderr, "%s IMBE %s errs %lu\n", logts.get(d_msgq_id), s, errs); // print to log in one operation
                         imbe_unpack(ciphertext, u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7]);
                     }
 
