@@ -30,7 +30,6 @@ import ast
 from helper_funcs import *
 from log_ts import log_ts
 from gnuradio import gr
-import gnuradio.op25_repeater as op25_repeater
 
 #################
 
@@ -1703,7 +1702,7 @@ class p25_receiver(object):
     def set_nac(self, nac):
         if self.current_nac != nac:
             self.current_nac = nac
-            self.fa_ctrl({'tuner': self.msgq_id, 'cmd': 'set_nac', 'nac': nac})		
+            self.fa_ctrl({'tuner': self.msgq_id, 'cmd': 'set_nac', 'nac': nac})
 
     def idle_rx(self):
         if not (self.tuner_idle or self.system.has_cc(self.msgq_id)): # don't idle a control channel or an already idle receiver

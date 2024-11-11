@@ -21,7 +21,7 @@
 #ifndef INCLUDED_OP25_REPEATER_P25_FRAME_ASSEMBLER_IMPL_H
 #define INCLUDED_OP25_REPEATER_P25_FRAME_ASSEMBLER_IMPL_H
 
-#include <gnuradio/op25_repeater/p25_frame_assembler.h>
+#include <op25_repeater/p25_frame_assembler.h>
 
 #include <gnuradio/msg_queue.h>
 #include <sys/socket.h>

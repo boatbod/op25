@@ -52,13 +52,13 @@ import traceback
 import osmosdr
 import importlib
 
-from gnuradio import audio, eng_notation, gr, filter, blocks, fft, analog, digital
+from gnuradio import audio, eng_notation, gr, gru, filter, blocks, fft, analog, digital
 from gnuradio.eng_option import eng_option
 from math import pi
 from optparse import OptionParser
 
-import gnuradio.op25 as op25
-import gnuradio.op25_repeater as op25_repeater
+import op25
+import op25_repeater
 import p25_demodulator_dev as p25_demodulator
 import op25_nbfm
 import op25_iqsrc
@@ -1099,7 +1099,6 @@ class rx_main(object):
 
 if __name__ == "__main__":
     if sys.version[0] > '2':
-        pass
-        #sys.stderr = io.TextIOWrapper(sys.stderr.detach().detach(), write_through=True) # disable stderr buffering
+        sys.stderr = io.TextIOWrapper(sys.stderr.detach().detach(), write_through=True) # disable stderr buffering
     rx = rx_main()
     rx.run()
