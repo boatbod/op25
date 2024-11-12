@@ -77,6 +77,7 @@ namespace gr {
                 int  d_msgq_id;
                 bool d_do_audio_output;
                 int d_nac;
+                int d_behavior;
                 gr::msg_queue::sptr d_msg_queue;
                 std::deque<int16_t> &output_queue;
                 p25_framer* framer;
@@ -102,6 +103,7 @@ namespace gr {
                 void reset_timer();
                 void call_end();
                 void crypt_reset();
+                void crypt_behavior(int behavior);
                 void crypt_key(uint16_t keyid, uint8_t algid, const std::vector<uint8_t> &key);
                 void rx_sym (const uint8_t *syms, int nsyms);
                 p25p1_fdma(const op25_audio& udp, log_ts& logger, int debug, bool do_imbe, bool do_output, bool do_msgq, gr::msg_queue::sptr queue, std::deque<int16_t> &output_queue, bool do_audio_output, int msgq_id = 0);

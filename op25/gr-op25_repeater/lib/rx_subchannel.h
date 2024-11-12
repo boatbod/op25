@@ -54,6 +54,8 @@ namespace gr {
                 void set_slot_mask(int mask) { };
                 void set_slot_key(int mask) { };
                 void set_xormask(const char* p) { };
+                // crypt_behavior
+                void crypt_behavior(int behavior) { };
                 void set_debug(int debug);
                 rx_subchannel(const char * options, log_ts& logger, int debug, int msgq_id, gr::msg_queue::sptr queue);
                 ~rx_subchannel();

@@ -142,6 +142,12 @@ void rx_sync::set_slot_key(int mask) {
 	d_slot_key = mask;
 }
 
+void rx_sync::crypt_behavior(int behavior) {
+	d_behavior = behavior;
+	p25fdma.crypt_behavior(behavior);
+	p25tdma.crypt_behavior(behavior);
+}
+
 void rx_sync::set_debug(int debug) {
     d_debug = debug;
 	d_audio.set_debug(debug);

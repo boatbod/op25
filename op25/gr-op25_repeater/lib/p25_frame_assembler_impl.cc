@@ -78,7 +78,12 @@ namespace gr {
                 op25audio.set_debug(d_debug);
                 p1fdma.set_debug(d_debug);
                 p2tdma.set_debug(d_debug);
-            } else {
+			} else if (cmd == "crypt_behavior") {
+				int d_behavior = j["crypt_behavior"].get<int>();
+				p1fdma.crypt_behavior(d_behavior);
+				p2tdma.crypt_behavior(d_behavior);
+			}
+			else {
                 if (d_debug >= 10) {
                     fprintf(stderr, "%s p25_frame_assembler_impl::control: unhandled cmd(%s)\n", logts.get(0), cmd.c_str());
                 }
