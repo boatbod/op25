@@ -54,6 +54,7 @@ public:
 	~p25p2_tdma();	// destructor
 	void set_xormask(const char*p);
 	inline void set_nac(int nac) { d_nac = nac; }
+	void crypt_behavior(int behavior);
 	inline void set_debug(int debug) { d_debug = debug; }
 	bool rx_sym(uint8_t sym);
 	int handle_frame(void) ;
@@ -81,6 +82,7 @@ private:
 	const op25_audio& op25audio;
     log_ts& logts;
     int d_nac;
+    int d_behavior;
 	int d_debug;
 	int burst_id;
 	int burst_type;

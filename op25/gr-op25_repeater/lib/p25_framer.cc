@@ -43,6 +43,7 @@ p25_framer::p25_framer(log_ts& logger, int debug, int msgq_id) :
     d_msgq_id(msgq_id),
     d_expected_nac(0),
     d_unexpected_nac(0),
+    d_behavior(0),
     logts(logger),
     symbols_received(0),
     nac(0),

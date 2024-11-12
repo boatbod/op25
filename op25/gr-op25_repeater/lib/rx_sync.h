@@ -53,8 +53,8 @@
 
 #include "rx_base.h"
 
-namespace gr{
-    namespace op25_repeater{
+namespace gr {
+    namespace op25_repeater {
 
 enum rx_types {
 	RX_TYPE_NONE=0,
@@ -122,6 +122,8 @@ public:
 	void set_slot_key(int mask);
 	void set_xormask(const char* p);
 	void set_nac(int nac);
+	//crypt_behavior
+	void crypt_behavior(int behavior);
 	void set_debug(int debug);
 	rx_sync(const char * options, log_ts& logger, int debug, int msgq_id, gr::msg_queue::sptr queue);
 	~rx_sync();
@@ -167,6 +169,7 @@ private:
 	gr::msg_queue::sptr d_msg_queue;
 	bool d_stereo;
 	int d_debug;
+	int d_behavior;
 	op25_audio d_audio;
 	log_ts& logts;
 };

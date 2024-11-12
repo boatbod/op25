@@ -22,8 +22,8 @@
 
 #include "log_ts.h"
 
-namespace gr{
-    namespace op25_repeater{
+namespace gr {
+    namespace op25_repeater {
 
         class rx_base {
             public:
@@ -37,7 +37,9 @@ namespace gr{
                 virtual void set_slot_key(int mask) = 0;
                 virtual void set_nac(int nac) = 0;
                 virtual void set_debug(int debug) = 0;
+                // Crypt_behavior
                 virtual void set_xormask(const char* p) = 0;
+                virtual void crypt_behavior(int behavior) = 0;
                 rx_base(const char * options, log_ts& logger, int debug, int msgq_id, gr::msg_queue::sptr queue) { };
                 rx_base() {}; // default constructor called by derived classes
                 virtual ~rx_base() {};

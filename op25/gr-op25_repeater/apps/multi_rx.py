@@ -243,7 +243,13 @@ class channel(object):
             self.crypt_keys = get_key_dict(self.crypt_keys_file, self.msgq_id)
             for keyid in self.crypt_keys.keys():
                 self.decoder.control(json.dumps({'tuner': self.msgq_id, 'cmd': 'crypt_key', 'keyid': int(keyid), 'algid': int(self.crypt_keys[keyid]['algid']), 'key': self.crypt_keys[keyid]['key']}))
-
+        
+        # Load crypt_behavior
+        # self.crypt_behavior = int(from_dict(config, 'crypt_behavior', 0))
+        # export crypt_behavior to c
+        # self.decoder.control(json.dumps({'tuner': self.msgq_id, 'cmd': 'crypt_behavior', 'behavior': self.crypt_behavior})) 
+        # sys.stderr.write("%s crypt behavior: %d\n" % (log_ts.get(), self.crypt_behavior))
+        
         # Relative-tune the demodulator
         if not self.demod.set_relative_frequency((dev.frequency + dev.offset + dev.fractional_corr) - self.frequency):
             sys.stderr.write("%s [%d] Unable to initialize demod to freq: %d, using device freq: %d\n" % (log_ts.get(), self.msgq_id, self.frequency, dev.frequency))

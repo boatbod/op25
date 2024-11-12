@@ -57,6 +57,20 @@ class p25_crypt_algs
         bool adp_process(packed_codeword& PCW, frame_type fr_type, int voice_subframe);
         void adp_keystream_gen();
         void adp_swap(uint8_t *S, uint32_t i, uint32_t j);
+        
+        /* DES */
+        uint8_t des_ks[224];
+        uint32_t d_des_position;
+        std::string hex2bin(std::string s);
+        std::string bin2hex(std::string s);
+        std::string permute(std::string k, int* arr, int n);
+        std::string shift_left(std::string k, int shifts);
+        std::string xor_(std::string a, std::string b);
+        std::string encrypt(std::string pt, std::vector<std::string> rkb, std::vector<std::string> rk);
+        void string2ByteArray(const std::string& s, uint8_t array[], int offset);
+        std::string byteArray2string(uint8_t array[]);
+        void des_keystream_gen();
+        bool des_ofb_process(packed_codeword& PCW, frame_type fr_type, int voice_subframe);
 
     public:
         p25_crypt_algs(log_ts& logger, int debug, int msgq_id);

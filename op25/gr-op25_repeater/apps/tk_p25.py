@@ -318,7 +318,10 @@ class p25_system(object):
             self.cc_rate = 6000
 
         self.crypt_behavior = int(from_dict(self.config, 'crypt_behavior', 1))
-        #if 'crypt_keys' in self.config and self.config['crypt_keys'] != "":
+        #sys.stderr.write("%s crypt behavior: %d\n" % (log_ts.get(), self.crypt_behavior))
+        # export crypt_behavior to c
+        #self.fa_ctrl({'tuner': self.msgq_id, 'cmd': 'crypt_behavior', 'behavior': self.crypt_behavior})
+        # if 'crypt_keys' in self.config and self.config['crypt_keys'] != "":
         #    sys.stderr.write("%s [%s] reading system crypt_keys file: %s\n" % (log_ts.get(), self.sysname, self.config['crypt_keys']))
         #    self.crypt_keys = get_key_dict(self.config['crypt_keys'], self.sysname)
 
@@ -1662,6 +1665,9 @@ class p25_receiver(object):
         self.hold_mode = False
         self.tgid_hold_time = TGID_HOLD_TIME
         self.vc_retries = 0
+        
+        self.fa_ctrl({'tuner': self.msgq_id, 'cmd': 'crypt_behavior', 'behavior': self.crypt_behavior})
+        sys.stderr.write("%s crypt behavior: %d\n" % (log_ts.get(), self.crypt_behavior))
 
     def set_debug(self, dbglvl):
         self.debug = dbglvl
@@ -1840,6 +1846,8 @@ class p25_receiver(object):
                 self.talkgroups[self.current_tgid]['keyid'] = keyid
 
             updated += self.system.update_talkgroup_srcaddr(curr_time, self.current_tgid, srcaddr)
+            
+            #self.fa_ctrl({'tuner': self.msgq_id, 'cmd': 'crypt_behavior', 'behavior': self.crypt_behavior})
 
             if self.crypt_behavior > 1:
                 if self.talkgroups[self.current_tgid]['encrypted'] == 1:
