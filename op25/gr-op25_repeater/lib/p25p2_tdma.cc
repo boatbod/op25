@@ -537,24 +537,25 @@ void p25p2_tdma::handle_voice_frame(const uint8_t dibits[], int slot, int voice_
 	}
 	else if(d_debug < 9 && !encrypted() && d_behavior == -1) {
 		packed_codeword p_cw;
-        // Force mute clear voice
-        p_cw[0] = 0xF8;
-        p_cw[1] = 0x01;
-        p_cw[2] = 0xA9;
-        p_cw[3] = 0x9F;
-        p_cw[4] = 0x8C;
-        p_cw[5] = 0xE0;
-        p_cw[6] = 0x00;
-        vf.unpack_cw(p_cw, u);
-        vf.unpack_b(b, u);
+		vf.pack_cw(p_cw, u);
+		// Force mute clear voice
+		p_cw[0] = 0xF8;
+		p_cw[1] = 0x01;
+		p_cw[2] = 0xA9;
+		p_cw[3] = 0x9F;
+		p_cw[4] = 0x8C;
+		p_cw[5] = 0xE0;
+		p_cw[6] = 0x00;
+		vf.unpack_cw(p_cw, u);
+		vf.unpack_b(b, u);
 	}
 	else if (d_debug >= 9 && !encrypted() && d_behavior != -1) {
 		packed_codeword p_cw;
-        vf.pack_cw(p_cw, u);
-        fprintf(stderr, "%s AMBE %02x %02x %02x %02x %02x %02x %02x errs %lu err_rate %f, dt %f\n",
-			    log_str,
-			    p_cw[0], p_cw[1], p_cw[2], p_cw[3], p_cw[4], p_cw[5], p_cw[6], errs, errs_mp.ER,
-				logts.get_tdiff());            // dt is time in seconds since last AMBE frame processed
+		vf.pack_cw(p_cw, u);
+		fprintf(stderr, "%s AMBE %02x %02x %02x %02x %02x %02x %02x errs %lu err_rate %f, dt %f\n",
+			log_str,
+			p_cw[0], p_cw[1], p_cw[2], p_cw[3], p_cw[4], p_cw[5], p_cw[6], errs, errs_mp.ER,
+			logts.get_tdiff());            // dt is time in seconds since last AMBE frame processed
 		logts.mark_ts();
 	}
 
