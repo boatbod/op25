@@ -588,7 +588,8 @@ namespace gr {
                         fprintf(stderr, "%s IMBE %s errs %lu\n", logts.get(d_msgq_id), s, errs); // print to log in one operation
                     }
                     else if(d_debug < 9 && !encrypted() && d_behavior == -1) {
-						packed_codeword p_cw;
+			packed_codeword p_cw;
+			imbe_pack(p_cw, u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7]);
                         // Force mute clear voice
                         p_cw[0] = 0x04;
                         p_cw[1] = 0x0C;
@@ -602,15 +603,15 @@ namespace gr {
                         p_cw[9] = 0x9E;
                         p_cw[10] = 0x44;
                         imbe_unpack(p_cw, u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7]);
-					}
-					else if (d_debug >= 9 && !encrypted() && d_behavior != -1) {
-						packed_codeword p_cw;
-                        imbe_pack(p_cw, u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7]);
-                        sprintf(s,"%02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x",
-                                p_cw[0], p_cw[1], p_cw[2], p_cw[3], p_cw[4], p_cw[5],
-                                p_cw[6], p_cw[7], p_cw[8], p_cw[9], p_cw[10]);
-                        fprintf(stderr, "%s IMBE %s errs %lu\n", logts.get(d_msgq_id), s, errs); // print to log in one operation
-					}
+                    }
+		    else if (d_debug >= 9 && !encrypted() && d_behavior != -1) {
+			    packed_codeword p_cw;
+			    imbe_pack(p_cw, u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7]);
+			    sprintf(s,"%02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x",
+				    p_cw[0], p_cw[1], p_cw[2], p_cw[3], p_cw[4], p_cw[5],
+				    p_cw[6], p_cw[7], p_cw[8], p_cw[9], p_cw[10]);
+			    fprintf(stderr, "%s IMBE %s errs %lu\n", logts.get(d_msgq_id), s, errs); // print to log in one operation
+		    }
 					
 					
                     if (encrypted()) {
