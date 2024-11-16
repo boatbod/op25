@@ -221,9 +221,8 @@ bool p25_crypt_algs::des_ofb_process(packed_codeword& PCW, frame_type fr_type, i
         }
 	} else if (d_pr_type == PT_P25_PHASE2) {
         //TDMA - Experimental
-
         for (int j = 0; j < 7; ++j) {
-            PCW[j] = adp_keystream[j + offset] ^ PCW[j];
+            PCW[j] = des_ks[j + offset] ^ PCW[j];
         }
         PCW[6] &= 0x80; // mask everything except the MSB of the final codeword
 
