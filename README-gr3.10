@@ -1,3 +1,6 @@
+NOTE: As of 12/7/2024 origin/master is now gnuradio-3.10 based.  gr310 branch will contain the most
+recent 'release' version.
+
 The git branch "gr310" is only designed for building on gnuradio-3.10 and above.  If you are trying to
 build on a gnuradio-3.8 or prior system please "git checkout master" (head).  Note that gnuradio-3.9
 was a transitional release and support is untested on this version of op25.
