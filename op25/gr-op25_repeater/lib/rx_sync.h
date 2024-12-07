@@ -81,6 +81,16 @@ static const struct _mode_data {
 	{"YSF",    40,0,480,480*2}
 };   // index order must match rx_types enum
 
+#ifdef P25_FRAME_TYPES_ONLY
+static const int KNOWN_MAGICS = 2;
+static const struct _sync_magic {
+	int type;
+	uint64_t magic;
+} SYNC_MAGIC[KNOWN_MAGICS] = {
+	{RX_TYPE_P25P1, P25_FRAME_SYNC_MAGIC},
+	{RX_TYPE_P25P2, P25P2_FRAME_SYNC_MAGIC}
+}; // maps sync patterns to protocols
+#else
 static const int KNOWN_MAGICS = 13;
 static const struct _sync_magic {
 	int type;
@@ -100,6 +110,7 @@ static const struct _sync_magic {
 	{RX_TYPE_DSTAR, DSTAR_FRAME_SYNC_MAGIC},
 	{RX_TYPE_YSF, YSF_FRAME_SYNC_MAGIC}
 }; // maps sync patterns to protocols
+#endif
 
 enum codeword_types {
 	CODEWORD_P25P1,
