@@ -25,7 +25,7 @@ if [ ${GR_VER} = "3.10" ]; then
     echo "/usr/bin/python3" > op25/gr-op25_repeater/apps/op25_python
 else
     echo "Installing for GNURadio ${GR_VER} is not supported by this version of op25"
-    echo "Please \"git checkout master\" for GNURadio-3.8 or earlier"
+    echo "Please use git branch \"gr38\" for GNURadio-3.8 or earlier"
     exit 1
 fi
 
