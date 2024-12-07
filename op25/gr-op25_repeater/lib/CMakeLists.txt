@@ -20,6 +20,14 @@
 ########################################################################
 # Setup library
 ########################################################################
+option(P25_ONLY "Restrict decode to P25 frames only" OFF)
+if (P25_ONLY)
+  message(STATUS "Decode P25 frame types only")
+  add_definitions(-DP25_FRAME_TYPES_ONLY)
+else()
+  message(STATUS "Decode all frame types")
+endif()
+
 option(AMBE_TONES "Enable AMBE tone synthesis" ON)
 if (AMBE_TONES)
   message(STATUS "AMBE Tone Synthesis Enabled")
