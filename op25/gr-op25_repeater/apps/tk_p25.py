@@ -1471,6 +1471,12 @@ class p25_system(object):
         updated = 0
         time_now = time.time()
         for sg in list(self.patches):
+            if 'ts' not in self.patches[sg]:    # under normal circumstances this should never be possible
+                updated += 1
+                del self.patches[sg]
+                sys.stderr.write("%s [%s] expire_patches: expiring malformed patch sg(%d)\n" % (log_ts.get(), self.sysname, sg))
+                continue
+
             if time_now > (self.patches[sg]['ts'] + PATCH_EXPIRY_TIME):
                 updated += 1
                 del self.patches[sg]
