@@ -273,7 +273,8 @@ class _struct_pa_sample_spec(Structure):
                 ("channels", c_byte)]
 
 class pa_sound(object):
-    def __init__(self):
+    def __init__(self, instance_name):
+        self.instance_name = instance_name
         self.out = c_void_p(None)
         self.error = c_int(0)
         self.libpa = cdll.LoadLibrary("libpulse-simple.so.0")
@@ -284,7 +285,7 @@ class pa_sound(object):
         pa_simple_new = self.libpa.pa_simple_new
         pa_simple_new.restype = c_void_p
         self.out = pa_simple_new(None,
-                                "OP25".encode("ascii"),
+                                self.instance_name.encode("ascii"),
                                 PA_STREAM_PLAYBACK,
                                 None,
                                 "OP25 Playback".encode('ascii'),
@@ -376,11 +377,12 @@ class stdout_wrapper(object):
 
 # Main class that receives UDP audio samples and sends them to a PCM subsystem (currently ALSA or STDOUT)
 class socket_audio(object):
-    def __init__(self, udp_host, udp_port, pcm_device, two_channels = False, audio_gain = 1.0, dest_stdout = False, **kwds):
+    def __init__(self, udp_host, udp_port, pcm_device, two_channels = False, audio_gain = 1.0, dest_stdout = False, instance_name = "OP25", **kwds):
         self.keep_running = True
         self.two_channels = two_channels
         self.audio_gain = audio_gain
         self.dest_stdout = dest_stdout
+        self.instance_name = instance_name
         self.sock_a = None
         self.sock_b = None
         self.pcm = None
@@ -391,7 +393,7 @@ class socket_audio(object):
         else:
             if pcm_device.lower() == "pulse":
                 try:
-                    self.pcm = pa_sound()   # first try to open PulseAudio
+                    self.pcm = pa_sound(self.instance_name)   # first try to open PulseAudio
                     sys.stderr.write("using PulseAudio sound system\n")
                 except Exception as e:
                     self.pcm = None
@@ -544,11 +546,11 @@ class socket_audio(object):
         return
 
 class audio_thread(threading.Thread):
-    def __init__(self, udp_host, udp_port, pcm_device, two_channels = False, audio_gain = 1.0, dest_stdout = False, **kwds):
+    def __init__(self, udp_host, udp_port, pcm_device, two_channels = False, audio_gain = 1.0, dest_stdout = False, instance_name = "OP25", **kwds):
         threading.Thread.__init__(self, **kwds)
         self.setDaemon(True)
         self.keep_running = True
-        self.sock_audio = socket_audio(udp_host, udp_port, pcm_device, two_channels, audio_gain, dest_stdout, **kwds)
+        self.sock_audio = socket_audio(udp_host, udp_port, pcm_device, two_channels, audio_gain, dest_stdout, instance_name, **kwds)
         self.start()
         return
 

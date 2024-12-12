@@ -654,7 +654,7 @@ class rx_block (gr.top_block):
                 audio_2chan = True if int(from_dict(instance,'number_channels', 1)) == 2 else False
                 sys.stderr.write("Configuring audio instance #%d [%s]\n" % (idx, instance_name))
                 try:
-                    audio_s = self.audio.audio_thread("127.0.0.1", audio_port, audio_device, audio_2chan, audio_gain)
+                    audio_s = self.audio.audio_thread("127.0.0.1", audio_port, audio_device, audio_2chan, audio_gain, instance_name=instance_name)
                     self.audio_instances[instance_name] = audio_s
                 except:
                     sys.stderr.write("Error configuring audio instance #%d; %s\n" % (idx, sys.exc_info()[1]))
