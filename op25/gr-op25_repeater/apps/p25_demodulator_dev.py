@@ -361,8 +361,8 @@ class p25_demod_cb(p25_demod_base):
 
         decimation = int(input_rate / if_rate)
         resampled_rate = float(input_rate) / float(decimation)
-        self.if_coeffs_fdma = filter.firdes.low_pass(1.0, input_rate, 9000, 4000, window.WIN_HAMMING)
-        self.if_coeffs_tdma = filter.firdes.low_pass(1.0, input_rate, 12000, 4000, window.WIN_HAMMING)
+        self.if_coeffs_fdma = filter.firdes.low_pass(1.0, input_rate, 9000, 4000, filter.firdes.WIN_HAMMING)
+        self.if_coeffs_tdma = filter.firdes.low_pass(1.0, input_rate, 12000, 4000, filter.firdes.WIN_HAMMING)
         self.freq_xlat = filter.freq_xlating_fir_filter_ccf(decimation, self.if_coeffs_tdma, 0, input_rate)
         self.if_tdma = True
         self.connect(self, self.switch, self.freq_xlat)
