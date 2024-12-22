@@ -4,7 +4,7 @@
 # OP25 Demodulator Block
 # Copyright 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020 Max H. Parke KA1RBI
 #
-# Copyright 2020-2023 Graham J. Norbury - gnorbury@bondcar.com
+# Copyright 2020-2024 Graham J. Norbury - gnorbury@bondcar.com
 # 
 # This file is part of GNU Radio and part of OP25
 # 
@@ -37,6 +37,7 @@ import op25
 import op25_repeater
 import rms_agc
 from math import pi, isnan, isinf
+from log_ts import log_ts
 
 sys.path.append('tx')
 import op25_c4fm_mod
@@ -233,6 +234,9 @@ class p25_demod_base(gr.hier_block2):
     def get_freq_error(self):
         return 0
 
+    def set_tdma(self, enabled = True):
+        pass 
+
     def control(self, enabled = True):
         self.switch.set_enabled(enabled)
 
@@ -302,6 +306,9 @@ class p25_demod_fb(p25_demod_base):
         except:
             pass
 
+    def set_tdma(self, enabled = True):
+        pass 
+
     def set_relative_frequency(self, freq):
         return True
 
@@ -354,8 +361,10 @@ class p25_demod_cb(p25_demod_base):
 
         decimation = int(input_rate / if_rate)
         resampled_rate = float(input_rate) / float(decimation)
-        if_coeffs = filter.firdes.low_pass(1.0, input_rate, 12000, 4000, filter.firdes.WIN_HAMMING)
-        self.freq_xlat = filter.freq_xlating_fir_filter_ccf(decimation, if_coeffs, 0, input_rate)
+        self.if_coeffs_fdma = filter.firdes.low_pass(1.0, input_rate, 9000, 4000, window.WIN_HAMMING)
+        self.if_coeffs_tdma = filter.firdes.low_pass(1.0, input_rate, 12000, 4000, window.WIN_HAMMING)
+        self.freq_xlat = filter.freq_xlating_fir_filter_ccf(decimation, self.if_coeffs_tdma, 0, input_rate)
+        self.if_tdma = True
         self.connect(self, self.switch, self.freq_xlat)
         if self.if_rate != resampled_rate:
             self.if_out = filter.pfb.arb_resampler_ccf(float(self.if_rate) / resampled_rate)
@@ -367,7 +376,7 @@ class p25_demod_cb(p25_demod_base):
         sps = self.if_rate // self.symbol_rate
         gain_omega = 0.1  * gain_mu * gain_mu
 
-        sys.stderr.write("demodulator: xlator if_rate=%d, input_rate=%d, decim=%d, taps=%d, resampled_rate=%d, sps=%d\n" % (if_rate, input_rate, decimation, len(if_coeffs), resampled_rate, sps))
+        sys.stderr.write("demodulator: xlator if_rate=%d, input_rate=%d, decim=%d, taps=%d, resampled_rate=%d, sps=%d\n" % (if_rate, input_rate, decimation, len(self.if_coeffs_tdma), resampled_rate, sps))
 
         self.agc = rms_agc.rms_agc(0.45, 0.85)
         self.fll = digital.fll_band_edge_cc(sps, excess_bw, 2*sps+1, TWO_PI/sps/350) # automatic frequency correction
@@ -543,3 +552,16 @@ class p25_demod_cb(p25_demod_base):
     def costas_reset(self):
         self.costas.set_frequency(0)
         self.costas.set_phase(0)
+
+    def set_tdma(self, enabled = True):
+        if enabled and not self.if_tdma:
+            self.freq_xlat.set_taps(self.if_coeffs_tdma) 
+            self.if_tdma = True
+            if self.debug >= 10:
+                sys.stderr.write("%s [%d] Setting IF taps for TDMA\n" % (log_ts.get(), self.msgq_id))
+        elif not enabled and self.if_tdma:
+            self.freq_xlat.set_taps(self.if_coeffs_fdma)
+            self.if_tdma = False
+            if self.debug >= 10:
+                sys.stderr.write("%s [%d] Setting IF taps for FDMA\n" % (log_ts.get(), self.msgq_id))
+

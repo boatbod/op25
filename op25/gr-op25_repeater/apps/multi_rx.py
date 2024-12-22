@@ -500,6 +500,7 @@ class channel(object):
         if 'tdma' in params and params['tdma'] is not None:
             set_tdma = True
             self.decoder.control(json.dumps({'tuner': self.msgq_id, 'cmd': 'set_slotid', 'slotid': params['tdma']}))
+        self.demod.set_tdma(set_tdma)
         if set_tdma == self.tdma_state:
             return
         self.tdma_state = set_tdma
