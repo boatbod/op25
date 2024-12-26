@@ -1672,6 +1672,7 @@ class p25_receiver(object):
         self.hold_mode = False
         self.tgid_hold_time = TGID_HOLD_TIME
         self.vc_retries = 0
+        self.tune_ts = None
         
         self.fa_ctrl({'tuner': self.msgq_id, 'cmd': 'crypt_behavior', 'behavior': self.crypt_behavior})
         sys.stderr.write("%s crypt behavior: %d\n" % (log_ts.get(), self.crypt_behavior))
@@ -1746,6 +1747,8 @@ class p25_receiver(object):
     def tune_voice(self, freq, tgid, slot):
         if freq is None or int(freq) == 0:
             return
+
+        self.tune_ts = time.time()                                                          # save timestamp at start of tuning
 
         if self.tuner_idle:
             if self.fa_ctrl is not None:
@@ -1864,6 +1867,11 @@ class p25_receiver(object):
                     self.add_skiplist(self.current_tgid, curr_time + TGID_SKIP_TIME)
 
         elif m_type == -4: # P25 sync established
+            if self.tune_ts is not None:
+                if self.debug > 1:
+                    sys.stderr.write('%s [%d] sync established, tuning time %f seconds\n' % (log_ts.get(), self.msgq_id, (time.time() - self.tune_ts)))
+                self.tune_ts = None
+
             if self.current_tgid is None:
                 if self.system.has_cc(self.msgq_id):
                     self.system.sync_cc()
