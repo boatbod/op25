@@ -359,24 +359,33 @@ class p25_demod_cb(p25_demod_base):
         elif filter_type == 'widepulse':
             self.set_baseband_gain(0.7)
 
+        # demodulator IF filter parameters (Hz)
+        fdma_cutoff = 7000
+        tdma_cutoff = 9200
+        trans_width = 1200
+        #
         decimation = int(input_rate / if_rate)
         resampled_rate = float(input_rate) / float(decimation)
-        self.if_coeffs_fdma = filter.firdes.low_pass(1.0, input_rate, 9000, 4000, filter.firdes.WIN_HAMMING)
-        self.if_coeffs_tdma = filter.firdes.low_pass(1.0, input_rate, 12000, 4000, filter.firdes.WIN_HAMMING)
-        self.freq_xlat = filter.freq_xlating_fir_filter_ccf(decimation, self.if_coeffs_tdma, 0, input_rate)
-        self.if_tdma = True
-        self.connect(self, self.switch, self.freq_xlat)
-        if self.if_rate != resampled_rate:
+        fdma_cutoff = fdma_cutoff if ((resampled_rate//2) >= fdma_cutoff) else (resampled_rate//2)          # sanity-check cutoffs to ensure they are less than the nyquist frequency
+        tdma_cutoff = tdma_cutoff if ((resampled_rate//2) >= tdma_cutoff) else (resampled_rate//2)
+        freq_xlat_coeffs = filter.firdes.low_pass(1.0, input_rate, resampled_rate/2, resampled_rate/2)      # taps can be very long for wideband SDR hardware so maximize transition width
+        self.if_coeffs_fdma = filter.firdes.low_pass(1.0, resampled_rate, fdma_cutoff, trans_width, filter.firdes.WIN_HAMMING)
+        self.if_coeffs_tdma = filter.firdes.low_pass(1.0, resampled_rate, tdma_cutoff, trans_width, filter.firdes.WIN_HAMMING)
+        self.freq_xlat = filter.freq_xlating_fir_filter_ccf(decimation, freq_xlat_coeffs, 0, input_rate)    # freq_xlat extracts the approximate channel, sampled at or near the if_rate
+        self.if_filter = filter.fir_filter_ccf(1, self.if_coeffs_tdma)                                      # if_filter rejects adjacent channel inteference
+        self.if_tdma = True                                                                                 # filter width dynamically selectable based on modulation type
+        self.connect(self, self.switch, self.freq_xlat, self.if_filter)
+        if self.if_rate != resampled_rate:                                                                  # resample to the specified if_rate, if necessary
             self.if_out = filter.pfb.arb_resampler_ccf(float(self.if_rate) / resampled_rate)
-            self.connect(self.freq_xlat, self.if_out)
+            self.connect(self.if_filter, self.if_out)
         else:
-            self.if_out = self.freq_xlat
+            self.if_out = self.if_filter
 
         omega = float(self.if_rate) / float(self.symbol_rate)
         sps = self.if_rate // self.symbol_rate
         gain_omega = 0.1  * gain_mu * gain_mu
 
-        sys.stderr.write("demodulator: xlator if_rate=%d, input_rate=%d, decim=%d, taps=%d, resampled_rate=%d, sps=%d\n" % (if_rate, input_rate, decimation, len(self.if_coeffs_tdma), resampled_rate, sps))
+        sys.stderr.write("demodulator: xlator if_rate=%d, input_rate=%d, decim=%d, if taps=[%d,%d], resampled_rate=%d, sps=%d\n" % (if_rate, input_rate, decimation, len(freq_xlat_coeffs), len(self.if_coeffs_tdma), resampled_rate, sps))
 
         self.agc = rms_agc.rms_agc(0.45, 0.85)
         self.fll = digital.fll_band_edge_cc(sps, excess_bw, 2*sps+1, TWO_PI/sps/350) # automatic frequency correction
@@ -555,12 +564,12 @@ class p25_demod_cb(p25_demod_base):
 
     def set_tdma(self, enabled = True):
         if enabled and not self.if_tdma:
-            self.freq_xlat.set_taps(self.if_coeffs_tdma) 
+            self.if_filter.set_taps(self.if_coeffs_tdma) 
             self.if_tdma = True
             if self.debug >= 10:
                 sys.stderr.write("%s [%d] Setting IF taps for TDMA\n" % (log_ts.get(), self.msgq_id))
         elif not enabled and self.if_tdma:
-            self.freq_xlat.set_taps(self.if_coeffs_fdma)
+            self.if_filter.set_taps(self.if_coeffs_fdma)
             self.if_tdma = False
             if self.debug >= 10:
                 sys.stderr.write("%s [%d] Setting IF taps for FDMA\n" % (log_ts.get(), self.msgq_id))
