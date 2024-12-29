@@ -23,6 +23,7 @@ namespace py = pybind11;
 // BINDING_FUNCTION_PROTOTYPES(
     void bind_ambe_encoder_sb(py::module& m);
     void bind_analog_udp(py::module& m);
+    void bind_cma_equalizer_cc(py::module& m);
     void bind_costas_loop_cc(py::module& m);
     void bind_dmr_bs_tx_bb(py::module& m);
     void bind_dstar_tx_sb(py::module& m);
@@ -64,6 +65,7 @@ PYBIND11_MODULE(op25_repeater_python, m)
     // BINDING_FUNCTION_CALLS(
         bind_ambe_encoder_sb(m);
         bind_analog_udp(m);
+        bind_cma_equalizer_cc(m);
         bind_costas_loop_cc(m);
         bind_dmr_bs_tx_bb(m);
         bind_dstar_tx_sb(m);

@@ -69,3 +69,4 @@ GR_ADD_TEST(qa_vocoder ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/qa_vocod
 GR_ADD_TEST(qa_gardner_costas_cc ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/qa_gardner_costas_cc.py)
 GR_ADD_TEST(qa_p25_frame_assembler ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/qa_p25_frame_assembler.py)
 GR_ADD_TEST(qa_fsk4_slicer_fb ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/qa_fsk4_slicer_fb.py)
+GR_ADD_TEST(qa_cma_equalizer_cc ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/qa_cma_equalizer_cc.py)

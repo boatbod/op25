@@ -33,6 +33,7 @@ list(APPEND op25_repeater_sources
     analog_udp_impl.cc
     rmsagc_ff_impl.cc
     fsk4_slicer_fb_impl.cc
+    cma_equalizer_cc_impl.cc
     iqfile_source_impl.cc
     bch.cc
     rs.cc

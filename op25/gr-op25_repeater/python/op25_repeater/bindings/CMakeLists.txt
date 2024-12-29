@@ -31,6 +31,7 @@ include(GrPybind)
 list(APPEND op25_repeater_python_files
     ambe_encoder_sb_python.cc
     analog_udp_python.cc
+    cma_equalizer_cc_python.cc
     costas_loop_cc_python.cc
     dmr_bs_tx_bb_python.cc
     dstar_tx_sb_python.cc
