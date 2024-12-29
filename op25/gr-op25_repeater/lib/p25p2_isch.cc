@@ -175,7 +175,6 @@ p25p2_isch::p25p2_isch(void)
 int16_t
 p25p2_isch::isch_lookup(const uint8_t dibits[])
 {
-	char s[64];
 	uint64_t cw = 0;
 	for (int i=0; i<20; i++)
 		cw = (cw << 2) + dibits[i];
