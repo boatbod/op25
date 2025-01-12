@@ -391,7 +391,6 @@ class p25_demod_cb(p25_demod_base):
         self.agc = rms_agc.rms_agc(0.45, 0.85)                                       # rough amplitude correction prior to fll
         self.fll = digital.fll_band_edge_cc(sps, excess_bw, 2*sps+1, TWO_PI/sps/350) # automatic frequency correction
         self.clock = op25_repeater.gardner_cc(omega, gain_mu, gain_omega)            # timing recovery
-        self.cma = op25_repeater.cma_equalizer_cc(2, 1, 0.20, 1)                     # symbol-spaced cma equalization
         self.costas = op25_repeater.costas_loop_cc(costas_alpha, 4, TWO_PI/4)        # phase stabilization, range-limited to +/-90deg
 
         # Perform Differential decoding on the constellation
@@ -458,7 +457,7 @@ class p25_demod_cb(p25_demod_base):
             self.nbfm = None
         if self.connect_state == 'cqpsk':
             self.disconnect_fm_demod()
-            self.disconnect(self.if_out, self.agc, self.fll, self.clock, self.cma, self.diffdec, self.costas, self.to_float, self.rescale, self.slicer)
+            self.disconnect(self.if_out, self.agc, self.fll, self.clock, self.diffdec, self.costas, self.to_float, self.rescale, self.slicer)
         elif self.connect_state == 'fsk4':
             self.disconnect(self.if_out, self.fm_demod, self.baseband_amp, self.symbol_filter, self.fsk4_demod, self.slicer)
         self.connect_state = None
@@ -472,7 +471,7 @@ class p25_demod_cb(p25_demod_base):
         if demod_type == 'fsk4':
             self.connect(self.if_out, self.agc, self.fll, self.fm_demod, self.baseband_amp, self.symbol_filter, self.fsk4_demod, self.slicer)
         elif demod_type == 'cqpsk':
-            self.connect(self.if_out, self.agc, self.fll, self.clock, self.cma, self.diffdec, self.costas, self.to_float, self.rescale, self.slicer)
+            self.connect(self.if_out, self.agc, self.fll, self.clock, self.diffdec, self.costas, self.to_float, self.rescale, self.slicer)
         else:
             sys.stderr.write("connect_chain failed, type: %s\n" % demod_type)
             assert 0 == 1
