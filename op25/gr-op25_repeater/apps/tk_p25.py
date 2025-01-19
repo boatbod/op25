@@ -1381,10 +1381,10 @@ class p25_system(object):
         with self.patches_mutex:
             patch_list = None if tgid not in self.patches else list(self.patches[tgid]['ga'])
         if patch_list is not None:
-                for ptgid in patch_list:
-                    self.update_talkgroup(frequency, ptgid, tdma_slot, srcaddr, svcopts)
-                    if self.debug >= 5:
-                        sys.stderr.write('%s [%s] update_talkgroups: sg(%d) patched tgid(%d)\n' % (log_ts.get(), self.sysname, tgid, ptgid))
+            for ptgid in patch_list:
+                self.update_talkgroup(frequency, ptgid, tdma_slot, srcaddr, svcopts)
+                if self.debug >= 5:
+                    sys.stderr.write('%s [%s] update_talkgroups: sg(%d) patched tgid(%d)\n' % (log_ts.get(), self.sysname, tgid, ptgid))
 
     def update_talkgroup(self, frequency, tgid, tdma_slot, srcaddr, svcopts):
         with self.talkgroups_mutex:
@@ -1444,7 +1444,7 @@ class p25_system(object):
                     tg_expire_list.append(tgid)
 
         # step 2 - expire the individual talkgroups with the talkgroups_mutex unlocked
-        for tgid in tg_list:
+        for tgid in tg_expire_list:
             if self.debug > 1:
                 sys.stderr.write("%s [%s] expiring tg(%d), freq(%f), slot(%s)\n" % (log_ts.get(), self.sysname, tgid, (self.talkgroups[tgid]['frequency']/1e6), get_slot(self.talkgroups[tgid]['tdma_slot'])))
             self.talkgroups[tgid]['receiver'].expire_talkgroup(reason="expiry")
