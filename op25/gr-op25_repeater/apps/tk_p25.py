@@ -27,6 +27,7 @@ import time
 import json
 import codecs
 import ast
+import threading
 from helper_funcs import *
 from log_ts import log_ts
 from gnuradio import gr
@@ -229,6 +230,7 @@ class rx_ctl(object):
     def dump_tgids(self):
         for system in self.systems:
             self.systems[system]['system'].dump_tgids()
+            self.systems[system]['system'].dump_patches()
             self.systems[system]['system'].dump_rids()
             self.systems[system]['system'].sourceid_history.dump()
 
@@ -263,9 +265,11 @@ class p25_system(object):
         self.freq_table = {}
         self.voice_frequencies = {}
         self.talkgroups = {}
+        self.talkgroups_mutex = threading.Lock()
         self.sourceids = {}
         self.sourceid_history = rid_history(self.sourceids, 10)
         self.patches = {}
+        self.patches_mutex = threading.Lock()
         self.blacklist = {}
         self.whitelist = None
         self.crypt_behavior = 1
@@ -338,9 +342,6 @@ class p25_system(object):
     def set_debug(self, dbglvl):
         self.debug = dbglvl
 
-    def get_frequencies(self):
-        return self.voice_frequencies
-
     def get_talkgroups(self):
         return self.talkgroups
 
@@ -408,10 +409,11 @@ class p25_system(object):
                     else:
                         prio = TGID_DEFAULT_PRIO
 
-                    if tgid not in self.talkgroups:
-                        add_default_tgid(self.talkgroups, tgid)
-                    self.talkgroups[tgid]['tag'] = tag
-                    self.talkgroups[tgid]['prio'] = prio
+                    with self.talkgroups_mutex:
+                        if tgid not in self.talkgroups:
+                            add_default_tgid(self.talkgroups, tgid)
+                        self.talkgroups[tgid]['tag'] = tag
+                        self.talkgroups[tgid]['prio'] = prio
                     if self.debug > 1:
                         sys.stderr.write("%s [%s] setting tgid(%d), prio(%d), tag(%s)\n" % (log_ts.get(), self.sysname, tgid, prio, tag))
         except (IOError) as ex:
@@ -1376,52 +1378,56 @@ class p25_system(object):
 
     def update_talkgroups(self, frequency, tgid, tdma_slot, srcaddr, svcopts):
         self.update_talkgroup(frequency, tgid, tdma_slot, srcaddr, svcopts)
-        if tgid in self.patches:
-            for ptgid in self.patches[tgid]['ga']:
+        with self.patches_mutex:
+            patch_list = None if tgid not in self.patches else list(self.patches[tgid]['ga'])
+        if patch_list is not None:
+            for ptgid in patch_list:
                 self.update_talkgroup(frequency, ptgid, tdma_slot, srcaddr, svcopts)
                 if self.debug >= 5:
                     sys.stderr.write('%s [%s] update_talkgroups: sg(%d) patched tgid(%d)\n' % (log_ts.get(), self.sysname, tgid, ptgid))
 
     def update_talkgroup(self, frequency, tgid, tdma_slot, srcaddr, svcopts):
-        if self.debug >= 5:
-            if svcopts is None:
-                sys.stderr.write('%s [%s] set tgid=%s, srcaddr=%s, svcopts=None\n' % (log_ts.get(), self.sysname, tgid, srcaddr))
-            else:
-                sys.stderr.write('%s [%s] set tgid=%s, srcaddr=%s, svcopts=0x%x\n' % (log_ts.get(), self.sysname, tgid, srcaddr, svcopts))
-        
-        if tgid not in self.talkgroups:
-            add_default_tgid(self.talkgroups, tgid)
+        with self.talkgroups_mutex:
             if self.debug >= 5:
-                sys.stderr.write('%s [%s] new tgid=%s %s prio %d\n' % (log_ts.get(), self.sysname, tgid, self.talkgroups[tgid]['tag'], self.talkgroups[tgid]['prio']))
-        self.talkgroups[tgid]['time'] = time.time()
-        self.talkgroups[tgid]['counter'] += 1
-        self.talkgroups[tgid]['frequency'] = frequency
-        self.talkgroups[tgid]['tdma_slot'] = tdma_slot
-        if svcopts is not None:
-            self.talkgroups[tgid]['svcopts'] = svcopts
-        if srcaddr is not None:
-            if (self.talkgroups[tgid]['receiver'] is not None):
-                if (srcaddr > 0):
-                    self.talkgroups[tgid]['srcaddr'] = srcaddr      # don't overwrite with null srcaddr for active calls
-            else:
-                self.talkgroups[tgid]['srcaddr'] = srcaddr
+                if svcopts is None:
+                    sys.stderr.write('%s [%s] set tgid=%s, srcaddr=%s, svcopts=None\n' % (log_ts.get(), self.sysname, tgid, srcaddr))
+                else:
+                    sys.stderr.write('%s [%s] set tgid=%s, srcaddr=%s, svcopts=0x%x\n' % (log_ts.get(), self.sysname, tgid, srcaddr, svcopts))
+        
+            if tgid not in self.talkgroups:
+                add_default_tgid(self.talkgroups, tgid)
+                if self.debug >= 5:
+                    sys.stderr.write('%s [%s] new tgid=%s %s prio %d\n' % (log_ts.get(), self.sysname, tgid, self.talkgroups[tgid]['tag'], self.talkgroups[tgid]['prio']))
+            self.talkgroups[tgid]['time'] = time.time()
+            self.talkgroups[tgid]['counter'] += 1
+            self.talkgroups[tgid]['frequency'] = frequency
+            self.talkgroups[tgid]['tdma_slot'] = tdma_slot
+            if svcopts is not None:
+                self.talkgroups[tgid]['svcopts'] = svcopts
+            if srcaddr is not None:
+                if (self.talkgroups[tgid]['receiver'] is not None):
+                    if (srcaddr > 0):
+                        self.talkgroups[tgid]['srcaddr'] = srcaddr      # don't overwrite with null srcaddr for active calls
+                else:
+                    self.talkgroups[tgid]['srcaddr'] = srcaddr
 
     def update_talkgroup_srcaddr(self, curr_time, tgid, srcaddr, svcopts=None):
         if (tgid is None or tgid <= 0 or srcaddr is None or srcaddr <= 0 or
             tgid not in self.talkgroups or self.talkgroups[tgid]['receiver'] is None):
             return 0
 
-        if svcopts is not None:
-            self.talkgroups[tgid]['svcopts'] = svcopts
-        self.talkgroups[tgid]['srcaddr'] = srcaddr
-        add_default_rid(self.sourceids, srcaddr)
-        self.sourceids[srcaddr]['counter'] += 1
-        self.sourceids[srcaddr]['time'] = curr_time
-        if tgid not in self.sourceids[srcaddr]['tgs']:
-            self.sourceids[srcaddr]['tgs'][tgid] = 1;
-        else:
-            self.sourceids[srcaddr]['tgs'][tgid] += 1;
-        self.sourceid_history.record(srcaddr, tgid, curr_time)
+        with self.talkgroups_mutex:
+            if svcopts is not None:
+                self.talkgroups[tgid]['svcopts'] = svcopts
+            self.talkgroups[tgid]['srcaddr'] = srcaddr
+            add_default_rid(self.sourceids, srcaddr)
+            self.sourceids[srcaddr]['counter'] += 1
+            self.sourceids[srcaddr]['time'] = curr_time
+            if tgid not in self.sourceids[srcaddr]['tgs']:
+                self.sourceids[srcaddr]['tgs'][tgid] = 1;
+            else:
+                self.sourceids[srcaddr]['tgs'][tgid] += 1;
+            self.sourceid_history.record(srcaddr, tgid, curr_time)
         return 1
 
     def expire_talkgroups(self, curr_time):
@@ -1429,59 +1435,64 @@ class p25_system(object):
             return
 
         self.last_expiry_check = curr_time
-        for tgid in self.talkgroups:
-            if (self.talkgroups[tgid]['receiver'] is not None) and (curr_time >= self.talkgroups[tgid]['time'] + TGID_EXPIRY_TIME):
-                if self.debug > 1:
-                    sys.stderr.write("%s [%s] expiring tg(%d), freq(%f), slot(%s)\n" % (log_ts.get(), self.sysname, tgid, (self.talkgroups[tgid]['frequency']/1e6), get_slot(self.talkgroups[tgid]['tdma_slot'])))
-                self.talkgroups[tgid]['receiver'].expire_talkgroup(reason="expiry")
+        tg_expire_list = []
+        # done in two steps so the critical sections can be decoupled
+        # step 1 - build an expiry list with the talkgroups_mutex locked
+        with self.talkgroups_mutex:
+            for tgid in self.talkgroups:
+                if (self.talkgroups[tgid]['receiver'] is not None) and (curr_time >= self.talkgroups[tgid]['time'] + TGID_EXPIRY_TIME):
+                    tg_expire_list.append(tgid)
+
+        # step 2 - expire the individual talkgroups with the talkgroups_mutex unlocked
+        for tgid in tg_expire_list:
+            if self.debug > 1:
+                sys.stderr.write("%s [%s] expiring tg(%d), freq(%f), slot(%s)\n" % (log_ts.get(), self.sysname, tgid, (self.talkgroups[tgid]['frequency']/1e6), get_slot(self.talkgroups[tgid]['tdma_slot'])))
+            self.talkgroups[tgid]['receiver'].expire_talkgroup(reason="expiry")
 
     def add_patch(self, sg, ga_list):
-        if sg not in self.patches:
-            self.patches[sg] = {}
-            self.patches[sg]['ga'] = set()
-            self.patches[sg]['ts'] = time.time()
+        with self.patches_mutex:
+            if sg not in self.patches:
+                self.patches[sg] = {}
+                self.patches[sg]['ga'] = set()
+                self.patches[sg]['ts'] = time.time()
 
-        for ga in ga_list:
-            if (ga != sg):
-                self.patches[sg]['ts'] = time.time() # update timestamp
-                if ga not in self.patches[sg]['ga']:
-                    self.patches[sg]['ga'].add(ga)
-                    if self.debug >= 5:
-                        sys.stderr.write("%s [%s] add_patch: tgid(%d) is patched to sg(%d)\n" % (log_ts.get(), self.sysname, ga, sg))
+            for ga in ga_list:
+                if (ga != sg):
+                    self.patches[sg]['ts'] = time.time() # update timestamp
+                    if ga not in self.patches[sg]['ga']:
+                        self.patches[sg]['ga'].add(ga)
+                        if self.debug >= 5:
+                            sys.stderr.write("%s [%s] add_patch: tgid(%d) is patched to sg(%d)\n" % (log_ts.get(), self.sysname, sg, ga_list))
 
-        if len(self.patches[sg]['ga']) == 0:
-            del self.patches[sg]
+            if len(self.patches[sg]['ga']) == 0:
+                del self.patches[sg]
 
     def del_patch(self, sg, ga_list):
         if sg not in self.patches:
             return
 
-        for ga in ga_list:
-            if ga in self.patches[sg]['ga']:
-                self.patches[sg]['ga'].discard(ga)
-                if self.debug >= 5:
-                    sys.stderr.write("%s [%s] del_patch: tgid(%d) is unpatched from sg(%d)\n" % (log_ts.get(), self.sysname, ga, sg))
+        with self.patches_mutex:
+            for ga in ga_list:
+                if ga in self.patches[sg]['ga']:
+                    self.patches[sg]['ga'].discard(ga)
+                    if self.debug >= 5:
+                        sys.stderr.write("%s [%s] del_patch: tgid(%d) is unpatched from sg(%d)\n" % (log_ts.get(), self.sysname, ga, sg))
 
-        if (sg in ga_list) or (len(self.patches[sg]['ga']) == 0):
-            del self.patches[sg]
-            if self.debug >= 5:
-                sys.stderr.write("%s del_patch: deleting patch sg(%d)\n" % (log_ts.get(), sg))
+            if (sg in ga_list) or (len(self.patches[sg]['ga']) == 0):
+                del self.patches[sg]
+                if self.debug >= 5:
+                    sys.stderr.write("%s del_patch: deleting patch sg(%d)\n" % (log_ts.get(), sg))
 
     def expire_patches(self):
         updated = 0
-        time_now = time.time()
-        for sg in list(self.patches):
-            if 'ts' not in self.patches[sg]:    # under normal circumstances this should never be possible
-                updated += 1
-                del self.patches[sg]
-                sys.stderr.write("%s [%s] expire_patches: expiring malformed patch sg(%d)\n" % (log_ts.get(), self.sysname, sg))
-                continue
-
-            if time_now > (self.patches[sg]['ts'] + PATCH_EXPIRY_TIME):
-                updated += 1
-                del self.patches[sg]
-                if self.debug >= 5:
-                    sys.stderr.write("%s [%s] expire_patches: expiring patch sg(%d)\n" % (log_ts.get(), self.sysname, sg))
+        with self.patches_mutex:
+            time_now = time.time()
+            for sg in list(self.patches):
+                if time_now > (self.patches[sg]['ts'] + PATCH_EXPIRY_TIME):
+                    updated += 1
+                    del self.patches[sg]
+                    if self.debug >= 5:
+                        sys.stderr.write("%s [%s] expire_patches: expiring patch sg(%d)\n" % (log_ts.get(), self.sysname, sg))
         return updated
 
     def get_rid_tag(self, srcaddr):
@@ -1494,6 +1505,12 @@ class p25_system(object):
         sys.stderr.write("%s [%s] Known talkgroup ids: {\n" % (log_ts.get(), self.sysname))
         for tgid in sorted(self.talkgroups.keys()):
             sys.stderr.write('%d\t"%s"\t%d\t#%d\n' % (tgid, self.talkgroups[tgid]['tag'], self.talkgroups[tgid]['prio'], self.talkgroups[tgid]['counter']));
+        sys.stderr.write("}\n") 
+
+    def dump_patches(self):
+        sys.stderr.write("%s [%s] Active patches: {\n" % (log_ts.get(), self.sysname))
+        for sgid in sorted(self.patches.keys()):
+            sys.stderr.write('%d\t%s\t"%s"\n' % (sgid, log_ts.get(self.patches[sgid]['ts']), self.patches[sgid]['ga']));
         sys.stderr.write("}\n") 
 
     def dump_rids(self):
@@ -1658,7 +1675,6 @@ class p25_receiver(object):
         self.meta_stream = from_dict(self.config, 'meta_stream_name', "")
         self.tuned_frequency = freq
         self.tuner_idle = False
-        self.voice_frequencies = self.system.get_frequencies()
         self.talkgroups = self.system.get_talkgroups()
         self.skiplist = {}
         self.blacklist = {}
@@ -1788,7 +1804,8 @@ class p25_receiver(object):
         if not self.hold_mode:
             self.hold_tgid = None
             self.hold_until = time.time()
-        self.talkgroups[tgid]['receiver'] = self
+        with self.system.talkgroups_mutex:
+            self.talkgroups[tgid]['receiver'] = self
 
     def ui_command(self, cmd, data, curr_time):
         if self.debug > 10:
@@ -1849,11 +1866,12 @@ class p25_receiver(object):
                 return updated
 
             if encrypted >= 0 and algid >= 0 and keyid >= 0: # log and save encryption information
-                if self.debug >= 5 and (algid != self.talkgroups[self.current_tgid]['algid'] or keyid != self.talkgroups[self.current_tgid]['keyid']):
-                    sys.stderr.write('%s [%d] encrypt info: tg=%d, algid=0x%x, keyid=0x%x\n' % (log_ts.get(), self.msgq_id, self.current_tgid, algid, keyid))
-                self.talkgroups[self.current_tgid]['encrypted'] = encrypted
-                self.talkgroups[self.current_tgid]['algid'] = algid
-                self.talkgroups[self.current_tgid]['keyid'] = keyid
+                with self.system.talkgroups_mutex:
+                    if self.debug >= 5 and (algid != self.talkgroups[self.current_tgid]['algid'] or keyid != self.talkgroups[self.current_tgid]['keyid']):
+                        sys.stderr.write('%s [%d] encrypt info: tg=%d, algid=0x%x, keyid=0x%x\n' % (log_ts.get(), self.msgq_id, self.current_tgid, algid, keyid))
+                    self.talkgroups[self.current_tgid]['encrypted'] = encrypted
+                    self.talkgroups[self.current_tgid]['algid'] = algid
+                    self.talkgroups[self.current_tgid]['keyid'] = keyid
 
             updated += self.system.update_talkgroup_srcaddr(curr_time, self.current_tgid, srcaddr)
             
@@ -1905,10 +1923,11 @@ class p25_receiver(object):
                 if algid != 0x80: # log and save encryption information
                     if self.debug >= 5 and (algid != self.talkgroups[ga]['algid'] or keyid != self.talkgroups[ga]['keyid']):
                         sys.stderr.write('%s [%d] encrypt info: tg=%d, algid=0x%x, keyid=0x%x\n' % (log_ts.get(), self.msgq_id, ga, algid, keyid))
-                    if ga in self.talkgroups:
-                        self.talkgroups[ga]['encrypted'] = 1
-                        self.talkgroups[ga]['algid'] = algid
-                        self.talkgroups[ga]['keyid'] = keyid
+                    with self.system.talkgroups_mutex:
+                        if ga in self.talkgroups:
+                            self.talkgroups[ga]['encrypted'] = 1
+                            self.talkgroups[ga]['algid'] = algid
+                            self.talkgroups[ga]['keyid'] = keyid
                     if self.crypt_behavior > 1:
                         updated += 1
                         if self.debug > 1:
@@ -2009,31 +2028,32 @@ class p25_receiver(object):
         self.skiplist_update(start_time)
         self.blacklist_update(start_time)
 
-        if (tgid is not None) and (tgid in self.talkgroups) and ((self.talkgroups[tgid]['receiver'] is None) or (self.talkgroups[tgid]['receiver'] == self)):
-            tgt_tgid = tgid
+        with self.system.talkgroups_mutex:
+            if (tgid is not None) and (tgid in self.talkgroups) and ((self.talkgroups[tgid]['receiver'] is None) or (self.talkgroups[tgid]['receiver'] == self)):
+                tgt_tgid = tgid
 
-        for active_tgid in self.talkgroups:
-            if hold:
-                break
-            if self.talkgroups[active_tgid]['time'] < start_time:
-                continue
-            if active_tgid in self.skiplist:
-                continue
-            if active_tgid in self.blacklist and (not self.whitelist or active_tgid not in self.whitelist):
-                continue
-            if self.whitelist and active_tgid not in self.whitelist:
-                continue
-            if (self.crypt_behavior > 1) and ((self.talkgroups[active_tgid]['svcopts'] & 0x40) == 0x40):
-                continue
-            if tgt_tgid is None:
-                if self.talkgroups[active_tgid]['receiver'] is None:
-                    tgt_tgid = active_tgid
+            for active_tgid in self.talkgroups:
+                if hold:
+                    break
+                if self.talkgroups[active_tgid]['time'] < start_time:
                     continue
-            elif (self.talkgroups[active_tgid]['prio'] < self.talkgroups[tgt_tgid]['prio']) and (self.talkgroups[active_tgid]['receiver'] is None):
-                tgt_tgid = active_tgid
+                if active_tgid in self.skiplist:
+                    continue
+                if active_tgid in self.blacklist and (not self.whitelist or active_tgid not in self.whitelist):
+                    continue
+                if self.whitelist and active_tgid not in self.whitelist:
+                    continue
+                if (self.crypt_behavior > 1) and ((self.talkgroups[active_tgid]['svcopts'] & 0x40) == 0x40):
+                    continue
+                if tgt_tgid is None:
+                    if self.talkgroups[active_tgid]['receiver'] is None:
+                        tgt_tgid = active_tgid
+                        continue
+                elif (self.talkgroups[active_tgid]['prio'] < self.talkgroups[tgt_tgid]['prio']) and (self.talkgroups[active_tgid]['receiver'] is None):
+                    tgt_tgid = active_tgid
                    
-        if tgt_tgid is not None and self.talkgroups[tgt_tgid]['time'] >= start_time:
-            return self.talkgroups[tgt_tgid]['frequency'], tgt_tgid, self.talkgroups[tgt_tgid]['tdma_slot'], self.talkgroups[tgt_tgid]['srcaddr']
+            if tgt_tgid is not None and self.talkgroups[tgt_tgid]['time'] >= start_time:
+                return self.talkgroups[tgt_tgid]['frequency'], tgt_tgid, self.talkgroups[tgt_tgid]['tdma_slot'], self.talkgroups[tgt_tgid]['srcaddr']
         return None, None, None, None
 
     def scan_for_talkgroups(self, curr_time):
@@ -2070,11 +2090,12 @@ class p25_receiver(object):
         if self.current_tgid is None:
             return
             
-        self.talkgroups[self.current_tgid]['receiver'] = None
-        self.talkgroups[self.current_tgid]['frequency'] = None
-        self.talkgroups[self.current_tgid]['tdma_slot'] = None
-        self.talkgroups[self.current_tgid]['srcaddr'] = 0
-        self.talkgroups[self.current_tgid]['svcopts'] = 0x4
+        with self.system.talkgroups_mutex:
+            self.talkgroups[self.current_tgid]['receiver'] = None
+            self.talkgroups[self.current_tgid]['frequency'] = None
+            self.talkgroups[self.current_tgid]['tdma_slot'] = None
+            self.talkgroups[self.current_tgid]['srcaddr'] = 0
+            self.talkgroups[self.current_tgid]['svcopts'] = 0x4
         if self.debug > 1:
             sys.stderr.write("%s [%d] releasing:  tg(%d), freq(%f), slot(%s), reason(%s)\n" % (log_ts.get(), self.msgq_id, self.current_tgid, (self.tuned_frequency/1e6), get_slot(self.current_slot), reason))
         if self.hold_mode is False:
@@ -2110,7 +2131,8 @@ class p25_receiver(object):
                 if self.debug > 1:
                     sys.stderr.write("%s [%d] hold tg(%d) not in whitelist\n" % (log_ts.get(), self.msgq_id, tgid))
                 return
-            add_default_tgid(self.talkgroups, tgid)
+            with self.system.talkgroups_mutex:
+                add_default_tgid(self.talkgroups, tgid)
             self.hold_tgid = tgid
             self.hold_until = curr_time + 86400 * 10000
             self.hold_mode = True
@@ -2143,22 +2165,23 @@ class p25_receiver(object):
                 meta_update(self.meta_q, msgq_id=self.msgq_id, debug=self.debug)
 
     def get_status(self):
-        _tgid = self.hold_tgid if self.hold_tgid is not None else self.current_tgid
-        cc_tag = "Control Channel" if self.system.has_cc(self.msgq_id) else "Idle" if self.tuner_idle else None
-        d = {}
-        d['freq'] = self.tuned_frequency
-        d['tdma'] = self.current_slot
-        d['tgid'] = _tgid
-        d['system'] = self.config['trunking_sysname']
-        d['tag'] = self.talkgroups[_tgid]['tag'] if _tgid is not None else cc_tag
-        d['srcaddr'] = self.talkgroups[self.current_tgid]['srcaddr'] if self.current_tgid is not None else 0
-        d['svcopts'] = self.talkgroups[self.current_tgid]['svcopts'] if self.current_tgid is not None else 0
-        d['srctag'] = self.system.get_rid_tag(self.talkgroups[self.current_tgid]['srcaddr']) if self.current_tgid is not None else ""
-        d['encrypted'] = self.talkgroups[self.current_tgid]['encrypted'] if self.current_tgid is not None else 0
-        d['emergency'] = (d['svcopts'] >> 7) & 0x1
-        d['hold_tgid'] = self.hold_tgid if self.hold_tgid is not None else 0
-        d['mode'] = None
-        d['stream'] = self.meta_stream
-        d['msgqid'] = self.msgq_id
-        return json.dumps(d)
+        with self.system.talkgroups_mutex:
+            _tgid = self.hold_tgid if self.hold_tgid is not None else self.current_tgid
+            cc_tag = "Control Channel" if self.system.has_cc(self.msgq_id) else "Idle" if self.tuner_idle else None
+            d = {}
+            d['freq'] = self.tuned_frequency
+            d['tdma'] = self.current_slot
+            d['tgid'] = _tgid
+            d['system'] = self.config['trunking_sysname']
+            d['tag'] = self.talkgroups[_tgid]['tag'] if _tgid is not None else cc_tag
+            d['srcaddr'] = self.talkgroups[self.current_tgid]['srcaddr'] if self.current_tgid is not None else 0
+            d['svcopts'] = self.talkgroups[self.current_tgid]['svcopts'] if self.current_tgid is not None else 0
+            d['srctag'] = self.system.get_rid_tag(self.talkgroups[self.current_tgid]['srcaddr']) if self.current_tgid is not None else ""
+            d['encrypted'] = self.talkgroups[self.current_tgid]['encrypted'] if self.current_tgid is not None else 0
+            d['emergency'] = (d['svcopts'] >> 7) & 0x1
+            d['hold_tgid'] = self.hold_tgid if self.hold_tgid is not None else 0
+            d['mode'] = None
+            d['stream'] = self.meta_stream
+            d['msgqid'] = self.msgq_id
+            return json.dumps(d)
 
