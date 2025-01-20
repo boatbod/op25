@@ -70,6 +70,8 @@
         "chans": [
             {
                 "nac": "0x0",
+                "wacn": "0x00000",
+                "sysid": "0x000",
                 "sysname": "P25 System",
                 "control_channel_list": "773.84375,774.84375",
                 "whitelist": "",

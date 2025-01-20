@@ -288,8 +288,8 @@ class p25_system(object):
         self.rfss_stid = 0
         self.rfss_chan = 0
         self.rfss_txchan = 0
-        self.ns_syid = 0
-        self.ns_wacn = 0
+        self.ns_syid = int(ast.literal_eval(from_dict(config, "sysid", "0")))
+        self.ns_wacn = int(ast.literal_eval(from_dict(config, "wacn", "0")))
         self.ns_chan = 0
         self.ns_valid = False
         self.rx_cc_freq = None
@@ -321,6 +321,10 @@ class p25_system(object):
         self.tdma_cc = bool(from_dict(self.config, 'tdma_cc', False)) 
         if self.tdma_cc:
             self.cc_rate = 6000
+
+        # the following only occurs if values are pre-defined in the trunking configuration file
+        if self.nac != 0 and self.ns_wacn != 0 and self.ns_syid != 0:
+            self.ns_valid = True
 
         self.crypt_behavior = int(from_dict(self.config, 'crypt_behavior', 1))
         #sys.stderr.write("%s crypt behavior: %d\n" % (log_ts.get(), self.crypt_behavior))
@@ -1462,7 +1466,7 @@ class p25_system(object):
                     if ga not in self.patches[sg]['ga']:
                         self.patches[sg]['ga'].add(ga)
                         if self.debug >= 5:
-                            sys.stderr.write("%s [%s] add_patch: tgid(%d) is patched to sg(%d)\n" % (log_ts.get(), self.sysname, sg, ga_list))
+                            sys.stderr.write("%s [%s] add_patch: tgid(%d) is patched to sg(%d)\n" % (log_ts.get(), self.sysname, ga, sg))
 
             if len(self.patches[sg]['ga']) == 0:
                 del self.patches[sg]
@@ -1708,6 +1712,9 @@ class p25_receiver(object):
         self.load_bl_wl()
         self.tgid_hold_time = float(from_dict(self.system.config, 'tgid_hold_time', TGID_HOLD_TIME))
         meta_update(self.meta_q, msgq_id=self.msgq_id, debug=self.debug)
+        nac, wacn, sysid, valid = self.system.get_tdma_params() # check for xormask preload
+        if valid and self.fa_ctrl is not None:
+            self.fa_ctrl({'tuner': self.msgq_id, 'cmd': 'set_xormask', 'nac': nac, 'wacn': wacn, 'sysid': sysid})
         self.idle_rx()
 
     def load_bl_wl(self):

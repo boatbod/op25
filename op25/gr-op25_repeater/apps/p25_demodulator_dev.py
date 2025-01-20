@@ -362,7 +362,7 @@ class p25_demod_cb(p25_demod_base):
 
         # demodulator IF filter parameters (Hz)
         fdma_cutoff = 7000
-        tdma_cutoff = 9200
+        tdma_cutoff = 9600
         trans_width = 1200
         #
         decimation = int(input_rate / if_rate)
@@ -433,7 +433,7 @@ class p25_demod_cb(p25_demod_base):
             return
         self.sps = sps
         self.clock.set_omega(self.sps)
-        #self.fll.set_samples_per_symbol(sps) # gnuradio fll_band_edge_cc block is not currently thread-safe 01/8/2023
+        self.fll.set_samples_per_symbol(sps)
         self.costas_reset()
 
     def reset(self):
