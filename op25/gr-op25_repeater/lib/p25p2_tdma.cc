@@ -517,9 +517,9 @@ void p25p2_tdma::handle_voice_frame(const uint8_t dibits[], int slot, int voice_
 
 	// Deinterleave and figure out frame type:
 	errs = vf.process_vcw(&errs_mp, dibits, b, u);
+	strcpy(log_str, logts.get(d_msgq_id)); // param eval order not guaranteed; force timestamp computation first
 	if (d_debug >= 9 && !encrypted() && d_behavior == -1) {
 		vf.pack_cw(p_cw, u);
-		strcpy(log_str, logts.get(d_msgq_id)); // param eval order not guaranteed; force timestamp computation first
 		p_cw[0] = 0xF8;
         p_cw[1] = 0x01;
         p_cw[2] = 0xA9;
