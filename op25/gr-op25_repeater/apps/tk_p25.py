@@ -1461,7 +1461,7 @@ class p25_system(object):
                     if ga not in self.patches[sg]['ga']:
                         self.patches[sg]['ga'].add(ga)
                         if self.debug >= 5:
-                            sys.stderr.write("%s [%s] add_patch: tgid(%d) is patched to sg(%d)\n" % (log_ts.get(), self.sysname, sg, ga_list))
+                            sys.stderr.write("%s [%s] add_patch: tgid(%d) is patched to sg(%d)\n" % (log_ts.get(), self.sysname, ga, sg))
 
             if len(self.patches[sg]['ga']) == 0:
                 del self.patches[sg]
