@@ -505,12 +505,7 @@ class channel(object):
             return
         self.tdma_state = set_tdma
         if set_tdma:
-            hash = '%x%x%x' % (params['nac'], params['sysid'], params['wacn'])
-            if hash not in self.xor_cache:
-                self.xor_cache[hash] = lfsr.p25p2_lfsr(params['nac'], params['sysid'], params['wacn']).xor_chars
-                if self.verbosity >= 5:
-                    sys.stderr.write("%s [%d] Caching TDMA xor mask for NAC: 0x%x, SYSID: 0x%x, WACN: 0x%x\n" % (log_ts.get(), self.msgq_id, params['nac'], params['sysid'], params['wacn'])) 
-            self.decoder.control(json.dumps({'tuner': self.msgq_id, 'cmd': 'set_xormask', 'xormask': self.xor_cache[hash]}))
+            self.decoder.control(json.dumps({'tuner': self.msgq_id, 'cmd': 'set_xormask', 'xormask': self.xor_cache[self.get_hash(params)]}))
             rate = 6000
         else:
             rate = self.channel_rate
@@ -520,6 +515,14 @@ class channel(object):
         if 'eye' in self.sinks:
             self.sinks['eye'][0].set_sps(self.config['if_rate'] / rate)
 
+    def get_hash(self, params):
+        hash = '%x%x%x' % (params['nac'], params['sysid'], params['wacn'])
+        if hash not in self.xor_cache:
+            self.xor_cache[hash] = lfsr.p25p2_lfsr(params['nac'], params['sysid'], params['wacn']).xor_chars
+            if self.verbosity >= 5:
+                sys.stderr.write("%s [%d] Caching TDMA xor mask for NAC: 0x%x, SYSID: 0x%x, WACN: 0x%x\n" % (log_ts.get(), self.msgq_id, params['nac'], params['sysid'], params['wacn']))
+        return hash
+
     def set_rate(self, rate):
         self.symbol_rate = rate
         self.demod.set_omega(rate)
@@ -527,8 +530,14 @@ class channel(object):
             self.sinks['eye'][0].set_sps(self.config['if_rate'] / rate)
 
     def control(self, params):
-        if 'cmd' in params and params['cmd'] == "set_slotid":
-            self.chan_idle = True if (params['slotid'] == 4) else False
+        if 'cmd' in params:
+            if self.verbosity >= 10:
+                sys.stderr.write("%s [%d] channel control: cmd=%s, params=%s\n" % (log_ts.get(), self.msgq_id, params['cmd'], params))
+            if params['cmd'] == "set_slotid":
+                self.chan_idle = True if (params['slotid'] == 4) else False
+            elif params['cmd'] == "set_xormask":
+                self.decoder.control(json.dumps({'tuner': self.msgq_id, 'cmd': 'set_xormask', 'xormask': self.xor_cache[self.get_hash(params)]}))
+                return
         self.decoder.control(json.dumps(params))
         self.demod.control(not self.chan_idle)
 
