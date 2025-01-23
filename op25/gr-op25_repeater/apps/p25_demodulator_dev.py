@@ -433,7 +433,7 @@ class p25_demod_cb(p25_demod_base):
             return
         self.sps = sps
         self.clock.set_omega(self.sps)
-        # self.fll.set_samples_per_symbol(sps) # gr-3.10.9.2 and earlier are not thread safe.
+        # self.fll.set_samples_per_symbol(sps)  # digital.fll_band_edge_cc is not thread-safe in gr-3.10.9.2 and earlier versions
         self.costas_reset()
 
     def reset(self):
