@@ -29,6 +29,7 @@ P25 C4FM/CQPSK demodulation block.
 """
 
 import sys
+from packaging.version import Version
 from gnuradio import gr, eng_notation
 from gnuradio import filter, analog, digital, blocks
 from gnuradio.eng_option import eng_option
@@ -42,6 +43,14 @@ from log_ts import log_ts
 
 sys.path.append('tx')
 import op25_c4fm_mod
+
+# Check for gnuradio digital.fll_band_edge_cc() thread safety
+# fix was committed just a few days after v3.10.9.2 was released
+if Version(gr.version()) > Version("3.10.9.2"):
+    _fll_threadsafe = True
+else:
+    _fll_threadsafe = False
+#
 
 # default values (used in __init__ and add_options)
 _def_output_sample_rate = 48000
@@ -433,7 +442,8 @@ class p25_demod_cb(p25_demod_base):
             return
         self.sps = sps
         self.clock.set_omega(self.sps)
-        # self.fll.set_samples_per_symbol(sps)  # digital.fll_band_edge_cc is not thread-safe in gr-3.10.9.2 and earlier versions
+        if _fll_threadsafe:
+            self.fll.set_samples_per_symbol(sps)
         self.costas_reset()
 
     def reset(self):
