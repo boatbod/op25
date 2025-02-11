@@ -1810,17 +1810,16 @@ class osw_receiver(object):
 
     def add_default_tgid(self, tgid):
         if tgid not in self.talkgroups:
-            with self.talkgroups_mutex:
-                self.talkgroups[tgid] = {'counter':0}
-                self.talkgroups[tgid]['tgid'] = tgid
-                self.talkgroups[tgid]['prio'] = TGID_DEFAULT_PRIO
-                self.talkgroups[tgid]['tag'] = ""
-                self.talkgroups[tgid]['srcaddr'] = 0
-                self.talkgroups[tgid]['time'] = 0
-                self.talkgroups[tgid]['release_time'] = 0
-                self.talkgroups[tgid]['mode'] = -1
-                self.talkgroups[tgid]['receiver'] = None
-                self.talkgroups[tgid]['status'] = 0
+            self.talkgroups[tgid] = {'counter':0}
+            self.talkgroups[tgid]['tgid'] = tgid
+            self.talkgroups[tgid]['prio'] = TGID_DEFAULT_PRIO
+            self.talkgroups[tgid]['tag'] = ""
+            self.talkgroups[tgid]['srcaddr'] = 0
+            self.talkgroups[tgid]['time'] = 0
+            self.talkgroups[tgid]['release_time'] = 0
+            self.talkgroups[tgid]['mode'] = -1
+            self.talkgroups[tgid]['receiver'] = None
+            self.talkgroups[tgid]['status'] = 0
 
     def expire_talkgroups(self, curr_time):
         rc = False
