@@ -181,15 +181,15 @@ bool p25_crypt_algs::adp_process(packed_codeword& PCW, frame_type fr_type, int v
 
 bool p25_crypt_algs::des_ofb_process(packed_codeword& PCW, frame_type fr_type, int voice_subframe) {
     bool rc = true;
-    size_t offset = 0;
+    size_t offset = 8; //initial offset is 8 (DES-OFB discard round)
     
     switch (fr_type) {
 		/* FDMA */
         case FT_LDU1:
-            offset = 0;
+            offset += 0; //additional offset for FDMA is handled below
             break;
         case FT_LDU2:
-            offset = 101;
+            offset += 101; //additional offset for FDMA is handled below
             break;
         /* TDMA */
         case FT_4V_0:
@@ -212,13 +212,23 @@ bool p25_crypt_algs::des_ofb_process(packed_codeword& PCW, frame_type fr_type, i
             break;
     }
     
-	if(d_pr_type == PT_P25_PHASE1) {
+	if (d_pr_type == PT_P25_PHASE1) {
 		//FDMA
-	    offset += (d_des_position * 11) + 3 + ((d_des_position < 8) ? 0 : 2); // voice only; skip LCW and LSD
+	    offset += (d_des_position * 11) + 11 + ((d_des_position < 8) ? 0 : 2); // voice only; skip 9 LCW bytes, 2 reserved bytes, and LSD between 7,8 and 16,17
         d_des_position = (d_des_position + 1) % 9;
         for (int j = 0; j < 11; ++j) {
             PCW[j] = des_ks[j + offset] ^ PCW[j];
         }
+
+        //debug, print keystream values and track offset
+        if (d_debug >= 10) {
+            fprintf (stderr, "%s DES KS: ", logts.get(d_msgq_id));
+            for (int j = 0; j < 7; ++j) {
+                fprintf (stderr,  "%02X", des_ks[j + offset]);
+            }
+            fprintf (stderr, " Offset: %ld; \n", offset);
+        }
+
 	} else if (d_pr_type == PT_P25_PHASE2) {
         //TDMA - Experimental
         for (int j = 0; j < 7; ++j) {
@@ -226,6 +236,14 @@ bool p25_crypt_algs::des_ofb_process(packed_codeword& PCW, frame_type fr_type, i
         }
         PCW[6] &= 0x80; // mask everything except the MSB of the final codeword
 
+        //debug, print keystream values and track offset
+        if (d_debug >= 10) {
+            fprintf (stderr, "%s DES KS: ", logts.get(d_msgq_id));
+            for (int j = 0; j < 7; ++j) {
+                fprintf (stderr,  "%02X", des_ks[j + offset]);
+            }
+            fprintf (stderr, " Offset: %ld; \n", offset);
+        }
     }
     return rc;
 }
@@ -360,21 +378,21 @@ void p25_crypt_algs::des_keystream_gen() {
 		rk.push_back(des.bin2hex(RoundKey));
 	}
 
-	// OFB mode 
-	for (int i = 0; i < 28; i++) {
-		if (i == 0)
-			// First run using supplied IV
-			ct = des.encrypt(mi, rkb, rk);
-		else
-			ct = des.encrypt(ct, rkb, rk);
+    // OFB mode
+    int offset = 0;
+    for (int i = 0; i < 28; i++) {
+        if (i == 0) {
+            // First run using supplied IV
+            ct = des.encrypt(mi, rkb, rk);
+        } else {
+            ct = des.encrypt(ct, rkb, rk);
+        }
 
-		if (i > 1) {
-			// Discard first 2 keystreams
-			int offset = (i - 2) * 8;
+        // Append keystream to ks_array
+        des.string2ByteArray(ct, des_ks, offset);
 
-			// Append keystream to ks_array
-			des.string2ByteArray(ct, des_ks, offset);
-		}
-	}
+        // Increment offset by 8 for next round
+        offset += 8;
+    }
 }
 
