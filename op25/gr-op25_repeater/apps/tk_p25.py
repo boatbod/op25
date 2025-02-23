@@ -733,6 +733,18 @@ class p25_system(object):
                     updated += 1
                 if self.debug >= 10:
                     sys.stderr.write('%s [%d] tsbk(0x03) grp_v_ch_grant_up_exp: opts: 0x%02x freq-t: %s freq-r: %s ga: %d\n' % (log_ts.get(), m_rxid, opts, self.channel_id_to_string(ch1), self.channel_id_to_string(ch2), ga))
+        elif opcode == 0x07:
+            mfrid  = (tsbk >> 80) & 0xff
+            if mfrid == 0x90: # MFID90 MOT_BSI_GRANT
+                bsi = ""
+                i = 74
+                while (i >= 32):
+                    bsi_char = (tsbk >> i) & 0x3f
+                    bsi += chr(bsi_char + 43)
+                    i -= 6
+                ch  = (tsbk >> 16) & 0xffff
+                if self.debug >= 1:
+                    sys.stderr.write('%s [%d] tsbk(0x16) mot_bsi_grant: bsi: %s ch: %x\n' % (log_ts.get(), m_rxid, bsi, ch))
         elif opcode == 0x16:   # sndcp data ch
             ch1  = (tsbk >> 48) & 0xffff
             ch2  = (tsbk >> 32) & 0xffff
@@ -959,7 +971,7 @@ class p25_system(object):
             if self.debug >= 10:
                 sys.stderr.write('%s [%d] tdma(0x01) grp_v_ch_usr: opts: 0x%02x ga: %d sa: %d\n' % (log_ts.get(), m_rxid, opts, ga, sa))
             updated += self.update_talkgroup_srcaddr(curr_time, ga, sa, svcopts=opts)
-        elif op == 0x05: # Group Voice Channel Grant Update Multiple - Implicit
+        elif op == 0x05 and mfid == 0x90: # Group Voice Channel Grant Update Multiple - Implicit
             opt1 = get_ordinals(msg[1:2])
             ch1  = get_ordinals(msg[2:4])
             ga1  = get_ordinals(msg[4:6])
@@ -979,6 +991,16 @@ class p25_system(object):
             self.update_voice_frequency(f3, tgid=ga3, tdma_slot=self.get_tdma_slot(ch3), svcopts=opt3)
             if f1 or f2 or f3:
                 updated += 1
+        elif op == 0x05 and mfid == 0x90: # MFID90 MAC_MOT_BSI
+            bsi = ""
+            i = 48
+            while (i >= 0):
+                bsi_char = (tsbk >> i) & 0x3f
+                bsi += chr(bsi_char + 43)
+                i -= 6
+            ch  = (tsbk >> 16) & 0xffff
+            if self.debug >= 1:
+                sys.stderr.write('%s [%d] lcw(0x05) lc_mot_bsi: bsi: %s\n' % (log_ts.get(), m_rxid, bsi))
         elif op == 0x21: # Group Voice Channel User - Extended
             opts = get_ordinals(msg[1:2])
             ga   = get_ordinals(msg[2:4])
@@ -1280,6 +1302,18 @@ class p25_system(object):
             if self.debug >= 10:
                 sys.stderr.write('%s [%d] lcw(0x00) grp_v_ch_usr: opts: 0x%02x ga: %d s: %d sa: %d\n' % (log_ts.get(), m_rxid, opts, ga, (get_ordinals(msg[3:4]) & 0x1), sa))
             updated += self.update_talkgroup_srcaddr(curr_time, ga, sa, svcopts=opts)
+        elif pb_sf_lco   == 0x05:
+            mfid = get_ordinals(msg[1:2])
+            if mfid == 0x90:        # MFID90 LC_MOT_BSI
+                bsi = ""
+                i = 50
+                while (i >= 8):
+                    bsi_char = (tsbk >> i) & 0x3f
+                    bsi += chr(bsi_char + 43)
+                    i -= 6
+                ch  = (tsbk >> 16) & 0xffff
+                if self.debug >= 1:
+                    sys.stderr.write('%s [%d] lcw(0x05) lc_mot_bsi: bsi: %s\n' % (log_ts.get(), m_rxid, bsi))
         elif pb_sf_lco == 0x42:     # Group Voice Channel Update
             ch1 = get_ordinals(msg[1:3])
             ga1 = get_ordinals(msg[3:5])
