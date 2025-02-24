@@ -1000,7 +1000,7 @@ class p25_system(object):
                 i -= 6
             ch  = (tsbk >> 16) & 0xffff
             if self.debug >= 1:
-                sys.stderr.write('%s [%d] lcw(0x05) lc_mot_bsi: bsi: %s\n' % (log_ts.get(), m_rxid, bsi))
+                sys.stderr.write('%s [%d] lcw(0x05) mac_mot_bsi: bsi: %s\n' % (log_ts.get(), m_rxid, bsi))
         elif op == 0x21: # Group Voice Channel User - Extended
             opts = get_ordinals(msg[1:2])
             ga   = get_ordinals(msg[2:4])
