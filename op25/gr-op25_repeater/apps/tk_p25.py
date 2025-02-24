@@ -733,7 +733,7 @@ class p25_system(object):
                     updated += 1
                 if self.debug >= 10:
                     sys.stderr.write('%s [%d] tsbk(0x03) grp_v_ch_grant_up_exp: opts: 0x%02x freq-t: %s freq-r: %s ga: %d\n' % (log_ts.get(), m_rxid, opts, self.channel_id_to_string(ch1), self.channel_id_to_string(ch2), ga))
-        elif opcode == 0x07:
+        elif opcode == 0x0b:
             mfrid  = (tsbk >> 80) & 0xff
             if mfrid == 0x90: # MFID90 MOT_BSI_GRANT
                 bsi = ""
@@ -744,7 +744,7 @@ class p25_system(object):
                     i -= 6
                 ch  = (tsbk >> 16) & 0xffff
                 if self.debug >= 1:
-                    sys.stderr.write('%s [%d] tsbk(0x16) mot_bsi_grant: bsi: %s ch: %x\n' % (log_ts.get(), m_rxid, bsi, ch))
+                    sys.stderr.write('%s [%d] tsbk(0x0b) mot_bsi_grant: bsi: %s ch: %x\n' % (log_ts.get(), m_rxid, bsi, ch))
         elif opcode == 0x16:   # sndcp data ch
             ch1  = (tsbk >> 48) & 0xffff
             ch2  = (tsbk >> 32) & 0xffff
@@ -1000,7 +1000,7 @@ class p25_system(object):
                 i -= 6
             ch  = (tsbk >> 16) & 0xffff
             if self.debug >= 1:
-                sys.stderr.write('%s [%d] lcw(0x05) mac_mot_bsi: bsi: %s\n' % (log_ts.get(), m_rxid, bsi))
+                sys.stderr.write('%s [%d] tdma(0x05) mac_mot_bsi: bsi: %s\n' % (log_ts.get(), m_rxid, bsi))
         elif op == 0x21: # Group Voice Channel User - Extended
             opts = get_ordinals(msg[1:2])
             ga   = get_ordinals(msg[2:4])
