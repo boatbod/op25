@@ -295,6 +295,7 @@ class p25_system(object):
         self.rx_cc_freq = None
         self.rx_sys_id = None
         self.sysname = config['sysname']
+        self.callsign = ""
         self.nac = int(ast.literal_eval(from_dict(config, "nac", "0")))
         self.last_expiry_check = 0.0
         self.stats = {}
@@ -744,8 +745,10 @@ class p25_system(object):
                         bsi += chr(bsi_char + 43)
                     i -= 6
                 ch  = (tsbk >> 16) & 0xffff
-                if self.debug >= 10 and bsi != "": # suppress NULL BSI
-                    sys.stderr.write('%s [%d] tsbk(0x0b) mot_bsi_grant: bsi: %s ch: %x freq: %f\n' % (log_ts.get(), m_rxid, bsi, ch, float(self.channel_id_to_frequency(ch))/1e6))
+                if bsi != "": # Save bsi only if non-null
+                    self.callsign = bsi
+                    if self.debug >= 10:
+                        sys.stderr.write('%s [%d] tsbk(0x0b) mot_bsi_grant: bsi: %s ch: %x freq: %f\n' % (log_ts.get(), m_rxid, bsi, ch, float(self.channel_id_to_frequency(ch))/1e6))
         elif opcode == 0x16:   # sndcp data ch
             ch1  = (tsbk >> 48) & 0xffff
             ch2  = (tsbk >> 32) & 0xffff
@@ -1568,11 +1571,13 @@ class p25_system(object):
         d['type']           = 'p25'
         d['system']         = self.sysname
         d['top_line']       = 'P25'
+        d['top_line']      += ' %s' % self.callsign if self.callsign != "" else ''
         d['top_line']      += '  System %s' % (wacn_system_id_str)
         d['top_line']      += '  Site %s' % (rfss_site_id_str)
         d['top_line']      += '  NAC %3X' % (self.nac)
         d['top_line']      += '  CC %f' % ((self.rfss_chan if self.rfss_chan is not None else self.cc_list[self.cc_index]) / 1e6)
         d['top_line']      += '  tsbks %d' % (self.stats['tsbk_count'])
+        d['callsign']       = self.callsign
         d['nac']            = self.nac
         d['syid']           = self.rfss_syid
         d['rfid']           = self.rfss_rfid
