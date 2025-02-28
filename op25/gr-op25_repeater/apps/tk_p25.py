@@ -993,12 +993,14 @@ class p25_system(object):
         elif op == 0x05 and mfid == 0x90: # MFID90 MAC_MOT_BSI
             bsi = ""
             i = 48
+            char_ord = get_ordinals(msg[3:9])
+            bsi = ""
+            i = 42
             while (i >= 0):
-                bsi_char = (tsbk >> i) & 0x3f
+                bsi_char = (char_ord >> i) & 0x3f
                 if bsi_char != 0x00:
                     bsi += chr(bsi_char + 43)
                 i -= 6
-            ch  = (tsbk >> 16) & 0xffff
             if self.debug >= 10 and bsi != "": # suppress NULL BSI
                 sys.stderr.write('%s [%d] tdma(0x05) mac_mot_bsi: bsi: %s\n' % (log_ts.get(), m_rxid, bsi))
         elif op == 0x21: # Group Voice Channel User - Extended
@@ -1305,14 +1307,14 @@ class p25_system(object):
         elif pb_sf_lco   == 0x05:
             mfid = get_ordinals(msg[1:2])
             if mfid == 0x90:        # MFID90 LC_MOT_BSI
+                char_ord = get_ordinals(msg[2:8])
                 bsi = ""
-                i = 50
-                while (i >= 8):
-                    bsi_char = (tsbk >> i) & 0x3f
+                i = 42
+                while (i >= 0):
+                    bsi_char = (char_ord >> i) & 0x3f
                     if bsi_char != 0x00:
                         bsi += chr(bsi_char + 43)
                     i -= 6
-                ch  = (tsbk >> 16) & 0xffff
                 if self.debug >= 10 and bsi != "": # suppress NULL BSI
                     sys.stderr.write('%s [%d] lcw(0x05) lc_mot_bsi: bsi: %s\n' % (log_ts.get(), m_rxid, bsi))
         elif pb_sf_lco == 0x42:     # Group Voice Channel Update
