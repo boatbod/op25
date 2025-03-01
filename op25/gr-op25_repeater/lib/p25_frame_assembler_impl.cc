@@ -71,8 +71,8 @@ namespace gr {
                 p1fdma.crypt_reset();
                 p2tdma.crypt_reset();
             } else if (cmd == "crypt_key") {
-                p1fdma.crypt_key(j["keyid"].get<uint16_t>(), j["keyid"].get<uint8_t>(), j["key"].get<std::vector<uint8_t>>());
-                p2tdma.crypt_key(j["keyid"].get<uint16_t>(), j["keyid"].get<uint8_t>(), j["key"].get<std::vector<uint8_t>>());
+                p1fdma.crypt_key(j["keyid"].get<uint16_t>(), j["algid"].get<uint8_t>(), j["key"].get<std::vector<uint8_t>>());
+                p2tdma.crypt_key(j["keyid"].get<uint16_t>(), j["algid"].get<uint8_t>(), j["key"].get<std::vector<uint8_t>>());
             } else if (cmd == "set_debug") {
                 d_debug = j["debug"].get<int>();
                 op25audio.set_debug(d_debug);

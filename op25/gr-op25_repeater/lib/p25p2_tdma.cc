@@ -32,7 +32,6 @@
 #include "p25p2_sync.h"
 #include "p25p2_tdma.h"
 #include "p25p2_vf.h"
-#include "p25_crypt_algs.h"
 #include "mbelib.h"
 #include "ambe.h"
 #include "crc16.h"
