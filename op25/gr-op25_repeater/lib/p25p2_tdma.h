@@ -32,7 +32,7 @@
 #include "p25p2_sync.h"
 #include "p25p2_vf.h"
 #include "p25p2_framer.h"
-#include "p25_crypt_algs.h"
+#include "op25_crypt_algs.h"
 #include "op25_audio.h"
 #include "log_ts.h"
 
@@ -101,7 +101,7 @@ private:
 	uint8_t next_mi[9] = {0};
 
 	p25p2_framer p2framer;
-    p25_crypt_algs crypt_algs;
+    op25_crypt_algs crypt_algs;
 
 	int handle_acch_frame(const uint8_t dibits[], bool fast, bool is_lcch) ;
 	void handle_voice_frame(const uint8_t dibits[], int slot, int voice_subframe);

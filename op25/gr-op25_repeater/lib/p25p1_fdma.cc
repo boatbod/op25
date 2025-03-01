@@ -38,7 +38,6 @@
 #include "p25_frame.h"
 #include "p25_framer.h"
 #include "rs.h"
-#include "p25_crypt_algs.h"
 
 namespace gr {
     namespace op25_repeater {

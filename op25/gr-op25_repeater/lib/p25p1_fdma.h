@@ -32,7 +32,7 @@
 #include "op25_audio.h"
 #include "p25_framer.h"
 #include "software_imbe_decoder.h"
-#include "p25_crypt_algs.h"
+#include "op25_crypt_algs.h"
 
 namespace gr {
     namespace op25_repeater {
@@ -86,7 +86,7 @@ namespace gr {
 				int16_t snd[SND_FRAME];
                 const op25_audio& op25audio;
                 log_ts& logts;
-                p25_crypt_algs crypt_algs;
+                op25_crypt_algs crypt_algs;
 
                 ezpwd::RS<63,55> rs8;  // Reed-Solomon decoders for 8, 12 and 16 bit parity
                 ezpwd::RS<63,51> rs12;
