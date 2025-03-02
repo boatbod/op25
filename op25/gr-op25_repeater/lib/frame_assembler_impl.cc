@@ -73,7 +73,7 @@ namespace gr {
                     d_sync->crypt_reset();
             } else if (cmd == "crypt_key") {
                 if (d_sync)
-                    d_sync->crypt_key(j["keyid"].get<uint16_t>(), j["keyid"].get<uint8_t>(), j["key"].get<std::vector<uint8_t>>());
+                    d_sync->crypt_key(j["keyid"].get<uint16_t>(), j["algid"].get<uint8_t>(), j["key"].get<std::vector<uint8_t>>());
             } else if (cmd == "set_debug") {
                 d_debug = j["debug"].get<int>();
                 if (d_sync)
