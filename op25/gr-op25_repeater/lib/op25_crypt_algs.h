@@ -34,8 +34,6 @@ class op25_crypt_algs
         log_ts& logts;
         int d_debug;
         int d_msgq_id;
-        std::unordered_map<uint16_t, key_info> d_keys;
-        std::unordered_map<uint16_t, key_info>::const_iterator d_key_iter;
         std::unordered_map<uint8_t, op25_crypt_alg*> d_algs;
         std::unordered_map<uint8_t, op25_crypt_alg*>::const_iterator d_alg_iter;
 

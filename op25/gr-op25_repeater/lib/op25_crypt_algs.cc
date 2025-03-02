@@ -37,7 +37,6 @@ op25_crypt_algs::op25_crypt_algs(log_ts& logger, int debug, int msgq_id) :
     logts(logger),
     d_debug(debug),
     d_msgq_id(msgq_id),
-    d_key_iter(d_keys.end()),
     d_alg_iter(d_algs.end()) {
 }
 
@@ -53,7 +52,9 @@ op25_crypt_algs::~op25_crypt_algs() {
 
 // remove all stored keys
 void op25_crypt_algs::reset(void) {
-    d_keys.clear();
+    for (auto& it : d_algs) {
+        it.second->reset();
+    }
 }
 
 // add or update a key
@@ -61,12 +62,12 @@ void op25_crypt_algs::key(uint16_t keyid, uint8_t algid, const std::vector<uint8
     if ((keyid == 0) || (algid == 0x80))
         return;
 
-    d_key_iter = d_keys.find(keyid);
-    if (d_key_iter != d_keys.end())
-        return; // key has been previously loaded
-
+    // find appropriate decryption object based on algid
     d_alg_iter = d_algs.find(algid);
     if (d_alg_iter == d_algs.end()) {
+        // TODO:
+        // This really should be re-written as a self-registering factory class,
+        // but for now you have to manually add a 'case' for each new algid to be supported
         switch (algid) {
             case ALG_DES_OFB:
                 d_alg_iter = d_algs.insert({algid, new op25_crypt_des(logts, d_debug, d_msgq_id)}).first;
@@ -79,8 +80,8 @@ void op25_crypt_algs::key(uint16_t keyid, uint8_t algid, const std::vector<uint8
             return; // d_algs insert failed
         }
     }
+    // Register the key with the algorithm object
     if (d_alg_iter->second->key(keyid, algid, key) == algid) {
-        d_keys[keyid] = key_info(algid, key);
         if (d_debug >= 10) {
             fprintf(stderr, "%s op25_crypt_algs::key: loaded key keyId:%04x, algId:%02x\n", logts.get(d_msgq_id), keyid, algid);
         }
@@ -89,17 +90,6 @@ void op25_crypt_algs::key(uint16_t keyid, uint8_t algid, const std::vector<uint8
 
 // generic entry point to prepare for decryption
 bool op25_crypt_algs::prepare(uint8_t algid, uint16_t keyid, protocol_type pr_type, uint8_t *MI) {
-    d_key_iter = d_keys.find(keyid);
-    if (d_key_iter == d_keys.end()) {
-        if (d_debug >= 10) {
-            fprintf(stderr, "%s p25_crypt_algs::prepare: keyid[0x%x] not found\n", logts.get(d_msgq_id), keyid);
-        }
-        return false;
-    }
-    if (d_debug >= 10) {
-        fprintf(stderr, "%s p25_crypt_algs::prepare: keyid[0x%x] found\n", logts.get(d_msgq_id), keyid);
-    }
-
     d_alg_iter = d_algs.find(algid);
     if (d_alg_iter == d_algs.end()) {
         if (d_debug >= 10) {
@@ -107,19 +97,17 @@ bool op25_crypt_algs::prepare(uint8_t algid, uint16_t keyid, protocol_type pr_ty
         }
         return false;
     }
-
     return d_alg_iter->second->prepare(keyid, pr_type, MI);
 }
 
 // generic entry point to perform decryption
 bool op25_crypt_algs::process(packed_codeword& PCW, frame_type fr_type, int voice_subframe) {
-    if ((d_key_iter == d_keys.end()) || (d_alg_iter == d_algs.end())) {
+    if (d_alg_iter == d_algs.end()) {
         if (d_debug >= 10) {
-            fprintf(stderr, "%s p25_crypt_algs::process: internal error\n", logts.get(d_msgq_id));
+            fprintf(stderr, "%s p25_crypt_algs::process: internal error (no algorithm module)\n", logts.get(d_msgq_id));
         }
         return false;
     }
-
     return d_alg_iter->second->process(PCW, fr_type, voice_subframe);
 }
 
