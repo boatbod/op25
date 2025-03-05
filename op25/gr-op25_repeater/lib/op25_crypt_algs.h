@@ -46,6 +46,8 @@ class op25_crypt_algs
         bool process(packed_codeword& PCW, frame_type fr_type, int voice_subframe);
         void reset(void);
         inline void set_debug(int debug) {d_debug = debug;}
+
+        static void cycle_p25_lfsr(uint8_t *MI); 
 };
 
 #endif /* INCLUDED_OP25_REPEATER_OP25_CRYPT_ALGS_H  */
