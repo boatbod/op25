@@ -1,5 +1,5 @@
 // P25 TDMA Decoder (C) Copyright 2013, 2014, 2021 Max H. Parke KA1RBI
-// Copyright 2017-2021 Graham J. Norbury (modularization rewrite, additional messages)
+// Copyright 2017-2025 Graham J. Norbury
 // 
 // This file is part of OP25
 // 
@@ -780,6 +780,7 @@ void p25p2_tdma::handle_4V2V_ess(const uint8_t dibits[])
 		ec = rs28.decode(ESS_B, ESS_A);
 
 		if ((ec >= 0) && (ec <= 14)) { // upper limit 14 corrections
+            // if FEC decode is good, save next set of received ess info 
 			next_algid = (ESS_B[0] << 2) + (ESS_B[1] >> 4);
 			next_keyid = ((ESS_B[1] & 15) << 12) + (ESS_B[2] << 6) + ESS_B[3]; 
 
@@ -790,7 +791,13 @@ void p25p2_tdma::handle_4V2V_ess(const uint8_t dibits[])
 				next_mi[i++] = (uint8_t) ((ESS_B[j+6] & 0x03) << 6) +  ESS_B[j+7];
 				j += 4;
 			}
-		}
+		} else {
+            // if FEC decode was bad, use the old ess info and calculate the next ess_mi
+            next_algid = ess_algid;
+            next_keyid = ess_keyid;
+            memcpy(next_mi, ess_mi, sizeof(ess_mi));
+            op25_crypt_algs::cycle_p25_lfsr(next_mi);
+        }
 	}     
 
 	if (d_debug >= 10 && burst_id == 4) {

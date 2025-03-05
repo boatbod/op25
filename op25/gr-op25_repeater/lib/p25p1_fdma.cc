@@ -1,7 +1,7 @@
 /* -*- c++ -*- */
 /* 
  * Copyright 2010, 2011, 2012, 2013, 2014 Max H. Parke KA1RBI 
- * Copyright 2017, 2018, 2019, 2020 Graham J. Norbury
+ * Copyright 2017-2025 Graham J. Norbury
  * 
  * This is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -354,10 +354,13 @@ namespace gr {
             process_voice(A, FT_LDU2);
 
             // replace existing ess with newly received data now that voice processing is complete
+            // if new ess was not received correctly, compute the next ess_mi from the last one
             if (next_ess_valid) {
                 ess_algid = next_algid;
                 ess_keyid = next_keyid;
                 memcpy(ess_mi, next_mi, sizeof(next_mi));
+            } else {
+                op25_crypt_algs::cycle_p25_lfsr(ess_mi);
             }
         }
 

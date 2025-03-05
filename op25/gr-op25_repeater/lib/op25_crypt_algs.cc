@@ -111,3 +111,23 @@ bool op25_crypt_algs::process(packed_codeword& PCW, frame_type fr_type, int voic
     return d_alg_iter->second->process(PCW, fr_type, voice_subframe);
 }
 
+// P25 variant of LFSR routine to compute next MI
+void op25_crypt_algs::cycle_p25_lfsr(uint8_t *MI) {
+    uint64_t lfsr = 0;
+    for (int i=0; i<8; i++) {
+        lfsr = (lfsr << 8) + MI[i];
+    }
+
+    for(uint8_t cnt=0; cnt<64; cnt++) {
+        // Polynomial is C(x) = x^64 + x^62 + x^46 + x^38 + x^27 + x^15 + 1
+        uint64_t bit  = ((lfsr >> 63) ^ (lfsr >> 61) ^ (lfsr >> 45) ^ (lfsr >> 37) ^ (lfsr >> 26) ^ (lfsr >> 14)) & 0x1;
+        lfsr =  (lfsr << 1) | (bit);
+    }
+
+    for (int i=7; i>=0; i--) {
+        MI[i] = lfsr & 0xFF;
+        lfsr >>= 8;
+    }
+    MI[8] = 0;
+}
+
