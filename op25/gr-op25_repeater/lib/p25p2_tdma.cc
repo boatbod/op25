@@ -532,7 +532,6 @@ void p25p2_tdma::handle_voice_frame(const uint8_t dibits[], int slot, int voice_
 			    log_str,
 			    p_cw[0], p_cw[1], p_cw[2], p_cw[3], p_cw[4], p_cw[5], p_cw[6], errs, errs_mp.ER,
 				logts.get_tdiff());            // dt is time in seconds since last AMBE frame processed
-		logts.mark_ts();
 	}
 	else if(d_debug < 9 && !encrypted() && d_behavior == -1) {
 		packed_codeword p_cw;
@@ -555,7 +554,6 @@ void p25p2_tdma::handle_voice_frame(const uint8_t dibits[], int slot, int voice_
 			log_str,
 			p_cw[0], p_cw[1], p_cw[2], p_cw[3], p_cw[4], p_cw[5], p_cw[6], errs, errs_mp.ER,
 			logts.get_tdiff());            // dt is time in seconds since last AMBE frame processed
-		logts.mark_ts();
 	}
 
 	// Pass encrypted traffic through the decryption algorithms
@@ -581,14 +579,20 @@ void p25p2_tdma::handle_voice_frame(const uint8_t dibits[], int slot, int voice_
 		audio_valid = crypt_algs.process(p_cw, fr_type, voice_subframe);
 		if (!audio_valid)
 			return;
-        strcpy(log_str, logts.get(d_msgq_id));
-        fprintf(stderr, "%s AMBE %02x %02x %02x %02x %02x %02x %02x errs %lu err_rate %f, dt %f\n",
-			    log_str,
-			    p_cw[0], p_cw[1], p_cw[2], p_cw[3], p_cw[4], p_cw[5], p_cw[6], errs, errs_mp.ER,
-				logts.get_tdiff());
+        if (d_debug >= 9) {
+            strcpy(log_str, logts.get(d_msgq_id));
+            fprintf(stderr, "%s AMBE %02x %02x %02x %02x %02x %02x %02x errs %lu err_rate %f, dt %f\n",
+			        log_str,
+			        p_cw[0], p_cw[1], p_cw[2], p_cw[3], p_cw[4], p_cw[5], p_cw[6], errs, errs_mp.ER,
+				    logts.get_tdiff());
+        }
 		vf.unpack_cw(p_cw, u);  // unpack plaintext codewords
         vf.unpack_b(b, u);      // for unencrypted traffic this is done inside vf.process_vcw()
 	}
+
+    if (d_debug >= 9) {
+		logts.mark_ts();        // only vf update timestamp if log level is sufficient to show it
+    }
 
 	rc = mbe_dequantizeAmbeTone(&tone_mp, &errs_mp, u);
 	if (rc >= 0) {					// Tone Frame
