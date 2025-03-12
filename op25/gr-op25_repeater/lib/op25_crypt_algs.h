@@ -47,7 +47,9 @@ class op25_crypt_algs
         void reset(void);
         inline void set_debug(int debug) {d_debug = debug;}
 
-        static void cycle_p25_lfsr(uint8_t *MI); 
+        static void cycle_p25_mi(uint8_t *MI); 
+        static void expand_mi_to_128(uint8_t *MI, uint8_t *IV);
+        static uint64_t step_p25_lfsr(uint64_t &lfsr);
 };
 
 #endif /* INCLUDED_OP25_REPEATER_OP25_CRYPT_ALGS_H  */

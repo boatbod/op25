@@ -29,6 +29,7 @@
 #include "op25_crypt_algs.h"
 #include "op25_crypt_adp.h"
 #include "op25_crypt_des.h"
+#include "op25_crypt_aes.h"
 
 #include "op25_msg_types.h"
 
@@ -72,6 +73,9 @@ void op25_crypt_algs::key(uint16_t keyid, uint8_t algid, const std::vector<uint8
             case ALG_DES_OFB:
                 d_alg_iter = d_algs.insert({algid, new op25_crypt_des(logts, d_debug, d_msgq_id)}).first;
                 break;
+            case ALG_AES_256:
+                d_alg_iter = d_algs.insert({algid, new op25_crypt_aes(logts, d_debug, d_msgq_id)}).first;
+                break;
             case ALG_ADP_RC4:
                 d_alg_iter = d_algs.insert({algid, new op25_crypt_adp(logts, d_debug, d_msgq_id)}).first;
                 break;
@@ -111,17 +115,25 @@ bool op25_crypt_algs::process(packed_codeword& PCW, frame_type fr_type, int voic
     return d_alg_iter->second->process(PCW, fr_type, voice_subframe);
 }
 
-// P25 variant of LFSR routine to compute next MI
-void op25_crypt_algs::cycle_p25_lfsr(uint8_t *MI) {
+// P25 variant of LFSR routine
+// Returns MSB before shift takes place
+uint64_t op25_crypt_algs::step_p25_lfsr(uint64_t &lfsr) {
+    // Polynomial is C(x) = x^64 + x^62 + x^46 + x^38 + x^27 + x^15 + 1
+    uint64_t ov_bit = (lfsr >> 63) & 0x1;
+    uint64_t fb_bit = ((lfsr >> 63) ^ (lfsr >> 61) ^ (lfsr >> 45) ^ (lfsr >> 37) ^ (lfsr >> 26) ^ (lfsr >> 14)) & 0x1;
+    lfsr =  (lfsr << 1) | (fb_bit);
+    return ov_bit;
+}
+
+// Use P25 LFSR to replace current MI with the next one in the sequence
+void op25_crypt_algs::cycle_p25_mi(uint8_t *MI) {
     uint64_t lfsr = 0;
     for (int i=0; i<8; i++) {
         lfsr = (lfsr << 8) + MI[i];
     }
 
     for(uint8_t cnt=0; cnt<64; cnt++) {
-        // Polynomial is C(x) = x^64 + x^62 + x^46 + x^38 + x^27 + x^15 + 1
-        uint64_t bit  = ((lfsr >> 63) ^ (lfsr >> 61) ^ (lfsr >> 45) ^ (lfsr >> 37) ^ (lfsr >> 26) ^ (lfsr >> 14)) & 0x1;
-        lfsr =  (lfsr << 1) | (bit);
+        step_p25_lfsr(lfsr);
     }
 
     for (int i=7; i>=0; i--) {
@@ -129,5 +141,30 @@ void op25_crypt_algs::cycle_p25_lfsr(uint8_t *MI) {
         lfsr >>= 8;
     }
     MI[8] = 0;
+}
+
+// Expand MI to 128 bits for use as an Initialization Vector
+void op25_crypt_algs::expand_mi_to_128(uint8_t *MI, uint8_t *IV) {
+    // copy first 64 bits of MI into LFSR
+    uint64_t lfsr = 0;
+    for (int i=0; i<8; i++) {
+        lfsr = (lfsr << 8) + MI[i];
+    }
+
+    // use LFSR routine to compute the expansion
+    uint64_t overflow = 0;
+    for (int i = 0; i < 64; i++) {
+        overflow = (overflow << 1) | step_p25_lfsr(lfsr);
+    }
+
+    // copy expansion and lfsr to IV
+    for (int i=7; i>=0; i--) {
+        IV[i] = overflow & 0xFF;
+        overflow >>= 8;
+    }
+    for (int i=15; i>=8; i--) {
+        IV[i] = lfsr & 0xFF;
+        lfsr >>= 8;
+    }
 }
 

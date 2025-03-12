@@ -360,7 +360,7 @@ namespace gr {
                 ess_keyid = next_keyid;
                 memcpy(ess_mi, next_mi, sizeof(next_mi));
             } else {
-                op25_crypt_algs::cycle_p25_lfsr(ess_mi);
+                op25_crypt_algs::cycle_p25_mi(ess_mi);
             }
         }
 

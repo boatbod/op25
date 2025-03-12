@@ -27,6 +27,7 @@
 enum algid_type : uint8_t   {
     ALG_UNENCRYPTED   = 0x80,
     ALG_DES_OFB       = 0x81,
+    ALG_AES_256       = 0x84,
     ALG_ADP_RC4       = 0xAA
 };
 
