@@ -113,7 +113,8 @@ class p25_demod_base(gr.hier_block2):
         self.bb_tuner_sink = {}
         self.spiir = filter.single_pole_iir_filter_ff(0.0001)
 
-        self.switch = blocks.copy(gr.sizeof_gr_complex)
+        #self.switch = blocks.copy(gr.sizeof_gr_complex)
+        self.switch = blocks.copy(gr.sizeof_float)
         self.null_sink = blocks.null_sink(gr.sizeof_float)
         self.baseband_amp = blocks.multiply_const_ff(_def_bb_gain)
         coeffs = op25_c4fm_mod.c4fm_taps(sample_rate=self.if_rate, span=9, generator=op25_c4fm_mod.transfer_function_rx).generate()
@@ -352,6 +353,7 @@ class p25_demod_cb(p25_demod_base):
                                 gr.io_signature(1, 1, gr.sizeof_char))        # Output signature
         p25_demod_base.__init__(self, msgq_id=msgq_id, debug=debug, if_rate=if_rate, symbol_rate=symbol_rate, filter_type=filter_type, excess_bw = excess_bw)
 
+        self.switch = blocks.copy(gr.sizeof_gr_complex)
         self.usable_bw = usable_bw
         self.input_rate = input_rate
         self.if_rate = if_rate
