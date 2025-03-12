@@ -800,7 +800,7 @@ void p25p2_tdma::handle_4V2V_ess(const uint8_t dibits[])
             next_algid = ess_algid;
             next_keyid = ess_keyid;
             memcpy(next_mi, ess_mi, sizeof(ess_mi));
-            op25_crypt_algs::cycle_p25_lfsr(next_mi);
+            op25_crypt_algs::cycle_p25_mi(next_mi);
         }
 	}     
 
