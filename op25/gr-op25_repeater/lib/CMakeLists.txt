@@ -75,6 +75,7 @@ list(APPEND op25_repeater_sources
     op25_crypt_algs.cc
     op25_crypt_adp.cc
     op25_crypt_des.cc
+    op25_crypt_aes.cc
     p25p1_voice_encode.cc
     p25p1_voice_decode.cc
     p25p2_framer.cc
