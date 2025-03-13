@@ -2133,6 +2133,8 @@ class p25_receiver(object):
 
     def check_expired_hold(self, curr_time):
         if self.hold_tgid is not None and (self.hold_until <= curr_time):
+            if self.debug > 10:
+                sys.stderr.write("%s [%d] expire hold: tg(%d)\n" % (log_ts.get(), self.msgq_id, self.hold_tgid))
             self.hold_tgid = None
             self.hold_mode = False
             meta_update(self.meta_q, msgq_id=self.msgq_id, debug=self.debug)

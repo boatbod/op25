@@ -989,6 +989,7 @@ op25_crypt_aes::process(packed_codeword& PCW, frame_type fr_type, int voice_subf
             PCW[j] = d_keystream[j + offset] ^ PCW[j];
         }
 
+#if 0
         //debug, print keystream values and track offset
         if (d_debug >= 10) {
             fprintf (stderr, "%s AES KS: ", logts.get(d_msgq_id));
@@ -997,6 +998,7 @@ op25_crypt_aes::process(packed_codeword& PCW, frame_type fr_type, int voice_subf
             }
             fprintf (stderr, " Offset: %ld; \n", offset);
         }
+#endif
 
     } else if (d_pr_type == PT_P25_PHASE2) {
         //TDMA - Experimental
@@ -1005,6 +1007,7 @@ op25_crypt_aes::process(packed_codeword& PCW, frame_type fr_type, int voice_subf
         }
         PCW[6] &= 0x80; // mask everything except the MSB of the final codeword
 
+#if 0
         //debug, print keystream values and track offset
         if (d_debug >= 10) {
             fprintf (stderr, "%s AES KS: ", logts.get(d_msgq_id));
@@ -1013,6 +1016,8 @@ op25_crypt_aes::process(packed_codeword& PCW, frame_type fr_type, int voice_subf
             }
             fprintf (stderr, " Offset: %ld; \n", offset);
         }
+#endif
+
     }
     return rc;
 }
