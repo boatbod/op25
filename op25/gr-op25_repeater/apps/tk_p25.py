@@ -44,6 +44,7 @@ TGID_EXPIRY_TIME = 1.0   # Number of seconds to allow tgid to remain active with
 FREQ_EXPIRY_TIME = 1.2   # Number of seconds to allow freq to remain active with no updates received
 EXPIRY_TIMER = 0.2       # Number of seconds between checks for tgid/freq expiry
 PATCH_EXPIRY_TIME = 20.0 # Number of seconds until patch expiry
+CLEANUP_TIMER = 0.5       # Number of seconds between cleanup intervals
 
 #################
 # Helper functions
@@ -116,6 +117,7 @@ class rx_ctl(object):
         self.receivers = {}
         self.systems = {}
         self.chans = chans
+        self.cleanup_timer = time.time()
 
         for chan in self.chans:
             sysname = chan['sysname']
@@ -190,6 +192,12 @@ class rx_ctl(object):
                 # Check for control channel reassignment
                 self.check_cc_assignments()
 
+        if curr_time > (self.cleanup_timer + CLEANUP_TIMER):
+            for rcvr in self.receivers:
+                if self.receivers[rcvr]['rx_rcvr'] is not None:
+                    self.receivers[rcvr]['rx_rcvr'].check_expired_hold(time.time())
+            self.cleanup_timer = curr_time
+
     # Check for control channel assignments to idle receivers
     def check_cc_assignments(self):
         for p25_sysname in self.systems:
@@ -239,7 +247,6 @@ class rx_ctl(object):
         rcvr_ids = []
         for rcvr in self.receivers:
             if self.receivers[rcvr]['rx_rcvr'] is not None:
-                self.receivers[rcvr]['rx_rcvr'].check_expired_hold(time.time())
                 rcvr_name = from_dict(self.receivers[rcvr]['config'], 'name', "")
                 d[str(rcvr)] = json.loads(self.receivers[rcvr]['rx_rcvr'].get_status())
                 d[str(rcvr)]['name'] = rcvr_name
@@ -2132,6 +2139,9 @@ class p25_receiver(object):
         meta_update(self.meta_q, tgid=tgid, tag=self.talkgroups[tgid]['tag'], rid=self.talkgroups[tgid]['srcaddr'], rtag=self.system.get_rid_tag(self.talkgroups[tgid]['srcaddr']), msgq_id=self.msgq_id, debug=self.debug)
 
     def check_expired_hold(self, curr_time):
+        if self.debug > 10:
+            sys.stderr.write("%s [%d] check_expired_hold: hold_tgid(%s), hold_until(%s)\n" % (log_ts.get(), self.msgq_id, self.hold_tgid, self.hold_until))
+        
         if self.hold_tgid is not None and (self.hold_until <= curr_time):
             if self.debug > 10:
                 sys.stderr.write("%s [%d] expire hold: tg(%d)\n" % (log_ts.get(), self.msgq_id, self.hold_tgid))
