@@ -61,15 +61,15 @@ class op25_wavsrc_f(gr.hier_block2):
 
         sys.stderr.write("%s [%s] Enabling WAV file source: rate=%d, bit=%d, channels=%d\n" % (log_ts.get(), name, self.rate, self.size, self.chans))
 
-
         # Create the throttle to set playback rate
         self.throttle = blocks.throttle(gr.sizeof_float, self.rate)
 
         # Gain
         self.gain = blocks.multiply_const_ff(self.wav_gain)
+        self.agc = op25_repeater.rmsagc_ff(alpha=0.001, k=1.0)
 
         # Connect src and throttle
-        self.connect(self.wavsrc, self.throttle, self.gain, self)            
+        self.connect(self.wavsrc, self.throttle, self.agc, self.gain, self)            
 
     def get_sample_rate(self):
         return self.rate;
