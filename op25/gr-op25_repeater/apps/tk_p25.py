@@ -1971,13 +1971,16 @@ class p25_receiver(object):
                     sys.stderr.write('%s [%d] mac_ptt: mi: %018x algid: %02x keyid:%04x ga: %d sa: %d\n' % (log_ts.get(), m_rxid, mi, algid, keyid, ga, sa))
                 updated += self.system.update_talkgroup_srcaddr(curr_time, ga, sa)
                 if algid != 0x80: # log and save encryption information
-                    if self.debug >= 5 and (algid != self.talkgroups[ga]['algid'] or keyid != self.talkgroups[ga]['keyid']):
-                        sys.stderr.write('%s [%d] encrypt info: tg=%d, algid=0x%x, keyid=0x%x\n' % (log_ts.get(), self.msgq_id, ga, algid, keyid))
                     with self.system.talkgroups_mutex:
                         if ga in self.talkgroups:
+                            if self.debug >= 5 and (algid != self.talkgroups[ga]['algid'] or keyid != self.talkgroups[ga]['keyid']):
+                                sys.stderr.write('%s [%d] encrypt info: tg=%d, algid=0x%x, keyid=0x%x\n' % (log_ts.get(), self.msgq_id, ga, algid, keyid))
                             self.talkgroups[ga]['encrypted'] = 1
                             self.talkgroups[ga]['algid'] = algid
                             self.talkgroups[ga]['keyid'] = keyid
+                        else:
+                            if self.debug >= 5:
+                                sys.stderr.write('%s [%d] encrypt info: unknown tg=%d, algid=0x%x, keyid=0x%x\n' % (log_ts.get(), self.msgq_id, ga, algid, keyid))
                     if self.crypt_behavior > 1:
                         updated += 1
                         if self.debug > 1:
