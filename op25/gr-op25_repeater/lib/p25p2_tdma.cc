@@ -679,8 +679,8 @@ int p25p2_tdma::handle_packet(uint8_t dibits[], const uint64_t fs)
 	static const int which_slot[] = {0,1,0,1,0,1,0,1,0,1,1,0};
 	packets++;
 	sync.check_confidence(dibits);
-	if (!sync.in_sync())
-		return -1;
+    //if (!sync.in_sync())  // First frame will always be "out of sync" so this check is pretty silly;
+    //  return -1;          // let other error correction methods prevent bad decode
 	const uint8_t* burstp = &dibits[10];
 	uint8_t xored_burst[BURST_SIZE - 10];
 	burst_type = duid.duid_lookup(duid.extract_duid(burstp));
