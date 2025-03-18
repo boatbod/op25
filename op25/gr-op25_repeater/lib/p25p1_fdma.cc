@@ -362,6 +362,9 @@ namespace gr {
             } else {
                 op25_crypt_algs::cycle_p25_mi(ess_mi);
             }
+
+            std::string encr = "{\"encrypted\": " + std::to_string(encrypted() ? 1 : 0) + ", \"algid\": " + std::to_string(ess_algid) + ", \"keyid\": " + std::to_string(ess_keyid) + "}";
+            send_msg(encr, M_P25_JSON_DATA);
         }
 
         void p25p1_fdma::process_TTDU() {
@@ -566,7 +569,6 @@ namespace gr {
                     imbe_deinterleave(A, cw, i);
 
                     errs = imbe_header_decode(cw, u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7], E0, ET);
-                    
 
                     if (d_debug >= 9 && !encrypted() && d_behavior == -1) {
                         packed_codeword p_cw;
@@ -615,7 +617,6 @@ namespace gr {
 			    fprintf(stderr, "%s IMBE %s errs %lu\n", logts.get(d_msgq_id), s, errs); // print to log in one operation
 		    }
 					
-					
                     if (encrypted()) {
                         packed_codeword ciphertext;
                         imbe_pack(ciphertext, u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7]);
@@ -626,9 +627,6 @@ namespace gr {
                         fprintf(stderr, "%s IMBE %s errs %lu\n", logts.get(d_msgq_id), s, errs); // print to log in one operation
                         imbe_unpack(ciphertext, u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7]);
                     }
-
-                    std::string encr = "{\"encrypted\": " + std::to_string(encrypted() ? 1 : 0) + ", \"algid\": " + std::to_string(ess_algid) + ", \"keyid\": " + std::to_string(ess_keyid) + "}";
-                    send_msg(encr, M_P25_JSON_DATA);
 
                     if (d_do_audio_output && audio_valid) {
                         software_decoder.decode_fullrate(u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7], E0, ET);
