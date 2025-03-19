@@ -481,7 +481,7 @@ class channel(object):
                 self.sinks['fft'][0].set_relative_freq(self.device.frequency - freq)
         if self.verbosity >= 9:
             sys.stderr.write("%s [%d] Tuning to frequency %f\n" % (log_ts.get(), self.msgq_id, (freq/1e6)))
-        self.demod.reset()          # reset gardner-costas tracking loop
+        #self.demod.reset()          # reset gardner-costas tracking loop NOTE: tuning appears to be faster without this step
         self.decoder.control(json.dumps({'tuner': self.msgq_id, 'cmd': 'sync_reset'}))
         return True
 
