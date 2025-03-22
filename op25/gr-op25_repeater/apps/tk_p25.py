@@ -1493,9 +1493,10 @@ class p25_system(object):
 
         # step 2 - expire the individual talkgroups with the talkgroups_mutex unlocked
         for tgid in tg_expire_list:
-            if self.debug > 1:
-                sys.stderr.write("%s [%s] expiring tg(%d), freq(%f), slot(%s)\n" % (log_ts.get(), self.sysname, tgid, (self.talkgroups[tgid]['frequency']/1e6), get_slot(self.talkgroups[tgid]['tdma_slot'])))
-            self.talkgroups[tgid]['receiver'].expire_talkgroup(reason="expiry")
+            if self.talkgroups[tgid]['receiver'] is not None:   # re-validate receiver still assigned to this tgid and was not released by a different thread
+                if self.debug > 1:
+                    sys.stderr.write("%s [%s] expiring tg(%d), freq(%f), slot(%s)\n" % (log_ts.get(), self.sysname, tgid, (self.talkgroups[tgid]['frequency']/1e6), get_slot(self.talkgroups[tgid]['tdma_slot'])))
+                self.talkgroups[tgid]['receiver'].expire_talkgroup(reason="expiry")
 
     def add_patch(self, sg, ga_list):
         with self.patches_mutex:

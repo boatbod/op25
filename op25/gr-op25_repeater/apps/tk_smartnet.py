@@ -1833,9 +1833,9 @@ class osw_receiver(object):
 
         # step 2 - expire the individual talkgroups with the talkgroups_mutex unlocked
         for tgid in tg_expire_list:
-            if self.debug > 1:
-                sys.stderr.write("%s [%d] expiring tg(%d), freq(%f)\n" % (log_ts.get(), self.msgq_id, tgid, (self.talkgroups[tgid]['frequency']/1e6)))
-            if 'receiver' in self.talkgroups[tgid] and self.talkgroups[tgid]['receiver'] is not None: 
+            if self.talkgroups[tgid]['receiver'] is not None: 
+                if self.debug > 1:
+                    sys.stderr.write("%s [%d] expiring tg(%d), freq(%f)\n" % (log_ts.get(), self.msgq_id, tgid, (self.talkgroups[tgid]['frequency']/1e6)))
                 self.talkgroups[tgid]['receiver'].expire_talkgroup(reason="expiry")
                 rc = True
         return rc
