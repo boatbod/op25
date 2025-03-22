@@ -1836,8 +1836,9 @@ class osw_receiver(object):
         for tgid in tg_expire_list:
             if self.debug > 1:
                 sys.stderr.write("%s [%d] expiring tg(%d), freq(%f)\n" % (log_ts.get(), self.msgq_id, tgid, (self.talkgroups[tgid]['frequency']/1e6)))
-            self.talkgroups[tgid]['receiver'].expire_talkgroup(reason="expiry")
-            rc = True
+            if 'receiver' in self.talkgroups[tgid] and self.talkgroups[tgid]['receiver'] is not None: 
+                self.talkgroups[tgid]['receiver'].expire_talkgroup(reason="expiry")
+                rc = True
         return rc
 
     def add_patch(self, ts, tgid, sub_tgid, mode):
