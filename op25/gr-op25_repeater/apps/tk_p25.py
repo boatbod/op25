@@ -750,7 +750,7 @@ class p25_system(object):
                 if bsi != "": # Save bsi only if non-null
                     self.callsign = bsi
                     if self.debug >= 10:
-                        sys.stderr.write('%s [%d] tsbk(0x0b) mot_bsi_grant: bsi: %s ch: %x freq: %f\n' % (log_ts.get(), m_rxid, bsi, ch, float(self.channel_id_to_frequency(ch))/1e6))
+                        sys.stderr.write('%s [%d] tsbk(0x0b) mot_bsi_grant: bsi: %s ch: %x(%s)\n' % (log_ts.get(), m_rxid, bsi, ch, self.channel_id_to_string(ch)))
         elif opcode == 0x16:   # sndcp data ch
             ch1  = (tsbk >> 48) & 0xffff
             ch2  = (tsbk >> 32) & 0xffff
