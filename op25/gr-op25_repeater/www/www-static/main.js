@@ -459,7 +459,7 @@ function patches(d) {
             if (++row_num == 1) {
                 html += "<tr style=\"background-color: " + color + ";\">";
                 if (is_p25) {
-                    html += "<td rowspan=" + num_sub_tgids + ">" + d['patch_data'][tgid][sub_tgid]['sg_dec'] + "</td>";
+                    html += "<td rowspan=" + num_sub_tgids + ">" + d['patch_data'][tgid][sub_tgid]['sg'] + "</td>";
                 } else if (is_smartnet) {
                     html += "<td rowspan=" + num_sub_tgids + ">" + d['patch_data'][tgid][sub_tgid]['tgid_dec'] + "</td><td rowspan=" + num_sub_tgids + ">" + d['patch_data'][tgid][sub_tgid]['tgid_hex'] + "</td>";
                 }
@@ -467,7 +467,7 @@ function patches(d) {
                 html += "<tr style=\"background-color: " + color + ";\">";
             }
             if (is_p25) {
-                html += "<td>" + d['patch_data'][tgid][sub_tgid]['ga_dec'] + "</td>";
+                html += "<td>" + d['patch_data'][tgid][sub_tgid]['ga'] + "</td>";
             } else if (is_smartnet) {
                 html += "<td>" + d['patch_data'][tgid][sub_tgid]['sub_tgid_dec'] + "</td><td>" + d['patch_data'][tgid][sub_tgid]['sub_tgid_hex'] + "</td>";
                 html += "<td>" + d['patch_data'][tgid][sub_tgid]['mode'] + "</td>";
