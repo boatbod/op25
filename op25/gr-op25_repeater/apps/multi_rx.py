@@ -869,7 +869,7 @@ class rx_block (gr.top_block):
             js = self.trunk_rx.to_json()        # extract data from trunking module
             msg = gr.message().make_from_string(js, -4, 0, 0)
             if not self.ui_in_q.full_p():
-                self.ui_in_q.insert_tail(msg)   # send info back to UI as long asa queue not full
+                self.ui_in_q.insert_tail(msg)   # send info back to UI as long as queue not full
             self.ui_plot_update()
         elif s == 'toggle_plot':
             if not self.get_interactive():
@@ -918,6 +918,11 @@ class rx_block (gr.top_block):
                 return
             msgq_id = int(msg.arg2())
             self.find_channel(msgq_id).toggle_capture()
+        elif s == 'dump_buffer':
+            #msgq_id = int(msg.arg2())
+            #self.find_channel(msgq_id).decoder.control(json.dumps({'tuner': msgq_id, 'cmd': 'dump_buffer'}))
+            for chan in self.channels:
+                chan.decoder.control(json.dumps({'tuner': chan.msgq_id, 'cmd': 'dump_buffer'}))
         elif s == 'watchdog':
             if self.ui_last_update > 0 and (time.time() > (self.ui_last_update + self.ui_timeout)):
                 self.ui_last_update = 0
