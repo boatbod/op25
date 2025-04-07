@@ -81,8 +81,10 @@ namespace gr {
             } else if (cmd == "crypt_behavior") {
 			    if (d_sync)
 			        d_sync->crypt_behavior(j["behavior"].get<int>());	
-			}
-            else {
+			} else if (cmd == "dump_buffer") {
+			    if (d_sync)
+                    d_sync->dump_buffer();
+            } else {
                 if (d_debug >= 10) {
                     fprintf(stderr, "%s frame_assembler_impl::control: unhandled cmd(%s)\n", logts.get(d_msgq_id), cmd.c_str());
                 }
