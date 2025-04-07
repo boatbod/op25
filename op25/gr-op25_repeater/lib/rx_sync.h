@@ -136,6 +136,7 @@ public:
 	//crypt_behavior
 	void crypt_behavior(int behavior);
 	void set_debug(int debug);
+    void dump_buffer();
 	rx_sync(const char * options, log_ts& logger, int debug, int msgq_id, gr::msg_queue::sptr queue);
 	~rx_sync();
 
@@ -146,7 +147,8 @@ private:
 	void ysf_sync(const uint8_t dibitbuf[], bool& ysf_fullrate, bool& unmute);
 	void codeword(const uint8_t* cw, const enum codeword_types codeword_type, int slot_id);
 	void output(int16_t * samp_buf, const ssize_t slot_id);
-	static const int CBUF_SIZE=864;
+	//static const int CBUF_SIZE=864;
+	static const uint32_t CBUF_SIZE=1800000; //approx 5 minutes at 6000sps, or 6.25 minutes at 4800sps
 	static const int NSAMP_OUTPUT = 160;
 
 	op25_timer sync_timer;
@@ -154,7 +156,8 @@ private:
 	uint64_t d_sync_reg;
 	uint64_t d_fs;
 	uint8_t d_cbuf[CBUF_SIZE*2];
-	unsigned int d_cbuf_idx;
+	//unsigned int d_cbuf_idx;
+	uint32_t d_cbuf_idx;
 	enum rx_types d_current_type;
 	int d_fragment_len;
 	int d_threshold;

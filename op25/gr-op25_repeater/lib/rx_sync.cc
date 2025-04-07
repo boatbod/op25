@@ -24,6 +24,7 @@
 #include <string.h>
 #include <string>
 #include <iostream>
+#include <fstream>
 #include <deque>
 #include <assert.h>
 #include <errno.h>
@@ -70,7 +71,7 @@ void rx_sync::sync_reset(void) {
 
 	// Sync counters and registers reset
 	d_symbol_count = 0;
-    d_cbuf_idx = 0;
+    //d_cbuf_idx = 0; // never reset, just let it wrap
 	d_rx_count = 0;
 	d_threshold = 0;
 	d_shift_reg = 0;
@@ -230,6 +231,7 @@ rx_sync::rx_sync(const char * options, log_ts& logger, int debug, int msgq_id, g
 	d_symbol_count(0),
 	d_sync_reg(0),
 	d_fs(0),
+    d_cbuf(),
 	d_cbuf_idx(0),
 	d_current_type(RX_TYPE_NONE),
 	d_rx_count(0),
@@ -462,8 +464,7 @@ void rx_sync::output(int16_t * samp_buf, const ssize_t slot_id) {
 		d_audio.send_audio(samp_buf, NSAMP_OUTPUT * sizeof(int16_t));
 }
 
-void rx_sync::rx_sym(const uint8_t sym)
-{
+void rx_sync::rx_sym(const uint8_t sym) {
 	uint8_t bitbuf[864*2];
 	enum rx_types sync_detected = RX_TYPE_NONE;
 	bool unmute;
@@ -604,5 +605,13 @@ void rx_sync::rx_sym(const uint8_t sym)
 		break;
 	}
 }
+
+void rx_sync::dump_buffer() {
+    std::string fname = "ch" + std::to_string(d_msgq_id) + "-dump.bin";
+    std::fstream file(fname.c_str(), std::ios::out | std::ios::binary);
+    file.write((const char *)(d_cbuf + d_cbuf_idx + 1), CBUF_SIZE);
+    fprintf(stderr, "%s rx_sync::dump_buffer: %s\n", logts.get(d_msgq_id), fname.c_str());
+}
+
     } // end namespace op25_repeater
 } // end namespace gr

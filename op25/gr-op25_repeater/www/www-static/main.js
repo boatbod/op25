@@ -353,7 +353,7 @@ function channel_status() {
     var s2_src = document.getElementById("s2_src");
     var s2_ch_txt = document.getElementById("s2_ch_txt");
     var s2_cap = document.getElementById("cap_bn");
-    var s2_trk = document.getElementById("trk_bn");
+    var s2_trk = document.getElementById("dmp_bn");
 
     html = "";
     if (c_stream_url != "") {
@@ -418,10 +418,10 @@ function channel_status() {
     else
         s2_cap.value = "start capture";
 
-    if (auto_tracking)
-        s2_trk.value = "tracking off";
-    else
-        s2_trk.value = "tracking on";
+    //if (auto_tracking)
+    //    s2_trk.value = "tracking off";
+    //else
+    //    s2_trk.value = "tracking on";
 }
 
 // patches table
@@ -810,15 +810,15 @@ function f_chan_button(command) {
 
 function f_dump_button(command) {
     send_command('dump_tgids', 0, Number(channel_list[channel_index]));
-    send_command('dump_tracking', 0, Number(channel_list[channel_index]));
+    send_command('dump_buffer', 0, Number(channel_list[channel_index]));
 }
 
 function f_cap_button(command) {
     send_command('capture', 0, Number(channel_list[channel_index]));
 }
 
-function f_trk_button(command) {
-    send_command('set_tracking', command, Number(channel_list[channel_index]));
+function f_dmp_button(command) {
+    send_command('dump_buffer', command, Number(channel_list[channel_index]));
 }
 
 function f_tune_button(command) {

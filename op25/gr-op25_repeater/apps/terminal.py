@@ -197,12 +197,13 @@ class curses_terminal(threading.Thread):
         if curses.is_term_resized(self.maxy, self.maxx) is True:
             self.resize_curses()
 
+        _ORD_D = ord('D')
         _ORD_C = ord('c')
         _ORD_S = ord('s')
         _ORD_L = ord('l')
         _ORD_H = ord('h')
         _ORD_R = ord('R')
-        COMMANDS = {_ORD_S: 'skip', _ORD_L: 'lockout', _ORD_H: 'hold', _ORD_R: 'reload', _ORD_C: 'capture'}
+        COMMANDS = {_ORD_S: 'skip', _ORD_L: 'lockout', _ORD_H: 'hold', _ORD_R: 'reload', _ORD_C: 'capture', _ORD_D: 'dump_buffer'}
         c = self.stdscr.getch()
         if c == ord('u') or self.do_auto_update():
             self.send_command('update', 0, int(self.current_msgqid))
@@ -315,10 +316,6 @@ class curses_terminal(threading.Thread):
             self.send_command('toggle_plot', (c - ord('0')), int(self.current_msgqid))
         elif c == ord('d'):
             self.send_command('dump_tgids', 0, int(self.current_msgqid))
-        elif c == ord('D'):
-            self.send_command('dump_tracking', 0, int(self.current_msgqid))
-        elif c == ord('T'):
-            self.send_command('set_tracking', -1, int(self.current_msgqid))
         elif c == ord('x'):
             assert 1 == 0
         elif c == curses.KEY_UP:
