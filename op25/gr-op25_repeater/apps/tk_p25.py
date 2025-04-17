@@ -1670,18 +1670,11 @@ class p25_system(object):
                 d['frequencies'][f] = '- %f  %s [               ]  %s  count %d' % ((f / 1e6), f_type, time_ago_ncurses_str, count)
 
             tags = []
-            sources = []
-
+            
             for tgid in tgids:
                  try:
                      tgid_int = int(tgid)
                      tag = self.talkgroups.get(tgid_int, {}).get('tag', None)
-                     
-                     srcaddr = self.talkgroups.get(tgid_int, {}).get('srcaddr', 100)
-                     if srcaddr == 0:
-                         srcaddr = 99999999
-                     sources.append(srcaddr)
-                     sys.stderr.write(f"shit: {srcaddr}\n")
                  except (ValueError, TypeError) as e:
                      if self.debug >= 10:
                          sys.stderr.write(f"Error converting TGID '{tgid}' to int: {e}\n")
@@ -1689,7 +1682,7 @@ class p25_system(object):
                  tags.append(tag)
 
             # The easy part: send pure JSON and let the display layer handle formatting
-            d['frequency_data'][f] = {'type': chan_type, 'tgids': tgids, 'last_activity': time_ago_str, 'counter': count, 'tags': tags, 'srcaddr': sources}
+            d['frequency_data'][f] = {'type': chan_type, 'tgids': tgids, 'last_activity': time_ago_str, 'counter': count, 'tags': tags}
 
         # Patches
         self.expire_patches()
