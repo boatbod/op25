@@ -1,0 +1,369 @@
+#div_status body {
+
+	background-color: LightGray;
+	font-family: Arial, Helvetica, sans-serif;
+
+}
+
+#div_status table {
+
+	border-style: solid;
+	background-color: #336699;
+	border-collapse: collapse;
+	font-family: "Courier New", Courier, Monospace;
+
+}
+
+#div_status th {
+
+	border-style: solid;
+	padding: 3px;
+	font-family: Arial, Helvetica, sans-serif;
+	color: #000;
+	font-weight: bold;
+	background: #669999; /* For browsers that do not support gradients */
+	background: linear-gradient(#669999, #77AAAA);
+
+}
+
+#div_status td {
+
+	border-style: solid;
+	padding: 3px;
+
+}
+
+hr {
+	width: 830px;
+	float: left;
+	padding: 0px;
+}
+
+/* the buttons */
+
+.scan-button {
+	/* background-color: #669999; */
+	border-color: black;
+	color: white;
+	padding: 10px 10px;
+	text-decoration: none;
+	margin: 4px 2px;
+	cursor: pointer;
+	width: 69px;
+	/* width: 77px;*/
+	font-size: 14px;
+	font-weight: bold;
+	box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2), 0 3px 10px 0 rgba(0,0,0,0.19);
+	background: #669999; /* For browsers that do not support gradients */
+	background: linear-gradient(#669999, #82B0B0);
+}
+
+.plot-button {
+	/* background-color: #669999; */
+	border-color: black;
+	color: white;
+	padding: 10px 10px;
+	text-decoration: none;
+	margin: 4px 2px;
+	cursor: pointer;
+	width: 57px;
+	font-size: 14px;
+	font-weight: bold;
+	box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2), 0 3px 10px 0 rgba(0,0,0,0.19);
+	background: #669999; /* For browsers that do not support gradients */
+	background: linear-gradient(#669999, #82B0B0);
+}
+
+.chan-button {
+	/* background-color: #669999; */
+	border-color: black;
+	color: white;
+	padding: 0px 10px;
+	text-decoration: none;
+	margin: 0px 0px;
+	cursor: pointer;
+	width: 30px;
+	font-size: 9px;
+	font-weight: bold;
+	box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2), 0 3px 10px 0 rgba(0,0,0,0.19);
+	background: #669999; /* For browsers that do not support gradients */
+	background: linear-gradient(#669999, #82B0B0);
+}
+
+.cap-button {
+	/* background-color: #669999; */
+	border-color: black;
+	color: white;
+	padding: 0px 10px;
+	text-decoration: none;
+	margin: 0px 0px;
+	cursor: pointer;
+	width: 88px;
+	font-size: 9px;
+	font-weight: bold;
+	box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2), 0 3px 10px 0 rgba(0,0,0,0.19);
+	background: #669999; /* For browsers that do not support gradients */
+	background: linear-gradient(#669999, #82B0B0);
+}
+
+/* flex container for top buttons */
+
+/*
+the flex properties are more useful when a variable-width is applied,
+but can be safely left in place even when using a fixed width
+*/
+
+.flex-container {
+	display: flex;
+	width: 830px;
+	justify-content: space-between;
+
+}
+
+.flex-container > div {
+	width: 100px;
+	margin: 0px;
+	text-align: center;
+	line-height: 75px;
+	font-size: 30px;
+}
+
+
+/* main info container for the two tables */
+
+div.info {
+
+	position: relative;
+	width: 830px;
+	height: auto;
+	border: 0px solid #000;
+}
+
+/* system frequencies container that holds the table */
+
+.top {
+
+	text-align: left;
+	border: 0px solid #000;
+
+}
+
+div.system {
+
+	position: absolute;
+	top: 10px;
+	left: 0;
+	width: 60%;
+	height: auto;
+	border: 0px solid #d00
+}
+
+/* right column container that holds the adjacent sites and patch tables */
+
+div.right_column {
+
+	position: relative;
+	top: 10px;
+	width: 36%;
+	float: right;
+	height: auto;
+	border: 0px solid #00f;
+}
+
+/* labels, values, system and tg text */
+
+.copyr {
+
+	font-family: Arial, Helvetica, sans-serif;
+	font-size: 14px;
+	padding: 20px;
+	color: #484848;
+	float: right;
+}
+
+.label {
+
+	font-family: Arial, Helvetica, sans-serif;
+	color: #484848;
+}
+
+.value {
+
+	font-family: Arial, Helvetica, sans-serif;
+	color: #000000;
+	font-weight: bold;
+}
+
+.systgid {
+
+	font-family: Arial, Helvetica, sans-serif;
+	color: #000060;
+	font-weight: bold;
+	font-size: 24px;
+}
+
+/* the whole NAC string... NAC, freq tsbks, etc. */
+
+.nac {
+
+	font-family: Arial, Helvetica, sans-serif;
+	color: #000060;
+	font-weight: bold;
+	font-size: 18px;
+
+}
+
+/* .s1 .s2 .s3 DIVs for the sections. see index.html */
+
+.s1 {
+	/* empty */
+}
+
+.s2 {
+	display: table;
+	border: 1px solid #999;
+	height: auto;
+	overflow: auto;
+	width: 820px;
+	padding: 5px;
+	background: LightGray; /* For browsers that do not support gradients */
+	background: linear-gradient(White, Silver);
+	box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2), 0 3px 10px 0 rgba(0,0,0,0.19);
+}
+
+.s2_row {
+	display: table-row;
+	width:auto;
+}
+
+.s2_cell_a {
+	display: table-column;
+	float: left;
+	width: 15%
+}
+
+.s2_cell_b {
+	display: table-column;
+	float: left;
+	width: 85%
+}
+
+.s2_cell_b1 {
+	display: table-column;
+	float: left;
+	width: 23%
+}
+
+.s2_cell_b2 {
+	display: table-column;
+	float: left;
+	width: 72%
+}
+
+.s2_cell_c {
+	display: table-column;
+	float: left;
+	width: 10%
+}
+
+.s2_cell_d {
+	display: table-column;
+	float: left;
+	width: 39%
+}
+
+.s2_cell_e {
+	display: table-column;
+	float: left;
+	width: 4%
+}
+
+.s2_cell_f {
+	display: table-column;
+	float: left;
+	width: 4%
+}
+
+.s2_cell_g {
+	display: table-column;
+	float: left;
+	width: 4%
+}
+
+.s2_cell_h {
+	display: table-column;
+	float: left;
+	width: 12%
+}
+
+.s3 {
+	/* empty */
+}
+
+.copyright-text {
+
+	font-family: Arial, Helvetica, sans-serif;
+	color: #000060;
+	font-size: 10pt;
+}
+
+.nav-ul {
+	list-style-type: none;
+	margin: 0;
+	padding: 0;
+	overflow: hidden;
+	background-color: #bbb;
+	background: linear-gradient(#bbbbbb, #cccccc);
+}
+
+.nav-li {
+	float: left;
+	border-right: 1px solid #000;
+	background: linear-gradient(#bbbbbb, #cccccc);
+}
+
+.nav-li-active {
+	float: left;
+	background-color:   #c0c0c0;
+	color:     #0080c0;
+	border-right: 1px solid #000;
+}
+
+.nav-bar {
+	width: 830px;
+	padding: 0;
+	border: 1px solid #000;
+}
+
+.nav-button {
+	background-color:  #bbb;
+	background: linear-gradient(#bbbbbb, #cccccc);
+	color:     #000;
+	border:   0px;
+	padding:   20px;
+	display:   block;
+	font-size: 14px;
+	font-weight: bold;
+}
+
+
+.nav-button-active {
+	background-color:  #9cc;
+	background: linear-gradient(#8bb, #9cc);
+	color:     #000;
+	border:   0px;
+	padding:   20px;
+	display:   block;
+	font-size: 14px;
+	font-weight: bold;
+}
+
+.nav-button:hover {
+	background-color: #699;
+	background: linear-gradient(#588, #699);
+}
+
+.nav-button-active:hover {
+	background-color: #699;
+	background: linear-gradient(#588, #699);
+}
