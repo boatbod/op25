@@ -31,7 +31,7 @@ const MAX_HISTORY_SECONDS 	= 5; //// number of rows to consider "recent" and dup
 const MAX_TG_CHARS 			= 20; // max number of characters for talkgroup tags in freq table
 
 
-const presets = [
+const cfg_presets = [
   { id: 1, tgid: 7305, label: "Martinez PD" },
   { id: 2, tgid: 7712, label: "CCSO Central" },
   { id: 3, tgid: 6052, label: "ConFire B1" },

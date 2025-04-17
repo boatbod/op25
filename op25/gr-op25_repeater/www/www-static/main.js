@@ -56,6 +56,7 @@ var channel_list = [];
 var channel_index = 0;
 var default_channel = null;
 var enc_sym = "&#216;";
+var presets = [];
 
 const mediaQuery = window.matchMedia("(min-width: 1500px)");
 mediaQuery.addEventListener("change", handleColumnLayoutChange);
@@ -95,12 +96,8 @@ document.addEventListener("DOMContentLoaded", function() {
     }
     
     if (configFile) {
-		presets.forEach(preset => {
-		  const btn = document.getElementById(`preset-btn-${preset.id}`);
-		  if (btn) {
-			btn.textContent = `${preset.label}`;
-		  }
-		});
+        presets = cfg_presets;
+        update_presets();
 	}
 	
 	loadSettingsFromLocalStorage();	
@@ -139,6 +136,15 @@ document.addEventListener("DOMContentLoaded", function() {
     
 });
 
+function update_presets()
+{
+    presets.forEach(preset => {
+        const btn = document.getElementById(`preset-btn-${preset.id}`);
+        if (btn) {
+            btn.textContent = `${preset.label}`;
+        }
+    });
+}
 
 function do_onload() {
     set_tuning_step_sizes();
@@ -264,6 +270,11 @@ function term_config(d) {
     }
     if ((d["default_channel"] != undefined) && (d["default_channel"] != "")) {
         default_channel = d["default_channel"];
+    }
+
+    if (d["presets"] != undefined) {
+        presets = d["presets"];
+        update_presets();
     }
 }
 

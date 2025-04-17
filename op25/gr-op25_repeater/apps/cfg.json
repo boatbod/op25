@@ -153,6 +153,14 @@
         "http_plot_interval": 1.0,
         "http_plot_directory": "../www/images",
         "tuning_step_large": 1200,
-        "tuning_step_small": 100
+        "tuning_step_small": 100,
+        "presets": [
+            { "id": 1, "tgid": 1111, "label": "Preset 1" },
+            { "id": 2, "tgid": 2222, "label": "Preset 2" },
+            { "id": 3, "tgid": 3333, "label": "Preset 3" },
+            { "id": 4, "tgid": 4444, "label": "Preset 4" },
+            { "id": 5, "tgid": 5555, "label": "Preset 5" },
+            { "id": 6, "tgid": 6666, "label": "Preset 6" }
+        ]
     }
 }
