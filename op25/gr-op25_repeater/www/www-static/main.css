@@ -1,369 +1,513 @@
-#div_status body {
+/* dark-mode.css */
 
-	background-color: LightGray;
-	font-family: Arial, Helvetica, sans-serif;
-
+/* Overall body styles */
+body {
+  background-color: #111;
+  color: #E0E0E0;
+  font-family: Arial, Helvetica, sans-serif;
+  margin: 5;
+  padding: 0;
 }
 
-#div_status table {
+/* 
+* {
+  border: 1px dashed lime;
+}
+ */
 
-	border-style: solid;
-	background-color: #336699;
-	border-collapse: collapse;
-	font-family: "Courier New", Courier, Monospace;
-
+a {
+  color: #66aaff;        /* soft electric blue */
+  text-decoration: none;
 }
 
-#div_status th {
-
-	border-style: solid;
-	padding: 3px;
-	font-family: Arial, Helvetica, sans-serif;
-	color: #000;
-	font-weight: bold;
-	background: #669999; /* For browsers that do not support gradients */
-	background: linear-gradient(#669999, #77AAAA);
-
+a:hover {
+ text-decoration: underline;
 }
 
-#div_status td {
-
-	border-style: solid;
-	padding: 3px;
-
+.plot-image {
+  filter: invert(1);
+  width: 300px;
 }
 
-hr {
-	width: 830px;
-	float: left;
-	padding: 0px;
+.plot-active {
+  border: 1px solid #66ccff !important;
 }
 
-/* the buttons */
-
-.scan-button {
-	/* background-color: #669999; */
-	border-color: black;
-	color: white;
-	padding: 10px 10px;
-	text-decoration: none;
-	margin: 4px 2px;
-	cursor: pointer;
-	width: 69px;
-	/* width: 77px;*/
-	font-size: 14px;
-	font-weight: bold;
-	box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2), 0 3px 10px 0 rgba(0,0,0,0.19);
-	background: #669999; /* For browsers that do not support gradients */
-	background: linear-gradient(#669999, #82B0B0);
-}
-
-.plot-button {
-	/* background-color: #669999; */
-	border-color: black;
-	color: white;
-	padding: 10px 10px;
-	text-decoration: none;
-	margin: 4px 2px;
-	cursor: pointer;
-	width: 57px;
-	font-size: 14px;
-	font-weight: bold;
-	box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2), 0 3px 10px 0 rgba(0,0,0,0.19);
-	background: #669999; /* For browsers that do not support gradients */
-	background: linear-gradient(#669999, #82B0B0);
-}
-
-.chan-button {
-	/* background-color: #669999; */
-	border-color: black;
-	color: white;
-	padding: 0px 10px;
-	text-decoration: none;
-	margin: 0px 0px;
-	cursor: pointer;
-	width: 30px;
-	font-size: 9px;
-	font-weight: bold;
-	box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2), 0 3px 10px 0 rgba(0,0,0,0.19);
-	background: #669999; /* For browsers that do not support gradients */
-	background: linear-gradient(#669999, #82B0B0);
-}
-
-.cap-button {
-	/* background-color: #669999; */
-	border-color: black;
-	color: white;
-	padding: 0px 10px;
-	text-decoration: none;
-	margin: 0px 0px;
-	cursor: pointer;
-	width: 88px;
-	font-size: 9px;
-	font-weight: bold;
-	box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2), 0 3px 10px 0 rgba(0,0,0,0.19);
-	background: #669999; /* For browsers that do not support gradients */
-	background: linear-gradient(#669999, #82B0B0);
-}
-
-/* flex container for top buttons */
-
-/*
-the flex properties are more useful when a variable-width is applied,
-but can be safely left in place even when using a fixed width
-*/
-
-.flex-container {
-	display: flex;
-	width: 830px;
-	justify-content: space-between;
-
-}
-
-.flex-container > div {
-	width: 100px;
-	margin: 0px;
-	text-align: center;
-	line-height: 75px;
-	font-size: 30px;
+/* Outer container/table set to 750 wide */
+.outer-table {
+  width: 750px;
+  margin: 0px 0px 10px 0px;
+  border: 2px solid #444;
+  background-color: #111;                               /* 222 */
+  border-collapse: collapse;
 }
 
 
-/* main info container for the two tables */
+/* .right-table { */
+/*   width: 800px; */
+/*   padding: 50px; */
+/*   margin: 0 auto 10px auto; */
+/*   border: 2px solid #444; */
+/*   background-color: #222; */
+/*   border-collapse: collapse; */
+/* } */
 
-div.info {
 
-	position: relative;
-	width: 830px;
-	height: auto;
-	border: 0px solid #000;
+/* Left panel: vertical buttons */
+.left-panel {
+  width: 15%;
+  padding: 2px;
+  border-right: 1px solid #555;
+  background-color: #222;								/* 333 */
+  text-align: center;
 }
 
-/* system frequencies container that holds the table */
-
-.top {
-
-	text-align: left;
-	border: 0px solid #000;
-
+.left-panel button {
+  background-color: #555;
+  color: #fff;
+  border: 1px solid #777;
+  padding: 10px;
+  margin: 5px;
+  cursor: pointer;
+  width: 90%;
+  transition: background 0.3s ease, border-color 0.3s ease;
 }
 
-div.system {
-
-	position: absolute;
-	top: 10px;
-	left: 0;
-	width: 60%;
-	height: auto;
-	border: 0px solid #d00
+.left-panel button:hover {
+  background: linear-gradient(#666, #555);
+  border-color: #66ccff;
 }
 
-/* right column container that holds the adjacent sites and patch tables */
-
-div.right_column {
-
-	position: relative;
-	top: 10px;
-	width: 36%;
-	float: right;
-	height: auto;
-	border: 0px solid #00f;
+/* Main info area */
+.main-info {
+  width: 60%;
+  padding: 5px;
+  border-right: 1px solid #555;
+  /* background-color: #111;		 */						/* 444 */
 }
 
-/* labels, values, system and tg text */
-
-.copyr {
-
-	font-family: Arial, Helvetica, sans-serif;
-	font-size: 14px;
-	padding: 20px;
-	color: #484848;
-	float: right;
+/* Inner table for system info with reduced height and padding */
+.inner-table {
+  width: 100%;
+  border-collapse: collapse;
+  /* background-color: #444 */;
+  height: 150px;
+  overflow: auto;
 }
 
+.inner-table tr {
+  height: 25px;
+}
+
+.inner-table td {
+  border: 1px solid #555;
+  padding: 3px;
+}
+
+/* New class for larger, thin font info for System, Talkgroup, and Source */
+.info-large {
+  font-size: 1.3em;
+  font-weight: 300;
+  color: #FFFFFF;
+}
+
+/* Text styling for labels and values in the inner table */
 .label {
-
-	font-family: Arial, Helvetica, sans-serif;
-	color: #484848;
+  color: #BBBBBB;
+  font-weight: bold;
 }
 
 .value {
-
-	font-family: Arial, Helvetica, sans-serif;
-	color: #000000;
-	font-weight: bold;
+  color: #FFFFFF;
 }
 
-.systgid {
-
-	font-family: Arial, Helvetica, sans-serif;
-	color: #000060;
-	font-weight: bold;
-	font-size: 24px;
+/* Updated small label and small value styles */
+.small-label {
+  color: #BBBBBB;
+  font-size: 0.8em;
 }
 
-/* the whole NAC string... NAC, freq tsbks, etc. */
-
-.nac {
-
-	font-family: Arial, Helvetica, sans-serif;
-	color: #000060;
-	font-weight: bold;
-	font-size: 18px;
-
+.small-value {
+  color: #00FFFF;
+  font-size: 0.8em;
 }
 
-/* .s1 .s2 .s3 DIVs for the sections. see index.html */
-
-.s1 {
-	/* empty */
+/* The labels and values on the trunk_update/system data */
+.trunk-label {
+  color: #bbb;
+/*   font-size: 0.8em; */
 }
 
-.s2 {
-	display: table;
-	border: 1px solid #999;
-	height: auto;
-	overflow: auto;
-	width: 820px;
-	padding: 5px;
-	background: LightGray; /* For browsers that do not support gradients */
-	background: linear-gradient(White, Silver);
-	box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2), 0 3px 10px 0 rgba(0,0,0,0.19);
+.trunk-value {
+  color: #0ff;
+  font-size: 14px;
 }
 
-.s2_row {
-	display: table-row;
-	width:auto;
+
+/* Right panel: logo area */
+.right-logo {
+  width: 20%;
+  padding: 6px;
+  background-color: #222;
+  text-align: center;
 }
 
-.s2_cell_a {
-	display: table-column;
-	float: left;
-	width: 15%
+/* Bottom row: site/system buttons */
+.bottom-buttons {
+  padding: 10px;
+  background-color: #222;
+  text-align: center;
+  border-top: 1px solid #555;
 }
 
-.s2_cell_b {
-	display: table-column;
-	float: left;
-	width: 85%
+.bottom-buttons button {
+  background-color: #555;
+  color: #fff;
+  border: 1px solid #777;
+  padding: 10px 15px;
+  margin: 5px;
+  cursor: pointer;
+  transition: background 0.3s ease, border-color 0.3s ease;
 }
 
-.s2_cell_b1 {
-	display: table-column;
-	float: left;
-	width: 23%
+.bottom-buttons button:hover {
+  background: linear-gradient(#666, #555);
+  border-color: #66ccff;
 }
 
-.s2_cell_b2 {
-	display: table-column;
-	float: left;
-	width: 72%
+/* Generic button style (for other buttons) */
+.button {
+  background-color: #555;
+  color: #fff;
+  border: 1px solid #777;
+  padding: 10px;
+  margin: 5px;
+  cursor: pointer;
+  transition: background 0.3s ease, border-color 0.3s ease;
 }
 
-.s2_cell_c {
-	display: table-column;
-	float: left;
-	width: 10%
+.button:hover {
+  background: linear-gradient(#666, #555);
+  border-color: #66ccff;
 }
 
-.s2_cell_d {
-	display: table-column;
-	float: left;
-	width: 39%
+/* Small button style for UI elements requiring smaller controls */
+.small-button {
+  background-color: #555;
+  color: #fff;
+  border: 1px solid #777;
+  padding: 5px 10px;
+  margin: 3px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: background 0.3s ease, border-color 0.3s ease;
 }
 
-.s2_cell_e {
-	display: table-column;
-	float: left;
-	width: 4%
+.small-button:hover {
+  background: linear-gradient(#666, #555);
+  border-color: #66ccff;
 }
 
-.s2_cell_f {
-	display: table-column;
-	float: left;
-	width: 4%
-}
 
-.s2_cell_g {
-	display: table-column;
-	float: left;
-	width: 4%
-}
-
-.s2_cell_h {
-	display: table-column;
-	float: left;
-	width: 12%
-}
-
-.s3 {
-	/* empty */
-}
-
-.copyright-text {
-
-	font-family: Arial, Helvetica, sans-serif;
-	color: #000060;
-	font-size: 10pt;
-}
-
-.nav-ul {
-	list-style-type: none;
-	margin: 0;
-	padding: 0;
-	overflow: hidden;
-	background-color: #bbb;
-	background: linear-gradient(#bbbbbb, #cccccc);
-}
-
-.nav-li {
-	float: left;
-	border-right: 1px solid #000;
-	background: linear-gradient(#bbbbbb, #cccccc);
-}
-
-.nav-li-active {
-	float: left;
-	background-color:   #c0c0c0;
-	color:     #0080c0;
-	border-right: 1px solid #000;
-}
-
-.nav-bar {
-	width: 830px;
-	padding: 0;
-	border: 1px solid #000;
+.controls {
+  padding: 10px;
+  background-color: #333;
+  text-align: center;
 }
 
 .nav-button {
-	background-color:  #bbb;
-	background: linear-gradient(#bbbbbb, #cccccc);
-	color:     #000;
-	border:   0px;
-	padding:   20px;
-	display:   block;
-	font-size: 14px;
-	font-weight: bold;
-}
-
-
-.nav-button-active {
-	background-color:  #9cc;
-	background: linear-gradient(#8bb, #9cc);
-	color:     #000;
-	border:   0px;
-	padding:   20px;
-	display:   block;
-	font-size: 14px;
-	font-weight: bold;
+  background-color: #555;
+  color: #fff;
+  border: 1px solid #777;
+  padding: 10px 15px;
+  margin: 5px;
+  cursor: pointer;
+  transition: background 0.3s ease, border-color 0.3s ease;
 }
 
 .nav-button:hover {
-	background-color: #699;
-	background: linear-gradient(#588, #699);
+  background: linear-gradient(#666, #555);
+  border-color: #66ccff;
 }
 
-.nav-button-active:hover {
-	background-color: #699;
-	background: linear-gradient(#588, #699);
+.nav-button-active {
+  background-color: #777;
+  color: #fff;
+  border: 1px solid #999;
 }
+.compact-table {
+  width: 100%;
+  border-collapse: collapse;
+/*   background-color: #333; */
+  font-size: 12px;
+/*   color: #E0E0E0; */
+}
+
+.compact-table th,
+.compact-table td {
+  border: 1px solid #222;
+  padding: 6px;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.compact-table tr {
+  height: 20px;
+}
+
+
+.compact-table tr {
+  height: 20px;
+}
+
+.compact-table th {
+  background-color: #444;
+  font-weight: bold;
+/*   color: #BBBBBB; */
+}
+
+/* Zebra striping */
+.compact-table tr:nth-child(even) {
+  background-color: #111;
+}
+
+.compact-table tr:nth-child(odd) {
+  background-color: #222;
+}
+
+.table-gradient-bg {
+  background: linear-gradient(to bottom, #222, #000, #222);
+  border-collapse: collapse;
+    border-radius: 6px;
+}
+
+.table-gradient-bg th,
+.table-gradient-bg td {
+  border-left: none;
+  border-right: none;
+}
+
+
+
+/* NEW: 3D-style button with gradient and reversed hover */
+.button-3d {
+  background: linear-gradient(to bottom, #444, #333);
+  border: 1px solid #666;
+  border-radius: 4px;
+  padding: 8px 16px;
+  box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.4);
+  color: #eee;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin: 5px;
+}
+
+.button-3d:hover {
+  background: linear-gradient(to top, #444, #222);
+  box-shadow: inset 2px 2px 5px rgba(0, 0, 0, 0.3);
+}
+
+.button-3d:active {
+  box-shadow: inset 1px 1px 3px rgba(0, 0, 0, 0.5);
+  transform: translateY(1px);
+}
+
+.preset-button {
+  white-space: nowrap;
+  width: 105px;
+  padding: 1px 0; /* slightly shorter vertically */
+  background-color: #555;								/* 555 */
+  color: #fff;
+  border: 1px solid #777;
+  margin: 1px;
+  cursor: pointer;
+  font-size: 0.7em;
+  border-radius: 4px;
+  text-align: center;
+  transition: background 0.3s ease, border-color 0.3s ease;
+}
+
+.preset-button:hover {
+  background: linear-gradient(#666, #555);
+  border-color: #66ccff;
+}
+
+.preset-button:active {
+  box-shadow: inset 1px 1px 3px rgba(0,0,0,0.4);
+  transform: translateY(1px);
+}
+
+.tune-button {
+  width: 20px;    
+  padding: 2px 4px;     /* Minimal padding */
+  background-color: #555;
+  color: #fff;
+  border: 1px solid #777;
+  margin: 5px;
+  cursor: pointer;
+  font-size: 0.8em;     /* Smaller font */
+  text-align: center;   /* Center the text */
+  border-radius: 4px;
+  transition: background 0.3s ease, border-color 0.3s ease;
+}
+
+.tune-button:hover {
+  background: linear-gradient(#666, #555);
+  border-color: #66ccff;
+}
+
+.tune-button:active {
+  box-shadow: inset 1px 1px 3px rgba(0, 0, 0, 0.4);
+  transform: translateY(1px);
+}
+
+.call-history-scroll {
+  height: 500px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  margin-top: 0px;
+  border: 1px solid #555;
+  background: linear-gradient(to bottom, #333, #222, #333); /* optional matching bg */
+
+  /* Firefox scrollbar */
+  scrollbar-width: thin;
+  scrollbar-color: #66aaff #222;
+}
+
+/* WebKit Scrollbar Styles */
+.call-history-scroll::-webkit-scrollbar {
+  width: 10px;
+}
+
+.call-history-scroll::-webkit-scrollbar-track {
+  background: #222;
+}
+
+.call-history-scroll::-webkit-scrollbar-thumb {
+  background-color: #66aaff;
+  border-radius: 5px;
+  border: 2px solid #222; /* padding effect */
+}
+
+.call-history-scroll::-webkit-scrollbar-thumb:hover {
+  background-color: #3399ff;
+}
+
+/* 
+.logo {
+  width: auto;
+  height: auto;
+  border: none;
+  display: block;
+}
+ */
+
+.logo-cell {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100px; /* or whatever fits your logo height */
+  background-color: #222; /* match panel if needed */
+  padding: 0;
+}
+
+
+.top-nav-container {
+  width: 750px;
+  margin: 0px 0px 10px 0px;
+  background-color: #222;
+  border-top: 1px solid #555;
+  border-bottom: 1px solid #555;
+  border-left: 1px solid #555;
+  border-right: 1px solid #555;
+}
+
+.top-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 6px;
+}
+
+.nav-left {
+  display: flex;
+  gap: 12px;
+}
+
+.nav-item {
+  color: #ccc;
+  text-decoration: none;
+  font-weight: bold;
+  font-family: Arial, sans-serif;
+  font-size: 14px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: background 0.2s ease;
+}
+
+.nav-item:hover {
+  background-color: #888;
+}
+
+.nav-right {
+  display: flex;
+  align-items: center;
+}
+
+.logo {
+  width: 120px;
+  height: auto;
+  display: block;
+}
+
+.th-section {
+  text-align: center;
+  background: linear-gradient(to bottom, #333, #111);
+  border-collapse: collapse;
+  border-radius: 3px;
+  font-size: 14px;
+  padding: 6px;
+  color: #999
+}
+
+
+
+/* BEGIN 2 COLUMN LAYOUT ELEMENTS */
+
+* {
+  box-sizing: border-box;
+}
+
+.row {
+  margin-left: -10px;
+  margin-right: -10px;
+}
+
+/* Two columns floated side-by-side with spacing */
+.column {
+  float: left;
+  width: 50%;
+  padding: 0 10px; /* horizontal padding creates the gap */
+}
+
+/* Clear floats */
+.row::after {
+  content: "";
+  display: table;
+  clear: both;
+}
+
+/* Stack columns vertically on small screens */
+@media screen and (max-width: 740px) {
+  .column {
+    width: 100%;
+    padding: 0; /* remove gap in stacked view */
+  }
+
+  .row {
+    margin: 0; /* reset margin when stacked */
+  }
+}
+
+/* END 2 COLUMN LAYOUT ELEMENTS */
