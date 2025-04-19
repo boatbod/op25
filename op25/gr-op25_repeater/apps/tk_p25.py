@@ -1670,19 +1670,26 @@ class p25_system(object):
                 d['frequencies'][f] = '- %f  %s [               ]  %s  count %d' % ((f / 1e6), f_type, time_ago_ncurses_str, count)
 
             tags = []
-            
+            srcaddrs = []
+            srctags = []
             for tgid in tgids:
-                 try:
-                     tgid_int = int(tgid)
-                     tag = self.talkgroups.get(tgid_int, {}).get('tag', None)
-                 except (ValueError, TypeError) as e:
-                     if self.debug >= 10:
-                         sys.stderr.write(f"Error converting TGID '{tgid}' to int: {e}\n")
-                     tag = None
-                 tags.append(tag)
+                try:
+                    tgid_int = int(tgid)
+                    tag = self.talkgroups.get(tgid_int, {}).get('tag', None)
+                    srcaddr = self.talkgroups[tgid_int]['srcaddr']
+                    srctag = self.get_rid_tag(self.talkgroups[tgid_int]['srcaddr'])
+                except (ValueError, TypeError) as e:
+                    if self.debug >= 10:
+                        sys.stderr.write(f"Error converting TGID '{tgid}' to int: {e}\n")
+                    tag = None
+                    srcaddr = None
+                    srctag = None
+                tags.append(tag)
+                srcaddrs.append(srcaddr)
+                srctags.append(srctag)
 
             # The easy part: send pure JSON and let the display layer handle formatting
-            d['frequency_data'][f] = {'type': chan_type, 'tgids': tgids, 'last_activity': time_ago_str, 'counter': count, 'tags': tags}
+            d['frequency_data'][f] = {'type': chan_type, 'tgids': tgids, 'last_activity': time_ago_str, 'counter': count, 'tags': tags, 'srcaddrs': srcaddrs, 'srctags': srctags}
 
         # Patches
         self.expire_patches()
@@ -1691,7 +1698,9 @@ class p25_system(object):
             for ga in sorted(self.patches[sg]['ga']):
                 sg_dec = "%5d" % (sg)
                 ga_dec = "%5d" % (ga)
-                d['patch_data'][sg][ga] = {'sg': sg_dec, 'ga': ga_dec}
+                sg_tag = self.talkgroups.get(sg_dec, {}).get('tag', None)
+                ga_tag = self.talkgroups.get(ga_dec, {}).get('tag', None)
+                d['patch_data'][sg][ga] = {'sg': sg_dec, 'sgtag': sg_tag, 'ga': ga_dec, 'gatag': ga_tag}
 
         # Adjacent sites
         d['adjacent_data'] = self.adjacent_data
