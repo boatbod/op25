@@ -90,7 +90,6 @@ document.addEventListener("DOMContentLoaded", function() {
 	});
 	}
 	
-	
     if (!configFile) {
     	document.getElementById("smartColorToggle").checked = false;
     }
@@ -116,7 +115,7 @@ document.addEventListener("DOMContentLoaded", function() {
 	handleColumnLayoutChange(mediaQuery);	
 	
 	updatePlotButtonStyles();
-	
+	document.getElementById("callHistorySource").addEventListener("change", saveSettingsToLocalStorage);	
 	document.getElementById("callHeightControl").addEventListener("input", saveSettingsToLocalStorage);
 	document.getElementById("plotSizeControl").addEventListener("input", saveSettingsToLocalStorage);
 	document.getElementById("smartColorToggle").addEventListener("change", saveSettingsToLocalStorage);	
@@ -125,12 +124,30 @@ document.addEventListener("DOMContentLoaded", function() {
 	  const checked = this.checked;
 	
 	  if (container) {
-		container.style.display = checked ? "block" : "none";
+		container.style.display = checked ? "" : "none";
 	  }
-	
-	  // Save the updated setting
+
 	  saveSettingsToLocalStorage();
 	});		
+	
+	document.getElementById("callHistoryToggle").addEventListener("change", function () {
+	  const container = document.getElementById("callHistoryContainer");
+	  const checked = this.checked;
+	
+	  if (container) {
+		container.style.display = checked ? "" : "none";
+	  }
+	  
+	  saveSettingsToLocalStorage();
+	});		
+	
+	
+	
+	
+	
+	
+	
+	
 	
 //     loadSeenTalkgroups();
     
@@ -151,8 +168,6 @@ function do_onload() {
     send_command("get_terminal_config", 0, 0);
     setInterval(do_update, 1000);
 }
-
-var seenTalkgroups = [];   // DEPRECATED 
 
 function find_parent(ele, tagname) {
     while (ele) {
@@ -320,6 +335,8 @@ function set_tuning_step_sizes(lg_step=1200, sm_step=100) {
 
 function rx_update(d) {
 
+// 	console.log(d);
+
 	var plotsCount = d["files"].length;
 	document.getElementById('plotsCount').innerText = plotsCount;
 
@@ -465,7 +482,7 @@ function channel_update(d) {
             s2_g.style['display'] = "";
             s2_hc.style['display'] = "";
             s2_ht.style['display'] = "";
-            
+                        
             c_tdma = d[c_id]['tdma'];
             
             displayChannel.innerText		= c_name;
@@ -517,7 +534,20 @@ function channel_update(d) {
             if (c_svcopts == 0) c_svcopts = "-";
             displayService.innerText = c_svcopts;
 
-            
+// 			console.log(d);
+			
+			// send voice grant to call history table
+			if (!c_tdma)
+				c_tdma = "-";
+			if (c_tdma == 0)
+				c_tdma = "TDMA 0";
+			if (c_tdma == 1)
+				c_tdma = "TDMA 1";
+				
+			//displayFreq.innerText 	
+			if (current_tgid)      
+				appendCallHistory(c_system.substring(0, 5), current_tgid, 0, displayTalkgroup.innerText, 0, displayFreq.innerText, displaySource.innerText, "", "voice");
+            //appendCallHistory(c_system.substring(0, 5), current_tgid, 0, displayTalkgroup.innerText, 0, c_tdma, displaySource.innerText, "", "voice");
         }
         else {
             s2_c.style['display'] = "none";
@@ -755,9 +785,6 @@ function adjacent_sites(d) {
 // additional system info: wacn, sysID, rfss, site id, secondary control channels, freq error
 
 function trunk_update(d) {
-
-
-
     var do_hex = {"syid":0, "sysid":0, "wacn": 0};
     var do_float = {"rxchan":0, "txchan":0};
     var srcaddr = 0;
@@ -887,7 +914,7 @@ function trunk_update(d) {
         html += "</table>"
     
         html += "<div class=\"info\"><div class=\"system\">";
-        html += "<table id=frequencyTable class=compact-table border=0 borderwidth=0 cellpadding=0 cellspacing=0 width=100%>"; // was width=350
+        html += "<table id='frequencyTable' class='compact-table'>"; // was width=350
         html += "<colgroup>";
         html += "<col span=\"1\" style=\"width:20%;\">";
         html += "<col span=\"1\" style=\"width:12.5%;\">";
@@ -975,8 +1002,9 @@ function trunk_update(d) {
 
 			// Append Call History
         	if (d[nac]['sysid'] !== undefined && (tg1 !== undefined || tg2 !== undefined)) {
-        		// TODO:  srcaddr
-				appendCallHistory(d[nac]['sysid'], tg1, tg2, tag1, tag2, achMode);
+        		// TODO:  srcaddr 
+// 				appendCallHistory(d[nac]['sysid'], tg1, tg2, tag1, tag2, achMode, "Source1", "Source2", "frequency");
+				appendCallHistory(d[nac]['sysid'], tg1, tg2, tag1, tag2, (parseInt(freq) / 1000000.0).toFixed(6), "Source ID 1", "Source ID 2", "frequency");
 			}          
 
             ct += 1;
@@ -1136,7 +1164,7 @@ function f_preset(i) {
 	
 	if (!preset) {
 		console.warn(`No preset found for ID ${i}`);
-	return;
+		return;
 	}
 
 	const command = "hold";
@@ -1165,7 +1193,7 @@ function f_preset(i) {
 
 function f_scan_button(command) {
 
-	console.log(command);
+// 	console.log(command);
     var _tgid = 0;
 
     if (command == "goto") {
@@ -1174,11 +1202,11 @@ function f_scan_button(command) {
         if (current_tgid != null)
            _tgid = current_tgid;
         _tgid = parseInt(prompt("Enter tgid to hold", _tgid));
-        
-        
+            
         if (isNaN(_tgid) || (_tgid < 0) || (_tgid > 65535))
             _tgid = 0;
     }
+    
     else if ((command == "lockout") && (current_tgid == null)) {
         _tgid = parseInt(prompt("Enter tgid to blacklist", _tgid));
         if (isNaN(_tgid) || (_tgid <= 0) || (_tgid > 65534))
@@ -1197,7 +1225,7 @@ function f_scan_button(command) {
 
     if (channel_list.length == 0) {
     
-       	if (command == "hold")
+       	if (command == "hold" && _tgid != 0)             
     		send_command("whitelist", _tgid);
     
         send_command(command, _tgid);
@@ -1205,7 +1233,7 @@ function f_scan_button(command) {
     }
     else {
     
-    	if (command == "hold")
+    	if (command == "hold" && _tgid != 0)
     		send_command("whitelist", _tgid, Number(channel_list[channel_index]));
 
         send_command(command, _tgid, Number(channel_list[channel_index]));
@@ -1251,12 +1279,29 @@ function extractLastNumber(str) {
     return match ? parseInt(match[0], 10) : null;
 }
 
-function appendCallHistory(sysid, tg1, tg2, tag1, tag2, mode, src1, src2) {
+function appendCallHistory(sysid, tg1, tg2, tag1, tag2, freq, sourceId1, sourceId2, dataSource) {
+
+	// dataSource is one of 'frequency' or 'voice' 
 
 	// appends the call history table only when the current call is not already there
 	// or is older than 5 seconds.
 	// called by trunk_update()
 
+	const configuredSource = document.getElementById("callHistorySource").value;
+	if (dataSource !== configuredSource) {
+	  return;
+	}
+
+	// title the call history table
+	const titleTh = document.getElementById("callHistoryTableTitle");
+	if (configuredSource === "voice") {
+	titleTh.innerText = "Call History - Voice Grants";
+	} else if (configuredSource === "frequency") {
+	titleTh.innerText = "Call History - Frequency Data";
+	}
+
+
+	// populate the table
     const tableBody = document.getElementById("callHistoryBody");
     const now = new Date();
     const timestamp = now.toTimeString().split(' ')[0]; // "HH:MM:SS"
@@ -1265,32 +1310,63 @@ function appendCallHistory(sysid, tg1, tg2, tag1, tag2, mode, src1, src2) {
     const slot = "S"; // Placeholder for slot
 
     // Helper to check if a similar row already exists
-    function isDuplicate(tgid) {
-        const recentRows = tableBody.querySelectorAll("tr");
-        for (let i = 0; i < Math.min(MAX_HISTORY_ROWS, recentRows.length); i++) {
-            const cells = recentRows[i].querySelectorAll("td");
-            if (cells.length < 5) continue;
+//     function isDuplicate(tgid) {
+//         const recentRows = tableBody.querySelectorAll("tr");
+//         for (let i = 0; i < Math.min(MAX_HISTORY_ROWS, recentRows.length); i++) {
+//             const cells = recentRows[i].querySelectorAll("td");
+//             if (cells.length < 5) continue;
+// 
+//             const rowTime = cells[0].textContent.trim();
+//             const rowSys  = cells[1].textContent.trim();
+//             const rowFreq = cells[2].textContent.trim();
+//             const rowTgid = cells[3].textContent.trim();
+//             const rowSrcId  = cells[5].textContent.trim(); 
+// 
+//             if (rowSys === sysHex && rowTgid === String(tgid)) {
+//                 const rowDate = new Date();
+//                 rowDate.setHours(...rowTime.split(':'));
+//                 const rowEpochSec = Math.floor(rowDate.getTime() / 1000);
+//                 const nowSec = Math.floor(epoch / 1000);
+//                 const delta = Math.abs(nowSec - rowEpochSec);
+//                 return delta <= MAX_HISTORY_SECONDS;
+//             }
+//         }
+//         return false;
+//     }
 
-            const rowTime = cells[0].textContent.trim();
-            const rowSys  = cells[1].textContent.trim();
-            const rowSlot = cells[2].textContent.trim();
-            const rowTgid = cells[3].textContent.trim();
+function isDuplicate(tgid, sourceId) {
+    const recentRows = tableBody.querySelectorAll("tr");
 
-            if (rowSys === sysHex && rowTgid === String(tgid)) {
-                const rowDate = new Date();
-                rowDate.setHours(...rowTime.split(':'));
-                const rowEpochSec = Math.floor(rowDate.getTime() / 1000);
-                const nowSec = Math.floor(epoch / 1000);
-                const delta = Math.abs(nowSec - rowEpochSec);
-                return delta <= MAX_HISTORY_SECONDS;
+    for (let i = 0; i < Math.min(MAX_HISTORY_ROWS, recentRows.length); i++) {
+        const cells = recentRows[i].querySelectorAll("td");
+        if (cells.length < 6) continue;
+
+        const rowTime   = cells[0].textContent.trim();
+        const rowSys    = cells[1].textContent.trim();
+        const rowTgid   = cells[3].textContent.trim();
+        const rowSrcId  = cells[5].textContent.trim(); // <-- updated to index 5
+
+        if (rowSys === sysHex && rowTgid === String(tgid) && rowSrcId === String(sourceId)) {
+            const rowDate = new Date();
+            const [hours, minutes, seconds] = rowTime.split(':').map(Number);
+            rowDate.setHours(hours, minutes, seconds, 0);
+
+            const rowEpochSec = Math.floor(rowDate.getTime() / 1000);
+            const nowSec = Math.floor(epoch / 1000);
+            const delta = Math.abs(nowSec - rowEpochSec);
+
+            if (delta <= MAX_HISTORY_SECONDS) {
+                return true;
             }
         }
-        return false;
     }
+
+    return false;
+}
 
     // Helper to add a row
     	// TODO: src
-		function addRow(tgid, tag) {
+		function addRow(tgid, tag, sourceId) {
 				
 			// Only proceed if tgid is defined and its string length > 2
 			if (tgid === undefined || String(tgid).length <= 2) return;
@@ -1304,24 +1380,25 @@ function appendCallHistory(sysid, tg1, tg2, tag1, tag2, mode, src1, src2) {
 			newRow.innerHTML = `
 				<td>${timestamp}</td>
 				<td>${sysHex}</td>
-				<td>${mode}</td>
+				<td>${freq}</td>
 				<td>${tgid}</td>
 				<td style="text-align: left;">${tgName}</td>
+				<td style="text-align: left;">${sourceId}</td>
 			`;
 		
 			tableBody.insertBefore(newRow, tableBody.firstChild);
 		}
 
-    // Process single or both entries
+    // Process single or both entries, don't log entries where source id is not present.
 	if (tg1 !== undefined) {
-		if (!isDuplicate(tg1)) {
-			addRow(tg1, tag1, src1);
+		if (!isDuplicate(tg1, sourceId1) && sourceId1) {
+			addRow(tg1, tag1, sourceId1);
 		}
 	}
 	
 	if (tg2 !== undefined && tg2 !== tg1) {
-		if (!isDuplicate(tg2)) {
-			addRow(tg2, tag2, src2);
+		if (!isDuplicate(tg2, sourceId2) && sourceId2) {
+			addRow(tg2, tag2, sourceId2);
 		}
 	}
 	
@@ -1339,6 +1416,8 @@ function applySmartColorsToCallHistory() {
 
     const tgidCell = cells[3];
     const sourceCell = cells[4];
+    const sourceIdCell = cells[5];
+    
     const cellText = sourceCell.textContent.toLowerCase();
 
     let matched = false;
@@ -1347,6 +1426,7 @@ function applySmartColorsToCallHistory() {
       if (colorGroup.keywords.some(keyword => cellText.includes(keyword.toLowerCase()))) {
         tgidCell.style.color = colorGroup.color;
         sourceCell.style.color = colorGroup.color;
+        sourceIdCell.style.color = colorGroup.color;
         matched = true;
         break;
       }
@@ -1355,6 +1435,7 @@ function applySmartColorsToCallHistory() {
     if (!matched) {
       tgidCell.style.color = "";
       sourceCell.style.color = "";
+      sourceIdCell.style.color = "";
     }
   });
 }
@@ -1490,38 +1571,35 @@ function saveSettingsToLocalStorage() {
   localStorage.setItem("plotWidth", document.getElementById("plotSizeControl").value);
   localStorage.setItem("smartColors", document.getElementById("smartColorToggle").checked);
   localStorage.setItem("adjacentSitesToggle", document.getElementById("adjacentSitesToggle").checked);
-
+  localStorage.setItem("callHistorySource", document.getElementById("callHistorySource").value);
 }
 
 function loadSettingsFromLocalStorage() {
-	const callHeight = localStorage.getItem("callHeight") || "600";
-	const plotWidth = localStorage.getItem("plotWidth") || "300";
-	const smartColors = localStorage.getItem("smartColors");
-	const adjacentSites = localStorage.getItem("adjacentSitesToggle");
-	
-	// Apply call height
-	document.getElementById("callHeightControl").value = callHeight;
-	document.querySelector(".call-history-scroll").style.height = `${callHeight}px`;
-	
-	// Apply plot width
-	document.getElementById("plotSizeControl").value = plotWidth;
-	document.querySelectorAll(".plot-image").forEach(img => {
-	img.style.width = `${plotWidth}px`;
-	});
-	
-	// Apply smart color toggle (default = true)
-	const smartColorEnabled = smartColors === null ? true : smartColors === "true";
-	document.getElementById("smartColorToggle").checked = smartColorEnabled;
-	
-	// Apply adjacent sites toggle (default = true)
-	const adjacentSitesEnabled = adjacentSites === null ? true : adjacentSites === "true";
-	document.getElementById("adjacentSitesToggle").checked = adjacentSitesEnabled;
- 
-	const adjacentSitesContainer = document.getElementById("adjacentSitesContainer");
-	if (adjacentSitesContainer) {
-	  adjacentSitesContainer.style.display = adjacentSitesEnabled ? "" : "none";
-	}
-  
+  const callHeight = localStorage.getItem("callHeight") || "600";
+  const plotWidth = localStorage.getItem("plotWidth") || "300";
+  const smartColors = localStorage.getItem("smartColors");
+  const adjacentSites = localStorage.getItem("adjacentSitesToggle");
+  const callHistorySource = localStorage.getItem("callHistorySource") || "frequency";
+
+  document.getElementById("callHeightControl").value = callHeight;
+  document.querySelector(".call-history-scroll").style.height = `${callHeight}px`;
+
+  document.getElementById("plotSizeControl").value = plotWidth;
+  document.querySelectorAll(".plot-image").forEach(img => {
+    img.style.width = `${plotWidth}px`;
+  });
+
+  const smartColorEnabled = smartColors === null ? true : smartColors === "true";
+  document.getElementById("smartColorToggle").checked = smartColorEnabled;
+
+  const adjacentSitesEnabled = adjacentSites === null ? true : adjacentSites === "true";
+  document.getElementById("adjacentSitesToggle").checked = adjacentSitesEnabled;
+  const container = document.getElementById("adjacentSitesContainer");
+  if (container) {
+    container.style.display = adjacentSitesEnabled ? "" : "none";
+  }
+
+  document.getElementById("callHistorySource").value = callHistorySource;
 }
 
 function showHome() {
