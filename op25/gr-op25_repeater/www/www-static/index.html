@@ -29,8 +29,8 @@
 			  <!-- SVG Logo -->
 			  <svg class="logo" viewBox="0 0 300 100" xmlns="http://www.w3.org/2000/svg">
 				<rect width="300" height="100" fill="#222" rx="10" />
-				<polygon points="50,70 70,30 90,70" fill="#66aaff" />
-				<rect x="50" y="70" width="40" height="5" fill="#66aaff" rx="2" />
+				<polygon points="50,70 70,30 90,70" fill="#66aaff" />             <!-- the sail -->
+				<rect x="50" y="70" width="40" height="5" fill="#ffaa55" rx="2" /> <!-- orange boat -->
 				<text x="110" y="50" fill="#ffffff" font-size="32" font-family="Arial, sans-serif" font-weight="bold">O P 2 5</text>
 				<text x="110" y="75" fill="#ccc" font-size="24" font-family="Arial, sans-serif">b o a t b o d</text>
 			  </svg>
@@ -104,17 +104,34 @@
         <input type="number" id="plotSizeControl" min="100" max="1000" value="300" style="width: 80px;">
       </div>
 
-      <div style="margin-bottom: 15px;">
-        <label for="smartColorToggle" style="color: #ccc;">
-          <input type="checkbox" id="smartColorToggle" checked>
-          Enable Smart Colors
-        </label>
-      </div>
-    
+
       <div style="margin-bottom: 15px;">
         <label for="adjacentSitesToggle" style="color: #ccc;">
           <input type="checkbox" id="adjacentSitesToggle" checked>
           Show Adjacent Sites
+        </label>
+      </div>    
+      
+      <div style="margin-bottom: 15px;">
+        <label for="callHistoryToggle" style="color: #ccc;">
+          <input type="checkbox" id="callHistoryToggle" checked>
+          Show Call History
+        </label>
+      </div>
+        
+
+	<div style="margin: 5px 0; text-align: left;">
+	  <label for="callHistorySource" style="color: #ccc;">Call History Source:</label>
+	  <select id="callHistorySource" style="margin-left: 5px;">
+		<option value="frequency">Frequency Data</option>
+		<option value="voice">Voice Grant</option>
+	  </select>
+	</div>
+
+      <div style="margin-bottom: 15px;">
+        <label for="smartColorToggle" style="color: #ccc;">
+          <input type="checkbox" id="smartColorToggle" checked>
+          Enable Smart Colors
         </label>
       </div>
 
@@ -232,14 +249,14 @@
 
 <!-- START SECOND COLUMN -->   
   <div class="column" id="second-column" style="margin: 0px 0px 0px 0px;">
-		<table class="outer-table">
-		<tr><th class="th-section">Call History</th></tr>
+		<table class="outer-table" id="callHistoryContainer">
+		<tr><th class="th-section" id="callHistoryTableTitle">Call History</th></tr>
 		  <tr>
 			<td>
 			  <div class="call-history-scroll">
 				<table class="compact-table" id="callHistory">
 				  <thead>
-				    <tr><th>Time</th><th>Sys</th><th>Mode</th><th colspan=2>Talkgroup</th></tr>
+				    <tr><th>Time</th><th>Sys</th><th>Frequency</th><th colspan=2>Talkgroup</th><th>Source</th></tr>
 <!-- 					<tr><th>Time</th><th>Sys</th><th>Mode</th><th colspan=2>Talkgroup</th><th>Source</tr> -->
 				  </thead>
 				  <tbody id="callHistoryBody">
