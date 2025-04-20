@@ -359,12 +359,6 @@ class p25_system(object):
             self.ns_valid = True
 
         self.crypt_behavior = int(from_dict(self.config, 'crypt_behavior', 1))
-        #sys.stderr.write("%s crypt behavior: %d\n" % (log_ts.get(), self.crypt_behavior))
-        # export crypt_behavior to c
-        #self.fa_ctrl({'tuner': self.msgq_id, 'cmd': 'crypt_behavior', 'behavior': self.crypt_behavior})
-        # if 'crypt_keys' in self.config and self.config['crypt_keys'] != "":
-        #    sys.stderr.write("%s [%s] reading system crypt_keys file: %s\n" % (log_ts.get(), self.sysname, self.config['crypt_keys']))
-        #    self.crypt_keys = get_key_dict(self.config['crypt_keys'], self.sysname)
 
         cc_list = from_dict(self.config, 'control_channel_list', "")
         if cc_list == "":

@@ -56,6 +56,7 @@ EXPIRY_TIMER            = 0.2   # Number of seconds between checks for expiratio
 PATCH_EXPIRY_TIME       = 20.0  # Number of seconds until patch expiry
 ALT_CC_EXPIRY_TIME      = 120.0 # Number of seconds until alternate CC expiry
 ADJ_SITE_EXPIRY_TIME    = 300.0 # Number of seconds until adjacent site expiry
+CALL_LOG_MAX_LEN        = 10    # Maximum number of call_log entries to retain
 
 #################
 # Helper functions
@@ -81,6 +82,8 @@ class rx_ctl(object):
         self.receivers = {}
         self.systems = {}
         self.chans = chans
+        self.call_log = deque(maxlen=CALL_LOG_MAX_LEN)
+        self.call_log_mutex = threading.Lock()
 
         for chan in self.chans:
             sysname = chan['sysname']
@@ -88,7 +91,8 @@ class rx_ctl(object):
                 self.systems[sysname] = { 'control': None, 'voice' : [] }
                 self.systems[sysname]['control'] = osw_receiver(debug         = self.debug,
                                                                 frequency_set = self.frequency_set,
-                                                                config        = chan)
+                                                                config        = chan,
+                                                                rx_ctl        = self)
 
     def set_debug(self, dbglvl):
         self.debug = dbglvl
@@ -181,12 +185,30 @@ class rx_ctl(object):
         d['channels'] = rcvr_ids
         return json.dumps(d)
 
+    def get_call_log(self):
+        d = {'json_type': 'call_log'}
+        with self.call_log_mutex:
+            d['log'] = list(self.call_log)
+            self.call_log.clear()
+        return json.dumps(d)
+
+    def log_call(self, sysid, rcvr, prio, tgid, tgtag, rid, rtag = ""):
+        with self.call_log_mutex:
+            self.call_log.append({ "time":  time.time(),
+                                   "sysid": sysid,
+                                   "rcvr":  rcvr,
+                                   "prio":  prio,
+                                   "tgid":  tgid,
+                                   "tgtag": tgtag,
+                                   "rid":   rid,
+                                   "rtag":  rtag })
 
 #################
 # Smartnet control channel class
 class osw_receiver(object):
-    def __init__(self, debug, frequency_set, config):
+    def __init__(self, debug, frequency_set, config, rx_ctl = None):
         self.debug = debug
+        self.rx_ctl = rx_ctl
         self.msgq_id = -1
         self.config = config
         self.frequency_set = frequency_set
@@ -236,6 +258,9 @@ class osw_receiver(object):
 
     def set_msgq_id(self, msgq_id):
         self.msgq_id = msgq_id
+
+    def log_call(self, rcvr, prio, tgid, rid):
+        self.rx_ctl.log_call(self.rx_sys_id, rcvr, prio, tgid, self.talkgroups[tgid]['tag'], rid, "")
 
     def post_init(self):
         if self.msgq_id < 0:
@@ -2062,6 +2087,10 @@ class voice_receiver(object):
     def set_debug(self, dbglvl):
         self.debug = dbglvl
 
+    def log_call(self, prio, tgid, rid):
+        if self.control is not None:
+            self.control.log_call(self.msgq_id, prio, tgid, rid)
+
     def post_init(self):
         if self.debug >= 1:
             sys.stderr.write("%s [%d] Initializing voice channel\n" % (log_ts.get(), self.msgq_id))
@@ -2247,11 +2276,13 @@ class voice_receiver(object):
             if self.debug > 0:
                 sys.stderr.write("%s [%d] voice update:  tg(%d), freq(%f), mode(%d)\n" % (log_ts.get(), self.msgq_id, tgid, (freq/1e6), self.talkgroups[tgid]['mode']))
             self.tune_voice(freq, tgid)
+            self.log_call(self.talkgroups[tgid]['prio'], tgid, self.talkgroups[tgid]['srcaddr'])
         else:
             if self.debug > 0:
                 sys.stderr.write("%s [%d] voice preempt: tg(%d), freq(%f), mode(%d)\n" % (log_ts.get(), self.msgq_id, tgid, (freq/1e6), self.talkgroups[tgid]['mode']))
             self.expire_talkgroup(update_meta=False, reason="preempt")
             self.tune_voice(freq, tgid)
+            self.log_call(self.talkgroups[tgid]['prio'], tgid, self.talkgroups[tgid]['srcaddr'])
 
         meta_update(self.meta_q, tgid, self.talkgroups[tgid]['tag'])
 
