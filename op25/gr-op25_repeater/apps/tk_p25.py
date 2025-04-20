@@ -28,6 +28,7 @@ import json
 import codecs
 import ast
 import threading
+from collections import deque
 from helper_funcs import *
 from log_ts import log_ts
 from gnuradio import gr
@@ -44,7 +45,8 @@ TGID_EXPIRY_TIME = 1.0   # Number of seconds to allow tgid to remain active with
 FREQ_EXPIRY_TIME = 1.2   # Number of seconds to allow freq to remain active with no updates received
 EXPIRY_TIMER = 0.2       # Number of seconds between checks for tgid/freq expiry
 PATCH_EXPIRY_TIME = 20.0 # Number of seconds until patch expiry
-CLEANUP_TIMER = 0.5       # Number of seconds between cleanup intervals
+CLEANUP_TIMER = 0.5      # Number of seconds between cleanup intervals
+CALL_LOG_MAX_LEN = 10    # Maximum number of call_log entries to retain
 
 #################
 # Helper functions
@@ -118,13 +120,16 @@ class rx_ctl(object):
         self.systems = {}
         self.chans = chans
         self.cleanup_timer = time.time()
+        self.call_log = deque(maxlen=CALL_LOG_MAX_LEN)
+        self.call_log_mutex = threading.Lock()
 
         for chan in self.chans:
             sysname = chan['sysname']
             if sysname not in self.systems:
                 self.systems[sysname] = { 'system': None, 'receivers': [] }
                 self.systems[sysname]['system'] = p25_system(debug  = self.debug,
-                                                             config = chan)
+                                                             config = chan,
+                                                             rx_ctl = self)
 
     # add_receiver is called once per radio channel defined in cfg.json
     def add_receiver(self, msgq_id, config, meta_q = None, freq = 0):
@@ -263,12 +268,31 @@ class rx_ctl(object):
             if self.receivers[rcvr]['rx_rcvr'] is not None:
                 self.receivers[rcvr]['rx_rcvr'].set_debug(dbglvl)
 
+    def get_call_log(self):
+        d = {'json_type': 'call_log'}
+        with self.call_log_mutex:
+            d['log'] = list(self.call_log)
+            self.call_log.clear()
+        return json.dumps(d)
+
+    def log_call(self, sysid, rcvr, prio, tgid, tgtag, rid, rtag):
+        with self.call_log_mutex:
+            self.call_log.append({ "time":  time.time(),
+                                   "sysid": sysid,
+                                   "rcvr":  rcvr,
+                                   "prio":  prio,
+                                   "tgid":  tgid,
+                                   "tgtag": tgtag,
+                                   "rid":   rid,
+                                   "rtag":  rtag })
+
 #################
 # P25 system class
 class p25_system(object):
-    def __init__(self, debug, config):
+    def __init__(self, debug, config, rx_ctl = None):
         self.config = config
         self.debug = debug
+        self.rx_ctl = rx_ctl
         self.freq_table = {}
         self.voice_frequencies = {}
         self.talkgroups = {}
@@ -353,6 +377,9 @@ class p25_system(object):
 
     def set_debug(self, dbglvl):
         self.debug = dbglvl
+
+    def log_call(self, rcvr, prio, tgid, rid):
+        self.rx_ctl.log_call(self.ns_syid, rcvr, prio, tgid, self.talkgroups[tgid]['tag'], rid, self.get_rid_tag(rid))
 
     def get_talkgroups(self):
         return self.talkgroups
@@ -1646,16 +1673,6 @@ class p25_system(object):
             # Format here to show in theses console viewer
             time_ago_ncurses_str = time_ago_str + " ago" if time_ago_str != "Never" and time_ago_str != "  Now" else time_ago_str + "    "
 
-            #if chan_type == "control":
-            #    d['frequencies'][f] = '- %f       [--- Control ---]  %s' % ((f / 1e6), time_ago_ncurses_str)
-            #elif chan_type == "alternate" and len(tgids) == 0:
-            #    d['frequencies'][f] = '- %f  tgid [   Secondary   ]  %s  count %d' % ((f / 1e6), time_ago_ncurses_str, count)
-            #elif len(tgids) == 1 or (len(tgids) == 2 and tgids[0] == tgids[1]):
-            #    d['frequencies'][f] = '- %f  tgid [     %5s     ]  %s  count %d' % ((f / 1e6), tgids[0], time_ago_ncurses_str, count)
-            #elif len(tgids) == 2:
-            #    d['frequencies'][f] = '- %f  tgid [ %5s | %5s ]  %s  count %d' % ((f / 1e6), tgids[1], tgids[0], time_ago_ncurses_str, count)
-            #else:
-            #    d['frequencies'][f] = '- %f  tgid [               ]  %s  count %d' % ((f / 1e6), time_ago_ncurses_str, count)
             if chan_type == "control":
                 f_type = "pri-cc"
             elif chan_type == "alternate":
@@ -1772,6 +1789,9 @@ class p25_receiver(object):
 
     def set_debug(self, dbglvl):
         self.debug = dbglvl
+
+    def log_call(self, prio, tgid, rid):
+        self.system.log_call(self.msgq_id, prio, tgid, rid)
 
     def post_init(self):
         if self.debug >= 1:
@@ -2155,11 +2175,13 @@ class p25_receiver(object):
             if self.debug > 0:
                 sys.stderr.write("%s [%d] voice update:  tg(%d), rid(%d), freq(%f), slot(%s), prio(%d)\n" % (log_ts.get(), self.msgq_id, tgid, self.talkgroups[tgid]['srcaddr'], (freq/1e6), get_slot(slot), self.talkgroups[tgid]['prio']))
             self.tune_voice(freq, tgid, slot)
+            self.log_call(self.talkgroups[tgid]['prio'], tgid, self.talkgroups[tgid]['srcaddr'])
         else:
             if self.debug > 0:
                 sys.stderr.write("%s [%d] voice preempt: tg(%d), rid(%d), freq(%f), slot(%s), prio(%d)\n" % (log_ts.get(), self.msgq_id, tgid, self.talkgroups[tgid]['srcaddr'], (freq/1e6), get_slot(slot), self.talkgroups[tgid]['prio']))
             self.expire_talkgroup(update_meta=False, reason="preempt")
             self.tune_voice(freq, tgid, slot)
+            self.log_call(self.talkgroups[tgid]['prio'], tgid, self.talkgroups[tgid]['srcaddr'])
 
         meta_update(self.meta_q, tgid=tgid, tag=self.talkgroups[tgid]['tag'], rid=self.talkgroups[tgid]['srcaddr'], rtag=self.system.get_rid_tag(self.talkgroups[tgid]['srcaddr']), msgq_id=self.msgq_id, debug=self.debug)
 

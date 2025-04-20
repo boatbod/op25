@@ -873,6 +873,7 @@ class rx_block (gr.top_block):
         elif s == 'update':                     # UI initiated update request
             self.ui_last_update = time.time()
             self.ui_freq_update()
+            self.ui_calllog_update()
             if self.trunking is None or self.trunk_rx is None:
                 return False
             js = self.trunk_rx.to_json()        # extract data from trunking module
@@ -946,6 +947,13 @@ class rx_block (gr.top_block):
             if self.trunking is not None and self.trunk_rx is not None:
                 self.trunk_rx.ui_command(s, msg.arg1(), msg.arg2())
         return False
+
+    def ui_calllog_update(self):
+        if self.trunking is None or self.trunk_rx is None:
+            return False
+        msg = gr.message().make_from_string(self.trunk_rx.get_call_log(), -4, 0, 0)
+        if not self.ui_in_q.full_p():
+            self.ui_in_q.insert_tail(msg)
 
     def ui_freq_update(self):
         if self.trunking is None or self.trunk_rx is None:
