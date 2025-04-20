@@ -127,7 +127,7 @@ input[type="checkbox"]:checked::after {
   background-color: #555;
   color: #fff;
   border: 1px solid #777;
-  padding: 10px;
+  padding: 8px;
   margin: 5px;
   cursor: pointer;
   width: 90%;
@@ -215,18 +215,22 @@ input[type="checkbox"]:checked::after {
 
 /* Bottom row: site/system buttons */
 .bottom-buttons {
-  padding: 10px;
+  padding: 1px;
   background-color: #222;
   text-align: center;
   border-top: 1px solid #555;
 }
 
 .bottom-buttons button {
-  background-color: #555;
-  color: #fff;
+  white-space: nowrap;
+  font-size: 0.9em;  
+  width: 108px;
+  background-color: #333;
+  color: #eee;
   border: 1px solid #777;
-  padding: 10px 15px;
-  margin: 5px;
+  border-radius: 4px;  
+  padding: 8px 2px 8px 2px;
+  margin: 6px;
   cursor: pointer;
   transition: background 0.3s ease, border-color 0.3s ease;
 }
@@ -239,9 +243,9 @@ input[type="checkbox"]:checked::after {
 /* Generic button style (for other buttons) */
 .button {
   background-color: #555;
-  color: #fff;
+/*   color: #fff; */
   border: 1px solid #777;
-  padding: 10px;
+/*   padding: 10px; */
   margin: 5px;
   cursor: pointer;
   transition: background 0.3s ease, border-color 0.3s ease;
@@ -374,30 +378,7 @@ input[type="checkbox"]:checked::after {
   transform: translateY(1px);
 }
 
-.preset-button {
-  white-space: nowrap;
-  width: 105px;
-  padding: 1px 0; /* slightly shorter vertically */
-  background-color: #555;								/* 555 */
-  color: #fff;
-  border: 1px solid #777;
-  margin: 1px;
-  cursor: pointer;
-  font-size: 0.7em;
-  border-radius: 4px;
-  text-align: center;
-  transition: background 0.3s ease, border-color 0.3s ease;
-}
 
-.preset-button:hover {
-  background: linear-gradient(#666, #555);
-  border-color: #66ccff;
-}
-
-.preset-button:active {
-  box-shadow: inset 1px 1px 3px rgba(0,0,0,0.4);
-  transform: translateY(1px);
-}
 
 .tune-button {
   width: 20px;    

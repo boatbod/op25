@@ -20,6 +20,8 @@
 // Software Foundation, Inc., 51 Franklin Street, Boston, MA
 // 02110-1301, USA.
 
+// 04-19-2025  1625
+
 
 var d_debug = 1;
 
@@ -57,6 +59,7 @@ var channel_index = 0;
 var default_channel = null;
 var enc_sym = "&#216;";
 var presets = [];
+
 
 const mediaQuery = window.matchMedia("(min-width: 1500px)");
 mediaQuery.addEventListener("change", handleColumnLayoutChange);
@@ -113,12 +116,14 @@ document.addEventListener("DOMContentLoaded", function() {
 	});
   
 	handleColumnLayoutChange(mediaQuery);	
-	
+	  
 	updatePlotButtonStyles();
 	document.getElementById("callHistorySource").addEventListener("change", saveSettingsToLocalStorage);	
 	document.getElementById("callHeightControl").addEventListener("input", saveSettingsToLocalStorage);
 	document.getElementById("plotSizeControl").addEventListener("input", saveSettingsToLocalStorage);
-	document.getElementById("smartColorToggle").addEventListener("change", saveSettingsToLocalStorage);	
+	document.getElementById("smartColorToggle").addEventListener("change", saveSettingsToLocalStorage);
+	document.getElementById("radioIdFreqTable").addEventListener("change", saveSettingsToLocalStorage);	
+	
 	document.getElementById("adjacentSitesToggle").addEventListener("change", function () {
 	  const container = document.getElementById("adjacentSitesContainer");
 	  const checked = this.checked;
@@ -140,13 +145,6 @@ document.addEventListener("DOMContentLoaded", function() {
 	  
 	  saveSettingsToLocalStorage();
 	});		
-	
-	
-	
-	
-	
-	
-	
 	
 	
 //     loadSeenTalkgroups();
@@ -271,6 +269,8 @@ function term_config(d) {
     var lg_step = 1200;
     var sm_step = 100;
     var updated = 0;
+    
+	// TODO, fix tuning buttons which ard currently hard coded with this.
 
     if ((d["tuning_step_large"] != undefined) && (d["tuning_step_large"] != lg_step)) {
         lg_step = d["tuning_step_large"];
@@ -335,8 +335,6 @@ function set_tuning_step_sizes(lg_step=1200, sm_step=100) {
 
 function rx_update(d) {
 
-// 	console.log(d);
-
 	var plotsCount = d["files"].length;
 	document.getElementById('plotsCount').innerText = plotsCount;
 
@@ -376,10 +374,12 @@ function rx_update(d) {
     
     updatePlotButtonStyles();
     
-    if (d["error"] != undefined)
+    if (d["error"] != undefined) {
         error_val = d["error"];
-    else
+    } else {
         error_val = null;
+    }
+    
     if (d["fine_tune"] != undefined)
         fine_tune = d["fine_tune"];
 }
@@ -401,9 +401,7 @@ function change_freq(d) {
 }
 
 function channel_update(d) {
-	
-// 	console.log(d);
-	
+		
     var s2_c  = document.getElementById("s2_ch_lbl");
     var s2_d  = document.getElementById("s2_ch_txt");
     var s2_e  = document.getElementById("s2_ch_dn");
@@ -444,10 +442,13 @@ function channel_update(d) {
             c_freq = d[c_id]['freq'];
 			            
             c_ppm = d[c_id]['ppm'];
-            if (d[c_id]['error'] != undefined)
+            if (d[c_id]['error'] != undefined) {
                 error_val = d[c_id]['error'];
-            else
+                document.getElementById('errorVal').innerText = error_val + " Hz";
+            } else {
+                document.getElementById('errorVal').innerText = " - ";
                 error_val = null;
+            }
             if (d[c_id]['auto_tracking'] != undefined)
                 auto_tracking = d[c_id]['auto_tracking'];
                 
@@ -546,7 +547,7 @@ function channel_update(d) {
 				
 			//displayFreq.innerText 	
 			if (current_tgid)      
-				appendCallHistory(c_system.substring(0, 5), current_tgid, 0, displayTalkgroup.innerText, 0, displayFreq.innerText, displaySource.innerText, "", "voice");
+				appendCallHistory(c_system.substring(0, 5), current_tgid, 0, displayTalkgroup.innerText, 0, displayFreq.innerText, displaySource.innerText, "", "display");
             //appendCallHistory(c_system.substring(0, 5), current_tgid, 0, displayTalkgroup.innerText, 0, c_tdma, displaySource.innerText, "", "voice");
         }
         else {
@@ -680,7 +681,7 @@ function patches(d) {
             if (++row_num == 1) {
                 html += "<tr style=\"background-color: " + color + ";\">";
                 if (is_p25) {
-                    html += "<td rowspan=" + num_sub_tgids + ">" + d['patch_data'][tgid][sub_tgid]['sg'] + "</td>";
+                    html += "<td rowspan=" + num_sub_tgids + ">" + d['patch_data'][tgid][sub_tgid]['sg'] + " - " + d['patch_data'][tgid][sub_tgid]['sgtag'] + "</td>";
                 } else if (is_smartnet) {
                     html += "<td rowspan=" + num_sub_tgids + ">" + d['patch_data'][tgid][sub_tgid]['tgid_dec'] + "</td><td rowspan=" + num_sub_tgids + ">" + d['patch_data'][tgid][sub_tgid]['tgid_hex'] + "</td>";
                 }
@@ -688,7 +689,7 @@ function patches(d) {
                 html += "<tr style=\"background-color: " + color + ";\">";
             }
             if (is_p25) {
-                html += "<td>" + d['patch_data'][tgid][sub_tgid]['ga'] + "</td>";
+                html += "<td>" + d['patch_data'][tgid][sub_tgid]['ga'] + " - " + d['patch_data'][tgid][sub_tgid]['gatag'] + "</td>";
             } else if (is_smartnet) {
                 html += "<td>" + d['patch_data'][tgid][sub_tgid]['sub_tgid_dec'] + "</td><td>" + d['patch_data'][tgid][sub_tgid]['sub_tgid_hex'] + "</td>";
                 html += "<td>" + d['patch_data'][tgid][sub_tgid]['mode'] + "</td>";
@@ -814,43 +815,48 @@ function trunk_update(d) {
             continue;
         }
 
-        html += "<span class=\"nac\">";
-        html += d[nac]['top_line'];
-        html += "</span><br>";
+//         html += "<span class=\"nac\">";
+//         html += d[nac]['top_line'];
+//         html += "</span><br>";
 
         var is_p25 = (d[nac]['type'] == 'p25');
         var is_smartnet = (d[nac]['type'] == 'smartnet');
 
-        if (d[nac]['rfid'] != undefined)
-            html += "<span class=\"label\">RFSS ID: </span><span class=\"value\">" + d[nac]['rfid'] + " </span>";
-        if (d[nac]['stid'] != undefined)
-            html += "<span class=\"label\">Site ID: </span><span class=\"value\">" + d[nac]['stid'] + "</span><br>";
-        if (d[nac]['secondary'] != undefined && d[nac]["secondary"].length) {
-            html += "<span class=\"label\">";
-            if (is_p25)
-                html += "Secondary";
-            else
-                html += "Alternate";
-            html += " control channel(s): </span><span class=\"value\"> ";
-            for (i=0; i<d[nac]["secondary"].length; i++) {
-                if (i != 0)
-                    html += ", ";
-                html += (d[nac]["secondary"][i] / 1000000.0).toFixed(6);
-            }
-            html += "</span><br>";
-        }
-        if (error_val != null) {
-            if (auto_tracking != null) {
-                html += "<span class=\"label\">Frequency error: </span><span class=\"value\">" + error_val + " Hz. (approx)</span><span class=\"label\"> auto tracking: </span><span class=\"value\">" + (auto_tracking ? "on" : "off") + " </span><br>";
-            }
-            else {
-                html += "<span class=\"label\">Frequency error: </span><span class=\"value\">" + error_val + " Hz. (approx)</span><br>";
-            }
-        }
-        if (fine_tune != null) {
-            html += "<span class=\"label\">Fine tune offset: </span><span class=\"value\">" + fine_tune + "</span>";
-        }
-        var div_s1     = document.getElementById("div_s1")
+//        if (d[nac]['rfid'] != undefined)
+//             html += "<span class=\"label\">RFSS ID: </span><span class=\"value\">" + d[nac]['rfid'] + " </span>";
+//         if (d[nac]['stid'] != undefined)
+//             html += "<span class=\"label\">Site ID: </span><span class=\"value\">" + d[nac]['stid'] + "</span><br>";
+//         if (d[nac]['secondary'] != undefined && d[nac]["secondary"].length) {
+//             html += "<span class=\"label\">";
+//             if (is_p25)
+//                 html += "Secondary";
+//             else
+//                 html += "Alternate";
+//             html += " control channel(s): </span><span class=\"value\"> ";
+//             for (i=0; i<d[nac]["secondary"].length; i++) {
+//                 if (i != 0)
+//                     html += ", ";
+//                 html += (d[nac]["secondary"][i] / 1000000.0).toFixed(6);
+//             }
+//             html += "</span><br>";
+//         }
+        
+
+//         if (error_val != null) {
+//             if (auto_tracking != null) {
+//                 html += "<span class=\"label\">Frequency error: </span><span class=\"value\">" + error_val + " Hz. (approx)</span><span class=\"label\"> auto tracking: </span><span class=\"value\">" + (auto_tracking ? "on" : "off") + " </span><br>";
+//             }
+//             else {
+//                 html += "<span class=\"label\">Frequency error: </span><span class=\"value\">" + error_val + " Hz. (approx)</span><br>";
+//             }
+//         }
+        
+        
+//         if (fine_tune != null) {
+//             html += "<span class=\"label\">Fine tune offset: </span><span class=\"value\">" + fine_tune + "</span>";
+//         }
+//         
+//         var div_s1     = document.getElementById("div_s1")
         
 // system information and frequencies table
 
@@ -864,25 +870,22 @@ function trunk_update(d) {
 		var displaySystemId = d[nac]['sysid'] !== undefined ? d[nac]['sysid'] : "-";
 		var displayType = d[nac]['type'] !== undefined ? d[nac]['type'] : "-";
 		var displayRfss = d[nac]['rfid'] !== undefined ? d[nac]['rfid'] : "-";
-		var displaySiteId = d[nac]['stid'] !== undefined ? d[nac]['stid'] : "-";
-		
+		var displaySiteId = d[nac]['stid'] !== undefined ? d[nac]['stid'] : "-";		
 		var displaySiteName = getSiteAlias(displaySystemId, displayRfss, displaySiteId);
-// 		console.log (displaySiteName);
 
 		if (displayCallSign.length < 2)
 			displayCallSign = "-";
 		
-		if (error_val === null || error_val === undefined || isNaN(error_val)) {
-			error_val = "&nbsp;&nbsp;&nbsp;&nbsp;";
-		}
 		
-
+		// this HTML is used in new UI
+		
         html = "<table class='compact-table'>";
         
         html += "<tr><th colspan=99 class='th-section'>" + displaySiteName + "</th></tr>";
     
 
 		// System Information table (above frequency display)
+		// removed error, placed in channel update block 		  { label: "Error", value: `${error_val} Hz` },
 		const trunkFields = [
 		  { label: "Callsign", value: hex(displayCallSign) },
 		  { label: "Type", value: hex(displayType) },
@@ -891,7 +894,6 @@ function trunk_update(d) {
 		  { label: "NAC", value: hex(displayNac) },
 		  { label: "RFSS", value: hex(displayRfss) },
 		  { label: "Site", value: hex(displaySiteId) },
-		  { label: "Error", value: `${error_val} Hz` },
 		  { label: "TSBK", value: totalTsbk },
 		  { label: "Last TSBK", value: getTime(tsbkTime), colspan: 2 }
 		];
@@ -906,15 +908,12 @@ function trunk_update(d) {
 		});
 
 		html += htmlParts.join("");
-
-
-		// TODO: fix this, or? I don't see 'fine_tune' in tk_p25.py anywhere...  not using for now.
-		// html += "<td style='text-align:center';><span class=small-label>Fine Tune</span> <br> <span class=small-value>" + fine_tune + "</span></td>";
-    
-        html += "</table>"
+        html += "</tr></table>"
+   
+    	// HTML for frequency table
     
         html += "<div class=\"info\"><div class=\"system\">";
-        html += "<table id='frequencyTable' class='compact-table'>"; // was width=350
+        html += "<table id='frequencyTable' class='compact-table'>";
         html += "<colgroup>";
         html += "<col span=\"1\" style=\"width:20%;\">";
         html += "<col span=\"1\" style=\"width:12.5%;\">";
@@ -924,7 +923,8 @@ function trunk_update(d) {
         html += "<col span=\"1\" style=\"width:12.5%;\">";
         html += "</colgroup>";
         html += "<tr><th>Frequency</th><th>Last</th><th colspan=2>Active Talkgoup&nbspID</th><th>Mode</th><th>Voice Count</th></tr>";
-        var ct = 0;
+        
+        var radioIdFreqTable = document.getElementById('radioIdFreqTable').checked;
                 
         for (var freq in d[nac]['frequency_data']) {
         
@@ -941,7 +941,37 @@ function trunk_update(d) {
 			let tag2 = (tg2 != null && tg2 !== "")
 			  ? (d[nac]?.frequency_data?.[freq]?.tags?.[1] || `Talkgroup ${tg2}`)
 			  : " ";
-                        
+
+            let src1 = d[nac]['frequency_data'][freq]['srcaddrs'][0];
+            let src2 = d[nac]['frequency_data'][freq]['srcaddrs'][1];
+            
+            let srctag1 = d[nac]['frequency_data'][freq]['srctags'][0];
+			let srctag2 = d[nac]['frequency_data'][freq]['srctags'][1];
+			
+			
+			let source1 = (srctag1 != null && srctag1 !== "")
+				? srctag1
+				: (src1 != null && src1 !== "" && src1 !== 0)
+					? `ID: ${src1}`
+					: null;
+			
+			let source2 = (srctag2 != null && srctag2 !== "")
+				? srctag2
+				: (src2 != null && src2 !== "" && src2 !== 0)
+					? `ID: ${src2}`
+					: null;
+
+			dispSrc1 = (source1 == null) ? "-" : source1;
+			dispSrc2 = (source2 == null) ? "-" : source2;
+			
+			if (radioIdFreqTable) {
+				var contentId1 = "<br>" + dispSrc1 + "</td>";
+				var contentId2 = "<br>" + dispSrc2 + "</td>";
+			} else {
+				var contentId1 = "</td>";
+				var contentId2 = "</td>";						
+			}
+
             mode = d[nac]['frequency_data'][freq]['mode'];
             count = d[nac]['frequency_data'][freq]['counter'];
             			
@@ -957,7 +987,7 @@ function trunk_update(d) {
                     mode_str = "<td style=\"text-align:center;\">Alt CC</td>"
             }
 
-            var achMode = "-";
+            var achMode = "-";  // not used right now
             
             // Now actually handle the appropriate channel type if not alternate
             if (chan_type == 'control') {
@@ -984,7 +1014,7 @@ function trunk_update(d) {
                         mode_str = "<td style=\"text-align:center;\">FDMA</td>";
                         achMode = "FDMA";
                     }
-                    tg_str = "<td style=\"text-align:center;white-space: nowrap;\" colspan=2>" + tg1 + " &nbsp; " + tag1.substring(0, MAX_TG_CHARS) + "</td>";
+                    tg_str = "<td style=\"text-align:center;white-space: nowrap;\" colspan=2>" + tg1 + " &nbsp; " + tag1.substring(0, MAX_TG_CHARS) + contentId1;
                 }
                 else {
                     if (is_p25) {
@@ -995,21 +1025,18 @@ function trunk_update(d) {
                         tg1 = "&nbsp&nbsp-&nbsp&nbsp";
                     if (tg2 == null)
                         tg2 = "&nbsp&nbsp-&nbsp&nbsp";
-                    tg_str = "<td style=\"text-align:center;white-space: nowrap;\">" + tg2 + " &nbsp; " + tag2.substring(0, MAX_TG_CHARS) + "</td><td style=\"text-align:center;white-space: nowrap;\">" + tg1 + " &nbsp; " + tag1.substring(0, MAX_TG_CHARS) + "</td>";
+                    tg_str = "<td style=\"text-align:center;white-space: nowrap;\">" + tg2 + " &nbsp; " + tag2.substring(0, MAX_TG_CHARS) + contentId2 + "<td style=\"text-align:center;white-space: nowrap;\">" + tg1 + " &nbsp; " + tag1.substring(0, MAX_TG_CHARS) + contentId1;
                 }
             }
 
-
 			// Append Call History
         	if (d[nac]['sysid'] !== undefined && (tg1 !== undefined || tg2 !== undefined)) {
-        		// TODO:  srcaddr 
 // 				appendCallHistory(d[nac]['sysid'], tg1, tg2, tag1, tag2, achMode, "Source1", "Source2", "frequency");
-				appendCallHistory(d[nac]['sysid'], tg1, tg2, tag1, tag2, (parseInt(freq) / 1000000.0).toFixed(6), "Source ID 1", "Source ID 2", "frequency");
+				appendCallHistory(d[nac]['sysid'], tg1, tg2, tag1, tag2, (parseInt(freq) / 1000000.0).toFixed(6), source1, source2, "frequency");
 			}          
 
-            ct += 1;
             html += "<tr>";
-            html += "<td>" + (parseInt(freq) / 1000000.0).toFixed(6) + "</td>";
+            html += "<td class='freqData'>" + (parseInt(freq) / 1000000.0).toFixed(6) + "</td>";
 
             html += "<td style=\"text-align:center;\">" + last_activity + "</td>";
             html += tg_str;
@@ -1021,16 +1048,28 @@ function trunk_update(d) {
         html += "</table></div>";
 
 		document.getElementById("frequenciesTable").innerHTML = html;  // new UI
+		
+		
+		if (radioIdFreqTable) {
+			document.querySelectorAll('td.freqData').forEach(td => {
+			  td.style.height = '46px';  // make the row height tall enough for 2 rows of text, avoids the ui bounding up and down
+			});
+		} else {
+			document.querySelectorAll('td.freqData').forEach(td => {
+			  td.style.height = '';
+			});
+		
+		}
 
-		applySmartColorsToFrequencyTable();
-       
 // end system freqencies table
 
+		// finish up
 		
-//         html += "<div class=\"right_column\">";
-        html += patches(d[nac]);
-        html += adjacent_sites(d[nac]);
-//         html += "</div></div></div>";
+		applySmartColorsToFrequencyTable();
+        patches(d[nac]);
+        adjacent_sites(d[nac]);
+        
+        
     }
 
 
@@ -1043,13 +1082,89 @@ function trunk_update(d) {
     if (d['emergency'] != undefined)
         c_emergency = d['emergency']
 
-
     channel_status();
 }
 
 function plot(d) {
     //TODO: implement local plot rendering using json data
 }
+
+function call_log(d) {
+
+	const configuredSource = document.getElementById("callHistorySource").value;
+	if (configuredSource !== "voice") {
+	  return;
+	}
+	
+	if (d['log'].length == 0) {
+		// nothing to do
+		return;
+	}
+	
+	const logs = d['log'];
+
+	const titleTh = document.getElementById("callHistoryTableTitle");
+	titleTh.innerText = "Call History - Voice Grants (P)";
+	
+	const tableBody = document.getElementById("callHistoryBody");
+	
+		logs.forEach(log => {
+			// Convert epoch time to Date
+			const dateObj = new Date(log.time * 1000);
+		
+			// Format to HH:MM:SS
+			const hh = String(dateObj.getHours()).padStart(2, '0');
+			const mm = String(dateObj.getMinutes()).padStart(2, '0');
+			const ss = String(dateObj.getSeconds()).padStart(2, '0');
+			const time = `${hh}:${mm}:${ss}`;
+		
+			// Assign remaining fields to variables
+			const sysid = log.sysid.toString(16).toUpperCase().padStart(3, '0');
+			const tgid = log.tgid;
+			const tgtag = log.tgtag;
+			  var rid = log.rid;
+			const rtag = log.rtag;
+			const rcvr = log.rcvr;
+			const prio = log.prio;
+		
+			if (rid == 0)
+				rid = "-";
+			
+			displayRtag = (rtag !== "") ? rtag : "ID: " + rid;
+			displayTtag = (tgtag !== "") ? tgtag : "Talkgroup " + tgid;
+		
+			// Log or use them as needed
+			console.log(`Time: ${time}, SysID: ${sysid}, TGID: ${displayTtag}, RID: ${displayRtag}`);
+			
+			const newRow = document.createElement("tr");
+			newRow.innerHTML = `
+				<td>${time}</td>
+				<td>${sysid}</td>
+				<td>${rcvr} &nbsp;&nbsp; ${prio} </td>
+				<td>${tgid}</td>
+				<td style="text-align: left;">${displayTtag}</td>
+				<td style="text-align: left;">${displayRtag}</td>
+			`;
+			
+			tableBody.insertBefore(newRow, tableBody.firstChild);
+			
+		});
+	
+	applySmartColorsToCallHistory();
+	
+	const table = document.getElementById("callHistoryContainer");
+	
+	if (table) {
+	  const headerRow = table.querySelector("thead tr");
+	  if (headerRow && headerRow.cells.length > 2) {
+		headerRow.cells[2].innerText = "Reciver / Priority";
+	  }
+	}
+	
+	return;
+	
+}
+
 
 function http_req_cb() {
     req_cb_count += 1;
@@ -1064,7 +1179,7 @@ function http_req_cb() {
     }
     r200_count += 1;
     var dl = JSON.parse(http_req.responseText);
-    var dispatch = {'trunk_update': trunk_update, 'change_freq': change_freq, 'channel_update': channel_update, 'rx_update': rx_update, 'terminal_config': term_config, 'plot': plot}
+    var dispatch = {'call_log': call_log, 'trunk_update': trunk_update, 'change_freq': change_freq, 'channel_update': channel_update, 'rx_update': rx_update, 'terminal_config': term_config, 'plot': plot}
     for (var i=0; i<dl.length; i++) {
         var d = dl[i];
         if (!("json_type" in d))
@@ -1087,6 +1202,9 @@ function do_update() {
 }
 
 function send_command(command, arg1 = 0, arg2 = 0) {
+
+// 	console.log('Send Command: ' + command, arg1, arg2);
+
     request_count += 1;
     if (send_queue.length >= SEND_QLIMIT) {
         send_qfull += 1;
@@ -1172,7 +1290,7 @@ function f_preset(i) {
 	_tgid = preset.tgid;
 
 	if (isNaN(_tgid) || (_tgid < 0) || (_tgid > 65535))
-	_tgid = 0;
+		_tgid = 0;
 
     if (channel_list.length == 0) {
     
@@ -1193,7 +1311,7 @@ function f_preset(i) {
 
 function f_scan_button(command) {
 
-// 	console.log(command);
+	console.log(command);
     var _tgid = 0;
 
     if (command == "goto") {
@@ -1294,11 +1412,11 @@ function appendCallHistory(sysid, tg1, tg2, tag1, tag2, freq, sourceId1, sourceI
 
 	// title the call history table
 	const titleTh = document.getElementById("callHistoryTableTitle");
-	if (configuredSource === "voice") {
-	titleTh.innerText = "Call History - Voice Grants";
+	if (configuredSource === "display") {
+	titleTh.innerText = "Call History - Display";
 	} else if (configuredSource === "frequency") {
 	titleTh.innerText = "Call History - Frequency Data";
-	}
+	} 
 
 
 	// populate the table
@@ -1310,59 +1428,35 @@ function appendCallHistory(sysid, tg1, tg2, tag1, tag2, freq, sourceId1, sourceI
     const slot = "S"; // Placeholder for slot
 
     // Helper to check if a similar row already exists
-//     function isDuplicate(tgid) {
-//         const recentRows = tableBody.querySelectorAll("tr");
-//         for (let i = 0; i < Math.min(MAX_HISTORY_ROWS, recentRows.length); i++) {
-//             const cells = recentRows[i].querySelectorAll("td");
-//             if (cells.length < 5) continue;
-// 
-//             const rowTime = cells[0].textContent.trim();
-//             const rowSys  = cells[1].textContent.trim();
-//             const rowFreq = cells[2].textContent.trim();
-//             const rowTgid = cells[3].textContent.trim();
-//             const rowSrcId  = cells[5].textContent.trim(); 
-// 
-//             if (rowSys === sysHex && rowTgid === String(tgid)) {
-//                 const rowDate = new Date();
-//                 rowDate.setHours(...rowTime.split(':'));
-//                 const rowEpochSec = Math.floor(rowDate.getTime() / 1000);
-//                 const nowSec = Math.floor(epoch / 1000);
-//                 const delta = Math.abs(nowSec - rowEpochSec);
-//                 return delta <= MAX_HISTORY_SECONDS;
-//             }
-//         }
-//         return false;
-//     }
-
-function isDuplicate(tgid, sourceId) {
-    const recentRows = tableBody.querySelectorAll("tr");
-
-    for (let i = 0; i < Math.min(MAX_HISTORY_ROWS, recentRows.length); i++) {
-        const cells = recentRows[i].querySelectorAll("td");
-        if (cells.length < 6) continue;
-
-        const rowTime   = cells[0].textContent.trim();
-        const rowSys    = cells[1].textContent.trim();
-        const rowTgid   = cells[3].textContent.trim();
-        const rowSrcId  = cells[5].textContent.trim(); // <-- updated to index 5
-
-        if (rowSys === sysHex && rowTgid === String(tgid) && rowSrcId === String(sourceId)) {
-            const rowDate = new Date();
-            const [hours, minutes, seconds] = rowTime.split(':').map(Number);
-            rowDate.setHours(hours, minutes, seconds, 0);
-
-            const rowEpochSec = Math.floor(rowDate.getTime() / 1000);
-            const nowSec = Math.floor(epoch / 1000);
-            const delta = Math.abs(nowSec - rowEpochSec);
-
-            if (delta <= MAX_HISTORY_SECONDS) {
-                return true;
-            }
-        }
-    }
-
-    return false;
-}
+		function isDuplicate(tgid, sourceId) {
+			const recentRows = tableBody.querySelectorAll("tr");
+		
+			for (let i = 0; i < Math.min(MAX_HISTORY_ROWS, recentRows.length); i++) {
+				const cells = recentRows[i].querySelectorAll("td");
+				if (cells.length < 6) continue;
+		
+				const rowTime   = cells[0].textContent.trim();
+				const rowSys    = cells[1].textContent.trim();
+				const rowTgid   = cells[3].textContent.trim();
+				const rowSrcId  = cells[5].textContent.trim(); // <-- updated to index 5
+		
+				if (rowSys === sysHex && rowTgid === String(tgid) && rowSrcId === String(sourceId)) {
+					const rowDate = new Date();
+					const [hours, minutes, seconds] = rowTime.split(':').map(Number);
+					rowDate.setHours(hours, minutes, seconds, 0);
+		
+					const rowEpochSec = Math.floor(rowDate.getTime() / 1000);
+					const nowSec = Math.floor(epoch / 1000);
+					const delta = Math.abs(nowSec - rowEpochSec);
+		
+					if (delta <= MAX_HISTORY_SECONDS) {
+						return true;
+					}
+				}
+			}
+		
+			return false;
+		}
 
     // Helper to add a row
     	// TODO: src
@@ -1403,6 +1497,15 @@ function isDuplicate(tgid, sourceId) {
 	}
 	
 	applySmartColorsToCallHistory();
+	
+	const table = document.getElementById("callHistoryContainer");
+
+	if (table) {
+	  const headerRow = table.querySelector("thead tr");
+	  if (headerRow && headerRow.cells.length > 2) {
+		headerRow.cells[2].innerText = "Frequency";
+	  }
+	}
 }
 
 function applySmartColorsToCallHistory() {
@@ -1481,14 +1584,17 @@ function applySmartColorsToFrequencyTable() {
 function applySmartColorToTgidSpan() {
   if (!document.getElementById("smartColorToggle").checked) return;
 
-  const el = document.getElementById("displayTalkgroup");
-  if (!el) return;
+	const el = document.getElementById("displayTalkgroup");
+	if (!el) return;
+	
+	const source = document.getElementById("displaySource");
 
   const cellText = el.textContent.toLowerCase();
 
   for (const colorGroup of smartColors) {
     if (colorGroup.keywords.some(keyword => cellText.includes(keyword.toLowerCase()))) {
       el.style.color = colorGroup.color;
+      source.style.color = colorGroup.color;
       return;
     }
   }
@@ -1572,6 +1678,8 @@ function saveSettingsToLocalStorage() {
   localStorage.setItem("smartColors", document.getElementById("smartColorToggle").checked);
   localStorage.setItem("adjacentSitesToggle", document.getElementById("adjacentSitesToggle").checked);
   localStorage.setItem("callHistorySource", document.getElementById("callHistorySource").value);
+  localStorage.setItem("radioIdFreqTable", document.getElementById("radioIdFreqTable").checked);
+  console.log(document.getElementById("radioIdFreqTable").checked);
 }
 
 function loadSettingsFromLocalStorage() {
@@ -1580,7 +1688,10 @@ function loadSettingsFromLocalStorage() {
   const smartColors = localStorage.getItem("smartColors");
   const adjacentSites = localStorage.getItem("adjacentSitesToggle");
   const callHistorySource = localStorage.getItem("callHistorySource") || "frequency";
+  const radioIdFreqTable = localStorage.getItem("radioIdFreqTable");
 
+  document.getElementById("radioIdFreqTable").checked = radioIdFreqTable === "true";
+  
   document.getElementById("callHeightControl").value = callHeight;
   document.querySelector(".call-history-scroll").style.height = `${callHeight}px`;
 
