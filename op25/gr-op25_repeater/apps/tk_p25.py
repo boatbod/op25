@@ -275,16 +275,19 @@ class rx_ctl(object):
             self.call_log.clear()
         return json.dumps(d)
 
-    def log_call(self, sysid, rcvr, prio, tgid, tgtag, rid, rtag):
+    def log_call(self, sysid, rcvr, freq, slot, prio, tgid, tgtag, rid, rtag):
         with self.call_log_mutex:
-            self.call_log.append({ "time":  time.time(),
-                                   "sysid": sysid,
-                                   "rcvr":  rcvr,
-                                   "prio":  prio,
-                                   "tgid":  tgid,
-                                   "tgtag": tgtag,
-                                   "rid":   rid,
-                                   "rtag":  rtag })
+            self.call_log.append({ "time":    time.time(),
+                                   "sysid":   sysid,
+                                   "rcvr":    rcvr,
+                                   "rcvrtag": from_dict(self.receivers[rcvr]['config'], 'name', ""),
+                                   "freq":    freq,
+                                   "slot":    slot,
+                                   "prio":    prio,
+                                   "tgid":    tgid,
+                                   "tgtag":   tgtag,
+                                   "rid":     rid,
+                                   "rtag":    rtag })
 
 #################
 # P25 system class
@@ -372,8 +375,8 @@ class p25_system(object):
     def set_debug(self, dbglvl):
         self.debug = dbglvl
 
-    def log_call(self, rcvr, prio, tgid, rid):
-        self.rx_ctl.log_call(self.ns_syid, rcvr, prio, tgid, self.talkgroups[tgid]['tag'], rid, self.get_rid_tag(rid))
+    def log_call(self, rcvr, freq, slot, prio, tgid, rid):
+        self.rx_ctl.log_call(self.ns_syid, rcvr, freq, slot, prio, tgid, self.talkgroups[tgid]['tag'], rid, self.get_rid_tag(rid))
 
     def get_talkgroups(self):
         return self.talkgroups
@@ -1784,8 +1787,8 @@ class p25_receiver(object):
     def set_debug(self, dbglvl):
         self.debug = dbglvl
 
-    def log_call(self, prio, tgid, rid):
-        self.system.log_call(self.msgq_id, prio, tgid, rid)
+    def log_call(self, freq, slot, prio, tgid, rid):
+        self.system.log_call(self.msgq_id, freq, slot, prio, tgid, rid)
 
     def post_init(self):
         if self.debug >= 1:
@@ -2169,13 +2172,13 @@ class p25_receiver(object):
             if self.debug > 0:
                 sys.stderr.write("%s [%d] voice update:  tg(%d), rid(%d), freq(%f), slot(%s), prio(%d)\n" % (log_ts.get(), self.msgq_id, tgid, self.talkgroups[tgid]['srcaddr'], (freq/1e6), get_slot(slot), self.talkgroups[tgid]['prio']))
             self.tune_voice(freq, tgid, slot)
-            self.log_call(self.talkgroups[tgid]['prio'], tgid, self.talkgroups[tgid]['srcaddr'])
+            self.log_call(freq, slot, self.talkgroups[tgid]['prio'], tgid, self.talkgroups[tgid]['srcaddr'])
         else:
             if self.debug > 0:
                 sys.stderr.write("%s [%d] voice preempt: tg(%d), rid(%d), freq(%f), slot(%s), prio(%d)\n" % (log_ts.get(), self.msgq_id, tgid, self.talkgroups[tgid]['srcaddr'], (freq/1e6), get_slot(slot), self.talkgroups[tgid]['prio']))
             self.expire_talkgroup(update_meta=False, reason="preempt")
             self.tune_voice(freq, tgid, slot)
-            self.log_call(self.talkgroups[tgid]['prio'], tgid, self.talkgroups[tgid]['srcaddr'])
+            self.log_call(freq, slot, self.talkgroups[tgid]['prio'], tgid, self.talkgroups[tgid]['srcaddr'])
 
         meta_update(self.meta_q, tgid=tgid, tag=self.talkgroups[tgid]['tag'], rid=self.talkgroups[tgid]['srcaddr'], rtag=self.system.get_rid_tag(self.talkgroups[tgid]['srcaddr']), msgq_id=self.msgq_id, debug=self.debug)
 
