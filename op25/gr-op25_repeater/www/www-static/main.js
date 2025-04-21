@@ -1133,8 +1133,6 @@ function call_log(d) {
 			displayRtag = (rtag !== "") ? rtag : "ID: " + rid;
 			displayTtag = (tgtag !== "") ? tgtag : "Talkgroup " + tgid;
 		
-			// Log or use them as needed
-			console.log(`Time: ${time}, SysID: ${sysid}, TGID: ${displayTtag}, RID: ${displayRtag}`);
 			
 			const newRow = document.createElement("tr");
 			newRow.innerHTML = `
@@ -1157,7 +1155,7 @@ function call_log(d) {
 	if (table) {
 	  const headerRow = table.querySelector("thead tr");
 	  if (headerRow && headerRow.cells.length > 2) {
-		headerRow.cells[2].innerText = "Reciver / Priority";
+		headerRow.cells[2].innerText = "Receiver / Priority";
 	  }
 	}
 	
