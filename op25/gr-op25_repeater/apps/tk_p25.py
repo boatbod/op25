@@ -1710,8 +1710,8 @@ class p25_system(object):
         for sg in sorted(self.patches.keys()):
             d['patch_data'][sg] = {}
             for ga in sorted(self.patches[sg]['ga']):
-                sg_dec = int("%5d" % (sg))
-                ga_dec = int("%5d" % (ga))
+                sg_dec = "%5d" % (sg)
+                ga_dec = "%5d" % (ga)
                 sg_tag = self.talkgroups.get(sg, {}).get('tag', None)
                 ga_tag = self.talkgroups.get(ga, {}).get('tag', None)
                 d['patch_data'][sg][ga] = {'sg': sg_dec, 'sgtag': sg_tag, 'ga': ga_dec, 'gatag': ga_tag}
