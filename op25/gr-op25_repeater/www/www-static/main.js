@@ -20,7 +20,7 @@
 // Software Foundation, Inc., 51 Franklin Street, Boston, MA
 // 02110-1301, USA.
 
-// 04-19-2025  1625
+// 04-21-2025  1818
 
 
 var d_debug = 1;
@@ -145,10 +145,7 @@ document.addEventListener("DOMContentLoaded", function() {
 	  
 	  saveSettingsToLocalStorage();
 	});		
-	
-	
-//     loadSeenTalkgroups();
-    
+
 });
 
 function update_presets()
@@ -534,21 +531,10 @@ function channel_update(d) {
             
             if (c_svcopts == 0) c_svcopts = "-";
             displayService.innerText = c_svcopts;
-
-// 			console.log(d);
 			
-			// send voice grant to call history table
-			if (!c_tdma)
-				c_tdma = "-";
-			if (c_tdma == 0)
-				c_tdma = "TDMA 0";
-			if (c_tdma == 1)
-				c_tdma = "TDMA 1";
-				
-			//displayFreq.innerText 	
+			// send voice display to call history table				
 			if (current_tgid)      
 				appendCallHistory(c_system.substring(0, 5), current_tgid, 0, displayTalkgroup.innerText, 0, displayFreq.innerText, displaySource.innerText, "", "display");
-            //appendCallHistory(c_system.substring(0, 5), current_tgid, 0, displayTalkgroup.innerText, 0, c_tdma, displaySource.innerText, "", "voice");
         }
         else {
             s2_c.style['display'] = "none";
@@ -575,6 +561,8 @@ function channel_update(d) {
 
 function channel_status() {
 
+	// TODO: housekeeping in this section.  some of this html is no longer needed.
+
     var html;
     var s2_freq = document.getElementById("s2_freq");
     var s2_tg = document.getElementById("s2_tg");
@@ -589,12 +577,12 @@ function channel_status() {
 	var streamURL = document.getElementById("streamURL");
 	
 	
-	// TODO: housekeeping in this section.  some of this html is no longer needed.
+
 	
     html = "";
 
     if (c_stream_url != undefined) {
-        html += "<a href=\"" + c_stream_url + "\">";
+//         html += "<a href=\"" + c_stream_url + "\">";
         var streamHTML = "<a a href='" + c_stream_url + "' target='_blank'>&#128264;</a>";
         streamButton.innerHTML = streamHTML;
         streamURL.innerHTML = streamHTML + " " + c_stream_url    
@@ -611,30 +599,30 @@ function channel_status() {
     }
 
 
-
-
     html = "";
     
-	// TODO: what is c_grpaddr ?
-    if (current_tgid != null) {
-        html += "<span class=\"value\">" + current_tgid + "</span>";
-        if (hold_tgid != 0) {
-            html += "<span class=\"value\"> [HOLD]</span>";
-		} else {
-		}
-    }
-    else if (c_grpaddr != 0) {
-        html += "<span class=\"value\">" + c_grpaddr + "</span>";
-    }
-    else
-    {
-        html += "<span class=\"value\">&nbsp;</span>";
-    }
+//     if (current_tgid != null) {
+//         html += "<span class=\"value\">" + current_tgid + "</span>";
+//         if (hold_tgid != 0) {
+//             html += "<span class=\"value\"> [HOLD]</span>";
+// 		} else {
+// 		}
+//     }
+//     
+//     // TODO: what is c_grpaddr?
+//     else if (c_grpaddr != 0) {
+//         html += "<span class=\"value\">" + c_grpaddr + "</span>";
+//     }
+//     else
+//     {
+//         html += "<span class=\"value\">&nbsp;</span>";
+//     }
 	
     if (capture_active)
         document.getElementById('cap_bn').innerText = "Stop Capture";
     else
         document.getElementById('cap_bn').innerText = "Start Capture";
+        
     if (auto_tracking)
         document.getElementById('trk_bn').innerText = "Tracking Off";
     else
@@ -697,13 +685,13 @@ function patches(d) {
             html += "</tr>";
         }
     }
-    html += "</table><br>";
+    html += "</table>";
 
 // end patch table
 
 	document.getElementById('patchesTable').innerHTML = html;
 	
-    return html;
+	return;
 }
 
 // adjacent sites table
@@ -711,7 +699,7 @@ function patches(d) {
 function adjacent_sites(d) {
 
     if (d['adjacent_data'] == undefined || Object.keys(d['adjacent_data']).length < 1) {
-        return "";
+        return;
     }
 
     var is_p25 = (d['type'] == 'p25');
@@ -720,7 +708,7 @@ function adjacent_sites(d) {
     // Only supported on P25 and Type II currently
     if (!is_p25 && !is_smartnet) {
     	document.getElementById('adjacentSitesContainer').style.display = "none";
-        return "";
+        return;
     }
 
     var html = "<table class='compact-table'";
@@ -815,48 +803,8 @@ function trunk_update(d) {
             continue;
         }
 
-//         html += "<span class=\"nac\">";
-//         html += d[nac]['top_line'];
-//         html += "</span><br>";
-
         var is_p25 = (d[nac]['type'] == 'p25');
         var is_smartnet = (d[nac]['type'] == 'smartnet');
-
-//        if (d[nac]['rfid'] != undefined)
-//             html += "<span class=\"label\">RFSS ID: </span><span class=\"value\">" + d[nac]['rfid'] + " </span>";
-//         if (d[nac]['stid'] != undefined)
-//             html += "<span class=\"label\">Site ID: </span><span class=\"value\">" + d[nac]['stid'] + "</span><br>";
-//         if (d[nac]['secondary'] != undefined && d[nac]["secondary"].length) {
-//             html += "<span class=\"label\">";
-//             if (is_p25)
-//                 html += "Secondary";
-//             else
-//                 html += "Alternate";
-//             html += " control channel(s): </span><span class=\"value\"> ";
-//             for (i=0; i<d[nac]["secondary"].length; i++) {
-//                 if (i != 0)
-//                     html += ", ";
-//                 html += (d[nac]["secondary"][i] / 1000000.0).toFixed(6);
-//             }
-//             html += "</span><br>";
-//         }
-        
-
-//         if (error_val != null) {
-//             if (auto_tracking != null) {
-//                 html += "<span class=\"label\">Frequency error: </span><span class=\"value\">" + error_val + " Hz. (approx)</span><span class=\"label\"> auto tracking: </span><span class=\"value\">" + (auto_tracking ? "on" : "off") + " </span><br>";
-//             }
-//             else {
-//                 html += "<span class=\"label\">Frequency error: </span><span class=\"value\">" + error_val + " Hz. (approx)</span><br>";
-//             }
-//         }
-        
-        
-//         if (fine_tune != null) {
-//             html += "<span class=\"label\">Fine tune offset: </span><span class=\"value\">" + fine_tune + "</span>";
-//         }
-//         
-//         var div_s1     = document.getElementById("div_s1")
         
 // system information and frequencies table
 
@@ -1031,7 +979,6 @@ function trunk_update(d) {
 
 			// Append Call History
         	if (d[nac]['sysid'] !== undefined && (tg1 !== undefined || tg2 !== undefined)) {
-// 				appendCallHistory(d[nac]['sysid'], tg1, tg2, tag1, tag2, achMode, "Source1", "Source2", "frequency");
 				appendCallHistory(d[nac]['sysid'], tg1, tg2, tag1, tag2, (parseInt(freq) / 1000000.0).toFixed(6), source1, source2, "frequency");
 			}          
 
@@ -1047,7 +994,7 @@ function trunk_update(d) {
         
         html += "</table></div>";
 
-		document.getElementById("frequenciesTable").innerHTML = html;  // new UI
+		document.getElementById("frequenciesTable").innerHTML = html; 
 		
 		
 		if (radioIdFreqTable) {
@@ -1058,7 +1005,6 @@ function trunk_update(d) {
 			document.querySelectorAll('td.freqData').forEach(td => {
 			  td.style.height = '';
 			});
-		
 		}
 
 // end system freqencies table
@@ -1096,15 +1042,13 @@ function call_log(d) {
 	  return;
 	}
 	
-	if (d['log'].length == 0) {
-		// nothing to do
-		return;
-	}
+	if (d['log'].length == 0)
+		return;   		// nothing to do
 	
 	const logs = d['log'];
 
 	const titleTh = document.getElementById("callHistoryTableTitle");
-	titleTh.innerText = "Call History - Voice Grants (P)";
+	titleTh.innerText = "Call History - Voice Grants";
 	
 	const tableBody = document.getElementById("callHistoryBody");
 	
@@ -1126,19 +1070,26 @@ function call_log(d) {
 			const rtag = log.rtag;
 			const rcvr = log.rcvr;
 			const prio = log.prio;
-		
+			const rcvrtag = log.rcvrtag.substring(0, 10) || "";
+			const freq = (log.freq / 1000000.0).toFixed(6);
+			  var slot = log.slot;
+				
 			if (rid == 0)
 				rid = "-";
 			
 			displayRtag = (rtag !== "") ? rtag : "ID: " + rid;
 			displayTtag = (tgtag !== "") ? tgtag : "Talkgroup " + tgid;
-		
+			
+			if (slot == null)
+				slot = "-";
+			
+			displayReceiver = freq + " &nbsp;&nbsp;<font color=#aaa>" + rcvr + ": " + rcvrtag + "</font> &nbsp;&nbsp;S" + slot + "<font color=#aaa> &nbsp;&nbsp;P" + prio;			
 			
 			const newRow = document.createElement("tr");
 			newRow.innerHTML = `
 				<td>${time}</td>
 				<td>${sysid}</td>
-				<td>${rcvr} &nbsp;&nbsp; ${prio} </td>
+				<td>${displayReceiver} &nbsp;&nbsp;</td>
 				<td>${tgid}</td>
 				<td style="text-align: left;">${displayTtag}</td>
 				<td style="text-align: left;">${displayRtag}</td>
@@ -1155,7 +1106,7 @@ function call_log(d) {
 	if (table) {
 	  const headerRow = table.querySelector("thead tr");
 	  if (headerRow && headerRow.cells.length > 2) {
-		headerRow.cells[2].innerText = "Receiver / Priority";
+		headerRow.cells[2].innerText = "Frequency / Receiver / Slot / Prio";
 	  }
 	}
 	
