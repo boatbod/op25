@@ -36,8 +36,18 @@
 			  </svg>
 			</div>
 		  </div>
+		
+		<div class="warning-box" id="warning-box">
+		  <span id="icon">
+			<svg width="24" height="24" viewBox="0 0 24 24" fill="#f44336" xmlns="http://www.w3.org/2000/svg" aria-label="Warning icon">
+			  <path d="M1 21h22L12 2 1 21z"/>
+			  <path d="M13 16h-2v2h2v-2zm0-6h-2v4h2v-4z" fill="#fff"/>
+			</svg>		    
+		  </span>
+		  <span id="warning-text">  </span>
 		</div>
-
+		</div>
+		
       <table class="outer-table" id="about-container" style="display: none; text-align:left;">
 		<tr>
 		<td>
@@ -67,13 +77,13 @@
     <td style="vertical-align: top; width: 50%; padding-right: 20px;">
 
       <div style="margin-bottom: 10px;">
-        <button class="small-button" id="s2_ch_dmp" onclick="f_dump_button(0);">Log Talkgroups</button>
-        <div style="color: #ccc;">Log talkgroups to stderr2</div>
+        <button class="small-button" id="s2_ch_dmp" onclick="f_dump_button(0);" title="Log talkgroups to stderr2">Log Talkgroups</button>
+        &nbsp;&nbsp;&nbsp;
+        <button class="small-button" id="s2_ch_dmp" onclick="f_dump_buffer(-1);" title="Dump buffer">Dump Buffer</button>
       </div>
 
       <div style="margin-bottom: 10px;">
-        <button class="small-button" onclick="f_scan_button('set_debug');">Log Verbosity</button>
-        <div style="color: #ccc;">Set logging level</div>
+        <button class="small-button" onclick="f_scan_button('set_debug');" title="Set logging level">Log Verbosity</button>
       </div>
 
       <div class="s2_cell_h" id="s2_ch_cap" style="display: none; margin-bottom: 10px;">
@@ -104,6 +114,13 @@
     <td style="vertical-align: top; width: 50%; padding-left: 20px;">
 
       <div style="margin-bottom: 15px;">
+        <label for="smartColorToggle" style="color: #ccc;">
+          <input type="checkbox" id="smartColorToggle" checked>
+          Enable Smart Colors
+        </label>
+      </div>
+
+      <div style="margin-bottom: 15px;">
         <label for="radioIdFreqTable" style="color: #ccc;">
           <input type="checkbox" id="radioIdFreqTable">
           Show Radio ID in Frequency Table
@@ -125,7 +142,7 @@
         </label>
       </div>
         
-
+   
 	<div style="margin: 5px 0; text-align: left;">
 	  <label for="callHistorySource" style="color: #ccc;">Call History Source:</label>
 	  <select id="callHistorySource" style="margin-left: 5px;">
@@ -134,13 +151,6 @@
 		<option value="display">Main Display</option>		
 	  </select>
 	</div>
-
-      <div style="margin-bottom: 15px;">
-        <label for="smartColorToggle" style="color: #ccc;">
-          <input type="checkbox" id="smartColorToggle" checked>
-          Enable Smart Colors
-        </label>
-      </div>
 
       <div style="margin-bottom: 10px; color: #ccc;">
         Stream URL: <span id="streamURL">None</span>
@@ -198,21 +208,22 @@
       <td class="right-logo">
 
       <span class="small-label">Channel</span><br>
-      <span class="small-value" id="displayChannel">channel</span><br>
       		<div class="s2_cell_e" id="s2_ch_dn" style="display:none;"> 		
-      		<input type="button" class="tune-button" name="c_dn" id="s2_ch_dn" value="-" title="Prev Channel" onclick="javascript:f_chan_button(-1);">
-      		<input type="button" class="tune-button" name="c_up" id="s2_ch_up" value="+" title="Next Channel" onclick="javascript:f_chan_button(1);">
-      		
+      		<input type="button" class="tune-button" name="c_dn" id="s2_ch_dn" value="&darr;" title="Prev Channel" onclick="javascript:f_chan_button(-1);">
+      		<input type="button" class="tune-button" name="c_up" id="s2_ch_up" value="&uarr;" title="Next Channel" onclick="javascript:f_chan_button(1);">
+      		<br>
+          	<span class="small-value" id="displayChannel">channel</span><br>  		
 		<br>
 		
 		<span id='streamButton'> </span> <!-- This will be a speaker icon with link when the c_stream_url is present -->
 		<br>
 		
+		
       <span class="small-label">Tuning</span><br>
-      <input type="button" class="tune-button" id="t2_D" name="" onclick="f_tune_button(-1200)" value="&lt;&lt;">
-      <input type="button" class="tune-button" id="t2_d" name="" onclick="f_tune_button(-100)" value="&lt;">
-      <input type="button" class="tune-button" id="t2_u" name="" onclick="f_tune_button(100)"value="&gt;">
-      <input type="button" class="tune-button" id="t2_U" name="" onclick="f_tune_button(1200)" value="&gt;&gt;">
+      <input type="button" class="tune-button" id="t2_D" name="" onclick="this.blur(); f_tune_button('ld')" value="&lt;&lt;">
+      <input type="button" class="tune-button" id="t2_d" name="" onclick="this.blur(); f_tune_button('sd')" value="&lt;">
+      <input type="button" class="tune-button" id="t2_u" name="" onclick="this.blur(); f_tune_button('su')"value="&gt;">
+      <input type="button" class="tune-button" id="t2_U" name="" onclick="this.blur(); f_tune_button('lu')" value="&gt;&gt;">
       <br>
       <span class="small-label">Error: </span> <span class="small-value" id="errorVal">-</span>
       
@@ -221,12 +232,12 @@
     <!-- Bottom row: preset buttons -->
     <tr>
       <td colspan="3" class="bottom-buttons">
-		  <button id="preset-btn-1" class="" onclick="f_preset(1)">Preset 1</button>
-		  <button id="preset-btn-2" class="" onclick="f_preset(2)">Preset 2</button>
-		  <button id="preset-btn-3" class="" onclick="f_preset(3)">Preset 3</button>
-		  <button id="preset-btn-4" class="" onclick="f_preset(4)">Preset 4</button>
-		  <button id="preset-btn-5" class="" onclick="f_preset(5)">Preset 5</button>
-		  <button id="preset-btn-6" class="" onclick="f_preset(6)">Preset 6</button>   
+		  <button id="preset-btn-1" class="" onclick="this.blur(); f_preset(1)">Preset 1</button>
+		  <button id="preset-btn-2" class="" onclick="this.blur(); f_preset(2)">Preset 2</button>
+		  <button id="preset-btn-3" class="" onclick="this.blur(); f_preset(3)">Preset 3</button>
+		  <button id="preset-btn-4" class="" onclick="this.blur(); f_preset(4)">Preset 4</button>
+		  <button id="preset-btn-5" class="" onclick="this.blur(); f_preset(5)">Preset 5</button>
+		  <button id="preset-btn-6" class="" onclick="this.blur(); f_preset(6)">Preset 6</button>   
       </td>
     </tr>
   </table>
@@ -259,14 +270,27 @@
 <!-- START SECOND COLUMN -->   
   <div class="column" id="second-column" style="margin: 0px 0px 0px 0px;">
 		<table class="outer-table" id="callHistoryContainer">
-		<tr><th class="th-section" id="callHistoryTableTitle">Call History</th></tr>
+		<tr>
+		  <th class="th-section" colspan="2" style="padding: 0;">
+			<div style="display: flex; justify-content: space-between; align-items: center; padding: 4px 8px;">
+			  <span id="callHistoryTableTitle" style="flex: 1; text-align: center;">Call History</span>
+			  <button onclick="csvTable()" title="Save Call History to CSV" style="background: none; border: none; cursor: pointer; padding: 0; margin-left: auto;">
+				<!-- Save Icon SVG -->
+				<svg xmlns="http://www.w3.org/2000/svg" height="20" viewBox="0 0 24 24" width="20" fill="#ccc">
+				  <path d="M0 0h24v24H0z" fill="none"/>
+				  <path d="M17 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7l-4-4zm0 2.5L18.5 7H17V5.5zM5 19V5h10v4h4v10H5z"/>
+				  <path d="M12 17a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"/>
+				</svg>
+			  </button>
+			</div>
+		  </th>
+		</tr>
 		  <tr>
 			<td>
 			  <div class="call-history-scroll">
 				<table class="compact-table" id="callHistory">
 				  <thead>
 				    <tr><th>Time</th><th>Sys</th><th>Frequency</th><th colspan=2>Talkgroup</th><th>Source</th></tr>
-<!-- 					<tr><th>Time</th><th>Sys</th><th>Mode</th><th colspan=2>Talkgroup</th><th>Source</tr> -->
 				  </thead>
 				  <tbody id="callHistoryBody">
 					<!-- JavaScript will insert <tr> rows here -->
