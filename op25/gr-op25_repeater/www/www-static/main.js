@@ -1147,8 +1147,8 @@ function f_dump_button(command) {
 }
 
 function f_dump_buffer(command) {
-    send_command('dump_buffers', command, Number(channel_list[channel_index]));
-    alert("Buffer dumped to stderr.")
+    send_command('dump_buffer', command, Number(channel_list[channel_index]));
+    alert("OP25 buffers written to server")
 }
 
 function f_cap_button(command) {
