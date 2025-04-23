@@ -25,7 +25,8 @@
 
 var d_debug = 1;
 
-var http_req = new XMLHttpRequest();
+// var http_req = new XMLHttpRequest();
+
 var counter1 = 0;
 var error_val = null;
 var auto_tracking = null;
@@ -33,14 +34,12 @@ var fine_tune = null;
 var current_tgid = null;
 var capture_active = false;
 var hold_tgid = 0;
-var send_busy = 0;
+var http_errors = 0;
+var http_ok = 0;
+var fetch_errors = 0;
 var send_qfull = 0;
 var send_queue = [];
-var req_cb_count = 0;
 var request_count = 0;
-var nfinal_count = 0;
-var n200_count = 0;
-var r200_count = 0;
 var SEND_QLIMIT = 5;
 var c_freq = 0;
 var c_ppm = null;
@@ -59,6 +58,8 @@ var channel_index = 0;
 var default_channel = null;
 var enc_sym = "&#216;";
 var presets = [];
+var lg_step = 1200;  // these are defaults, they are updated in term_config() if present.
+var sm_step = 100;
 
 
 const mediaQuery = window.matchMedia("(min-width: 1500px)");
@@ -159,7 +160,6 @@ function update_presets()
 }
 
 function do_onload() {
-    set_tuning_step_sizes();
     send_command("get_terminal_config", 0, 0);
     setInterval(do_update, 1000);
 }
@@ -266,25 +266,20 @@ function term_config(d) {
     var lg_step = 1200;
     var sm_step = 100;
     var updated = 0;
-
-    // Determine UI version required (rx.py => force to legacy terminal for compatibility reasons)
+	
+	// Determine UI version required (rx.py => force to legacy terminal for compatibility reasons)
     if ((d["terminal_interface"] != undefined) && (d["terminal_interface"] == "legacy")) {
         window.location.replace("legacy-index.html");
     }
-    
-	// TODO, fix tuning buttons which ard currently hard coded with this.
 
+	// Update tuning step values if present	
     if ((d["tuning_step_large"] != undefined) && (d["tuning_step_large"] != lg_step)) {
         lg_step = d["tuning_step_large"];
-        updated++;
     }
     if ((d["tuning_step_small"] != undefined) && (d["tuning_step_small"] != sm_step)) {
         sm_step = d["tuning_step_small"];
-        updated++;
     }
-    if (updated) {
-        set_tuning_step_sizes(lg_step, sm_step);
-    }
+    
     if ((d["default_channel"] != undefined) && (d["default_channel"] != "")) {
         default_channel = d["default_channel"];
     }
@@ -295,45 +290,6 @@ function term_config(d) {
     }
 }
 
-function set_tuning_step_sizes(lg_step=1200, sm_step=100) {
-
-	// this seems needlessly complex  - TODO: remove unused bits, fix tune values which are hard coded into the UI buttons now
-    var title_str = "Adjust tune ";
-
-    var bn_t1_U = document.getElementById("t1_U");
-    var bn_t2_U = document.getElementById("t2_U");
-    var bn_t1_D = document.getElementById("t1_D");
-    var bn_t2_D = document.getElementById("t2_D");
-    var bn_t1_u = document.getElementById("t1_u");
-    var bn_t2_u = document.getElementById("t2_u");
-    var bn_t1_d = document.getElementById("t1_d");
-    var bn_t2_d = document.getElementById("t2_d");
-
-    if ((bn_t1_U != null) && (bn_t2_U != null)) {
-        bn_t1_U.setAttribute("title", title_str + "+" + lg_step);
-        bn_t2_U.setAttribute("title", title_str + "+" + lg_step);
-        bn_t1_U.setAttribute("onclick", "javascript:f_tune_button(" + lg_step + ");");
-        bn_t2_U.setAttribute("onclick", "javascript:f_tune_button(" + lg_step + ");");
-    }
-    if ((bn_t1_D != null) && (bn_t2_D != null)) {
-        bn_t1_D.setAttribute("title", title_str + "-" + lg_step);
-        bn_t2_D.setAttribute("title", title_str + "-" + lg_step);
-        bn_t1_D.setAttribute("onclick", "javascript:f_tune_button(-" + lg_step + ");");
-        bn_t2_D.setAttribute("onclick", "javascript:f_tune_button(-" + lg_step + ");");
-    }
-    if ((bn_t1_u != null) && (bn_t2_u != null)) {
-        bn_t1_u.setAttribute("title", title_str + "+" + sm_step);
-        bn_t2_u.setAttribute("title", title_str + "+" + sm_step);
-        bn_t1_u.setAttribute("onclick", "javascript:f_tune_button(" + sm_step + ");");
-        bn_t2_u.setAttribute("onclick", "javascript:f_tune_button(" + sm_step + ");");
-    }
-    if ((bn_t1_d != null) && (bn_t2_d != null)) {
-        bn_t1_d.setAttribute("title", title_str + "-" + sm_step);
-        bn_t2_d.setAttribute("title", title_str + "-" + sm_step);
-        bn_t1_d.setAttribute("onclick", "javascript:f_tune_button(-" + sm_step + ");");
-        bn_t2_d.setAttribute("onclick", "javascript:f_tune_button(-" + sm_step + ");");
-    }
-}
 
 function rx_update(d) {
 
@@ -389,7 +345,7 @@ function rx_update(d) {
 // frequency, system, and talkgroup display
 
 function change_freq(d) {
-// 	console.log(d);
+
     c_freq = d['freq'];
     c_system = d['system'];
     current_tgid = d['tgid'];
@@ -577,10 +533,7 @@ function channel_status() {
     // the speaker icon in the main display and the url in the Settings div
     var streamButton = document.getElementById("streamButton");
 	var streamURL = document.getElementById("streamURL");
-	
-	
-
-	
+		
     html = "";
 
     if (c_stream_url != undefined) {
@@ -602,23 +555,6 @@ function channel_status() {
 
 
     html = "";
-    
-//     if (current_tgid != null) {
-//         html += "<span class=\"value\">" + current_tgid + "</span>";
-//         if (hold_tgid != 0) {
-//             html += "<span class=\"value\"> [HOLD]</span>";
-// 		} else {
-// 		}
-//     }
-//     
-//     // TODO: what is c_grpaddr?
-//     else if (c_grpaddr != 0) {
-//         html += "<span class=\"value\">" + c_grpaddr + "</span>";
-//     }
-//     else
-//     {
-//         html += "<span class=\"value\">&nbsp;</span>";
-//     }
 	
     if (capture_active)
         document.getElementById('cap_bn').innerText = "Stop Capture";
@@ -1116,31 +1052,25 @@ function call_log(d) {
 	
 }
 
+function handle_response(dl) {
+	// formerly known as function http_req_cb()
+    const dispatch = {
+        call_log: call_log,
+        trunk_update: trunk_update,
+        change_freq: change_freq,
+        channel_update: channel_update,
+        rx_update: rx_update,
+        terminal_config: term_config,
+        plot: plot
+    };
 
-function http_req_cb() {
-    req_cb_count += 1;
-    s = http_req.readyState;
-    if (s != 4) {
-        nfinal_count += 1;
-        return;
-    }
-    if (http_req.status != 200) {
-        n200_count += 1;
-        return;
-    }
-    r200_count += 1;
-    var dl = JSON.parse(http_req.responseText);
-    var dispatch = {'call_log': call_log, 'trunk_update': trunk_update, 'change_freq': change_freq, 'channel_update': channel_update, 'rx_update': rx_update, 'terminal_config': term_config, 'plot': plot}
-    for (var i=0; i<dl.length; i++) {
-        var d = dl[i];
-        if (!("json_type" in d))
-            continue;
-        if (!(d["json_type"] in dispatch))
-            continue;
-        dispatch[d["json_type"]](d);
+    for (let i = 0; i < dl.length; i++) {
+        const d = dl[i];
+        if (!("json_type" in d)) continue;
+        if (!(d.json_type in dispatch)) continue;
+        dispatch[d.json_type](d);
     }
 }
-
 
 function do_update() {
     if (channel_list.length == 0) {
@@ -1154,8 +1084,6 @@ function do_update() {
 
 function send_command(command, arg1 = 0, arg2 = 0) {
 
-// 	console.log('Send Command: ' + command, arg1, arg2);
-
     request_count += 1;
     if (send_queue.length >= SEND_QLIMIT) {
         send_qfull += 1;
@@ -1165,18 +1093,42 @@ function send_command(command, arg1 = 0, arg2 = 0) {
     send_process();
 }
 
+
 function send_process() {
-    s = http_req.readyState;
-    if (s != 0 && s != 4) {
-        send_busy += 1;
-        return;
-    }
-    http_req.open("POST", "/");
-    http_req.onreadystatechange = http_req_cb;
-    http_req.setRequestHeader("Content-type", "application/json");
-    cmd = JSON.stringify( send_queue );
+
+    const cmd = JSON.stringify(send_queue);
     send_queue = [];
-    http_req.send(cmd);
+    
+    const wbox = document.getElementById('warning-box');
+    const wtxt = document.getElementById('warning-text');
+
+    fetch("/", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: cmd
+    })
+    .then(response => {
+        if (!response.ok) {
+			http_errors += 1;
+            wbox.style.display = "flex";
+            wtxt.innerText = "HTTP Error: ", response.status;
+            return;
+        }
+        http_ok += 1;
+        return response.json();
+    })
+    .then(dl => {
+        if (!dl) return;
+        wbox.style.display = "none";
+        handle_response(dl);
+    })
+    .catch(error => {
+			fetch_errors += 1;
+            wbox.style.display = "flex";
+            wtxt.innerText = "Fetch error in send_process: Network error when attempting to fetch resource. Check server.";      
+    });
 }
 
 function f_chan_button(command) {
@@ -1194,6 +1146,11 @@ function f_dump_button(command) {
     send_command('dump_tracking', 0, Number(channel_list[channel_index]));
 }
 
+function f_dump_buffer(command) {
+    send_command('dump_buffers', command, Number(channel_list[channel_index]));
+    alert("Buffer dumped to stderr.")
+}
+
 function f_cap_button(command) {
     send_command('capture', 0, Number(channel_list[channel_index]));
 }
@@ -1204,8 +1161,26 @@ function f_trk_button(command) {
 
 function f_tune_button(command) {
 
-	_tune = parseInt(command, 10);
+	let step = 0;
 	
+	switch (command) {
+	  case "ld": // large down
+		_tune = -lg_step;
+		break;
+	  case "sd": // small down
+		_tune = -sm_step;
+		break;
+	  case "su": // small up
+		_tune = sm_step;
+		break;
+	  case "lu": // large up
+		_tune = lg_step;
+		break;
+	  default:
+		console.warn("Unknown tune command:", command);
+		_tune = 0;
+	}
+
     if (channel_list.length == 0) {
         send_command('adj_tune', _tune, 0);
     }
@@ -1262,7 +1237,6 @@ function f_preset(i) {
 
 function f_scan_button(command) {
 
-	console.log(command);
     var _tgid = 0;
 
     if (command == "goto") {
@@ -1298,7 +1272,6 @@ function f_scan_button(command) {
     		send_command("whitelist", _tgid);
     
         send_command(command, _tgid);
-        console.log("method A");
     }
     else {
     
@@ -1306,21 +1279,21 @@ function f_scan_button(command) {
     		send_command("whitelist", _tgid, Number(channel_list[channel_index]));
 
         send_command(command, _tgid, Number(channel_list[channel_index]));
-        console.log("method B");
     }
 }
 
 function f_debug() {
 	if (!d_debug) return;
-	var html = "busy " + send_busy;
-	html += " qfull " + send_qfull;
-	html += " sendq size " + send_queue.length;
-	html += " requests " + request_count;
-	html += "<br>callbacks:";
-	html += " total=" + req_cb_count;
-	html += " incomplete=" + nfinal_count;
-	html += " error=" + n200_count;
-	html += " OK=" + r200_count;
+	
+	var html = "Requests from send_command: " + request_count;
+	html += "<br>HTTP 200 OK: " + http_ok;
+	html += "&nbsp;&nbsp;&nbsp;&nbsp;HTTP Errors: " + http_errors;
+	html += "<br>Fetch Errors: " + fetch_errors;
+	html += "<br>Send Queue Size " + send_queue.length;
+	html += "&nbsp;&nbsp;&nbsp;&nbsp;Queue Full " + send_qfull;	
+
+// 	html += " error=" + n200_count;
+// 	html += " OK=" + r200_count;
 	html += "<br>";
 	var div_debug = document.getElementById("div_debug");
 	div_debug.innerHTML = html;
@@ -1630,7 +1603,6 @@ function saveSettingsToLocalStorage() {
   localStorage.setItem("adjacentSitesToggle", document.getElementById("adjacentSitesToggle").checked);
   localStorage.setItem("callHistorySource", document.getElementById("callHistorySource").value);
   localStorage.setItem("radioIdFreqTable", document.getElementById("radioIdFreqTable").checked);
-  console.log(document.getElementById("radioIdFreqTable").checked);
 }
 
 function loadSettingsFromLocalStorage() {
@@ -1680,4 +1652,50 @@ function showHome() {
 
 function hex(val) {
   return val.toString(16).toUpperCase();
+}
+
+
+function csvTable() {
+	// save the call history table to csv
+	
+    const table_id = "callHistoryContainer";
+    const separator = ',';
+
+    const rows = document.querySelectorAll(`table#${table_id} tr`);
+    const csv = [];
+
+    // First valid header row is at index 1
+    const headerRow = rows[1]?.querySelectorAll('th');
+    if (headerRow && headerRow.length > 0) {
+        const headers = Array.from(headerRow).map(cell => {
+            let data = cell.innerText.trim().replace(/(\r\n|\n|\r)/gm, '').replace(/\s+/g, ' ');
+            data = data.replace(/"/g, '""');
+            return `"${data}"`;
+        });
+        csv.push(headers.join(separator));
+    }
+
+    // Data rows from index 2 onward
+    for (let i = 2; i < rows.length; i++) {
+        const cols = rows[i].querySelectorAll('td');
+        if (cols.length === 0) continue;  // Skip empty or non-data rows
+
+        const row = Array.from(cols).map(cell => {
+            let data = cell.innerText.trim().replace(/(\r\n|\n|\r)/gm, '').replace(/\s+/g, ' ');
+            data = data.replace(/"/g, '""');
+            return `"${data}"`;
+        });
+        csv.push(row.join(separator));
+    }
+
+    const csv_string = csv.join('\n');
+    const filename = `export_${table_id}_${new Date().toLocaleDateString().replace(/\//g, '-')}.csv`;
+
+    const link = document.createElement('a');
+    link.style.display = 'none';
+    link.setAttribute('href', 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv_string));
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 }

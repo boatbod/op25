@@ -262,8 +262,9 @@ input[type="checkbox"]:checked::after {
   background-color: #555;
   color: #fff;
   border: 1px solid #777;
-  padding: 5px 10px;
+  padding: 5px 5px;
   margin: 3px;
+  width: 120px;
   cursor: pointer;
   font-size: 12px;
   transition: background 0.3s ease, border-color 0.3s ease;
@@ -382,16 +383,16 @@ input[type="checkbox"]:checked::after {
 
 
 .tune-button {
-  width: 20px;    
-  padding: 2px 4px;     /* Minimal padding */
+  width: 25px;    
+  padding: 2px 2px;     /* Minimal padding */
   background-color: #555;
   color: #fff;
   border: 1px solid #777;
-  margin: 5px;
+  margin: 3px;
   cursor: pointer;
   font-size: 0.8em;     /* Smaller font */
   text-align: center;   /* Center the text */
-  border-radius: 4px;
+  border-radius: 1px;
   transition: background 0.3s ease, border-color 0.3s ease;
 }
 
@@ -512,6 +513,21 @@ input[type="checkbox"]:checked::after {
   font-size: 14px;
   padding: 6px;
   color: #999
+}
+
+
+.warning-box {
+  border: 1px solid #aa4a44;
+  background: linear-gradient(to bottom, #662222, #441111);
+  color: #ffdddd;
+  padding: 12px;
+  margin: 0;
+  width: 100%;
+/*   border-radius: 6px; */
+  display: none;
+  align-items: center; /* ← vertically center content */
+  gap: 10px;           /* space between icon and text, if needed */
+  font-size: 1rem;
 }
 
 
