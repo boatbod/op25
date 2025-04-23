@@ -266,6 +266,11 @@ function term_config(d) {
     var lg_step = 1200;
     var sm_step = 100;
     var updated = 0;
+
+    // Determine UI version required (rx.py => force to legacy terminal for compatibility reasons)
+    if ((d["terminal_interface"] != undefined) && (d["terminal_interface"] == "legacy")) {
+        window.location.replace("legacy-index.html");
+    }
     
 	// TODO, fix tuning buttons which ard currently hard coded with this.
 
@@ -385,9 +390,6 @@ function rx_update(d) {
 
 function change_freq(d) {
 // 	console.log(d);
-
-	console.log("change freq() called");
-	
     c_freq = d['freq'];
     c_system = d['system'];
     current_tgid = d['tgid'];
