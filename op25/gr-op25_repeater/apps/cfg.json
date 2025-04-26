@@ -1,96 +1,60 @@
 {
     "channels": [
         {
-            "name": "p25", 
-            "device": "",
+            "name": "Channel 0", 
+            "device": "sdr0",
+            "trunking_sysname": "Trunking System 0",
+            "meta_stream_name": "",
             "demod_type": "cqpsk", 
-            "destination": "udp://127.0.0.1:56120", 
-            "excess_bw": 0.2, 
-            "filter_type": "rc", 
-            "frequency": 460412500, 
-            "if_rate": 24000, 
-            "plot": "symbol", 
+            "cqpsk_tracking": true,
+            "tracking_threshold": 120,
+            "tracking_feedback": 0.75,
+            "destination": "udp://127.0.0.1:23456",
+            "excess_bw": 0.2,
+            "filter_type": "rc",
+            "if_rate": 24000,
+            "plot": "",
             "symbol_rate": 4800,
-            "raw_output": "",
-            "raw_input": "",
-            "raw_seek": 0,
             "enable_analog": "off",
-            "nbfm_deviation": 4000,
-            "nbfm_squelch": -60
-
-        }, 
-        {
-            "name": "ysf", 
-            "device": "device_0",
-            "demod_type": "fsk4", 
-            "destination": "file:///tmp/out1.raw", 
-            "excess_bw": 0.2, 
-            "filter_type": "rrc", 
-            "frequency": 460500000, 
-            "if_rate": 24000, 
-            "plot": "datascope", 
-            "symbol_rate": 4800,
-            "raw_output": "",
-            "raw_input": "",
-            "enable_analog": "off",
-            "nbfm_deviation": 4000,
-            "nbfm_squelch": -60
-        }, 
-        {
-            "name": "dmr", 
-            "device": "device_1",
-            "demod_type": "fsk4", 
-            "destination": "udp://127.0.0.1:56122", 
-            "excess_bw": 0.2, 
-            "filter_type": "rrc", 
-            "frequency": 460050000, 
-            "if_rate": 24000, 
-            "plot": "symbol", 
-            "symbol_rate": 4800,
-            "raw_output": "",
-            "raw_input": "",
-            "enable_analog": "off",
-            "nbfm_deviation": 4000,
-            "nbfm_squelch": -60
+            "blacklist": "",
+            "whitelist": "",
+            "crypt_keys": ""
         }
     ], 
     "devices": [
         {
-            "args": "rtl=0", 
-            "frequency": 460100000, 
-            "gains": "lna:39", 
+            "args": "rtl",
+            "gains": "LNA:39",
             "gain_mode": false,
-            "name": "device_0", 
-            "offset": 0, 
-            "ppm": 0.0, 
-            "rate": 1000000, 
-            "usable_bw_pct": 0.85,
-            "tunable": false
-        },
-        {
-            "args": "rtl=1", 
-            "frequency": 464100000, 
-            "gains": "lna:39", 
-            "name": "device_1", 
-            "offset": 0, 
-            "ppm": 0.0, 
-            "rate": 1000000, 
+            "name": "sdr0",
+            "offset": 0,
+            "ppm": 0.0,
+            "rate": 1000000,
             "usable_bw_pct": 0.85,
             "tunable": true
         }
     ],
     "trunking": {
-        "module": "",
+        "module": "tk_p25.py",
         "chans": [
             {
-                "lcn": 1,
-                "frequency": 111222222,
-                "cc": 0
-            },
-            {
-                "lcn": 2,
-                "frequency": 111333333,
-                "cc": 0
+                "nac": "0x0",
+                "sysname": "Trunking System 0",
+                "control_channel_list": "773.84375",
+                "whitelist": "",
+                "blacklist": "",
+                "#tgid_tags_file": "tgid-tags.tsv",
+                "#rid_tags_file": "rid-tags.tsv",
+                "tdma_cc": false,
+                "crypt_behavior": 2,
+                "presets": [
+                    { "id": 1, "tgid": 7616, "label": "TGID 7616" },
+                    { "id": 2, "tgid": 7617, "label": "TGID 7617" },
+                    { "id": 3, "tgid": 11501, "label": "TGID 11501" },
+                    { "id": 4, "tgid": 11503, "label": "TGID 11503" },
+                    { "id": 5, "tgid": 12001, "label": "TGID 12001" },
+                    { "id": 6, "tgid": 12401, "label": "TGID 12401" }
+                ]
             }
         ]
     },
@@ -98,29 +62,14 @@
         "module": "icemeta.py",
         "streams": [
             {
-                "stream_name": "stream_0",
+                "stream_name": "",
                 "meta_format_idle": "[idle]",
                 "meta_format_tgid": "[%TGID%]",
                 "meta_format_tag":  "[%TGID%] %TAG%",
-                "meta_format_rid":  "@ [%RID%]",
-                "meta_format_rtag": "@ [%RID%] %RTAG%",
-                "icecastServerAddress": "your_stream_host_and_port",
-                "icecastMountpoint": "your_mountpoint_name",
-                "icecastPass": "your_password",
+                "icecastServerAddress": "192.168.1.24:8000",
+                "icecastMountpoint": "op25_stream_0",
                 "icecastMountExt": ".xspf",
-                "delay": 0.0
-            },
-            {
-                "stream_name": "stream_1",
-                "meta_format_idle": "[idle]",
-                "meta_format_tgid": "[%TGID%]",
-                "meta_format_tag":  "[%TGID%] %TAG%",
-                "meta_format_rid":  " @ [%RID%]",
-                "meta_format_rtag": " @ [%RID%] %RTAG%",
-                "icecastServerAddress": "your_second stream_host_and_port",
-                "icecastMountpoint": "your_second_mountpoint_name",
-                "icecastPass": "your_second_password",
-                "icecastMountExt": ".xspf",
+                "icecastPass": "hackme1",
                 "delay": 0.0
             }
         ]
@@ -130,7 +79,8 @@
         "instances": [
             {
                 "instance_name": "audio0",
-                "device_name": "default",
+                "device_name": "pulse",
+                "Xdevice_name": "default",
                 "udp_port": 23456,
                 "audio_gain": 1.0,
                 "number_channels": 1
@@ -139,22 +89,12 @@
     },
     "terminal": {
         "module": "terminal.py",
-        "terminal_type": "curses",
-        "#terminal_type": "http:127.0.0.1:8080",
-        "terminal_timeout": 5.0,
-        "default_channel": "p25",
-        "curses_plot_interval": 0.2,
+        "#terminal_type": "curses",
+        "terminal_type": "http:127.0.0.1:8080",
+        "curses_plot_interval": 0.1,
         "http_plot_interval": 1.0,
         "http_plot_directory": "../www/images",
         "tuning_step_large": 1200,
-        "tuning_step_small": 100,
-        "presets": [
-            { "id": 1, "tgid": 1111, "label": "Preset 1" },
-            { "id": 2, "tgid": 2222, "label": "Preset 2" },
-            { "id": 3, "tgid": 3333, "label": "Preset 3" },
-            { "id": 4, "tgid": 4444, "label": "Preset 4" },
-            { "id": 5, "tgid": 5555, "label": "Preset 5" },
-            { "id": 6, "tgid": 6666, "label": "Preset 6" }
-        ]
+        "tuning_step_small": 100
     }
 }
