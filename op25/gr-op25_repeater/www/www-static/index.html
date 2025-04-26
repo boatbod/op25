@@ -14,6 +14,8 @@
  
 <!--  START OF 2-COLUMN LAYOUT -->
    <div class="row">   <!--  START OF 2 COLUMN LAYOUT -->
+   
+   
    <div class="column" style="width: 750px;"> <!-- START FIRST COLUMN -->
   
 		<div class="top-nav-container">
@@ -78,16 +80,19 @@
 
       <div style="margin-bottom: 10px;">
         <button class="small-button" id="s2_ch_dmp" onclick="f_dump_button(0);" title="Log talkgroups to stderr2">Log Talkgroups</button>
-        <button class="small-button" style="margin-left: 10px;" id="s2_ch_dmp" onclick="f_dump_buffer(-1);" title="Dump buffer">Dump Buffer</button>
+        &nbsp;&nbsp;&nbsp;
+        <button class="small-button" id="s2_ch_dmp" onclick="f_dump_buffer(-1);" title="Dump buffer">Dump Buffer</button>
       </div>
 
       <div style="margin-bottom: 10px;">
         <button class="small-button" onclick="f_scan_button('set_debug');" title="Set logging level">Log Verbosity</button>
       </div>
 
+<!-- 
       <div class="s2_cell_h" id="s2_ch_cap" style="display: none; margin-bottom: 10px;">
         <button class="small-button" id="cap_bn" onclick="f_cap_button(0);">Start Capture</button>
       </div>
+ -->
 
       <div class="s2_cell_h" id="s2_ch_trk" style="display: none; margin-bottom: 10px;">
         <button class="small-button" id="trk_bn" onclick="f_trk_button(-1);">Tracking</button>
@@ -107,7 +112,14 @@
         <label for="plotSizeControl" style="color: #ccc;">Plot Image Width (px):</label><br>
         <input type="number" id="plotSizeControl" min="100" max="1000" value="300" style="width: 80px;">
       </div>
+
+      <div style="margin-bottom: 10px;">
+        <button class="small-button" onclick="send_command('get_full_config');">View Config</button>
+      </div>          
+          
     </td>
+    
+
 
     <!-- RIGHT COLUMN -->
     <td style="vertical-align: top; width: 50%; padding-left: 20px;">
@@ -132,7 +144,14 @@
           <input type="checkbox" id="adjacentSitesToggle" checked>
           Show Adjacent Sites
         </label>
-      </div>    
+      </div>
+      
+      <div style="margin-bottom: 15px;">
+        <label for="channelsTableToggle" style="color: #ccc;">
+          <input type="checkbox" id="channelsTableToggle" checked>
+          Show Channels Table
+        </label>
+      </div>        
       
       <div style="margin-bottom: 15px;">
         <label for="callHistoryToggle" style="color: #ccc;">
@@ -163,9 +182,17 @@
 
     </td>
   </tr>
+
+  <tr><td colspan='2'><div id="configDisplay" class="config-container"> </div></td></tr>
+
 </table>
 
-  <table class="outer-table">
+
+
+
+
+
+  <table class="outer-table" id="main-display">
     <tr>
       <!-- Left panel: vertical buttons --> 
       <td class="left-panel">
@@ -179,15 +206,21 @@
         <table class="inner-table table-gradient-bg">
           <tr>
             <td><span class="info-large" id="displaySystem">Waiting for data...</span></td>
-            <td style="text-align:center;"><span class="small-label">Frequency</span><br> <span class="trunk-value" id="displayFreq">----</span></td>
+            <td style="text-align:center; white-space: nowrap; width: 1%;">
+            	<span class="small-label">Frequency</span><br> <span class="trunk-value" id="displayFreq">----</span>
+            </td>
           </tr>
           <tr>
             <td><span class="info-large" id="displayTalkgroup"> </span></span></td>
-           <td style="text-align:center;"><span class="small-label">Talkgroup</span><br><span class="trunk-value" id="displayTgid">----</span></td>
+            <td style="text-align:center; white-space: nowrap; width: 1%;">
+            	<span class="small-label">Talkgroup</span><br><span class="trunk-value" id="displayTgid">----</span>
+            </td>
           </tr>
           <tr>
             <td><span class="info-large" id="displaySource"> </span></td>
-            <td style="text-align:center;"><span class="small-label">Source</span><br><span class="trunk-value"id="displaySourceId">----</span></td>
+            <td style="text-align:center; white-space: nowrap; width: 1%;">
+            	<span class="small-label">Source</span><br><span class="trunk-value"id="displaySourceId">----</span>
+            </td>
           </tr>
           <tr>
             <td colspan=2 style="padding-top:8px; padding-bottom:8px; text-align:center;">
@@ -230,7 +263,7 @@
     </tr>
     <!-- Bottom row: preset buttons -->
     <tr>
-      <td colspan="3" class="bottom-buttons">
+      <td colspan="3" class="bottom-buttons" id="presetButtons" style="display: none;">
 		  <button id="preset-btn-1" class="" onclick="this.blur(); f_preset(1)">Preset 1</button>
 		  <button id="preset-btn-2" class="" onclick="this.blur(); f_preset(2)">Preset 2</button>
 		  <button id="preset-btn-3" class="" onclick="this.blur(); f_preset(3)">Preset 3</button>
@@ -239,6 +272,34 @@
 		  <button id="preset-btn-6" class="" onclick="this.blur(); f_preset(6)">Preset 6</button>   
       </td>
     </tr>
+  </table>
+  
+  <table class="outer-table" id="channels-container" style="text-align:left;">
+		<tr>
+		  <th class="th-section" colspan="2" style="padding: 0;">
+			<div style="display: flex; justify-content: space-between; align-items: center; padding: 4px 8px;">
+			  <span id="channes-container-title" style="flex: 1; text-align: center;">Channels</span>
+<!-- 
+			  <button onclick="csvTable()" title="Save Call History to CSV" style="background: none; border: none; cursor: pointer; padding: 0; margin-left: auto;">
+				<!~~ Save Icon SVG ~~>
+				<svg xmlns="http://www.w3.org/2000/svg" height="20" viewBox="0 0 24 24" width="20" fill="#ccc">
+				  <path d="M0 0h24v24H0z" fill="none"/>
+				  <path d="M17 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7l-4-4zm0 2.5L18.5 7H17V5.5zM5 19V5h10v4h4v10H5z"/>
+				  <path d="M12 17a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"/>
+				</svg>
+			  </button>
+ -->
+			</div>
+		  </th>
+		</tr>
+		  <tr>
+		  	<td>
+		  	 <div id="channelInfo">
+				<!-- Channel Info Table				 -->
+		  	 </div>
+		  	</td>
+		  </tr>
+		</table>
   </table>
 
       <table class="outer-table">
@@ -306,12 +367,12 @@
 			<td>
 
 				<div id="plot-controls" style="text-align:center; width: 100%;">
-					<input type="button" class="small-button" name="pl1" id="pb-fft" value="Spectrum" title="Toggle Spectrum Plot" onclick="javascript:f_plot_button(1);">
-					<input type="button" class="small-button" name="pl2" id="pb-constellation" value="Constellation" title="Toggle Constellation Plot" onclick="javascript:f_plot_button(2);">
-					<input type="button" class="small-button" name="pl3" id="pb-symbol" value="Symbol" title="Toggle Symbol Plot" onclick="javascript:f_plot_button(3);">
-					<input type="button" class="small-button" name="pl4" id="pb-eye" value="Datascope" title="Toggle Datascope Plot" onclick="javascript:f_plot_button(4);">
-					<input type="button" class="small-button" name="pl5" id="pb-mixer" value="Mixer" title="Toggle Mixer Plot" onclick="javascript:f_plot_button(5);">
-					<input type="button" class="small-button" name="pl6" id="pb-fll" value="Tuner" title="Toggle Tuner Plot" onclick="javascript:f_plot_button(6);">
+					<input type="button" class="small-button" style="width: 100px;" name="pl1" id="pb-fft" value="Spectrum" title="Toggle Spectrum Plot" onclick="javascript:f_plot_button(1);">
+					<input type="button" class="small-button" style="width: 100px;" name="pl2" id="pb-constellation" value="Constellation" title="Toggle Constellation Plot" onclick="javascript:f_plot_button(2);">
+					<input type="button" class="small-button" style="width: 100px;" name="pl3" id="pb-symbol" value="Symbol" title="Toggle Symbol Plot" onclick="javascript:f_plot_button(3);">
+					<input type="button" class="small-button" style="width: 100px;" name="pl4" id="pb-eye" value="Datascope" title="Toggle Datascope Plot" onclick="javascript:f_plot_button(4);">
+					<input type="button" class="small-button" style="width: 100px;" name="pl5" id="pb-mixer" value="Mixer" title="Toggle Mixer Plot" onclick="javascript:f_plot_button(5);">
+					<input type="button" class="small-button" style="width: 100px;" name="pl6" id="pb-fll" value="Tuner" title="Toggle Tuner Plot" onclick="javascript:f_plot_button(6);">
 				<br>
 					<span class="small-label">Plots in data stream: </span> <span class="small-value" id="plotsCount">-</span> &nbsp;&nbsp;&nbsp;&nbsp;
 					<span class="small-label">Channel: </span> <span class="small-value" id="plotChannelDisplay">-</span>
@@ -330,8 +391,6 @@
 		  </tr>
 		</table>
 		
-
-
 
 </div>    <!-- END SECOND COLUMN -->
 </div>        <!--  END OF 2 COLUMN LAYOUT -->
