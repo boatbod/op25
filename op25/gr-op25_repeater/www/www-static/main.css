@@ -38,7 +38,7 @@ a:hover {
 .outer-table {
   width: 750px;
   margin: 0px 0px 10px 0px;
-  border: 2px solid #444;
+  border: 1px solid #444;
   background-color: #111;                               /* 222 */
   border-collapse: collapse;
 }
@@ -328,18 +328,18 @@ input[type="checkbox"]:checked::after {
 }
 
 .compact-table th {
-  background-color: #444;
+  background-color: #2a2a2a;
   font-weight: bold;
 /*   color: #BBBBBB; */
 }
 
 /* Zebra striping */
 .compact-table tr:nth-child(even) {
-  background-color: #111;
+  background-color: #000;
 }
 
 .compact-table tr:nth-child(odd) {
-  background-color: #222;
+  background-color: #0b0b0b;
 }
 
 .table-gradient-bg {
@@ -465,6 +465,7 @@ input[type="checkbox"]:checked::after {
   border-bottom: 1px solid #555;
   border-left: 1px solid #555;
   border-right: 1px solid #555;
+  box-sizing: border-box;  
 }
 
 .top-nav {
@@ -530,7 +531,56 @@ input[type="checkbox"]:checked::after {
   font-size: 1rem;
 }
 
+<style>
+.config-container {
+    margin: 20px;
+    font-family: Arial, sans-serif;
+}
 
+.config-section {
+    margin-bottom: 15px;
+    border: 1px solid #555;
+    border-radius: 5px;
+    background: #222;
+    color: #ddd;
+    overflow: hidden;
+}
+
+.config-header {
+    background: #333;
+    padding: 8px 12px;
+    cursor: pointer;
+    margin: 0;
+}
+
+.config-content {
+    padding: 10px 15px;
+    display: none;
+}
+
+.config-content.open {
+    display: block;
+}
+
+.config-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.config-table td {
+    padding: 4px 8px;
+    border-bottom: 1px solid #444;
+    vertical-align: top;
+}
+
+.config-key {
+    font-weight: bold;
+    width: 30%;
+}
+.config-value {
+    word-break: break-word;
+}
+</style>
 
 /* BEGIN 2 COLUMN LAYOUT ELEMENTS */
 
@@ -547,7 +597,7 @@ input[type="checkbox"]:checked::after {
 .column {
   float: left;
   width: 50%;
-  padding: 0 10px; /* horizontal padding creates the gap */
+  padding: 0 0px; /* horizontal padding creates the gap */
 }
 
 /* Clear floats */

@@ -20,7 +20,7 @@
 // Software Foundation, Inc., 51 Franklin Street, Boston, MA
 // 02110-1301, USA.
 
-// 04-21-2025  1818
+// 04-25-2025  1901
 
 
 var d_debug = 1;
@@ -57,7 +57,8 @@ var channel_list = [];
 var channel_index = 0;
 var default_channel = null;
 var enc_sym = "&#216;";
-var presets = [];
+// var presets = [];
+var newPresets = [];
 var lg_step = 1200;  // these are defaults, they are updated in term_config() if present.
 var sm_step = 100;
 
@@ -98,10 +99,10 @@ document.addEventListener("DOMContentLoaded", function() {
     	document.getElementById("smartColorToggle").checked = false;
     }
     
-    if (configFile) {
-        presets = cfg_presets;
-        update_presets();
-	}
+//     if (configFile) {
+//         presets = cfg_presets;
+//         update_presets();
+// 	}
 	
 	loadSettingsFromLocalStorage();	
 	
@@ -124,6 +125,20 @@ document.addEventListener("DOMContentLoaded", function() {
 	document.getElementById("plotSizeControl").addEventListener("input", saveSettingsToLocalStorage);
 	document.getElementById("smartColorToggle").addEventListener("change", saveSettingsToLocalStorage);
 	document.getElementById("radioIdFreqTable").addEventListener("change", saveSettingsToLocalStorage);	
+	document.getElementById("channelsTableToggle").addEventListener("change", saveSettingsToLocalStorage);	
+	
+
+	document.getElementById("channelsTableToggle").addEventListener("change", function () {
+	  const container = document.getElementById("channels-container");
+	  const checked = this.checked;
+	
+	  if (container) {
+		container.style.display = checked ? "" : "none";
+	  }
+
+	  saveSettingsToLocalStorage();
+	});	
+
 	
 	document.getElementById("adjacentSitesToggle").addEventListener("change", function () {
 	  const container = document.getElementById("adjacentSitesContainer");
@@ -149,15 +164,15 @@ document.addEventListener("DOMContentLoaded", function() {
 
 });
 
-function update_presets()
-{
-    presets.forEach(preset => {
-        const btn = document.getElementById(`preset-btn-${preset.id}`);
-        if (btn) {
-            btn.textContent = `${preset.label}`;
-        }
-    });
-}
+// function update_presets()
+// {
+//     presets.forEach(preset => {
+//         const btn = document.getElementById(`preset-btn-${preset.id}`);
+//         if (btn) {
+//             btn.textContent = `${preset.label}`;
+//         }
+//     });
+// }
 
 function do_onload() {
     send_command("get_terminal_config", 0, 0);
@@ -284,10 +299,10 @@ function term_config(d) {
         default_channel = d["default_channel"];
     }
 
-    if (d["presets"] != undefined) {
-        presets = d["presets"];
-        update_presets();
-    }
+//     if (d["presets"] != undefined) {
+//         presets = d["presets"];
+//         update_presets();
+//     }
 }
 
 
@@ -356,13 +371,15 @@ function change_freq(d) {
 }
 
 function channel_update(d) {
-		
+	
+	channel_table(d);   // updates the channels table
+	
     var s2_c  = document.getElementById("s2_ch_lbl");
     var s2_d  = document.getElementById("s2_ch_txt");
     var s2_e  = document.getElementById("s2_ch_dn");
     var s2_f  = document.getElementById("s2_ch_dmp");
     var s2_g  = document.getElementById("s2_ch_up");
-    var s2_hc = document.getElementById("s2_ch_cap");
+//     var s2_hc = document.getElementById("s2_ch_cap");
     var s2_ht = document.getElementById("s2_ch_trk");
 
     if (d['channels'] != undefined) {
@@ -389,6 +406,7 @@ function channel_update(d) {
             c_name = "" + c_id + ": ";
             if ((d[c_id]['name'] != undefined) && (d[c_id]['name'] != "")) {
                 c_name += " " + d[c_id]['name'];
+            
             }
             else {
                 c_name += " " + c_system;
@@ -420,9 +438,7 @@ function channel_update(d) {
 // TODO: housekeeping here
             
         if (hold_tgid != 0) {
-
             document.getElementById("btn-hold").style.color = "red";
-			// document.getElementById("btn-hold").textContent = hold_tgid;      // places the hold tgid in the hold button
 		} else {
 			document.getElementById("btn-hold").style.color = ""; // Resets to stylesheet
 			document.getElementById("btn-hold").textContent = "HOLD";
@@ -436,7 +452,7 @@ function channel_update(d) {
             s2_e.style['display'] = "";
             s2_f.style['display'] = "";
             s2_g.style['display'] = "";
-            s2_hc.style['display'] = "";
+//             s2_hc.style['display'] = "";
             s2_ht.style['display'] = "";
                         
             c_tdma = d[c_id]['tdma'];
@@ -500,7 +516,7 @@ function channel_update(d) {
             s2_e.style['display'] = "none";
             s2_f.style['display'] = "none";
             s2_g.style['display'] = "none";
-            s2_hc.style['display'] = "none";
+//             s2_hc.style['display'] = "none";
             s2_ht.style['display'] = "none";
             c_name = "";
             c_freq = 0.0;
@@ -514,7 +530,58 @@ function channel_update(d) {
             c_emergency = 0;
         }
         channel_status();
+		loadPresets(c_system);
     }
+}
+
+function channel_table(d) {
+
+	const channelInfo = document.getElementById("channelInfo");
+	
+	let html = "<table class='compact-table'>";
+	html += "<tr><th>Ch</th><th>Name</th><th>System</th><th>Frequency</th><th colspan='2' style='width: 140px;'>Talkgroup</th><th>Mode</th><th>Hold</th><th>Capture</th><th>Error</th></tr>";
+	
+	for (const ch of d.channels) {
+		const entry = d[ch];
+		if (!entry) continue;
+
+		  var dispEnc = "";
+		const freq = entry.freq ? (entry.freq / 1e6).toFixed(6) : "-";
+		const tgid = entry.tgid ?? "-";
+		  var tag = entry.tag || "Talkgroup " + tgid;
+		const name = entry.name || "-";
+		const system = entry.system || "-";
+		const hold = entry.hold_tgid || "-";
+		const error = entry.error || "-";
+		  var mode = entry.tdma;
+		const enc = entry.encrypted;
+		const cap = entry.capture === true ? "<font color='#0f0'>On" : "<font color=#aaa>Off</font>";
+		
+		if (mode == null)
+			mode = " ";
+			
+		if (enc)
+			dispEnc = " " + enc_sym;		
+	
+		html += `<tr>
+			<td>${ch}</td>
+			<td>${name}</td>
+			<td>${system}</td>
+			<td>${freq}</td>
+			<td>${tgid}</td>
+			<td style="text-align: left;">${tag}</td>
+			<td>${mode}${dispEnc}</td>			
+			<td>${hold}</td>
+			<td>${cap}</td>
+			<td>${error}</td>
+		</tr>`;
+	}
+	
+	html += "</table>";
+		
+	channelInfo.innerHTML = html;
+	return;
+
 }
 
 function channel_status() {
@@ -527,7 +594,7 @@ function channel_status() {
     var s2_grp = document.getElementById("s2_grp");
     var s2_src = document.getElementById("s2_src");
     var s2_ch_txt = document.getElementById("s2_ch_txt");
-    var s2_cap = document.getElementById("cap_bn");
+//     var s2_cap = document.getElementById("cap_bn");
     var s2_trk = document.getElementById("trk_bn");
     
     // the speaker icon in the main display and the url in the Settings div
@@ -556,10 +623,10 @@ function channel_status() {
 
     html = "";
 	
-    if (capture_active)
-        document.getElementById('cap_bn').innerText = "Stop Capture";
-    else
-        document.getElementById('cap_bn').innerText = "Start Capture";
+//     if (capture_active)
+//         document.getElementById('cap_bn').innerText = "Stop Capture";
+//     else
+//         document.getElementById('cap_bn').innerText = "Start Capture";
         
     if (auto_tracking)
         document.getElementById('trk_bn').innerText = "Tracking Off";
@@ -775,7 +842,7 @@ function trunk_update(d) {
 		const trunkFields = [
 		  { label: "Callsign", value: hex(displayCallSign) },
 		  { label: "Type", value: hex(displayType) },
-		  { label: "System ID", value: hex(displaySystemId) },
+		  { label: "System ID", value: "0x" + hex(displaySystemId) },
 		  { label: "WACN", value: hex(displayWacn) },
 		  { label: "NAC", value: hex(displayNac) },
 		  { label: "RFSS", value: hex(displayRfss) },
@@ -911,7 +978,7 @@ function trunk_update(d) {
                         tg1 = "&nbsp&nbsp-&nbsp&nbsp";
                     if (tg2 == null)
                         tg2 = "&nbsp&nbsp-&nbsp&nbsp";
-                    tg_str = "<td style=\"text-align:center;white-space: nowrap;\">" + tg2 + " &nbsp; " + tag2.substring(0, MAX_TG_CHARS) + contentId2 + "<td style=\"text-align:center;white-space: nowrap;\">" + tg1 + " &nbsp; " + tag1.substring(0, MAX_TG_CHARS) + contentId1;
+                    tg_str = "<td style=\"text-align:center;white-space: nowrap;\">" + tg1 + " &nbsp; " + tag1.substring(0, MAX_TG_CHARS) + contentId1 + "<td style=\"text-align:center;white-space: nowrap;\">" + tg2 + " &nbsp; " + tag2.substring(0, MAX_TG_CHARS) + contentId2;
                 }
             }
 
@@ -1053,6 +1120,7 @@ function call_log(d) {
 }
 
 function handle_response(dl) {
+
 	// formerly known as function http_req_cb()
     const dispatch = {
         call_log: call_log,
@@ -1061,7 +1129,8 @@ function handle_response(dl) {
         channel_update: channel_update,
         rx_update: rx_update,
         terminal_config: term_config,
-        plot: plot
+        plot: plot,
+        full_config: full_config
     };
 
     for (let i = 0; i < dl.length; i++) {
@@ -1127,7 +1196,8 @@ function send_process() {
     .catch(error => {
 			fetch_errors += 1;
             wbox.style.display = "flex";
-            wtxt.innerText = "Fetch error in send_process: Network error when attempting to fetch resource. Check server.";      
+            wtxt.innerText = "Fetch error in send_process: " + error;     
+            console.warn(error);
     });
 }
 
@@ -1202,9 +1272,7 @@ function f_plot_button(command) {
 
 function f_preset(i) {
 
-	// TODO - this doesn't care about more than 1 channel_index	
-
-	const preset = presets.find(p => p.id === i);
+	const preset = newPresets.find(p => p.id === i);
 	
 	if (!preset) {
 		console.warn(`No preset found for ID ${i}`);
@@ -1603,6 +1671,8 @@ function saveSettingsToLocalStorage() {
   localStorage.setItem("adjacentSitesToggle", document.getElementById("adjacentSitesToggle").checked);
   localStorage.setItem("callHistorySource", document.getElementById("callHistorySource").value);
   localStorage.setItem("radioIdFreqTable", document.getElementById("radioIdFreqTable").checked);
+  localStorage.setItem("channelsTableToggle", document.getElementById("channelsTableToggle").checked);
+  
 }
 
 function loadSettingsFromLocalStorage() {
@@ -1612,9 +1682,10 @@ function loadSettingsFromLocalStorage() {
   const adjacentSites = localStorage.getItem("adjacentSitesToggle");
   const callHistorySource = localStorage.getItem("callHistorySource") || "frequency";
   const radioIdFreqTable = localStorage.getItem("radioIdFreqTable");
+  const channelsTableToggle = localStorage.getItem("channelsTableToggle");
 
   document.getElementById("radioIdFreqTable").checked = radioIdFreqTable === "true";
-  
+
   document.getElementById("callHeightControl").value = callHeight;
   document.querySelector(".call-history-scroll").style.height = `${callHeight}px`;
 
@@ -1628,12 +1699,19 @@ function loadSettingsFromLocalStorage() {
 
   const adjacentSitesEnabled = adjacentSites === null ? true : adjacentSites === "true";
   document.getElementById("adjacentSitesToggle").checked = adjacentSitesEnabled;
-  const container = document.getElementById("adjacentSitesContainer");
+  var container = document.getElementById("adjacentSitesContainer");
   if (container) {
     container.style.display = adjacentSitesEnabled ? "" : "none";
   }
 
   document.getElementById("callHistorySource").value = callHistorySource;
+
+  const channelsEnabled = channelsTableToggle === null ? true : channelsTableToggle === "true";
+  document.getElementById("channelsTableToggle").checked = channelsEnabled;
+  const channelsContainer = document.getElementById("channels-container");
+  if (channelsContainer) {
+    channelsContainer.style.display = channelsEnabled ? "" : "none";
+  }
 }
 
 function showHome() {
@@ -1652,6 +1730,144 @@ function showHome() {
 
 function hex(val) {
   return val.toString(16).toUpperCase();
+}
+
+async function get_presets_from_config(sysname) {
+    if (sysname === "-") {
+        console.warn("Invalid sysname:", sysname);
+        return null;
+    }
+
+    try {
+        const response = await fetch('/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify([{ command: "get_full_config", arg1: 0, arg2: 0 }])
+        });
+
+        if (!response.ok) {
+            console.error("Fetch failed in get_presets_from_config: ", response.statusText);
+            return null;
+        }
+
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        console.error("Error during fetch in get_presets_from_config: ", error);
+        return null;
+    }
+}
+
+
+async function findPresetsForSysname(targetSysname) {
+    const configData = await get_presets_from_config(targetSysname);
+
+    if (!configData || !Array.isArray(configData) || configData.length === 0) {
+        console.warn("Invalid config data or config data not ready yet in findPresetsForSysname()");
+        return null;
+    }
+
+    const trunkingChans = configData[0]?.trunking?.chans || [];
+
+    for (const chan of trunkingChans) {
+        if (chan.sysname === targetSysname) {
+            return chan.presets || [];
+        }
+    }
+
+    console.warn("Sysname not found:", targetSysname);
+    return [];
+}
+
+async function loadPresets(sysname) {
+    newPresets = await findPresetsForSysname(sysname);
+    if (newPresets && newPresets.length > 0) {
+	   	document.getElementById('presetButtons').style.display = "";
+        newPresets.forEach(p => {
+        	const btn = document.getElementById(`preset-btn-${p.id}`);
+	        if (btn) {
+   	    	     btn.textContent = `${p.label}`;
+   	    	     btn.title = `TGID: ${p.tgid}`;  // Hover tooltip
+   		 	}            
+        });
+    } else {
+    	document.getElementById('presetButtons').style.display = "none";
+        console.log("No presets found or available");
+    }
+}
+
+
+function full_config(config) {
+
+    const container = document.getElementById('configDisplay');
+    container.innerHTML = "<button class='small-button' onclick='close_config();'>Close Config</button><br><br>";
+
+    function createSection(title, contentHtml) {
+        const section = document.createElement('div');
+        section.className = 'config-section';
+
+        const header = document.createElement('h3');
+        header.className = 'config-header';
+        header.textContent = title;
+        section.appendChild(header);
+
+        const content = document.createElement('div');
+        content.className = 'config-content';
+        content.innerHTML = contentHtml;
+        section.appendChild(content);
+
+        header.onclick = () => {
+            content.classList.toggle('open');
+        };
+
+        return section;
+    }
+
+	function formatEntry(entry) {
+		let html = '<table class="config-table">';
+		for (const [key, value] of Object.entries(entry)) {
+			// Skip keys starting with #
+			if (key.startsWith('#')) continue;
+	
+			html += '<tr>';
+			html += `<td class="config-key">${key}</td>`;
+			if (typeof value === 'object' && value !== null) {
+				html += `<td class="config-value">${formatEntry(value)}</td>`;
+			} else {
+				html += `<td class="config-value">${value}</td>`;
+			}
+			html += '</tr>';
+		}
+		html += '</table>';
+		return html;
+	}
+
+    // Top level keys
+    for (const [sectionName, sectionContent] of Object.entries(config)) {
+        let html = "";
+
+        if (Array.isArray(sectionContent)) {
+            // If it's an array, list each entry
+            sectionContent.forEach((item, index) => {
+                html += `<h4>Record ${index + 1}</h4>` + formatEntry(item);
+            });
+        } else if (typeof sectionContent === "object") {
+            // Nested object
+            html += formatEntry(sectionContent);
+        } else {
+            // Simple value
+            html += `<p><b>${sectionName}:</b> ${sectionContent}</p>`;
+        }
+
+        container.appendChild(createSection(sectionName, html));
+    }
+
+}
+
+function close_config() {
+	document.getElementById('configDisplay').innerHTML = "";
 }
 
 
