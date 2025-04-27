@@ -1,10 +1,12 @@
 <!DOCTYPE html>
+
+<!-- OP25 index.html 27 APR 2025 0940 -->
+
 <html>
 
 <head>
 	<title>OP25</title>
 	<link rel="stylesheet" type="text/css" href="main.css">
-	<script src="config.js"></script>
 	<script src="main.js"></script>
 	<meta http-equiv="Content-Type" content="text/html;charset=UTF-8">
 </head>
@@ -13,19 +15,27 @@
 <body style="background-color: #111; color: #E0E0E0; font-family: Arial, Helvetica, sans-serif;" onload="javascript:do_onload();">
  
 <!--  START OF 2-COLUMN LAYOUT -->
+
    <div class="row">   <!--  START OF 2 COLUMN LAYOUT -->
-   
    
    <div class="column" style="width: 750px;"> <!-- START FIRST COLUMN -->
   
 		<div class="top-nav-container">
 		  <div class="top-nav">
 			<div class="nav-left">
+			
 			  <a href="#" class="nav-item" id="btn-home" onclick="showHome();">Home</a>
+			  
 			  <a href="#" class="nav-item" id="btn-plot" onclick="toggleDivById('plot-container', 'btn-plot')">Plot</a>
-			  <a href="#" class="nav-item" id="btn-settings" onclick="toggleDivById('settings-container', 'btn-settings')">Settings</a>
+
+			  <a href="#" class="nav-item" id="btn-new-settings" onclick="togglePopup('settingsPopupContainer', true);">Settings</a>
+			  
+			  <a href="#" class="nav-item" id="btn-config" onclick="localStorage.setItem('getConfigBtn', 1); send_command('get_full_config');">View Config</a>
+			  
 			  <a href="legacy-index.html" class="nav-item" id="btn-legacy">Legacy UI</a>        
-			  <a href="#" class="nav-item" id="btn-about" onclick="toggleDivById('about-container', 'btn-about')">About</a>
+			  
+  			  <a href="#" class="nav-item" id="btn-new-settings" onclick="togglePopup('aboutPopupContainer', true);">About</a>
+  			  
 			</div>
 			<div class="nav-right">
 			  <!-- SVG Logo -->
@@ -50,145 +60,199 @@
 		</div>
 		</div>
 		
-      <table class="outer-table" id="about-container" style="display: none; text-align:left;">
-		<tr>
-		<td>
-		<div id="div_about_">
-				<span class="copyr"> &copy; 2017-2024 Max H. Parke & Graham J. Norbury [boatbod version]<span>
-				<br><br>
-				JavaScript UI Updates, Michael Rose, 2025
-				<br><br>
-				This program comes with ABSOLUTELY NO WARRANTY.<br>
-				OP25 is free software, and you are welcome to redistribute it under certain conditions.<br>
-				For further details refer to the "License" link (below).
-			<p>
-			<table border=0>
-			<tr><td>License:</td><td><a href="https://www.gnu.org/licenses/gpl-3.0.en.html" target="_blank">https://www.gnu.org/licenses/gpl-3.0.en.html</a></td></tr>
+	
+<div id="aboutPopupContainer">
+  <div class="about-popup-content">
+    <div class="popup-header">
+			  <svg class="logo-lg" viewBox="0 0 300 100" xmlns="http://www.w3.org/2000/svg">
+				<rect width="300" height="100" fill="#333" rx="10" />
+				<polygon points="50,70 70,30 90,70" fill="#66aaff" />             <!-- the sail -->
+				<rect x="50" y="70" width="40" height="5" fill="#ffaa55" rx="2" /> <!-- orange boat -->
+				<text x="110" y="50" fill="#ffffff" font-size="32" font-family="Arial, sans-serif" font-weight="bold">O P 2 5</text>
+				<text x="110" y="75" fill="#ccc" font-size="24" font-family="Arial, sans-serif">b o a t b o d</text>
+			  </svg>
+      <svg onclick="togglePopup('aboutPopupContainer', false);" xmlns="http://www.w3.org/2000/svg" height="24" width="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="close-icon">
+        <line x1="18" y1="6" x2="6" y2="18"></line>
+        <line x1="6" y1="6" x2="18" y2="18"></line>
+      </svg>
+    </div>
 
-			<tr><td>Download:</td><td><tt>git clone https://git.osmocom.org/op25 &nbsp&nbsp&nbsp<a href='https://gitea.osmocom.org/op25/op25?h=master' target="_blank">[original]</a><br>git clone https://github.com/boatbod/op25 <a href='https://github.com/boatbod/op25' target="_blank">[boatbod fork]</a></tt></td></tr>
-			<tr><td>Web site:</td><td><a href="http://op25.osmocom.org" target="_blank3">http://op25.osmocom.org</a></td></tr>
-			</table>
-			<br>
-		</div>
-		</td></tr>
-		</table>
+    <div class="popup-body">
+		<div class="about-content">
 		
-<table class="outer-table" id="settings-container" style="display: none; text-align:left;">
-  <tr>
-    <!-- LEFT COLUMN -->
-    <td style="vertical-align: top; width: 50%; padding-right: 20px;">
-
-      <div style="margin-bottom: 10px;">
-        <button class="small-button" id="s2_ch_dmp" onclick="f_dump_button(0);" title="Log talkgroups to stderr2">Log Talkgroups</button>
-        &nbsp;&nbsp;&nbsp;
-        <button class="small-button" id="s2_ch_dmp" onclick="f_dump_buffer(-1);" title="Dump buffer">Dump Buffer</button>
-      </div>
-
-      <div style="margin-bottom: 10px;">
-        <button class="small-button" onclick="f_scan_button('set_debug');" title="Set logging level">Log Verbosity</button>
-      </div>
-
-<!-- 
-      <div class="s2_cell_h" id="s2_ch_cap" style="display: none; margin-bottom: 10px;">
-        <button class="small-button" id="cap_bn" onclick="f_cap_button(0);">Start Capture</button>
-      </div>
- -->
-
-      <div class="s2_cell_h" id="s2_ch_trk" style="display: none; margin-bottom: 10px;">
-        <button class="small-button" id="trk_bn" onclick="f_trk_button(-1);">Tracking</button>
-      </div>
-
-      <div style="margin-bottom: 10px;">
-        <button class="small-button" onclick="f_scan_button('lockout');">Blacklist TGID</button>
-        <button class="small-button" style="margin-left: 10px;" onclick="f_scan_button('whitelist');">Whitelist TGID</button>
-      </div>
-
-      <div style="margin-bottom: 15px;">
-        <label for="callHeightControl" style="color: #ccc;">Call History Height (px):</label><br>
-        <input type="number" id="callHeightControl" min="200" max="1000" value="500" style="width: 80px;">
-      </div>
-
-      <div style="margin-bottom: 15px;">
-        <label for="plotSizeControl" style="color: #ccc;">Plot Image Width (px):</label><br>
-        <input type="number" id="plotSizeControl" min="100" max="1000" value="300" style="width: 80px;">
-      </div>
-
-      <div style="margin-bottom: 10px;">
-        <button class="small-button" onclick="send_command('get_full_config');">View Config</button>
-      </div>          
-          
-    </td>
-    
-
-
-    <!-- RIGHT COLUMN -->
-    <td style="vertical-align: top; width: 50%; padding-left: 20px;">
-
-      <div style="margin-bottom: 15px;">
-        <label for="smartColorToggle" style="color: #ccc;">
-          <input type="checkbox" id="smartColorToggle" checked>
-          Enable Smart Colors
-        </label>
-      </div>
-
-      <div style="margin-bottom: 15px;">
-        <label for="radioIdFreqTable" style="color: #ccc;">
-          <input type="checkbox" id="radioIdFreqTable">
-          Show Radio ID in Frequency Table
-        </label>
-      </div> 
-
-
-      <div style="margin-bottom: 15px;">
-        <label for="adjacentSitesToggle" style="color: #ccc;">
-          <input type="checkbox" id="adjacentSitesToggle" checked>
-          Show Adjacent Sites
-        </label>
-      </div>
-      
-      <div style="margin-bottom: 15px;">
-        <label for="channelsTableToggle" style="color: #ccc;">
-          <input type="checkbox" id="channelsTableToggle" checked>
-          Show Channels Table
-        </label>
-      </div>        
-      
-      <div style="margin-bottom: 15px;">
-        <label for="callHistoryToggle" style="color: #ccc;">
-          <input type="checkbox" id="callHistoryToggle" checked>
-          Show Call History
-        </label>
-      </div>
-        
-   
-	<div style="margin: 5px 0; text-align: left;">
-	  <label for="callHistorySource" style="color: #ccc;">Call History Source:</label>
-	  <select id="callHistorySource" style="margin-left: 5px;">
-		<option value="frequency">Frequency Data</option>
-		<option value="voice">Voice Grant (Python)</option>
-		<option value="display">Main Display</option>		
-	  </select>
+			<p class="copyr">
+			&copy; 2017–2025 Max H. Parke & Graham J. Norbury [boatbod version]<br>
+			UI Updates, Michael Rose, 2025
+			</p>
+			
+			<p>This program comes with <strong>ABSOLUTELY NO WARRANTY</strong>.</p>
+			
+			<p>
+			OP25 is free software, and you are welcome to redistribute it under certain conditions.<br>
+			For further details refer to the "License" link below.
+			</p>
+			
+			<p><strong>License:</strong> <a href="https://www.gnu.org/licenses/gpl-3.0.en.html" target="_blank">GPLv3 License</a></p>
+			<p><strong>Download:</strong><br>
+			<code>git clone https://git.osmocom.org/op25</code> &nbsp;
+			<a href="https://gitea.osmocom.org/op25/op25?h=master" target="_blank">[original]</a><br>
+			<code>git clone https://github.com/boatbod/op25</code> &nbsp;
+			<a href="https://github.com/boatbod/op25" target="_blank">[boatbod fork]</a>
+			</p>
+			<p><strong>Website:</strong> <a href="http://op25.osmocom.org" target="_blank">http://op25.osmocom.org</a></p>
+		
+		</div>
 	</div>
-
-      <div style="margin-bottom: 10px; color: #ccc;">
-        Stream URL: <span id="streamURL">None</span>
-      </div>
-
-      <hr style="margin: 10px 0;">
-
-      <div id="div_debug" style="font-size: 0.8em;">
-        <strong>Debug Log</strong>
-      </div>
-
-    </td>
-  </tr>
-
-  <tr><td colspan='2'><div id="configDisplay" class="config-container"> </div></td></tr>
-
-</table>
+</div>
 
 
+</div> <!-- end about popup -->
+<!-- Settings Popup Container -->
+<div id="settingsPopupContainer">
+  <div class="settings-popup-content">
+    <div class="popup-header">
+      <h2>UI Settings</h2>
+      <svg onclick="togglePopup('settingsPopupContainer', false);" xmlns="http://www.w3.org/2000/svg" height="24" width="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="close-icon">
+        <line x1="18" y1="6" x2="6" y2="18"></line>
+        <line x1="6" y1="6" x2="18" y2="18"></line>
+      </svg>
+    </div>
 
+    <div class="popup-body">
+
+		<table class="" id="settings-container" style="text-align:left; margin-top: 10px;">
+		<tr><td colspan='2' style="padding: 0px;">All settings are automatically saved to the browser.<br><br></td></tr>
+		  <tr>
+			<!-- LEFT COLUMN -->
+			<td style="vertical-align: top; width: 50%; padding-right: 20px; padding: 0px; border-right: 1px solid grey;">
+		
+			  <div style="margin-bottom: 10px;">
+				<button class="small-button" id="s2_ch_dmp" onclick="f_dump_button(0);" title="Log talkgroups to stderr2">Log Talkgroups</button>
+				<button class="small-button" id="s2_ch_dmp" onclick="f_dump_buffer(-1);" title="Dump buffer">Dump Buffer</button>
+			  </div>
+		
+			  <div style="margin-bottom: 10px;">
+				<button class="small-button" onclick="f_scan_button('set_debug');" title="Set logging level">Log Verbosity</button>
+			  </div>
+		
+			  <div class="s2_cell_h" id="s2_ch_cap" style="margin-bottom: 10px;">
+				<button class="small-button" id="cap_bn" onclick="f_cap_button(0);">Start Capture</button>
+			  </div>
+		
+			  <div style="margin-bottom: 10px;">
+				<button class="small-button" onclick="f_scan_button('lockout');">Blacklist TGID</button>
+				<button class="small-button" onclick="f_scan_button('whitelist');">Whitelist TGID</button>
+			  </div>
+		
+			  <div style="margin-bottom: 15px;">
+				<label for="callHeightControl" style="color: #ccc;">Call History Height (px):</label><br>
+				<input type="number" id="callHeightControl" min="200" max="1000" value="500" style="width: 80px;">
+			  </div>
+		
+			  <div style="margin-bottom: 15px;">
+				<label for="plotSizeControl" style="color: #ccc;">Plot Image Width (px):</label><br>
+				<input type="number" id="plotSizeControl" min="100" max="1000" value="300" style="width: 80px;">
+			  </div>
+			  
+			  <div style="margin-bottom: 15px;">
+				<label for="valueColorPicker">Accent Color:</label>
+				<input type="color" id="valueColorPicker" value="#00ffff">
+				<button id="resetColor" class="small-button" style="width: 60px;">Default</button>
+			  </div>
+			  		
+			</td>
+			
+			<!-- RIGHT COLUMN -->
+			<td style="vertical-align: top; width: 50%; padding-left: 20px;">
+		
+			  <div style="margin-bottom: 15px;">
+				<label for="smartColorToggle" style="color: #ccc;">
+				  <input type="checkbox" id="smartColorToggle" checked>
+				  Enable Smart Colors
+				</label>
+			  </div>
+		
+			  <div style="margin-bottom: 15px;">
+				<label for="radioIdFreqTable" style="color: #ccc;">
+				  <input type="checkbox" id="radioIdFreqTable">
+				  Show Radio ID in Frequency Table
+				</label>
+			  </div> 
+		
+			  <div style="margin-bottom: 15px;">
+				<label for="showBandPlan" style="color: #ccc;">
+				  <input type="checkbox" id="showBandPlan" checked>
+				  Show P25 Band Plan
+				</label>
+			  </div> 		
+		
+			  <div style="margin-bottom: 15px;">
+				<label for="adjacentSitesToggle" style="color: #ccc;">
+				  <input type="checkbox" id="adjacentSitesToggle" checked>
+				  Show Adjacent Sites
+				</label>
+			  </div>
+			  
+			  <div style="margin-bottom: 15px;">
+				<label for="channelsTableToggle" style="color: #ccc;">
+				  <input type="checkbox" id="channelsTableToggle" checked>
+				  Show Channels Table
+				</label>
+			  </div>        
+			  
+			  <div style="margin-bottom: 15px;">
+				<label for="callHistoryToggle" style="color: #ccc;">
+				  <input type="checkbox" id="callHistoryToggle" checked>
+				  Show Call History
+				</label>
+			  </div>
+				
+		   
+			<div style="margin: 5px 0; text-align: left;">
+			  <label for="callHistorySource" style="color: #ccc;">Call History Source:</label>
+			  <select id="callHistorySource" style="margin-left: 5px;">
+				<option value="frequency">Frequency Data</option>
+				<option value="voice">Voice Grant (Python)</option>
+				<option value="display">Main Display</option>		
+			  </select>
+			</div>
+		
+			  <div style="margin-bottom: 10px; color: #ccc;">
+				Stream URL: <span id="streamURL">None</span>
+			  </div>
+		
+			  <hr style="margin: 10px 0;">
+		
+			  <div id="div_debug" style="font-size: 0.8em;">
+				<strong>Debug Log</strong>
+			  </div>
+		
+			</td>
+		  </tr>
+		
+		</table> <!-- End settings table -->
+		
+    </div>
+  </div>
+</div> <!-- end settings popup -->
+
+<div id="popupContainer" class="popup-container">
+  <div class="popup-content" style="position: relative; display: flex; flex-direction: column; height: 80vh; width: 70vw;">
+    <div class="popup-header">
+    	<h2>Server Side Configuration</h2>
+    	<svg onclick="togglePopup('popupContainer', false);" xmlns="http://www.w3.org/2000/svg" height="24" width="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="close-icon">
+        <line x1="18" y1="6" x2="6" y2="18"></line>
+        <line x1="6" y1="6" x2="18" y2="18"></line>
+       </svg>
+    </div>	
+
+
+    <!-- Scrollable content area -->
+    <div id="configDisplay" class="config-container" style="overflow-y: auto; flex: 1; padding: 10px;">
+      Configuration...
+    </div>
+  </div>
+</div>   <!-- End config popup container -->
 
 
 
@@ -239,23 +303,20 @@
       <!-- Right panel: logo area -->
       <td class="right-logo">
 
-      <span class="small-label">Channel</span><br>
-      		<div class="s2_cell_e" id="s2_ch_dn" style="display:none;"> 		
-      		<input type="button" class="tune-button" name="c_dn" id="s2_ch_dn" value="&darr;" title="Prev Channel" onclick="javascript:f_chan_button(-1);">
-      		<input type="button" class="tune-button" name="c_up" id="s2_ch_up" value="&uarr;" title="Next Channel" onclick="javascript:f_chan_button(1);">
+      		<span class="small-label">Channel</span><br>
+      		<input type="button" class="tune-button" name="c_dn" id="ch-dn" value="&darr;" title="Prev Channel" onclick="javascript:f_chan_button(-1);">
+      		<input type="button" class="tune-button" name="c_up" id="ch-up" value="&uarr;" title="Next Channel" onclick="javascript:f_chan_button(1);">
       		<br>
-          	<span class="small-value" id="displayChannel">channel</span><br>  		
-		<br>
-		
-		<span id='streamButton'> </span> <!-- This will be a speaker icon with link when the c_stream_url is present -->
-		<br>
+          	<span class="small-value" id="displayChannel"> - </span><br>  		
+			<span id="streamButton" style="display: inline-block; margin: 10px;"> </span> <!-- This will be a speaker icon with link when the c_stream_url is present -->
+			<br>
 		
 		
       <span class="small-label">Tuning</span><br>
-      <input type="button" class="tune-button" id="t2_D" name="" onclick="this.blur(); f_tune_button('ld')" value="&lt;&lt;">
-      <input type="button" class="tune-button" id="t2_d" name="" onclick="this.blur(); f_tune_button('sd')" value="&lt;">
-      <input type="button" class="tune-button" id="t2_u" name="" onclick="this.blur(); f_tune_button('su')"value="&gt;">
-      <input type="button" class="tune-button" id="t2_U" name="" onclick="this.blur(); f_tune_button('lu')" value="&gt;&gt;">
+      <input type="button" class="tune-button" id="tune1" name="" onclick="this.blur(); f_tune_button('ld')" value="&lt;&lt;">
+      <input type="button" class="tune-button" id="tune2" name="" onclick="this.blur(); f_tune_button('sd')" value="&lt;">
+      <input type="button" class="tune-button" id="tune3" name="" onclick="this.blur(); f_tune_button('su')"value="&gt;">
+      <input type="button" class="tune-button" id="tune4" name="" onclick="this.blur(); f_tune_button('lu')" value="&gt;&gt;">
       <br>
       <span class="small-label">Error: </span> <span class="small-value" id="errorVal">-</span>
       
