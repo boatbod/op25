@@ -20,10 +20,11 @@
 // Software Foundation, Inc., 51 Franklin Street, Boston, MA
 // 02110-1301, USA.
 
-// 04-27-2025  0729
+// 04-27-2025  0939
 
 var d_debug = 1;
-var smartColors = [];
+// default smartColors - will be overwritten by smartColors contained in json, if present
+var smartColors = [{keywords:["fire","fd"],color:"#ff5c5c"},{keywords:["pd","police","sheriff","so"],color:"#66aaff"},{keywords:["ems","med","amr","ambulance"],color:"#ffb84d"}];
 var counter1 = 0;
 var error_val = null;
 var auto_tracking = null;

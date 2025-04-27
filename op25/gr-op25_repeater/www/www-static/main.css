@@ -1,4 +1,17 @@
 /* dark-mode.css */
+/* 27 APR 2025 0940 */
+
+:root {
+/* 	radius for control buttons */
+  --border-radius: 0px;
+  
+/*  width of ui columns */
+/*  this needs to stay at 750 right now */
+  --ui-col-width: 750px;
+  
+/* values   */
+  --values: #f0f;
+}
 
 
 /* Overall body styles */
@@ -6,7 +19,7 @@ body {
   background-color: #111;
   color: #E0E0E0;
   font-family: Arial, Helvetica, sans-serif;
-  margin: 5;
+  margin: 5px 5px 20px 20px;
   padding: 0;
 }
 
@@ -15,6 +28,7 @@ body {
   border: 1px dashed lime;
 }
  */
+
 
 a {
   color: #66aaff;        /* soft electric blue */
@@ -36,7 +50,7 @@ a:hover {
 
 /* Outer container/table set to 750 wide */
 .outer-table {
-  width: 750px;
+  width: var(--ui-col-width);
   margin: 0px 0px 10px 0px;
   border: 1px solid #444;
   background-color: #111;                               /* 222 */
@@ -152,7 +166,6 @@ input[type="checkbox"]:checked::after {
 .inner-table {
   width: 100%;
   border-collapse: collapse;
-  /* background-color: #444 */;
   height: 150px;
   overflow: auto;
 }
@@ -190,7 +203,7 @@ input[type="checkbox"]:checked::after {
 }
 
 .small-value {
-  color: #00FFFF;
+  color: var(--values);
   font-size: 0.8em;
 }
 
@@ -201,7 +214,7 @@ input[type="checkbox"]:checked::after {
 }
 
 .trunk-value {
-  color: #0ff;
+  color: var(--values);
   font-size: 14px;
 }
 
@@ -229,7 +242,7 @@ input[type="checkbox"]:checked::after {
   background-color: #333;
   color: #eee;
   border: 1px solid #777;
-  border-radius: 4px;  
+  border-radius: var(--border-radius);
   padding: 8px 2px 8px 2px;
   margin: 6px;
   cursor: pointer;
@@ -345,7 +358,7 @@ input[type="checkbox"]:checked::after {
 .table-gradient-bg {
   background: linear-gradient(to bottom, #222, #000, #222);
   border-collapse: collapse;
-    border-radius: 6px;
+  border-radius: 6px;
 }
 
 .table-gradient-bg th,
@@ -354,13 +367,11 @@ input[type="checkbox"]:checked::after {
   border-right: none;
 }
 
-
-
 /* NEW: 3D-style button with gradient and reversed hover */
 .button-3d {
   background: linear-gradient(to bottom, #444, #333);
   border: 1px solid #666;
-  border-radius: 4px;
+  border-radius: var(--border-radius);
   padding: 8px 16px;
   box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.4);
   color: #eee;
@@ -458,7 +469,7 @@ input[type="checkbox"]:checked::after {
 
 
 .top-nav-container {
-  width: 750px;
+  width: var(--ui-col-width);
   margin: 0px 0px 10px 0px;
   background-color: #222;
   border-top: 1px solid #555;
@@ -506,6 +517,12 @@ input[type="checkbox"]:checked::after {
   display: block;
 }
 
+.logo-lg {
+  width: 200px;
+  height: auto;
+  display: block;
+}
+
 .th-section {
   text-align: center;
   background: linear-gradient(to bottom, #333, #111);
@@ -531,7 +548,7 @@ input[type="checkbox"]:checked::after {
   font-size: 1rem;
 }
 
-<style>
+
 .config-container {
     margin: 20px;
     font-family: Arial, sans-serif;
@@ -574,13 +591,144 @@ input[type="checkbox"]:checked::after {
 }
 
 .config-key {
-    font-weight: bold;
-    width: 30%;
+    font-weight: normal;
+/*     width: 25%; */
 }
 .config-value {
     word-break: break-word;
+    color: var(--values);
 }
-</style>
+
+
+
+#aboutPopupContainer {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0,0,0,0.5); /* Dim background */
+  backdrop-filter: blur(2px);
+  z-index: 1000;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+#aboutPopupContainer.show {
+  display: flex;
+  opacity: 1;
+  align-items: center;
+  justify-content: center;
+}
+
+.about-popup-content {
+  background-color: #333;
+  padding: 20px;
+  border-radius: 12px;
+  max-height: 80vh;
+  max-width: 90vw;
+  overflow-y: auto;
+  color: #fff;
+  font-family: sans-serif;
+  animation: popupFade 0.3s ease;
+
+  /* Glowing border */
+  border: 2px solid var(--values); 
+  box-shadow: 0 0 3px var(--values), 0 0 7px var(--values);
+}
+
+
+
+#settingsPopupContainer {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0,0,0,0.5); /* Dim background */
+  backdrop-filter: blur(2px);
+  z-index: 1000;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+#settingsPopupContainer.show {
+  display: flex;
+  opacity: 1;
+  align-items: center;
+  justify-content: center;
+}
+
+.settings-popup-content {
+  background-color: #333;
+  padding: 20px;
+  border-radius: 12px;
+  max-height: 80vh;
+  max-width: 90vw;
+  overflow-y: auto;
+  color: #fff;
+  font-family: sans-serif;
+  animation: popupFade 0.3s ease;
+
+  /* Glowing border */
+  border: 2px solid var(--values); 
+  box-shadow: 0 0 3px var(--values), 0 0 7px var(--values);
+}
+
+.popup-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid gray;
+}
+
+.close-icon {
+  cursor: pointer;
+}
+
+
+#popupContainer {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0,0,0,0.5); /* Dim background */
+  backdrop-filter: blur(1px);
+  z-index: 1000;
+  transition: opacity 0.1s ease;
+  opacity: 0;
+}
+
+#popupContainer.show {
+  display: block;
+  opacity: 1;
+}
+
+.popup-content {
+  background-color: #333;
+  padding: 20px;
+  border-radius: 12px;
+  max-height: 80vh;
+  max-width: 60vw;
+  margin: 5% auto;
+  overflow-y: auto;
+  color: #fff;
+  font-family: sans-serif;
+  animation: popupFade 0.1s ease;
+
+  /* Glowing border */
+  border: 2px solid var(--values); 
+  box-shadow: 0 0 3px var(--values), 0 0 7px var(--values);
+}
+
+@keyframes popupFade {
+  from { transform: scale(0.95); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
 
 /* BEGIN 2 COLUMN LAYOUT ELEMENTS */
 
