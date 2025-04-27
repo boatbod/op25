@@ -217,5 +217,5 @@ Options:
 
 ## Encryption
 
-P25 ADP/RC4 (algid `0xAA`)  and DES-OFB (algid `0x81`) decryption with a known key is now supported by both `rx.py` and `multi_rx.py`.  See the example configurations: `p25_rtl_example.json`, `p25_conventional_example.json` and also the example json formatting of the keys file: `example_keys.json`.
+P25 ADP/RC4 (algid `0xAA`), DES-OFB (algid `0x81`) and AES-OFB (algid `0x84`) decryption with a known key is now supported by `multi_rx.py`.  See the example configurations: `p25_rtl_example.json`, `p25_conventional_example.json` and also the example json formatting of the keys file: `example_keys.json`.
 
