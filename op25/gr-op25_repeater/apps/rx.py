@@ -254,6 +254,7 @@ class p25_rx_block (gr.top_block):
         self.terminal = op25_terminal(self.input_q, self.output_q, self.options.terminal_type)
         if self.terminal is None:
             sys.exit(1)
+        self.send_terminal_config()
 
         # attach meta server thread
         if self.options.metacfg is not None:
@@ -926,6 +927,13 @@ class p25_rx_block (gr.top_block):
         if not self.input_q.full_p():
             self.input_q.insert_tail(msg)
 
+    def send_terminal_config(self):
+        self.terminal_config = {'json_type': 'terminal_config', 'terminal_interface': 'legacy'}
+        js = json.dumps(self.terminal_config)
+        msg = gr.message().make_from_string(js, -4, 0, 0)
+        if not self.input_q.full_p():
+            self.input_q.insert_tail(msg)
+
     def process_qmsg(self, msg):
         # return true = end top block
         RX_COMMANDS = 'skip lockout hold whitelist reload'.split()
@@ -946,6 +954,8 @@ class p25_rx_block (gr.top_block):
             self.process_ajax()
         elif s == 'set_debug':
             self.set_debug(int(msg.arg1()))
+        elif s == 'get_terminal_config':
+            self.send_terminal_config()
         elif s == 'set_freq':
             freq = msg.arg1()
             self.last_freq_params['freq'] = freq
