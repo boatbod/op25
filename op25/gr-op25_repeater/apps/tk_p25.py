@@ -1719,6 +1719,9 @@ class p25_system(object):
         # Adjacent sites
         d['adjacent_data'] = self.adjacent_data
 
+        # Band Plan (from iden_up)
+        d['band_plan'] = self.freq_table
+
         return json.dumps(d)
 
 #################
