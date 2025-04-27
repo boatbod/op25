@@ -1497,6 +1497,10 @@ class rx_ctl (object):
     def find_current_tsys(self):
         return self.trunked_systems[self.nacs[self.current_id]]
 
+    def get_call_log(self):
+        d = {'json_type': 'call_log', 'log': []}    # stub function for compatibility (does nothing)
+        return json.dumps(d)
+
     def to_json(self):
         d = {'json_type': 'trunk_update'}
         for nac in list(self.trunked_systems.keys()):

@@ -440,6 +440,10 @@ class rx_ctl(object):
         d['channels'] = rcvr_ids
         return json.dumps(d)
 
+    def get_call_log(self):
+        d = {'json_type': 'call_log', 'log': []}    # stub function for compatibility (does nothing)
+        return json.dumps(d)
+
     def to_json(self):
         d = {'json_type': 'trunk_update'}
         syid = 0;
