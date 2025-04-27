@@ -20,7 +20,7 @@
 // Software Foundation, Inc., 51 Franklin Street, Boston, MA
 // 02110-1301, USA.
 
-// 04-27-2025  0939
+const lastUpdate = "27-Apr-2025 13:19";
 
 var d_debug = 1;
 // default smartColors - will be overwritten by smartColors contained in json, if present
@@ -71,6 +71,9 @@ const mediaQuery = window.matchMedia("(min-width: 1500px)");
 mediaQuery.addEventListener("change", handleColumnLayoutChange);
 
 document.addEventListener("DOMContentLoaded", function() {
+
+	document.getElementById("lastUiUpdate").innerText = lastUpdate;
+	
     var displaySystem    = document.getElementById("displaySystem");
     var displayFreq      = document.getElementById("displayFreq");
 
@@ -716,9 +719,9 @@ function adjacent_sites(d) {
                 if ((ct & 1) == 0)
                     color = "";
                 ct += 1;
-  				
-                displaySiteName = getSiteAlias(hex(d['sysid']), rfss, site);
-  
+
+//                 displaySiteName = getSiteAlias(hex(d['sysid']), rfss, site);
+  				displaySiteName = getSiteAlias(d['system'], rfss, site);
                 html += "<tr style=\"background-color: " + color + ";\"><td>" + d['sysid'].toString(16).toUpperCase() + "<td style=text-align:left;>" + displaySiteName + "</td><td>" + rfss + "</td><td>" + site + "</td><td>" + adjacent_by_rfss[rfss][site]["cc_rx_freq"] + "</td><td>" + adjacent_by_rfss[rfss][site]["cc_tx_freq"] + "</td></tr>";
             }
         }
@@ -801,8 +804,14 @@ function trunk_update(d) {
 		var displayType = d[nac]['type'] !== undefined ? d[nac]['type'] : "-";
 		var displayRfss = d[nac]['rfid'] !== undefined ? d[nac]['rfid'] : "-";
 		var displaySiteId = d[nac]['stid'] !== undefined ? d[nac]['stid'] : "-";		
-		var displaySiteName = getSiteAlias(hex(displaySystemId), displayRfss, displaySiteId);
+		var displaySiteName = getSiteAlias(displaySystemName, displayRfss, displaySiteId);		
+// 		var displaySiteName = getSiteAlias(hex(displaySystemId), displayRfss, displaySiteId);
 
+		
+		if (!displaySiteName.startsWith("Site ")) {
+			displaySiteName = `Site ${displaySiteId}: ${displaySiteName}`;
+		}
+		
 		if (displayCallSign.length < 2)
 			displayCallSign = "-";
 		
@@ -1650,14 +1659,16 @@ function applySmartColorsToFrequencyTable() {
     }
 
     talkgroupCells.forEach(cell => {
-      const cellText = cell.textContent.toLowerCase();
+      const fullText = cell.textContent;
+      const firstLine = fullText.split('\n')[0].toLowerCase(); // Only first line for matching
+
       let matched = false;
 
       // Skip TDMA/FDMA mode cells
-      if (cellText === "fdma" || cellText === "tdma") return;
+      if (firstLine === "fdma" || firstLine === "tdma") return;
 
       for (const colorGroup of smartColors) {
-        if (colorGroup.keywords.some(keyword => cellText.includes(keyword.toLowerCase()))) {
+        if (colorGroup.keywords.some(keyword => firstLine.includes(keyword.toLowerCase()))) {
           cell.style.color = colorGroup.color;
           matched = true;
           break;
@@ -1693,19 +1704,41 @@ function applySmartColorToTgidSpan() {
   el.style.color = "";
 } // end applySmartColorToTgidSpan
 
-function getSiteAlias(sysid, rfss, site) {
-	if (site_alias.length == 0) {
-		send_command('get_full_config');
-	}
-	
-	try {
-		const alias = site_alias?.[sysid]?.[rfss]?.[site]?.alias;
-		return alias ?? `Site ${site}`;
-	} catch (err) {
-		console.warn("Error looking up site alias:", err);
-		return `Site ${site}`;
-	}
+function getSiteAlias(sysname, rfss, site) {
+    const sysNameUpper = String(sysname).toUpperCase();  // Normalize sysname to uppercase
+
+    if (!site_alias || Object.keys(site_alias).length === 0) {
+        send_command('get_full_config');
+    }
+
+    try {
+        const alias = site_alias?.[sysNameUpper]?.[rfss]?.[site]?.alias;
+        return alias ?? `Site ${site}`;
+    } catch (err) {
+        console.warn("Error looking up site alias:", err);
+        return `Site ${site}`;
+    }
 }
+
+
+// function getSiteAlias(sysid, rfss, site) {
+// 
+//	by sysid
+//
+// 	console.log(sysid, rfss, site);
+// 	
+// 	if (site_alias.length == 0) {
+// 		send_command('get_full_config');
+// 	}
+// 	
+// 	try {
+// 		const alias = site_alias?.[sysid]?.[rfss]?.[site]?.alias;
+// 		return alias ?? `Site ${site}`;
+// 	} catch (err) {
+// 		console.warn("Error looking up site alias:", err);
+// 		return `Site ${site}`;
+// 	}
+// }
 
 function toggleDivById(divId, buttonId) {
   const el = document.getElementById(divId);
@@ -2048,44 +2081,45 @@ function togglePopup(id, open) {
   }
 }
 
+
 function buildSiteAliases(sa) {
     const siteAliases = {};
 
-    // If input is not an array or is empty, bail out
+    // Verify input is a non-empty array
     if (!Array.isArray(sa) || sa.length === 0) {
         console.warn("buildSiteAliases: Invalid or empty input.");
         return siteAliases;
     }
 
     sa.forEach(system => {
-        // Verify required fields exist
-        if (!system || typeof system !== 'object' || !system.sysid || !system.site_alias) {
+        // Verify each system object
+        if (!system || typeof system !== 'object' || !system.sysname || !system.site_alias) {
             console.warn("buildSiteAliases: Skipping invalid system entry:", system);
             return;
         }
 
-        const sysid = String(system.sysid).replace(/^0x/i, "").toUpperCase();  // Normalize sysid
+        const sysname = String(system.sysname).trim().toUpperCase();  // Normalize sysname (added .trim() just in case)
         const aliases = system.site_alias;
 
-        if (!sysid || typeof aliases !== 'object') {
-            console.warn("buildSiteAliases: Invalid sysid or aliases structure.");
+        if (!sysname || typeof aliases !== 'object') {
+            console.warn("buildSiteAliases: Invalid sysname or aliases structure for:", system);
             return;
         }
 
-        siteAliases[sysid] = {};
+        siteAliases[sysname] = {};
 
         for (const rfssId in aliases) {
             if (Object.prototype.hasOwnProperty.call(aliases, rfssId)) {
-                siteAliases[sysid][rfssId] = {};
+                siteAliases[sysname][rfssId] = {};
 
                 for (const siteId in aliases[rfssId]) {
                     if (Object.prototype.hasOwnProperty.call(aliases[rfssId], siteId)) {
                         const aliasObj = aliases[rfssId][siteId];
 
                         if (aliasObj && typeof aliasObj.alias === 'string') {
-                            siteAliases[sysid][rfssId][siteId] = { alias: aliasObj.alias };
+                            siteAliases[sysname][rfssId][siteId] = { alias: aliasObj.alias };
                         } else {
-                            console.warn(`buildSiteAliases: Missing alias for sysid=${sysid}, rfss=${rfssId}, site=${siteId}`);
+                            console.warn(`buildSiteAliases: Missing alias for sysname=${sysname}, rfss=${rfssId}, site=${siteId}`);
                         }
                     }
                 }
@@ -2095,6 +2129,57 @@ function buildSiteAliases(sa) {
 
     return siteAliases;
 } // end buildSiteAliases
+
+// function buildSiteAliases(sa) {
+// 
+// 	// by sysid
+// 	
+//     const siteAliases = {};
+// 
+//     // If input is not an array or is empty, bail out
+//     if (!Array.isArray(sa) || sa.length === 0) {
+//         console.warn("buildSiteAliases: Invalid or empty input.");
+//         return siteAliases;
+//     }
+// 
+//     sa.forEach(system => {
+//         // Verify required fields exist
+//         if (!system || typeof system !== 'object' || !system.sysid || !system.site_alias) {
+//             console.warn("buildSiteAliases: Skipping invalid system entry:", system);
+//             return;
+//         }
+// 
+//         const sysid = String(system.sysid).replace(/^0x/i, "").toUpperCase();  // Normalize sysid
+//         const aliases = system.site_alias;
+// 
+//         if (!sysid || typeof aliases !== 'object') {
+//             console.warn("buildSiteAliases: Invalid sysid or aliases structure.");
+//             return;
+//         }
+// 
+//         siteAliases[sysid] = {};
+// 
+//         for (const rfssId in aliases) {
+//             if (Object.prototype.hasOwnProperty.call(aliases, rfssId)) {
+//                 siteAliases[sysid][rfssId] = {};
+// 
+//                 for (const siteId in aliases[rfssId]) {
+//                     if (Object.prototype.hasOwnProperty.call(aliases[rfssId], siteId)) {
+//                         const aliasObj = aliases[rfssId][siteId];
+// 
+//                         if (aliasObj && typeof aliasObj.alias === 'string') {
+//                             siteAliases[sysid][rfssId][siteId] = { alias: aliasObj.alias };
+//                         } else {
+//                             console.warn(`buildSiteAliases: Missing alias for sysid=${sysid}, rfss=${rfssId}, site=${siteId}`);
+//                         }
+//                     }
+//                 }
+//             }
+//         }
+//     });
+// 
+//     return siteAliases;
+// } // end buildSiteAliases
 
 
 function getCaller() {
