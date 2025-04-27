@@ -38,13 +38,15 @@
         "module": "tk_p25.py",
         "chans": [
             {
-                "nac": "0x0",
                 "sysname": "Trunking System 0",
+                "nac": "0x0",
+                "#sysid": "0x4a2",
+                "#wacn": "0xbee00",
                 "control_channel_list": "773.84375",
-                "whitelist": "",
-                "blacklist": "",
                 "#tgid_tags_file": "tgid-tags.tsv",
                 "#rid_tags_file": "rid-tags.tsv",
+                "whitelist": "",
+                "blacklist": "",
                 "tdma_cc": false,
                 "crypt_behavior": 2,
                 "presets": [
@@ -54,7 +56,17 @@
                     { "id": 4, "tgid": 11503, "label": "TGID 11503" },
                     { "id": 5, "tgid": 12001, "label": "TGID 12001" },
                     { "id": 6, "tgid": 12401, "label": "TGID 12401" }
-                ]
+                ],
+                "site_alias": {
+                    "3": {
+                        "2": { "alias": "Site alias for RFSS# 3, Site# 2" },
+                        "3": { "alias": "Site alias fir RFSS# 3, Site# 3" },
+                    },
+                    "5": {
+                        "3": { "alias": "Site alias for RFSS# 5, Site# 3" },
+                        "6": { "alias": "Site alias for RFSS# 5, Site# 6" }
+                    }
+                }
             }
         ]
     },
@@ -80,7 +92,7 @@
             {
                 "instance_name": "audio0",
                 "device_name": "pulse",
-                "Xdevice_name": "default",
+                "#device_name": "default",
                 "udp_port": 23456,
                 "audio_gain": 1.0,
                 "number_channels": 1
@@ -95,6 +107,11 @@
         "http_plot_interval": 1.0,
         "http_plot_directory": "../www/images",
         "tuning_step_large": 1200,
-        "tuning_step_small": 100
+        "tuning_step_small": 100,
+        "smart_colors": [
+            { "keywords": [ "fire", "fd" ], "color":"#ff5c5c" },
+            { "keywords": [ "pd", "police", "sheriff", "so", "law" ], "color": "#66aaff" },
+            { "keywords": [ "ems", "med", "ambulance" ], "color": "#ffb84d" }
+        ]
     }
 }
