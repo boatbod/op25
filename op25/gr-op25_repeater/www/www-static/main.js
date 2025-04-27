@@ -487,7 +487,7 @@ function channel_update(d) {
 			  displayEnc.style.color = ""; // fallback to CSS default
 			}
 			
-			if (c_encrypted == 0) {
+			if (c_encrypted == 0 && current_tgid != null) {
 			  displayEnc.innerText = "Clear";
 			  displayEnc.style.color = ""; // fallback to CSS default
 			}
@@ -967,7 +967,8 @@ function trunk_update(d) {
                         mode_str = "<td style=\"text-align:center;\">FDMA</td>";
                         achMode = "FDMA";
                     }
-                    tg_str = "<td style=\"text-align:center;white-space: nowrap;\" colspan=2>" + tg1 + " &nbsp; " + tag1.substring(0, MAX_TG_CHARS) + contentId1;
+                    //tg_str = "<td style=\"text-align:center;white-space: nowrap;\" colspan=2>" + tg1 + " &nbsp; " + tag1.substring(0, MAX_TG_CHARS) + contentId1;
+                    tg_str = "<td style=\"text-align:center;white-space: nowrap;\" colspan=2>" + tag1.substring(0, MAX_TG_CHARS) + contentId1;
                 }
                 else {
                     if (is_p25) {
@@ -978,7 +979,8 @@ function trunk_update(d) {
                         tg1 = "&nbsp&nbsp-&nbsp&nbsp";
                     if (tg2 == null)
                         tg2 = "&nbsp&nbsp-&nbsp&nbsp";
-                    tg_str = "<td style=\"text-align:center;white-space: nowrap;\">" + tg1 + " &nbsp; " + tag1.substring(0, MAX_TG_CHARS) + contentId1 + "<td style=\"text-align:center;white-space: nowrap;\">" + tg2 + " &nbsp; " + tag2.substring(0, MAX_TG_CHARS) + contentId2;
+                    //tg_str = "<td style=\"text-align:center;white-space: nowrap;\">" + tg1 + " &nbsp; " + tag1.substring(0, MAX_TG_CHARS) + contentId1 + "<td style=\"text-align:center;white-space: nowrap;\">" + tg2 + " &nbsp; " + tag2.substring(0, MAX_TG_CHARS) + contentId2;
+                    tg_str = "<td style=\"text-align:center;white-space: nowrap;\">" + tag1.substring(0, MAX_TG_CHARS) + contentId1 + "<td style=\"text-align:center;white-space: nowrap;\">" + tag2.substring(0, MAX_TG_CHARS) + contentId2;
                 }
             }
 
