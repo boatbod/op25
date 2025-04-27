@@ -20,13 +20,10 @@
 // Software Foundation, Inc., 51 Franklin Street, Boston, MA
 // 02110-1301, USA.
 
-// 04-25-2025  1901
-
+// 04-27-2025  0729
 
 var d_debug = 1;
-
-// var http_req = new XMLHttpRequest();
-
+var smartColors = [];
 var counter1 = 0;
 var error_val = null;
 var auto_tracking = null;
@@ -58,9 +55,15 @@ var channel_index = 0;
 var default_channel = null;
 var enc_sym = "&#216;";
 // var presets = [];
+var site_alias = [];
 var newPresets = [];
+var noPresetsCounter = 0;
+localStorage.setItem('getConfigBtn', 0);
 var lg_step = 1200;  // these are defaults, they are updated in term_config() if present.
 var sm_step = 100;
+const MAX_HISTORY_ROWS 		= 10; 	// number of rows to consider "recent" and duplicate by appendCallHistory
+const MAX_HISTORY_SECONDS 	= 5; 	// number of rows to consider "recent" and duplicate by appendCallHistory
+const MAX_TG_CHARS 			= 20;	// max number of characters for talkgroup tags in freq table
 
 
 const mediaQuery = window.matchMedia("(min-width: 1500px)");
@@ -76,7 +79,6 @@ document.addEventListener("DOMContentLoaded", function() {
     var displaySource    = document.getElementById("displaySource");
     var displaySourceId  = document.getElementById("displaySourceId");
 
-//     var displayMode      = document.getElementById("displayMode");
     var displayEnc       = document.getElementById("displayEnc");
     var displayEmg       = document.getElementById("displayEmg");    
     
@@ -94,16 +96,7 @@ document.addEventListener("DOMContentLoaded", function() {
 	  }
 	});
 	}
-	
-    if (!configFile) {
-    	document.getElementById("smartColorToggle").checked = false;
-    }
-    
-//     if (configFile) {
-//         presets = cfg_presets;
-//         update_presets();
-// 	}
-	
+	    	
 	loadSettingsFromLocalStorage();	
 	
 	const sizeInput = document.getElementById("plotSizeControl");
@@ -120,13 +113,19 @@ document.addEventListener("DOMContentLoaded", function() {
 	handleColumnLayoutChange(mediaQuery);	
 	  
 	updatePlotButtonStyles();
+	
 	document.getElementById("callHistorySource").addEventListener("change", saveSettingsToLocalStorage);	
 	document.getElementById("callHeightControl").addEventListener("input", saveSettingsToLocalStorage);
 	document.getElementById("plotSizeControl").addEventListener("input", saveSettingsToLocalStorage);
 	document.getElementById("smartColorToggle").addEventListener("change", saveSettingsToLocalStorage);
 	document.getElementById("radioIdFreqTable").addEventListener("change", saveSettingsToLocalStorage);	
 	document.getElementById("channelsTableToggle").addEventListener("change", saveSettingsToLocalStorage);	
+	document.getElementById("showBandPlan").addEventListener("change", saveSettingsToLocalStorage);	
 	
+	document.getElementById("valueColorPicker").addEventListener("change", function() {
+		document.documentElement.style.setProperty('--values', this.value);
+		saveSettingsToLocalStorage();
+	});
 
 	document.getElementById("channelsTableToggle").addEventListener("change", function () {
 	  const container = document.getElementById("channels-container");
@@ -160,23 +159,52 @@ document.addEventListener("DOMContentLoaded", function() {
 	  }
 	  
 	  saveSettingsToLocalStorage();
-	});		
+	});
+	
+	document.getElementById("resetColor").addEventListener("click", function() {
+		const defaultColor = "#00ffff";  // Your original default color
+		document.getElementById("valueColorPicker").value = defaultColor;
+		document.documentElement.style.setProperty('--values', defaultColor);
+		localStorage.setItem("valueColor", defaultColor);
+	});	
+	
+	// Handle click outside AND escape key
+	window.addEventListener('click', handlePopupClose);
+	window.addEventListener('keydown', handlePopupClose);
+	
+	function handlePopupClose(event) {
+	  const popupContainers = [
+		{ container: 'popupContainer', content: '.popup-content' },
+		{ container: 'settingsPopupContainer', content: '.settings-popup-content' },
+		{ container: 'aboutPopupContainer', content: '.about-popup-content' }
+	  ];
+	
+	  popupContainers.forEach(({ container, content }) => {
+		const popup = document.getElementById(container);
+		const popupContent = document.querySelector(content);
+	
+		// Handle click outside
+		if (event.type === 'click') {
+		  if (popup && popup.classList.contains('show') && popupContent && !popupContent.contains(event.target)) {
+			togglePopup(container, false);
+		  }
+		}
+	
+		// Handle escape key
+		if (event.type === 'keydown' && event.key === 'Escape') {
+		  if (popup && popup.classList.contains('show')) {
+			togglePopup(container, false);
+		  }
+		}
+	  });
+	}
+});  // end DOM ready / DOMContentLoaded
 
-});
-
-// function update_presets()
-// {
-//     presets.forEach(preset => {
-//         const btn = document.getElementById(`preset-btn-${preset.id}`);
-//         if (btn) {
-//             btn.textContent = `${preset.label}`;
-//         }
-//     });
-// }
 
 function do_onload() {
     send_command("get_terminal_config", 0, 0);
     setInterval(do_update, 1000);
+    send_command("get_full_config", 0, 0);
 }
 
 function find_parent(ele, tagname) {
@@ -190,85 +218,49 @@ function find_parent(ele, tagname) {
     return null;
 }
 
-function f_command(ele, command) {
-    var myrow = find_parent(ele, "TR");
-    if (command == "delete") {
-        var ok = confirm ("Confirm delete");
-        if (ok)
-            myrow.parentNode.removeChild(myrow);
-    } else if (command == "clone") {
-        var newrow = myrow.cloneNode(true);
-        if (myrow.nextSibling)
-            myrow.parentNode.insertBefore(newrow, myrow.nextSibling);
-        else
-            myrow.parentNode.appendChild(newrow);
-    } else if (command == "new") {
-        var mytbl = find_parent(ele, "TABLE");
-        var newrow = null;
-        if (mytbl.id == "chtable")
-            newrow = document.getElementById("chrow").cloneNode(true);
-        else if (mytbl.id == "devtable")
-            newrow = document.getElementById("devrow").cloneNode(true);
-        else
-            return;
-        mytbl.appendChild(newrow);
-    }
-}
 
-function nav_update(command) {
-	var names = ["b1", "b2", "b3"];
-	var bmap = { "status": "b1", "plot": "b2", "about": "b3" };
-	var id = bmap[command];
-	for (var id1 in names) {
-		b = document.getElementById(names[id1]);
-		if (names[id1] == id) {
-			b.className = "nav-button-active";
-		} else {
-			b.className = "nav-button";
-		}
-	}
-}
+// this was from Osmocom config editor, not used here.
 
-function f_select(command) {
+	// function f_command(ele, command) {
+	//     var myrow = find_parent(ele, "TR");
+	//     if (command == "delete") {
+	//         var ok = confirm ("Confirm delete");
+	//         if (ok)
+	//             myrow.parentNode.removeChild(myrow);
+	//     } else if (command == "clone") {
+	//         var newrow = myrow.cloneNode(true);
+	//         if (myrow.nextSibling)
+	//             myrow.parentNode.insertBefore(newrow, myrow.nextSibling);
+	//         else
+	//             myrow.parentNode.appendChild(newrow);
+	//     } else if (command == "new") {
+	//         var mytbl = find_parent(ele, "TABLE");
+	//         var newrow = null;
+	//         if (mytbl.id == "chtable")
+	//             newrow = document.getElementById("chrow").cloneNode(true);
+	//         else if (mytbl.id == "devtable")
+	//             newrow = document.getElementById("devrow").cloneNode(true);
+	//         else
+	//             return;
+	//         mytbl.appendChild(newrow);
+	//     }
+	// }
 
-    var div_status = document.getElementById("div_status")
-    var div_plot   = document.getElementById("div_plot")
-    var div_about  = document.getElementById("div_about")
-    var div_s1     = document.getElementById("div_s1")
-    var div_s2     = document.getElementById("div_s2")
-    var div_s3     = document.getElementById("div_s3")
-    var ctl1 = document.getElementById("controls1");
-    var ctl2 = document.getElementById("controls2");
-    
-    if (command == "status") {
-        div_status.style['display'] = "";
-        div_plot.style['display'] = "none";
-        div_about.style['display'] = "none";
-        div_s1.style['display'] = "";
-        div_s2.style['display'] = "";
-        div_s3.style['display'] = "";
-        ctl1.style['display'] = "";
-        ctl2.style['display'] = "none";
-    }
-    else if (command == "plot") {
-        div_status.style['display'] = "";
-        div_plot.style['display'] = "";
-        div_about.style['display'] = "none";
-        div_s1.style['display'] = "none";
-        div_s2.style['display'] = "";
-        div_s3.style['display'] = "none";
-        ctl1.style['display'] = "none";
-        ctl2.style['display'] = "";
-    }
-    else if (command == "about") {
-        div_status.style['display'] = "none";
-        div_plot.style['display'] = "none";
-        div_about.style['display'] = "";
-        ctl1.style['display'] = "none";
-        ctl2.style['display'] = "none";
-    }
-    nav_update(command);
-}
+// Deprecated
+
+	// function nav_update(command) {
+	// 	var names = ["b1", "b2", "b3"];
+	// 	var bmap = { "status": "b1", "plot": "b2", "about": "b3" };
+	// 	var id = bmap[command];
+	// 	for (var id1 in names) {
+	// 		b = document.getElementById(names[id1]);
+	// 		if (names[id1] == id) {
+	// 			b.className = "nav-button-active";
+	// 		} else {
+	// 			b.className = "nav-button";
+	// 		}
+	// 	}
+	// }
 
 function is_digit(s) {
     if (s >= "0" && s <= "9")
@@ -277,9 +269,11 @@ function is_digit(s) {
         return false;
 }
 
-function term_config(d) {
-    var lg_step = 1200;
-    var sm_step = 100;
+function term_config(d) {  // json_type: "terminal_config"
+
+	if (d['smart_colors'] !== undefined)
+		smartColors = d['smart_colors'];
+	
     var updated = 0;
 	
 	// Determine UI version required (rx.py => force to legacy terminal for compatibility reasons)
@@ -299,10 +293,6 @@ function term_config(d) {
         default_channel = d["default_channel"];
     }
 
-//     if (d["presets"] != undefined) {
-//         presets = d["presets"];
-//         update_presets();
-//     }
 }
 
 
@@ -373,14 +363,6 @@ function change_freq(d) {
 function channel_update(d) {
 	
 	channel_table(d);   // updates the channels table
-	
-    var s2_c  = document.getElementById("s2_ch_lbl");
-    var s2_d  = document.getElementById("s2_ch_txt");
-    var s2_e  = document.getElementById("s2_ch_dn");
-    var s2_f  = document.getElementById("s2_ch_dmp");
-    var s2_g  = document.getElementById("s2_ch_up");
-//     var s2_hc = document.getElementById("s2_ch_cap");
-    var s2_ht = document.getElementById("s2_ch_trk");
 
     if (d['channels'] != undefined) {
         channel_list = d['channels'];
@@ -422,8 +404,9 @@ function channel_update(d) {
                 document.getElementById('errorVal').innerText = " - ";
                 error_val = null;
             }
-            if (d[c_id]['auto_tracking'] != undefined)
-                auto_tracking = d[c_id]['auto_tracking'];
+            
+//             if (d[c_id]['auto_tracking'] != undefined)
+//                 auto_tracking = d[c_id]['auto_tracking'];
                 
             current_tgid = d[c_id]['tgid'];
             c_tag = d[c_id]['tag'];
@@ -435,27 +418,18 @@ function channel_update(d) {
             capture_active = d[c_id]['capture'];
             hold_tgid = d[c_id]['hold_tgid'];
 
-// TODO: housekeeping here
             
         if (hold_tgid != 0) {
             document.getElementById("btn-hold").style.color = "red";
 		} else {
 			document.getElementById("btn-hold").style.color = ""; // Resets to stylesheet
 			document.getElementById("btn-hold").textContent = "HOLD";
-			
 		}
                 
-            c_encrypted = d[c_id]['encrypted'];
-            c_emergency = d[c_id]['emergency'];
-
-			// these are still used 
-            s2_e.style['display'] = "";
-            s2_f.style['display'] = "";
-            s2_g.style['display'] = "";
-//             s2_hc.style['display'] = "";
-            s2_ht.style['display'] = "";
-                        
-            c_tdma = d[c_id]['tdma'];
+            c_encrypted 					= d[c_id]['encrypted'];
+            c_emergency 					= d[c_id]['emergency'];
+            
+            c_tdma 							= d[c_id]['tdma'];
             
             displayChannel.innerText		= c_name;
             plotChannelDisplay.innerText	= c_name;
@@ -511,13 +485,7 @@ function channel_update(d) {
 				appendCallHistory(c_system.substring(0, 5), current_tgid, 0, displayTalkgroup.innerText, 0, displayFreq.innerText, displaySource.innerText, "", "display");
         }
         else {
-            s2_c.style['display'] = "none";
-            s2_d.style['display'] = "none";
-            s2_e.style['display'] = "none";
-            s2_f.style['display'] = "none";
-            s2_g.style['display'] = "none";
-//             s2_hc.style['display'] = "none";
-            s2_ht.style['display'] = "none";
+
             c_name = "";
             c_freq = 0.0;
             c_system = "";
@@ -538,40 +506,51 @@ function channel_table(d) {
 
 	const channelInfo = document.getElementById("channelInfo");
 	
-	let html = "<table class='compact-table'>";
+	let html = "<table class='compact-table' style='border-collapse: collapse;'>";
 	html += "<tr><th>Ch</th><th>Name</th><th>System</th><th>Frequency</th><th colspan='2' style='width: 140px;'>Talkgroup</th><th>Mode</th><th>Hold</th><th>Capture</th><th>Error</th></tr>";
 	
 	for (const ch of d.channels) {
 		const entry = d[ch];
 		if (!entry) continue;
 
-		  var dispEnc = "";
+		  let dispEnc = "";
+		  let tdh = "";
+		  let tdc = "";
+		const valueColor = document.getElementById('valueColorPicker').value;
 		const freq = entry.freq ? (entry.freq / 1e6).toFixed(6) : "-";
-		const tgid = entry.tgid ?? "-";
-		  var tag = entry.tag || "Talkgroup " + tgid;
+		const tgid = entry.tgid ?? "&nbsp;&nbsp;-&nbsp;&nbsp;";
+		  let tag = entry.tag || "Talkgroup " + tgid;
 		const name = entry.name || "-";
 		const system = entry.system || "-";
-		const hold = entry.hold_tgid || "-";
+		  let hold = entry.hold_tgid || "-";
 		const error = entry.error || "-";
-		  var mode = entry.tdma;
+		  let mode = entry.tdma;
 		const enc = entry.encrypted;
-		const cap = entry.capture === true ? "<font color='#0f0'>On" : "<font color=#aaa>Off</font>";
+		const cap = entry.capture === true ? "<span style='color: #0f0;'>On</span>" : "<span style='color: #aaa;'>Off</span>";
+		
+		// highlight the selected channel in the channels table
+		if (Number(ch) == Number(channel_list[channel_index])) {
+			tdc = " style='background-color: #333; font-weight: normal; color: " + valueColor + "'" ;
+		}
 		
 		if (mode == null)
 			mode = " ";
 			
 		if (enc)
-			dispEnc = " " + enc_sym;		
+			dispEnc = " " + "<span style='color: " + valueColor + "'>" + enc_sym + "</span>";
+		
+		if (hold != "-")
+			tdh = " style='background-color: #500;'";
 	
 		html += `<tr>
-			<td>${ch}</td>
+			<td${tdc}>${ch}</td>
 			<td>${name}</td>
 			<td>${system}</td>
 			<td>${freq}</td>
 			<td>${tgid}</td>
 			<td style="text-align: left;">${tag}</td>
 			<td>${mode}${dispEnc}</td>			
-			<td>${hold}</td>
+			<td${tdh}>${hold}</td>
 			<td>${cap}</td>
 			<td>${error}</td>
 		</tr>`;
@@ -580,22 +559,17 @@ function channel_table(d) {
 	html += "</table>";
 		
 	channelInfo.innerHTML = html;
+	
+	applySmartColorsToChannels();
+	
 	return;
-
+	
 }
 
 function channel_status() {
 
-	// TODO: housekeeping in this section.  some of this html is no longer needed.
-
     var html;
-    var s2_freq = document.getElementById("s2_freq");
-    var s2_tg = document.getElementById("s2_tg");
-    var s2_grp = document.getElementById("s2_grp");
-    var s2_src = document.getElementById("s2_src");
-    var s2_ch_txt = document.getElementById("s2_ch_txt");
-//     var s2_cap = document.getElementById("cap_bn");
-    var s2_trk = document.getElementById("trk_bn");
+    var s2_cap = document.getElementById("cap_bn");
     
     // the speaker icon in the main display and the url in the Settings div
     var streamButton = document.getElementById("streamButton");
@@ -603,16 +577,11 @@ function channel_status() {
 		
     html = "";
 
+	// displays the speaker icon when a stream url is present
     if (c_stream_url != undefined) {
-//         html += "<a href=\"" + c_stream_url + "\">";
         var streamHTML = "<a a href='" + c_stream_url + "' target='_blank'>&#128264;</a>";
         streamButton.innerHTML = streamHTML;
         streamURL.innerHTML = streamHTML + " " + c_stream_url    
-    }
-    
-    html += "<span class=\"value\">" + (c_freq / 1000000.0).toFixed(6) + "</span>";
-    if (c_stream_url != "") {
-        html += "</a>"
     }
 
 	// TODO: c_ppm is not displayed anywhere in the new UI. What is it?
@@ -620,19 +589,13 @@ function channel_status() {
         html += "<span class=\"value\"> (" + c_ppm.toFixed(3) + ")</span>";
     }
 
-
     html = "";
 	
-//     if (capture_active)
-//         document.getElementById('cap_bn').innerText = "Stop Capture";
-//     else
-//         document.getElementById('cap_bn').innerText = "Start Capture";
-        
-    if (auto_tracking)
-        document.getElementById('trk_bn').innerText = "Tracking Off";
+    if (capture_active)
+        document.getElementById('cap_bn').innerText = "Stop Capture";
     else
-        document.getElementById('trk_bn').innerText = "Tracking On";
-        
+        document.getElementById('cap_bn').innerText = "Start Capture";   
+
 }
 
 // patches table
@@ -690,14 +653,15 @@ function patches(d) {
             html += "</tr>";
         }
     }
-    html += "</table>";
 
-// end patch table
+    html += "</table>";
 
 	document.getElementById('patchesTable').innerHTML = html;
 	
 	return;
-}
+
+} // end patch table
+
 
 // adjacent sites table
 
@@ -744,7 +708,7 @@ function adjacent_sites(d) {
                     color = "";
                 ct += 1;
   				
-                displaySiteName = getSiteAlias(d['sysid'], rfss, site);
+                displaySiteName = getSiteAlias(hex(d['sysid']), rfss, site);
   
                 html += "<tr style=\"background-color: " + color + ";\"><td>" + d['sysid'].toString(16).toUpperCase() + "<td style=text-align:left;>" + displaySiteName + "</td><td>" + rfss + "</td><td>" + site + "</td><td>" + adjacent_by_rfss[rfss][site]["cc_rx_freq"] + "</td><td>" + adjacent_by_rfss[rfss][site]["cc_tx_freq"] + "</td></tr>";
             }
@@ -779,6 +743,9 @@ function adjacent_sites(d) {
 // additional system info: wacn, sysID, rfss, site id, secondary control channels, freq error
 
 function trunk_update(d) {
+
+	const band_plan = d[0]?.band_plan || {};
+		
     var do_hex = {"syid":0, "sysid":0, "wacn": 0};
     var do_float = {"rxchan":0, "txchan":0};
     var srcaddr = 0;
@@ -824,7 +791,7 @@ function trunk_update(d) {
 		var displayType = d[nac]['type'] !== undefined ? d[nac]['type'] : "-";
 		var displayRfss = d[nac]['rfid'] !== undefined ? d[nac]['rfid'] : "-";
 		var displaySiteId = d[nac]['stid'] !== undefined ? d[nac]['stid'] : "-";		
-		var displaySiteName = getSiteAlias(displaySystemId, displayRfss, displaySiteId);
+		var displaySiteName = getSiteAlias(hex(displaySystemId), displayRfss, displaySiteId);
 
 		if (displayCallSign.length < 2)
 			displayCallSign = "-";
@@ -864,6 +831,41 @@ function trunk_update(d) {
         html += "</tr></table>"
    
     	// HTML for frequency table
+
+		// Band Plan - only supported on P25 currently
+
+		const showBp = document.getElementById('showBandPlan').checked;
+		
+			if (is_p25 && showBp) { 
+			    	
+				html += "<table id='bandPlan' class='compact-table'>";
+			
+				html += '<thead><tr><th>ID</th><th>Type</th><th>Frequency</th><th>Tx Offset (MHz)</th><th>Spacing (kHz)</th><th>Slots</th></tr></thead>';
+				html += '<tbody>';
+				
+				for (const [chanId, bp] of Object.entries(band_plan)) {
+					const frequency = bp.frequency !== undefined ? (parseInt(bp.frequency) / 1000000.0).toFixed(6) : '-';
+					const offset = bp.offset !== undefined ? (parseInt(bp.offset) / 1000000.0).toFixed(3)  : '-';
+					const step = bp.step !== undefined ? bp.step / 1000 : '-';
+					const mode = bp.tdma !== undefined ? bp.tdma : '1';
+					const type = mode > 1 ? "TDMA" : "FDMA";
+					
+				
+					html += '<tr>';
+					html += `<td>${chanId}</td>`;
+					html += `<td>${type}</td>`;				
+					html += `<td>${frequency}</td>`;
+					html += `<td>${offset}</td>`;
+					html += `<td>${step}</td>`;
+					html += `<td>${mode}</td>`;
+					html += '</tr>';
+				}
+				
+				html += '</tbody></table>';    	
+    		
+    		} // end is_p25
+    		
+    	// End Band Plan
     
         html += "<div class=\"info\"><div class=\"system\">";
         html += "<table id='frequencyTable' class='compact-table'>";
@@ -967,8 +969,7 @@ function trunk_update(d) {
                         mode_str = "<td style=\"text-align:center;\">FDMA</td>";
                         achMode = "FDMA";
                     }
-                    //tg_str = "<td style=\"text-align:center;white-space: nowrap;\" colspan=2>" + tg1 + " &nbsp; " + tag1.substring(0, MAX_TG_CHARS) + contentId1;
-                    tg_str = "<td style=\"text-align:center;white-space: nowrap;\" colspan=2>" + tag1.substring(0, MAX_TG_CHARS) + contentId1;
+                    tg_str = "<td style=\"text-align:center;white-space: nowrap;\" colspan=2>" + tg1 + " &nbsp; " + tag1.substring(0, MAX_TG_CHARS) + contentId1;
                 }
                 else {
                     if (is_p25) {
@@ -979,8 +980,7 @@ function trunk_update(d) {
                         tg1 = "&nbsp&nbsp-&nbsp&nbsp";
                     if (tg2 == null)
                         tg2 = "&nbsp&nbsp-&nbsp&nbsp";
-                    //tg_str = "<td style=\"text-align:center;white-space: nowrap;\">" + tg1 + " &nbsp; " + tag1.substring(0, MAX_TG_CHARS) + contentId1 + "<td style=\"text-align:center;white-space: nowrap;\">" + tg2 + " &nbsp; " + tag2.substring(0, MAX_TG_CHARS) + contentId2;
-                    tg_str = "<td style=\"text-align:center;white-space: nowrap;\">" + tag1.substring(0, MAX_TG_CHARS) + contentId1 + "<td style=\"text-align:center;white-space: nowrap;\">" + tag2.substring(0, MAX_TG_CHARS) + contentId2;
+                    tg_str = "<td style=\"text-align:center;white-space: nowrap;\">" + tg1 + " &nbsp; " + tag1.substring(0, MAX_TG_CHARS) + contentId1 + "<td style=\"text-align:center;white-space: nowrap;\">" + tg2 + " &nbsp; " + tag2.substring(0, MAX_TG_CHARS) + contentId2;
                 }
             }
 
@@ -1014,12 +1014,14 @@ function trunk_update(d) {
 			});
 		}
 
-// end system freqencies table
+
 
 		// finish up
 		
 		applySmartColorsToFrequencyTable();
+		
         patches(d[nac]);
+        
         adjacent_sites(d[nac]);
         
         
@@ -1036,13 +1038,17 @@ function trunk_update(d) {
         c_emergency = d['emergency']
 
     channel_status();
-}
+    
+}  // end trunk_update() - system freqencies table
+
 
 function plot(d) {
     //TODO: implement local plot rendering using json data
 }
 
 function call_log(d) {
+
+	// appends call history table when call history source is Voice Grant (Python)
 
 	const configuredSource = document.getElementById("callHistorySource").value;
 	if (configuredSource !== "voice") {
@@ -1119,11 +1125,12 @@ function call_log(d) {
 	
 	return;
 	
-}
+}  // end call_log
 
 function handle_response(dl) {
 
 	// formerly known as function http_req_cb()
+	
     const dispatch = {
         call_log: call_log,
         trunk_update: trunk_update,
@@ -1144,11 +1151,24 @@ function handle_response(dl) {
 }
 
 function do_update() {
+
+	if (smartColors == undefined) {
+		smartColors = [];
+		console.log('smartColors was found undefined in do_update()');		
+	}
+
+	
     if (channel_list.length == 0) {
         send_command("update", 0, 0);
+
+        if (smartColors.length == 0)
+        	send_command("get_terminal_config", 0, 0);
+        
     }
     else {
         send_command("update", 0, Number(channel_list[channel_index]));
+        if (smartColors.length == 0)
+        	send_command("get_terminal_config", 0, 0);
     }
     f_debug();
 }
@@ -1199,7 +1219,7 @@ function send_process() {
 			fetch_errors += 1;
             wbox.style.display = "flex";
             wtxt.innerText = "Fetch error in send_process: " + error;     
-            console.warn(error);
+//             console.warn(error);
     });
 }
 
@@ -1227,9 +1247,6 @@ function f_cap_button(command) {
     send_command('capture', 0, Number(channel_list[channel_index]));
 }
 
-function f_trk_button(command) {
-    send_command('set_tracking', command, Number(channel_list[channel_index]));
-}
 
 function f_tune_button(command) {
 
@@ -1361,16 +1378,11 @@ function f_debug() {
 	html += "<br>Fetch Errors: " + fetch_errors;
 	html += "<br>Send Queue Size " + send_queue.length;
 	html += "&nbsp;&nbsp;&nbsp;&nbsp;Queue Full " + send_qfull;	
-
-// 	html += " error=" + n200_count;
-// 	html += " OK=" + r200_count;
 	html += "<br>";
 	var div_debug = document.getElementById("div_debug");
 	div_debug.innerHTML = html;
 }
 
-
-// new functions
 
 function comma(x) {
     // add comma formatting to whatever you give it (xx,xxxx,xxxx)
@@ -1407,9 +1419,9 @@ function appendCallHistory(sysid, tg1, tg2, tag1, tag2, freq, sourceId1, sourceI
 	// title the call history table
 	const titleTh = document.getElementById("callHistoryTableTitle");
 	if (configuredSource === "display") {
-	titleTh.innerText = "Call History - Display";
+		titleTh.innerText = "Call History - Display";
 	} else if (configuredSource === "frequency") {
-	titleTh.innerText = "Call History - Frequency Data";
+		titleTh.innerText = "Call History - Frequency Data";
 	} 
 
 
@@ -1453,7 +1465,6 @@ function appendCallHistory(sysid, tg1, tg2, tag1, tag2, freq, sourceId1, sourceI
 		}
 
     // Helper to add a row
-    	// TODO: src
 		function addRow(tgid, tag, sourceId) {
 				
 			// Only proceed if tgid is defined and its string length > 2
@@ -1500,11 +1511,43 @@ function appendCallHistory(sysid, tg1, tg2, tag1, tag2, freq, sourceId1, sourceI
 		headerRow.cells[2].innerText = "Frequency";
 	  }
 	}
-}
+} // end appendCallHistory()
+
+
+function applySmartColorsToChannels() {
+  if (!document.getElementById("smartColorToggle").checked) return;
+  if (smartColors.length == 0) return;
+
+  const rows = document.querySelectorAll("#channels-container tbody tr");
+
+  rows.forEach(row => {
+    const cells = row.querySelectorAll("td");
+    if (cells.length < 6) return; // make sure column 5 exists
+
+    const talkgroupCell = cells[5];
+    const cellText = talkgroupCell.textContent.toLowerCase();
+
+    let matched = false;
+
+    for (const colorGroup of smartColors) {
+      if (colorGroup.keywords.some(keyword => cellText.includes(keyword.toLowerCase()))) {
+        talkgroupCell.style.color = colorGroup.color;
+        matched = true;
+        break;
+      }
+    }
+
+    if (!matched) {
+      talkgroupCell.style.color = "";
+    }
+  });
+} // end applySmartColorsToChannels
+
 
 function applySmartColorsToCallHistory() {
   if (!document.getElementById("smartColorToggle").checked) return;
-
+  if (smartColors.length == 0) return;
+  
   const rows = document.querySelectorAll("#callHistoryBody tr");
 
   rows.forEach(row => {
@@ -1535,11 +1578,12 @@ function applySmartColorsToCallHistory() {
       sourceIdCell.style.color = "";
     }
   });
-}
+} // end applySmartColorsToCallHistory
 
 
 function applySmartColorsToFrequencyTable() {
   if (!document.getElementById("smartColorToggle").checked) return;
+  if (smartColors.length == 0) return;
 
   const rows = document.querySelectorAll("#frequencyTable tr");
 
@@ -1572,11 +1616,11 @@ function applySmartColorsToFrequencyTable() {
       }
     });
   });
-}
-
+} // end applySmartColorsToFrequencyTable
 
 function applySmartColorToTgidSpan() {
   if (!document.getElementById("smartColorToggle").checked) return;
+  if (smartColors.length == 0) return;
 
 	const el = document.getElementById("displayTalkgroup");
 	if (!el) return;
@@ -1594,19 +1638,20 @@ function applySmartColorToTgidSpan() {
   }
 
   el.style.color = "";
-}
-
-
+} // end applySmartColorToTgidSpan
 
 function getSiteAlias(sysid, rfss, site) {
-	// as defined in config.js
-  try {
-    const alias = siteAliases?.[sysid]?.[rfss]?.[site]?.alias;
-    return alias ?? `Site ${site}`;
-  } catch (err) {
-    console.warn("Error looking up site alias:", err);
-    return `Site ${site}`;
-  }
+	if (site_alias.length == 0) {
+		send_command('get_full_config');
+	}
+	
+	try {
+		const alias = site_alias?.[sysid]?.[rfss]?.[site]?.alias;
+		return alias ?? `Site ${site}`;
+	} catch (err) {
+		console.warn("Error looking up site alias:", err);
+		return `Site ${site}`;
+	}
 }
 
 function toggleDivById(divId, buttonId) {
@@ -1669,52 +1714,63 @@ function handleColumnLayoutChange(e) {
 function saveSettingsToLocalStorage() {
   localStorage.setItem("callHeight", document.getElementById("callHeightControl").value);
   localStorage.setItem("plotWidth", document.getElementById("plotSizeControl").value);
-  localStorage.setItem("smartColors", document.getElementById("smartColorToggle").checked);
+  localStorage.setItem("smartColorsToggle", document.getElementById("smartColorToggle").checked);
   localStorage.setItem("adjacentSitesToggle", document.getElementById("adjacentSitesToggle").checked);
   localStorage.setItem("callHistorySource", document.getElementById("callHistorySource").value);
   localStorage.setItem("radioIdFreqTable", document.getElementById("radioIdFreqTable").checked);
   localStorage.setItem("channelsTableToggle", document.getElementById("channelsTableToggle").checked);
-  
-}
+  localStorage.setItem("valueColor", document.getElementById("valueColorPicker").value);
+  localStorage.setItem("showBandPlan", document.getElementById("showBandPlan").checked);  
+}  // end saveSettingsToLocalStorage
+
 
 function loadSettingsFromLocalStorage() {
-  const callHeight = localStorage.getItem("callHeight") || "600";
-  const plotWidth = localStorage.getItem("plotWidth") || "300";
-  const smartColors = localStorage.getItem("smartColors");
-  const adjacentSites = localStorage.getItem("adjacentSitesToggle");
-  const callHistorySource = localStorage.getItem("callHistorySource") || "frequency";
-  const radioIdFreqTable = localStorage.getItem("radioIdFreqTable");
-  const channelsTableToggle = localStorage.getItem("channelsTableToggle");
+	const callHeight = localStorage.getItem("callHeight") || "600";
+	const plotWidth = localStorage.getItem("plotWidth") || "300";
+	const smartColorsToggle = localStorage.getItem("smartColorsToggle");
+	const adjacentSites = localStorage.getItem("adjacentSitesToggle");
+	const callHistorySource = localStorage.getItem("callHistorySource") || "frequency";
+	const radioIdFreqTable = localStorage.getItem("radioIdFreqTable");
+	const channelsTableToggle = localStorage.getItem("channelsTableToggle");
+	const showBandPlan = localStorage.getItem("showBandPlan");
+	
+	document.getElementById("showBandPlan").checked = showBandPlan === "true";	
+	
+	document.getElementById("radioIdFreqTable").checked = radioIdFreqTable === "true";
+	
+	document.getElementById("callHeightControl").value = callHeight;
+	document.querySelector(".call-history-scroll").style.height = `${callHeight}px`;
+	
+	document.getElementById("plotSizeControl").value = plotWidth;
+	document.querySelectorAll(".plot-image").forEach(img => {
+	img.style.width = `${plotWidth}px`;
+	});
+	
+	const smartColorEnabled = smartColorsToggle === null ? true : smartColorsToggle === "true";
+	document.getElementById("smartColorToggle").checked = smartColorEnabled;
+	
+	const adjacentSitesEnabled = adjacentSites === null ? true : adjacentSites === "true";
+	document.getElementById("adjacentSitesToggle").checked = adjacentSitesEnabled;
+	var container = document.getElementById("adjacentSitesContainer");
+	if (container) {
+		container.style.display = adjacentSitesEnabled ? "" : "none";
+	}
+	
+	document.getElementById("callHistorySource").value = callHistorySource;
+	
+	const channelsEnabled = channelsTableToggle === null ? true : channelsTableToggle === "true";
+	document.getElementById("channelsTableToggle").checked = channelsEnabled;
+	const channelsContainer = document.getElementById("channels-container");
+	if (channelsContainer) {
+	channelsContainer.style.display = channelsEnabled ? "" : "none";
+	}
+	
+	const valueColor = localStorage.getItem("valueColor") || "#00ffff"; // fallback if missing
+	document.getElementById("valueColorPicker").value = valueColor;
+	document.documentElement.style.setProperty('--values', valueColor);  
 
-  document.getElementById("radioIdFreqTable").checked = radioIdFreqTable === "true";
+} // end loadSettingsFromLocalStorage
 
-  document.getElementById("callHeightControl").value = callHeight;
-  document.querySelector(".call-history-scroll").style.height = `${callHeight}px`;
-
-  document.getElementById("plotSizeControl").value = plotWidth;
-  document.querySelectorAll(".plot-image").forEach(img => {
-    img.style.width = `${plotWidth}px`;
-  });
-
-  const smartColorEnabled = smartColors === null ? true : smartColors === "true";
-  document.getElementById("smartColorToggle").checked = smartColorEnabled;
-
-  const adjacentSitesEnabled = adjacentSites === null ? true : adjacentSites === "true";
-  document.getElementById("adjacentSitesToggle").checked = adjacentSitesEnabled;
-  var container = document.getElementById("adjacentSitesContainer");
-  if (container) {
-    container.style.display = adjacentSitesEnabled ? "" : "none";
-  }
-
-  document.getElementById("callHistorySource").value = callHistorySource;
-
-  const channelsEnabled = channelsTableToggle === null ? true : channelsTableToggle === "true";
-  document.getElementById("channelsTableToggle").checked = channelsEnabled;
-  const channelsContainer = document.getElementById("channels-container");
-  if (channelsContainer) {
-    channelsContainer.style.display = channelsEnabled ? "" : "none";
-  }
-}
 
 function showHome() {
   const settings = document.getElementById("settings-container");
@@ -1734,32 +1790,38 @@ function hex(val) {
   return val.toString(16).toUpperCase();
 }
 
-async function get_presets_from_config(sysname) {
+async function get_presets_from_config(sysname, retries = 3, delay = 500) {
     if (sysname === "-") {
         console.warn("Invalid sysname:", sysname);
         return null;
     }
 
-    try {
-        const response = await fetch('/', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify([{ command: "get_full_config", arg1: 0, arg2: 0 }])
-        });
+    for (let attempt = 1; attempt <= retries; attempt++) {
+        try {
+            const response = await fetch('/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify([{ command: "get_full_config", arg1: 0, arg2: 0 }])
+            });
 
-        if (!response.ok) {
-            console.error("Fetch failed in get_presets_from_config: ", response.statusText);
-            return null;
+            if (!response.ok) {
+                console.error(`Fetch failed (HTTP ${response.status}) on attempt ${attempt}`);
+                if (attempt < retries) await new Promise(resolve => setTimeout(resolve, delay));
+                continue;
+            }
+
+            const data = await response.json();
+            return data;
+        } catch (error) {
+            console.warn(`Error during fetch (attempt ${attempt}):`, error);
+            if (attempt < retries) await new Promise(resolve => setTimeout(resolve, delay));
         }
-
-        const data = await response.json();
-        return data;
-    } catch (error) {
-        console.error("Error during fetch in get_presets_from_config: ", error);
-        return null;
     }
+
+    console.error("Failed to fetch presets after retries.");
+    return null;
 }
 
 
@@ -1779,32 +1841,65 @@ async function findPresetsForSysname(targetSysname) {
         }
     }
 
-    console.warn("Sysname not found:", targetSysname);
+//     console.warn("Sysname not found:", targetSysname);
     return [];
 }
 
 async function loadPresets(sysname) {
-    newPresets = await findPresetsForSysname(sysname);
+    const newPresets = await findPresetsForSysname(sysname);
+
+    const presetContainer = document.getElementById('presetButtons');
+    if (!presetContainer) return;
+
     if (newPresets && newPresets.length > 0) {
-	   	document.getElementById('presetButtons').style.display = "";
-        newPresets.forEach(p => {
-        	const btn = document.getElementById(`preset-btn-${p.id}`);
-	        if (btn) {
-   	    	     btn.textContent = `${p.label}`;
-   	    	     btn.title = `TGID: ${p.tgid}`;  // Hover tooltip
-   		 	}            
+        presetContainer.style.display = "";
+
+        noPresetsCounter = 0; // reset counter when presets found
+
+        // First, hide ALL preset buttons
+        const allPresetBtns = presetContainer.querySelectorAll('button[id^="preset-btn-"]');
+        allPresetBtns.forEach(btn => {
+            btn.style.display = "none"; // hide by default
         });
+
+        // Then show only matching buttons
+        newPresets.forEach(p => {
+            const btn = document.getElementById(`preset-btn-${p.id}`);
+            if (btn) {
+                btn.textContent = `${p.label}`;
+                btn.title = `TGID: ${p.tgid}`;  // Tooltip
+                btn.style.display = "";         // Show  button
+            }
+        });
+
     } else {
-    	document.getElementById('presetButtons').style.display = "none";
-        console.log("No presets found or available");
+        noPresetsCounter++;
+
+        if (noPresetsCounter >= 5) {
+            presetContainer.style.display = "none";
+        } else {
+			// do nothing right now
+        }
     }
-}
+} // end loadPresets
 
 
 function full_config(config) {
 
+	var sa = config['trunking']['chans'];
+	site_alias = buildSiteAliases(sa);
+
+    // some payloads are sending over full_config when it's not requested (plots) and not needed.
+    var getConfigBtn = localStorage.getItem('getConfigBtn');
+    if (getConfigBtn == 1)
+        togglePopup('popupContainer', true);
+        
+        
+    localStorage.setItem('getConfigBtn', 0);
+    
+
     const container = document.getElementById('configDisplay');
-    container.innerHTML = "<button class='small-button' onclick='close_config();'>Close Config</button><br><br>";
+    container.innerHTML = "";
 
     function createSection(title, contentHtml) {
         const section = document.createElement('div');
@@ -1812,66 +1907,142 @@ function full_config(config) {
 
         const header = document.createElement('h3');
         header.className = 'config-header';
-        header.textContent = title;
-        section.appendChild(header);
+
+        // Create text node (title)
+        header.appendChild(document.createTextNode(title.charAt(0).toUpperCase() + title.slice(1)));
+
+        // ➕ Add toggle icon
+        const toggleIcon = document.createElement('span');
+        toggleIcon.textContent = "➕";
+        toggleIcon.style.marginLeft = "10px";
+        toggleIcon.style.fontSize = "16px";
+        header.appendChild(toggleIcon);
 
         const content = document.createElement('div');
         content.className = 'config-content';
         content.innerHTML = contentHtml;
-        section.appendChild(content);
+        content.style.display = 'none'; // start collapsed
 
         header.onclick = () => {
-            content.classList.toggle('open');
+            if (content.style.display === 'none') {
+                content.style.display = 'block';
+                toggleIcon.textContent = "➖";
+            } else {
+                content.style.display = 'none';
+                toggleIcon.textContent = "➕";
+            }
         };
+
+        section.appendChild(header);
+        section.appendChild(content);
 
         return section;
     }
 
-	function formatEntry(entry) {
-		let html = '<table class="config-table">';
-		for (const [key, value] of Object.entries(entry)) {
-			// Skip keys starting with #
-			if (key.startsWith('#')) continue;
-	
-			html += '<tr>';
-			html += `<td class="config-key">${key}</td>`;
-			if (typeof value === 'object' && value !== null) {
-				html += `<td class="config-value">${formatEntry(value)}</td>`;
-			} else {
-				html += `<td class="config-value">${value}</td>`;
-			}
-			html += '</tr>';
-		}
-		html += '</table>';
-		return html;
-	}
+    function formatEntry(entry) {
+        let html = '<table class="config-table">';
+        for (const [key, value] of Object.entries(entry)) {
+            // Skip keys starting with #
+            if (key.startsWith('#')) continue;
+
+            const displayKey = key; // no auto-capitalization for inner keys
+
+            html += '<tr>';
+            html += `<td class="config-key">${displayKey}</td>`;
+            if (typeof value === 'object' && value !== null) {
+                html += `<td class="config-value" style="color:#ddd;">${formatEntry(value)}</td>`;
+            } else {
+                html += `<td class="config-value">${value}</td>`;
+            }
+            html += '</tr>';
+        }
+        html += '</table>';
+        return html;
+    }
 
     // Top level keys
     for (const [sectionName, sectionContent] of Object.entries(config)) {
         let html = "";
 
         if (Array.isArray(sectionContent)) {
-            // If it's an array, list each entry
             sectionContent.forEach((item, index) => {
                 html += `<h4>Record ${index + 1}</h4>` + formatEntry(item);
             });
         } else if (typeof sectionContent === "object") {
-            // Nested object
             html += formatEntry(sectionContent);
         } else {
-            // Simple value
             html += `<p><b>${sectionName}:</b> ${sectionContent}</p>`;
         }
 
         container.appendChild(createSection(sectionName, html));
     }
+} // end full_config()
 
+
+function togglePopup(id, open) {
+  const popup = document.getElementById(id);
+  if (!popup) {
+    console.error(`Popup element with id "${id}" not found.`);
+    return;
+  }
+
+  if (open) {
+    popup.style.display = 'flex';
+    setTimeout(() => popup.classList.add('show'), 10); // Smooth fade-in
+  } else {
+    popup.classList.remove('show');
+    popup.style.display = 'none';
+  }
 }
 
-function close_config() {
-	document.getElementById('configDisplay').innerHTML = "";
-}
+function buildSiteAliases(sa) {
 
+    const siteAliases = {};
+
+    sa.forEach(system => {
+        const sysid = system.sysid.replace(/^0x/i, "").toUpperCase(); // Remove 0x, uppercase
+        const aliases = system.site_alias;
+
+        if (!sysid || !aliases) return;
+
+        siteAliases[sysid] = {}; // Create entry for this system
+
+        for (const rfssId in aliases) {
+            if (aliases.hasOwnProperty(rfssId)) {
+                siteAliases[sysid][rfssId] = {};
+
+                for (const siteId in aliases[rfssId]) {
+                    if (aliases[rfssId].hasOwnProperty(siteId)) {
+                        siteAliases[sysid][rfssId][siteId] = {
+                            alias: aliases[rfssId][siteId].alias
+                        };
+                    }
+                }
+            }
+        }
+    });
+
+    return siteAliases;
+
+} // end buildSiteAliases
+
+
+function getCaller() {
+	
+	// supplies the calling function
+
+	const err = new Error();
+	const stackLines = err.stack.split("\n");
+
+	// stackLines[0] is 'Error'
+	// stackLines[1] is this function (getCaller)
+	// stackLines[2] is the caller we're interested in
+	if (stackLines.length >= 3) {
+		return stackLines[2].trim();
+	} else {
+		return "Unknown caller";
+	}
+}
 
 function csvTable() {
 	// save the call history table to csv
