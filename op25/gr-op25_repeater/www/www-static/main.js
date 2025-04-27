@@ -667,11 +667,19 @@ function patches(d) {
 // adjacent sites table
 
 function adjacent_sites(d) {
-
+	
+	let adjacentSitesToggle = document.getElementById("adjacentSitesToggle").checked;
+	
     if (d['adjacent_data'] == undefined || Object.keys(d['adjacent_data']).length < 1) {
+	    document.getElementById('adjacentSitesContainer').style.display = "none";
         return;
     }
+     
+    if (adjacentSitesToggle != true)
+    	return;
 
+	document.getElementById('adjacentSitesContainer').style.display = "";
+	 
     var is_p25 = (d['type'] == 'p25');
     var is_smartnet = (d['type'] == 'smartnet');
 
@@ -745,7 +753,6 @@ function adjacent_sites(d) {
 
 function trunk_update(d) {
 
-	const band_plan = d[0]?.band_plan || {};
 		
     var do_hex = {"syid":0, "sysid":0, "wacn": 0};
     var do_float = {"rxchan":0, "txchan":0};
@@ -780,6 +787,8 @@ function trunk_update(d) {
         var is_smartnet = (d[nac]['type'] == 'smartnet');
         
 // system information and frequencies table
+
+		const band_plan = d[nac]?.band_plan || {};
 
 		var displaySystemName = d[nac]['system'] !== undefined ? d[nac]['system'] : "-";
 		var topLine = d[nac]['top_line'] !== undefined ? d[nac]['top_line'] : "-";
@@ -1186,43 +1195,86 @@ function send_command(command, arg1 = 0, arg2 = 0) {
 }
 
 
-function send_process() {
-
+async function send_process() {
     const cmd = JSON.stringify(send_queue);
-    send_queue = [];
-    
+    send_queue = [];  // Clear the queue immediately
+
     const wbox = document.getElementById('warning-box');
     const wtxt = document.getElementById('warning-text');
 
-    fetch("/", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: cmd
-    })
-    .then(response => {
+    try {
+        const response = await fetch("/", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: cmd
+        });
+
         if (!response.ok) {
-			http_errors += 1;
+            http_errors += 1;
             wbox.style.display = "flex";
-            wtxt.innerText = "HTTP Error: ", response.status;
+            wtxt.innerText = "HTTP Error: " + response.status;
+            console.error("HTTP Error:", response.status, response.statusText);
             return;
         }
+
         http_ok += 1;
-        return response.json();
-    })
-    .then(dl => {
+
+        const dl = await response.json();
         if (!dl) return;
+
         wbox.style.display = "none";
-        handle_response(dl);
-    })
-    .catch(error => {
-			fetch_errors += 1;
-            wbox.style.display = "flex";
-            wtxt.innerText = "Fetch error in send_process: " + error;     
-//             console.warn(error);
-    });
+
+        try {
+            handle_response(dl);
+        } catch (err) {
+            console.error("Error inside handle_response():", err.stack || err);
+        }
+
+    } catch (error) {
+        fetch_errors += 1;
+        wbox.style.display = "flex";
+        wtxt.innerText = "Fetch Error: " + (error.message || error);
+        console.error("Fetch Exception Details:", error.stack || error);
+    }
 }
+
+// function send_process() {
+// 
+//     const cmd = JSON.stringify(send_queue);
+//     send_queue = [];
+//     
+//     const wbox = document.getElementById('warning-box');
+//     const wtxt = document.getElementById('warning-text');
+// 
+//     fetch("/", {
+//         method: "POST",
+//         headers: {
+//             "Content-Type": "application/json"
+//         },
+//         body: cmd
+//     })
+//     .then(response => {
+//         if (!response.ok) {
+// 			http_errors += 1;
+//             wbox.style.display = "flex";
+//             wtxt.innerText = "HTTP Error: ", response.status;
+//             return;
+//         }
+//         http_ok += 1;
+//         return response.json();
+//     })
+//     .then(dl => {
+//         if (!dl) return;
+//         wbox.style.display = "none";
+//         handle_response(dl);
+//     })
+//     .catch(error => {
+// 			fetch_errors += 1;
+//             wbox.style.display = "flex";
+//             wtxt.innerText = "Error: " + error + "\n" + "Stack:"  + error.stack + "\n" + "Error Message: " + error.message;
+// //             console.warn(error);
+//     });
+// }
 
 function f_chan_button(command) {
     channel_index += command;
@@ -1997,26 +2049,44 @@ function togglePopup(id, open) {
 }
 
 function buildSiteAliases(sa) {
-
     const siteAliases = {};
 
+    // If input is not an array or is empty, bail out
+    if (!Array.isArray(sa) || sa.length === 0) {
+        console.warn("buildSiteAliases: Invalid or empty input.");
+        return siteAliases;
+    }
+
     sa.forEach(system => {
-        const sysid = system.sysid.replace(/^0x/i, "").toUpperCase(); // Remove 0x, uppercase
+        // Verify required fields exist
+        if (!system || typeof system !== 'object' || !system.sysid || !system.site_alias) {
+            console.warn("buildSiteAliases: Skipping invalid system entry:", system);
+            return;
+        }
+
+        const sysid = String(system.sysid).replace(/^0x/i, "").toUpperCase();  // Normalize sysid
         const aliases = system.site_alias;
 
-        if (!sysid || !aliases) return;
+        if (!sysid || typeof aliases !== 'object') {
+            console.warn("buildSiteAliases: Invalid sysid or aliases structure.");
+            return;
+        }
 
-        siteAliases[sysid] = {}; // Create entry for this system
+        siteAliases[sysid] = {};
 
         for (const rfssId in aliases) {
-            if (aliases.hasOwnProperty(rfssId)) {
+            if (Object.prototype.hasOwnProperty.call(aliases, rfssId)) {
                 siteAliases[sysid][rfssId] = {};
 
                 for (const siteId in aliases[rfssId]) {
-                    if (aliases[rfssId].hasOwnProperty(siteId)) {
-                        siteAliases[sysid][rfssId][siteId] = {
-                            alias: aliases[rfssId][siteId].alias
-                        };
+                    if (Object.prototype.hasOwnProperty.call(aliases[rfssId], siteId)) {
+                        const aliasObj = aliases[rfssId][siteId];
+
+                        if (aliasObj && typeof aliasObj.alias === 'string') {
+                            siteAliases[sysid][rfssId][siteId] = { alias: aliasObj.alias };
+                        } else {
+                            console.warn(`buildSiteAliases: Missing alias for sysid=${sysid}, rfss=${rfssId}, site=${siteId}`);
+                        }
                     }
                 }
             }
@@ -2024,7 +2094,6 @@ function buildSiteAliases(sa) {
     });
 
     return siteAliases;
-
 } // end buildSiteAliases
 
 
