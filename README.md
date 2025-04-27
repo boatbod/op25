@@ -36,7 +36,7 @@ Capabilities are broadly categorized into two lists - those supported by the leg
 - RID text tagging
 - Dynamically controllable real-time plots: FFT, Constellation, Symbol, Datascope, Mixer, Tuning
 - Dynamically controllable log level
-- Curses or HTTP based terminal
+- Awesome new HTTP based terminal by Outerdog(RR)/Triptolemus510(github)
 - JSON based configuration
 - DSD .wav and .iq file replay
 - Dynamic demodulator symbol capture and replay (commanded through terminal)

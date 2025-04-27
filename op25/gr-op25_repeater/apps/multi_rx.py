@@ -1,6 +1,6 @@
 #!/bin/sh
 # Copyright 2011, 2012, 2013, 2014, 2015, 2016, 2017 Max H. Parke KA1RBI
-# Copyright 2020, 2023 Graham J. Norbury - gnorbury@bondcar.com
+# Copyright 2020-2025 Graham J. Norbury - gnorbury@bondcar.com
 # 
 # This file is part of OP25
 # 
@@ -182,12 +182,6 @@ class channel(object):
         self.throttle = None
         self.nbfm = None
         self.nbfm_mode = 0
-        self.auto_tracking      = bool(from_dict(config, "cqpsk_tracking", False))
-        self.tracking_threshold = int(from_dict(config, "tracking_threshold", 120))
-        self.tracking_limit     = int(from_dict(config, "tracking_limit", 2400))
-        self.tracking_feedback  = float(from_dict(config, "tracking_feedback", 0.85))
-        self.tracking = 0
-        self.tracking_cache = {}
         self.crypt_keys_file    = str(from_dict(config, "crypt_keys", ""))
         self.crypt_keys = {}
         self.error = None
@@ -451,31 +445,26 @@ class channel(object):
             return True
 
         old_freq = self.frequency
-        old_track = self.tracking
         self.frequency = freq
-        self.tracking_cache[old_freq] = old_track
-        if self.frequency in self.tracking_cache:
-            self.tracking = self.tracking_cache[self.frequency]     # if cached value available use it otherwise continue with existing
 
-        if not self.demod.set_relative_frequency(self.device.offset + self.device.frequency + self.device.fractional_corr + self.tracking - freq): # First attempt relative tune
+        if not self.demod.set_relative_frequency(self.device.offset + self.device.frequency + self.device.fractional_corr - freq): # First attempt relative tune
             if self.device.tunable:                                                                  # then hard tune if allowed
                 self.device.frequency = self.frequency
                 if self.device.src is not None:
                     self.device.src.set_center_freq(self.frequency + self.device.offset)
                 self.device.fractional_corr = int((int(round(self.device.ppm)) - self.device.ppm) * (self.device.frequency/1e6))        # Calc frac ppm using new freq
-                self.demod.set_relative_frequency(self.device.offset + self.device.frequency + self.device.fractional_corr + self.tracking - freq)
+                self.demod.set_relative_frequency(self.device.offset + self.device.frequency + self.device.fractional_corr - freq)
                 if self.verbosity >= 9:
-                    sys.stderr.write("%s [%d] Hardware tune: dev_freq(%d), dev_off(%d), dev_frac(%d), tune_freq(%d), tracking(%d)\n" % (log_ts.get(), self.msgq_id, self.device.frequency, self.device.offset, self.device.fractional_corr, (self.device.frequency - (self.device.offset + self.device.frequency + self.device.fractional_corr - freq)), self.tracking))
+                    sys.stderr.write("%s [%d] Hardware tune: dev_freq(%d), dev_off(%d), dev_frac(%d), tune_freq(%d)\n" % (log_ts.get(), self.msgq_id, self.device.frequency, self.device.offset, self.device.fractional_corr, (self.device.frequency - (self.device.offset + self.device.frequency + self.device.fractional_corr - freq))))
             else:                                                                                    # otherwise fail and reset to prev freq
-                self.tracking = old_track
-                self.demod.set_relative_frequency(self.device.offset + self.device.frequency + self.device.fractional_corr + self.tracking - old_freq)
+                self.demod.set_relative_frequency(self.device.offset + self.device.frequency + self.device.fractional_corr - old_freq)
                 self.frequency = old_freq
                 if self.verbosity:
                     sys.stderr.write("%s [%d] Unable to tune %s to frequency %f\n" % (log_ts.get(), self.msgq_id, self.name, (freq/1e6)))
                 return False
         else:
             if self.verbosity >= 9:
-                sys.stderr.write("%s [%d] Relative tune: dev_freq(%d), dev_off(%d), dev_frac(%d), tune_freq(%d), tracking(%d)\n" % (log_ts.get(), self.msgq_id, self.device.frequency, self.device.offset, self.device.fractional_corr, (self.device.frequency - (self.device.offset + self.device.frequency + self.device.fractional_corr + self.tracking - freq)), self.tracking))
+                sys.stderr.write("%s [%d] Relative tune: dev_freq(%d), dev_off(%d), dev_frac(%d), tune_freq(%d)\n" % (log_ts.get(), self.msgq_id, self.device.frequency, self.device.offset, self.device.fractional_corr, (self.device.frequency - (self.device.offset + self.device.frequency + self.device.fractional_corr - freq))))
         if 'fft' in self.sinks:
                 self.sinks['fft'][0].set_center_freq(self.device.frequency)
                 self.sinks['fft'][0].set_relative_freq(self.device.frequency - freq)
@@ -486,13 +475,12 @@ class channel(object):
         return True
 
     def adj_tune(self, adjustment): # ideally this would all be done at the device level but the demod belongs to the channel object
-        self.tracking = 0
         self.device.ppm -= get_fractional_ppm(self.device.frequency, adjustment)
         if self.device.src is not None:
             self.device.src.set_freq_corr(int(round(self.device.ppm)))
             self.device.src.set_center_freq(self.device.frequency + self.device.offset)
         self.device.fractional_corr = int((int(round(self.device.ppm)) - self.device.ppm) * (self.device.frequency/1e6))
-        self.demod.set_relative_frequency(self.device.offset + self.device.frequency + self.device.fractional_corr + self.tracking - self.frequency)
+        self.demod.set_relative_frequency(self.device.offset + self.device.frequency + self.device.fractional_corr - self.frequency)
         self.demod.reset()          # reset gardner-costas tracking loop
 
     def configure_p25_tdma(self, params):
@@ -551,31 +539,8 @@ class channel(object):
             return
         self.error = self.demod.get_freq_error()
 
-    def dump_tracking(self):
-        sys.stderr.write("%s [%d] Frequency Tracking Cache: ch(%d)\n{\n" % (log_ts.get(), self.msgq_id, self.msgq_id))
-        for freq in sorted(self.tracking_cache):
-            sys.stderr.write("%f : %d\n" % ((freq/1e6), self.tracking_cache[freq]))
-        sys.stderr.write("}\n")
-
-    def set_tracking(self, tracking):
-        if tracking > 0:
-            self.auto_tracking = True
-        elif tracking == 0:
-            self.auto_tracking = False
-        else:
-            self.auto_tracking = not self.auto_tracking
-        if self.verbosity >= 10:
-            sys.stderr.write("%s [%d] set auto_tracking:%s\n" % (log_ts.get(), self.msgq_id, ("on" if self.auto_tracking else "off")))
-
     def get_error(self):
         return self.error
-
-    def get_tracking(self):
-        return self.tracking
-
-    def get_auto_tracking(self):
-        return self.auto_tracking
-
 
 class rx_block (gr.top_block):
 
@@ -873,6 +838,7 @@ class rx_block (gr.top_block):
         elif s == 'update':                     # UI initiated update request
             self.ui_last_update = time.time()
             self.ui_freq_update()
+            self.ui_calllog_update()
             if self.trunking is None or self.trunk_rx is None:
                 return False
             js = self.trunk_rx.to_json()        # extract data from trunking module
@@ -914,13 +880,6 @@ class rx_block (gr.top_block):
             pass
         elif s == 'dump_tgids':
             self.trunk_rx.dump_tgids()
-        elif s == 'dump_tracking':
-            msgq_id = int(msg.arg2())
-            self.channels[msgq_id].dump_tracking()
-        elif s == 'set_tracking':
-            tracking = msg.arg1()
-            msgq_id = int(msg.arg2())
-            self.find_channel(msgq_id).set_tracking(tracking)
         elif s == 'capture':
             if not self.get_interactive():
                 sys.stderr.write("%s Cannot start capture for non-realtime (replay) sessions\n" % log_ts.get())
@@ -947,6 +906,13 @@ class rx_block (gr.top_block):
                 self.trunk_rx.ui_command(s, msg.arg1(), msg.arg2())
         return False
 
+    def ui_calllog_update(self):
+        if self.trunking is None or self.trunk_rx is None:
+            return False
+        msg = gr.message().make_from_string(self.trunk_rx.get_call_log(), -4, 0, 0)
+        if not self.ui_in_q.full_p():
+            self.ui_in_q.insert_tail(msg)
+
     def ui_freq_update(self):
         if self.trunking is None or self.trunk_rx is None:
             return False
@@ -954,9 +920,7 @@ class rx_block (gr.top_block):
         for rx_id in params['channels']:                       # iterate and convert stream name to url
             params[rx_id]['ppm'] = self.find_channel(int(rx_id)).device.get_ppm()
             params[rx_id]['capture'] = False if self.find_channel(int(rx_id)).raw_sink is None else True
-            params[rx_id]['error'] = self.find_channel(int(rx_id)).get_error() if self.find_channel(int(rx_id)).auto_tracking else None
-            params[rx_id]['auto_tracking'] = self.find_channel(int(rx_id)).get_auto_tracking()
-            params[rx_id]['tracking'] = self.find_channel(int(rx_id)).get_tracking()
+            params[rx_id]['error'] = self.find_channel(int(rx_id)).get_error()
             s_name = params[rx_id]['stream']
             if s_name not in self.meta_streams:
                 continue
