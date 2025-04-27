@@ -23,7 +23,7 @@
 // 04-27-2025  0729
 
 var d_debug = 1;
-var smartColors = [];
+
 var counter1 = 0;
 var error_val = null;
 var auto_tracking = null;
@@ -64,7 +64,7 @@ var sm_step = 100;
 const MAX_HISTORY_ROWS 		= 10; 	// number of rows to consider "recent" and duplicate by appendCallHistory
 const MAX_HISTORY_SECONDS 	= 5; 	// number of rows to consider "recent" and duplicate by appendCallHistory
 const MAX_TG_CHARS 			= 20;	// max number of characters for talkgroup tags in freq table
-
+var smartColors = [];
 
 const mediaQuery = window.matchMedia("(min-width: 1500px)");
 mediaQuery.addEventListener("change", handleColumnLayoutChange);
@@ -271,8 +271,7 @@ function is_digit(s) {
 
 function term_config(d) {  // json_type: "terminal_config"
 
-	if (d['smart_colors'] !== undefined)
-		smartColors = d['smart_colors'];
+	smartColors = d['smart_colors'];
 	
     var updated = 0;
 	
@@ -1152,12 +1151,6 @@ function handle_response(dl) {
 
 function do_update() {
 
-	if (smartColors == undefined) {
-		smartColors = [];
-		console.log('smartColors was found undefined in do_update()');		
-	}
-
-	
     if (channel_list.length == 0) {
         send_command("update", 0, 0);
 
@@ -1219,7 +1212,7 @@ function send_process() {
 			fetch_errors += 1;
             wbox.style.display = "flex";
             wtxt.innerText = "Fetch error in send_process: " + error;     
-//             console.warn(error);
+            console.warn(error);
     });
 }
 
@@ -1516,7 +1509,6 @@ function appendCallHistory(sysid, tg1, tg2, tag1, tag2, freq, sourceId1, sourceI
 
 function applySmartColorsToChannels() {
   if (!document.getElementById("smartColorToggle").checked) return;
-  if (smartColors.length == 0) return;
 
   const rows = document.querySelectorAll("#channels-container tbody tr");
 
@@ -1546,8 +1538,7 @@ function applySmartColorsToChannels() {
 
 function applySmartColorsToCallHistory() {
   if (!document.getElementById("smartColorToggle").checked) return;
-  if (smartColors.length == 0) return;
-  
+
   const rows = document.querySelectorAll("#callHistoryBody tr");
 
   rows.forEach(row => {
@@ -1583,7 +1574,6 @@ function applySmartColorsToCallHistory() {
 
 function applySmartColorsToFrequencyTable() {
   if (!document.getElementById("smartColorToggle").checked) return;
-  if (smartColors.length == 0) return;
 
   const rows = document.querySelectorAll("#frequencyTable tr");
 
@@ -1620,7 +1610,6 @@ function applySmartColorsToFrequencyTable() {
 
 function applySmartColorToTgidSpan() {
   if (!document.getElementById("smartColorToggle").checked) return;
-  if (smartColors.length == 0) return;
 
 	const el = document.getElementById("displayTalkgroup");
 	if (!el) return;
@@ -1714,7 +1703,7 @@ function handleColumnLayoutChange(e) {
 function saveSettingsToLocalStorage() {
   localStorage.setItem("callHeight", document.getElementById("callHeightControl").value);
   localStorage.setItem("plotWidth", document.getElementById("plotSizeControl").value);
-  localStorage.setItem("smartColorsToggle", document.getElementById("smartColorToggle").checked);
+  localStorage.setItem("smartColors", document.getElementById("smartColorToggle").checked);
   localStorage.setItem("adjacentSitesToggle", document.getElementById("adjacentSitesToggle").checked);
   localStorage.setItem("callHistorySource", document.getElementById("callHistorySource").value);
   localStorage.setItem("radioIdFreqTable", document.getElementById("radioIdFreqTable").checked);
@@ -1727,7 +1716,7 @@ function saveSettingsToLocalStorage() {
 function loadSettingsFromLocalStorage() {
 	const callHeight = localStorage.getItem("callHeight") || "600";
 	const plotWidth = localStorage.getItem("plotWidth") || "300";
-	const smartColorsToggle = localStorage.getItem("smartColorsToggle");
+	const smartColors = localStorage.getItem("smartColors");
 	const adjacentSites = localStorage.getItem("adjacentSitesToggle");
 	const callHistorySource = localStorage.getItem("callHistorySource") || "frequency";
 	const radioIdFreqTable = localStorage.getItem("radioIdFreqTable");
@@ -1746,7 +1735,7 @@ function loadSettingsFromLocalStorage() {
 	img.style.width = `${plotWidth}px`;
 	});
 	
-	const smartColorEnabled = smartColorsToggle === null ? true : smartColorsToggle === "true";
+	const smartColorEnabled = smartColors === null ? true : smartColors === "true";
 	document.getElementById("smartColorToggle").checked = smartColorEnabled;
 	
 	const adjacentSitesEnabled = adjacentSites === null ? true : adjacentSites === "true";
