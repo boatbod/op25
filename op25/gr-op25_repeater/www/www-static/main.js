@@ -20,7 +20,7 @@
 // Software Foundation, Inc., 51 Franklin Street, Boston, MA
 // 02110-1301, USA.
 
-const lastUpdate = "27-Apr-2025 13:19";
+const lastUpdate = "28-Apr-2025 9:46";
 
 var d_debug = 1;
 // default smartColors - will be overwritten by smartColors contained in json, if present
