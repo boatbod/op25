@@ -353,6 +353,9 @@ class p25_system(object):
             sys.stderr.write("%s [%s] reading system whitelist file: %s\n" % (log_ts.get(), self.sysname, self.config['whitelist']))
             self.whitelist = get_int_dict(self.config['whitelist'], self.sysname)
 
+        if 'band_plan' in self.config:
+            self.freq_table = self.config['band_plan']
+
         self.tdma_cc = bool(from_dict(self.config, 'tdma_cc', False)) 
         if self.tdma_cc:
             self.cc_rate = 6000
