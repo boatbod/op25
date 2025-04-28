@@ -641,7 +641,10 @@ function patches(d) {
             if (++row_num == 1) {
                 html += "<tr style=\"background-color: " + color + ";\">";
                 if (is_p25) {
-                    html += "<td rowspan=" + num_sub_tgids + ">" + d['patch_data'][tgid][sub_tgid]['sg'] + " - " + d['patch_data'][tgid][sub_tgid]['sgtag'] + "</td>";
+                    //html += "<td rowspan=" + num_sub_tgids + ">" + d['patch_data'][tgid][sub_tgid]['sg'] + " - " + d['patch_data'][tgid][sub_tgid]['sgtag'] + "</td>";
+                    html += "<td rowspan=" + num_sub_tgids + ">" + d['patch_data'][tgid][sub_tgid]['sg'];
+                    if (d['patch_data'][tgid][sub_tgid]['sgtag'] != null && d['patch_data'][tgid][sub_tgid]['sgtag'] != "")
+						html += " - " + d['patch_data'][tgid][sub_tgid]['sgtag'] + "</td>";
                 } else if (is_smartnet) {
                     html += "<td rowspan=" + num_sub_tgids + ">" + d['patch_data'][tgid][sub_tgid]['tgid_dec'] + "</td><td rowspan=" + num_sub_tgids + ">" + d['patch_data'][tgid][sub_tgid]['tgid_hex'] + "</td>";
                 }
@@ -649,7 +652,10 @@ function patches(d) {
                 html += "<tr style=\"background-color: " + color + ";\">";
             }
             if (is_p25) {
-                html += "<td>" + d['patch_data'][tgid][sub_tgid]['ga'] + " - " + d['patch_data'][tgid][sub_tgid]['gatag'] + "</td>";
+                //html += "<td>" + d['patch_data'][tgid][sub_tgid]['ga'] + " - " + d['patch_data'][tgid][sub_tgid]['gatag'] + "</td>";
+                html += "<td>" + d['patch_data'][tgid][sub_tgid]['ga'];
+                if (d['patch_data'][tgid][sub_tgid]['gatag'] != null && d['patch_data'][tgid][sub_tgid]['gatag'] != "")
+					html += " - " + d['patch_data'][tgid][sub_tgid]['gatag'] + "</td>";
             } else if (is_smartnet) {
                 html += "<td>" + d['patch_data'][tgid][sub_tgid]['sub_tgid_dec'] + "</td><td>" + d['patch_data'][tgid][sub_tgid]['sub_tgid_hex'] + "</td>";
                 html += "<td>" + d['patch_data'][tgid][sub_tgid]['mode'] + "</td>";
@@ -829,10 +835,10 @@ function trunk_update(d) {
 		  { label: "Callsign", value: hex(displayCallSign) },
 		  { label: "Type", value: hex(displayType) },
 		  { label: "System ID", value: "0x" + hex(displaySystemId) },
-		  { label: "WACN", value: hex(displayWacn) },
-		  { label: "NAC", value: hex(displayNac) },
-		  { label: "RFSS", value: hex(displayRfss) },
-		  { label: "Site", value: hex(displaySiteId) },
+		  { label: "WACN", value: "0x" + hex(displayWacn) },
+		  { label: "NAC", value: "0x" + hex(displayNac) },
+		  { label: "RFSS", value: displayRfss },
+		  { label: "Site", value: displaySiteId },
 		  { label: "TSBK", value: totalTsbk },
 		  { label: "Last TSBK", value: getTime(tsbkTime), colspan: 2 }
 		];
@@ -986,9 +992,14 @@ function trunk_update(d) {
                 else if (tg1 == tg2) {
                     if (is_p25) {
                         mode_str = "<td style=\"text-align:center;\">FDMA</td>";
+                        mode_str = "<td style=\"text-align:center;\">FDMA</td>";
                         achMode = "FDMA";
                     }
-                    tg_str = "<td style=\"text-align:center;white-space: nowrap;\" colspan=2>" + tg1 + " &nbsp; " + tag1.substring(0, MAX_TG_CHARS) + contentId1;
+                    if (tag1 != null && tag1 != "")
+						tg_str = "<td style=\"text-align:center;white-space: nowrap;\" colspan=2>" + tag1.substring(0, MAX_TG_CHARS) + contentId1;
+					else
+						tg_str = "<td style=\"text-align:center;white-space: nowrap;\" colspan=2>" + tg1;
+                    
                 }
                 else {
                     if (is_p25) {
@@ -999,7 +1010,8 @@ function trunk_update(d) {
                         tg1 = "&nbsp&nbsp-&nbsp&nbsp";
                     if (tg2 == null)
                         tg2 = "&nbsp&nbsp-&nbsp&nbsp";
-                    tg_str = "<td style=\"text-align:center;white-space: nowrap;\">" + tg1 + " &nbsp; " + tag1.substring(0, MAX_TG_CHARS) + contentId1 + "<td style=\"text-align:center;white-space: nowrap;\">" + tg2 + " &nbsp; " + tag2.substring(0, MAX_TG_CHARS) + contentId2;
+                    //tg_str = "<td style=\"text-align:center;white-space: nowrap;\">" + tg1 + " &nbsp; " + tag1.substring(0, MAX_TG_CHARS) + contentId1 + "<td style=\"text-align:center;white-space: nowrap;\">" + tg2 + " &nbsp; " + tag2.substring(0, MAX_TG_CHARS) + contentId2;
+                    tg_str = "<td style=\"text-align:center;white-space: nowrap;\">" + tag1.substring(0, MAX_TG_CHARS) + contentId1 + "<td style=\"text-align:center;white-space: nowrap;\">" + tag2.substring(0, MAX_TG_CHARS) + contentId2;
                 }
             }
 
