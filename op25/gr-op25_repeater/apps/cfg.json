@@ -49,6 +49,10 @@
                 "blacklist": "",
                 "tdma_cc": false,
                 "crypt_behavior": 2,
+                "#band_plan": {
+                    "0": { "offset": -45000000, "step":  6250, "frequency": 851006250 },
+                    "1": { "offset": -45000000, "step": 12500, "frequency": 851012500, "tdma": 2 }
+                },
                 "presets": [
                     { "id": 1, "tgid": 7616, "label": "TGID 7616" },
                     { "id": 2, "tgid": 7617, "label": "TGID 7617" },
