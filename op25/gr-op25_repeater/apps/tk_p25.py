@@ -1496,6 +1496,17 @@ class p25_system(object):
             tgid not in self.talkgroups or self.talkgroups[tgid]['receiver'] is None):
             return 0
 
+        if self.talkgroups[tgid]['srcaddr'] != srcaddr:
+            self.rx_ctl.log_call(self.ns_syid,
+                                 self.talkgroups[tgid]['receiver'].msgq_id,
+                                 self.talkgroups[tgid]['frequency'],
+                                 self.talkgroups[tgid]['tdma_slot'],
+                                 self.talkgroups[tgid]['prio'],
+                                 tgid,
+                                 self.talkgroups[tgid]['tag'],
+                                 srcaddr,
+                                 self.get_rid_tag(srcaddr))
+
         with self.talkgroups_mutex:
             if svcopts is not None:
                 self.talkgroups[tgid]['svcopts'] = svcopts
@@ -1508,6 +1519,7 @@ class p25_system(object):
             else:
                 self.sourceids[srcaddr]['tgs'][tgid] += 1;
             self.sourceid_history.record(srcaddr, tgid, curr_time)
+
         return 1
 
     def expire_talkgroups(self, curr_time):
