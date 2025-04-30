@@ -1488,7 +1488,7 @@ class p25_system(object):
                     self.talkgroups[tgid]['srcaddr'] = srcaddr
 
     def update_talkgroup_srcaddr(self, curr_time, tgid, srcaddr, svcopts=None):
-        if (tgid is None or tgid <= 0 or srcaddr is None or srcaddr <= 0 or
+        if (tgid is None or tgid <= 0 or srcaddr is None or srcaddr <= 0 or srcaddr >= 0xffffff or
             tgid not in self.talkgroups or self.talkgroups[tgid]['receiver'] is None):
             return 0
 
@@ -1502,6 +1502,9 @@ class p25_system(object):
                                  self.talkgroups[tgid]['tag'],
                                  srcaddr,
                                  self.get_rid_tag(srcaddr))
+            if self.debug > 10:
+                sys.stderr.write("%s [%s] update_talkgroup_srcaddr: tgid=%d, previous=%d, current=%d\n" % (log_ts.get(), self.sysname, tgid,
+                                                                                                           self.talkgroups[tgid]['srcaddr'], srcaddr))
 
         with self.talkgroups_mutex:
             if svcopts is not None:
