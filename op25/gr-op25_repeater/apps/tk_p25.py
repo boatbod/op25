@@ -1468,6 +1468,7 @@ class p25_system(object):
                     sys.stderr.write('%s [%s] update_talkgroups: sg(%d) patched tgid(%d)\n' % (log_ts.get(), self.sysname, tgid, ptgid))
 
     def update_talkgroup(self, frequency, tgid, tdma_slot, srcaddr, svcopts):
+        ui_log_update = False
         with self.talkgroups_mutex:
             if self.debug >= 5:
                 if svcopts is None:
@@ -1479,6 +1480,10 @@ class p25_system(object):
                 add_default_tgid(self.talkgroups, tgid)
                 if self.debug >= 5:
                     sys.stderr.write('%s [%s] new tgid=%s %s prio %d\n' % (log_ts.get(), self.sysname, tgid, self.talkgroups[tgid]['tag'], self.talkgroups[tgid]['prio']))
+
+            if self.talkgroups[tgid]['receiver'] is not None and srcaddr is not None and srcaddr > 0 and srcaddr < 0xffffff and self.talkgroups[tgid]['srcaddr'] != srcaddr:
+                ui_log_update = True
+
             self.talkgroups[tgid]['time'] = time.time()
             self.talkgroups[tgid]['counter'] += 1
             self.talkgroups[tgid]['frequency'] = frequency
@@ -1492,12 +1497,7 @@ class p25_system(object):
                 else:
                     self.talkgroups[tgid]['srcaddr'] = srcaddr
 
-    def update_talkgroup_srcaddr(self, curr_time, tgid, srcaddr, svcopts=None):
-        if (tgid is None or tgid <= 0 or srcaddr is None or srcaddr <= 0 or srcaddr >= 0xffffff or
-            tgid not in self.talkgroups or self.talkgroups[tgid]['receiver'] is None):
-            return 0
-
-        if self.talkgroups[tgid]['srcaddr'] != srcaddr:
+        if ui_log_update:   # log update to UI outside of the mutex protection
             self.rx_ctl.log_call(self.ns_syid,
                                  self.talkgroups[tgid]['receiver'].msgq_id,
                                  self.talkgroups[tgid]['frequency'],
@@ -1507,9 +1507,15 @@ class p25_system(object):
                                  self.talkgroups[tgid]['tag'],
                                  srcaddr,
                                  self.get_rid_tag(srcaddr))
-            if self.debug > 10:
-                sys.stderr.write("%s [%s] update_talkgroup_srcaddr: tgid=%d, previous=%d, current=%d\n" % (log_ts.get(), self.sysname, tgid,
-                                                                                                           self.talkgroups[tgid]['srcaddr'], srcaddr))
+
+    def update_talkgroup_srcaddr(self, curr_time, tgid, srcaddr, svcopts=None):
+        ui_log_update = False
+        if (tgid is None or tgid <= 0 or srcaddr is None or srcaddr <= 0 or srcaddr >= 0xffffff or
+            tgid not in self.talkgroups or self.talkgroups[tgid]['receiver'] is None):
+            return 0
+
+        if self.talkgroups[tgid]['srcaddr'] != srcaddr:
+            ui_log_update = True
 
         with self.talkgroups_mutex:
             if svcopts is not None:
@@ -1523,6 +1529,17 @@ class p25_system(object):
             else:
                 self.sourceids[srcaddr]['tgs'][tgid] += 1;
             self.sourceid_history.record(srcaddr, tgid, curr_time)
+
+        if ui_log_update:   # log update to UI outside of the mutex protection
+            self.rx_ctl.log_call(self.ns_syid,
+                                 self.talkgroups[tgid]['receiver'].msgq_id,
+                                 self.talkgroups[tgid]['frequency'],
+                                 self.talkgroups[tgid]['tdma_slot'],
+                                 self.talkgroups[tgid]['prio'],
+                                 tgid,
+                                 self.talkgroups[tgid]['tag'],
+                                 srcaddr,
+                                 self.get_rid_tag(srcaddr))
 
         return 1
 
