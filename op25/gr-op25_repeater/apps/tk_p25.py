@@ -353,7 +353,9 @@ class p25_system(object):
             self.whitelist = get_int_dict(self.config['whitelist'], self.sysname)
 
         if 'band_plan' in self.config:
-            self.freq_table = self.config['band_plan']
+            band_plan = self.config['band_plan']
+            for k in band_plan:     # JSON hack; re-write band_plan keys as integers into the freq_table
+                self.freq_table[int(k)] = band_plan[k]
 
         self.tdma_cc = bool(from_dict(self.config, 'tdma_cc', False)) 
         if self.tdma_cc:
