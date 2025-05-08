@@ -65,7 +65,7 @@ def transfer_function_rx(symbol_rate=_def_symbol_rate, rate_multiplier=1.0):
 		xfer.append(df)
 	return xfer
 
-def transfer_function_tx(symbol_rate=_def_symbol_rate):
+def transfer_function_tx(symbol_rate=_def_symbol_rate, rate_multiplier=1.0):
 	xfer = []	# frequency domain transfer function
 	for f in range(0, 2881):	# specs cover 0 - 2,880 Hz
 		# H(f)
@@ -245,7 +245,7 @@ class p25_mod_bf(gr.hier_block2):
             coeffs = gmsk_taps(sample_rate=intermediate_rate, bt=self.bt).generate()
         elif not rc:
             coeffs = c4fm_taps(sample_rate=intermediate_rate, generator=self.generator).generate()
-        self.filter = filter.interp_fir_filter_fff(self._interp_factor, coeffs)
+        self.filter = filter.interp_fir_filter_fff(int(self._interp_factor), coeffs)
 
         if verbose:
             self._print_verbage()
