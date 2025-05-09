@@ -142,7 +142,7 @@ class http_server(object):
         self.q_watcher = queue_watcher(my_input_q, process_qmsg)
 
         try:
-            self.server = create_server(application, host=host, port=my_port)
+            self.server = create_server(application, host=host, port=my_port, threads=6)
         except:
             sys.stderr.write('Failed to create http terminal server\n%s\n' % traceback.format_exc())
             sys.exit(1)
