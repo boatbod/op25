@@ -1,0 +1,90 @@
+{
+    "channels": [
+        {
+            "name": "Voice Channel", 
+            "device": "sdr0",
+            "trunking_sysname": "Trunked System",
+            "demod_type": "cqpsk", 
+            "destination": "udp://127.0.0.1:23456", 
+            "meta_stream_name": "",
+            "excess_bw": 0.2, 
+            "filter_type": "rc", 
+            "if_rate": 24000, 
+            "plot": "",
+            "symbol_rate": 4800,
+            "enable_analog": "off",
+            "whitelist": "",
+            "blacklist": "",
+            "crypt_keys": ""
+        }
+    ], 
+    "devices": [
+        {
+            "args": "rtl", 
+            "gains": "LNA:39", 
+            "name": "sdr0", 
+            "offset": 0, 
+            "ppm": 0.0, 
+            "usable_bw_pct": 0.85,
+            "rate": 1000000, 
+            "tunable": true
+        }
+    ],
+    "trunking": {
+        "module": "tk_p25.py",
+        "chans": [
+            {
+                "#nac": "0x4a6",
+                "#wacn": "0xbee00",
+                "#sysid": "0x4a2",
+                "sysname": "Trunked System",
+                "control_channel_list": "773.84375",
+                "whitelist": "",
+                "tgid_tags_file": "",
+                "rid_tags_file": "",
+                "tdma_cc": false,
+                "crypt_behavior": 2
+            }
+        ]
+    },
+    "metadata": {
+        "module": "icemeta.py",
+        "streams": [
+            {
+                "stream_name": "stream0",
+                "meta_format_idle": "[idle]",
+                "meta_format_tgid": "[%TGID%]",
+                "meta_format_tag":  "[%TGID%] %TAG%",
+                "meta_format_rid":  "@ [%RID%]",
+                "meta_format_rtag": "@ [%RID%] %RTAG%",
+                "icecastServerAddress": "192.168.3.24:8000",
+                "icecastMountpoint": "op25",
+                "icecastMountExt": ".xspf",
+                "icecastPass": "hackme",
+                "delay": 0.0
+            }
+        ]
+    },
+    "audio": {
+        "module": "sockaudio.py",
+        "instances": [
+            {
+                "instance_name": "audio0",
+                "device_name": "pulse",
+                "udp_port": 23456,
+                "audio_gain": 1.0,
+                "number_channels": 1
+            }
+        ]
+    },
+    "terminal": {
+        "module": "terminal.py",
+        "terminal_type": "curses",
+        "#terminal_type": "http:127.0.0.1:8080",
+        "curses_plot_interval": 0.1,
+        "http_plot_interval": 1.0,
+        "http_plot_directory": "../www/images",
+        "tuning_step_large": 1200,
+        "tuning_step_small": 100
+    }
+}
