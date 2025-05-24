@@ -427,7 +427,8 @@ class p25_rx_block (gr.top_block):
         if params['tdma'] is not None:
             set_tdma = True
             self.decoder.control({'tuner': 0, 'cmd': 'set_slotid', 'slotid': params['tdma']})
-        self.demod.set_tdma(set_tdma)
+        if self.demod is not None:
+            self.demod.set_tdma(set_tdma)
         if set_tdma == self.tdma_state:
             return    # already in desired state
         self.tdma_state = set_tdma
