@@ -667,20 +667,21 @@ int p25p2_tdma::handle_frame(void)
 	int rc;
 	for (size_t i=0; i<sizeof(dibits); i++)
 		dibits[i] = p2framer.d_frame_body[i*2+1] + (p2framer.d_frame_body[i*2] << 1);
-	rc = handle_packet(dibits, p2framer.get_fs());
+	rc = handle_packet(dibits, p2framer.get_fs(), false);
 	return rc;
 }
 
 /* returns true if in sync and slot matches current active slot d_slotid */
-int p25p2_tdma::handle_packet(uint8_t dibits[], const uint64_t fs) 
+int p25p2_tdma::handle_packet(uint8_t dibits[], const uint64_t fs, bool skip_sync_check) 
 {
 	// descramble and process the frame
 	int rc = -1;
 	static const int which_slot[] = {0,1,0,1,0,1,0,1,0,1,1,0};
 	packets++;
 	sync.check_confidence(dibits);
-    //if (!sync.in_sync())  // First frame will always be "out of sync" so this check is pretty silly;
-    //  return -1;          // let other error correction methods prevent bad decode
+    if (!skip_sync_check && !sync.in_sync()) { // this check only required while running legacy p25_frame_assembler (rx.py)
+        return -1;
+    }
 	const uint8_t* burstp = &dibits[10];
 	uint8_t xored_burst[BURST_SIZE - 10];
 	burst_type = duid.duid_lookup(duid.extract_duid(burstp));
