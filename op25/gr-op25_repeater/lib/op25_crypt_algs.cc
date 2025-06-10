@@ -97,7 +97,7 @@ bool op25_crypt_algs::prepare(uint8_t algid, uint16_t keyid, protocol_type pr_ty
     d_alg_iter = d_algs.find(algid);
     if (d_alg_iter == d_algs.end()) {
         if (d_debug >= 10) {
-            fprintf(stderr, "%s p25_crypt_algs::prepare: algid[0x%x] algorithm module not found\n", logts.get(d_msgq_id), keyid);
+            fprintf(stderr, "%s p25_crypt_algs::prepare: algid[0x%x] algorithm module not found\n", logts.get(d_msgq_id), algid);
         }
         return false;
     }
