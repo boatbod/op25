@@ -1944,7 +1944,7 @@ async function findPresetsForSysname(targetSysname) {
 }
 
 async function loadPresets(sysname) {
-    const newPresets = await findPresetsForSysname(sysname);
+    newPresets = await findPresetsForSysname(sysname);
 
     const presetContainer = document.getElementById('presetButtons');
     if (!presetContainer) return;
