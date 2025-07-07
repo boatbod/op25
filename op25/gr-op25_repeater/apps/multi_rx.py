@@ -249,8 +249,9 @@ class channel(object):
             sys.stderr.write("%s [%d] Unable to initialize demod to freq: %d, using device freq: %d\n" % (log_ts.get(), self.msgq_id, self.frequency, dev.frequency))
             self.frequency = dev.frequency
 
-        if 'key' in config and (config['key'] != ""):
-            self.set_key(int(config['key'], 0))
+        # Load the DMR Basic Privacy key, if specified
+        if 'bp_key' in config and (config['bp_key'] != ""):
+            self.decoder.control(json.dumps({'tuner': self.msgq_id, 'cmd': 'set_slotkey', 'slotkey': int(config['bp_key'], 0)}))
 
         enable_analog = str(from_dict(config, 'enable_analog', "auto")).lower()
         if enable_analog == "off":
