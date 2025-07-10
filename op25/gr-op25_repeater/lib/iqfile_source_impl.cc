@@ -1,7 +1,7 @@
 /* -*- c++ -*- */
 /*
  * Copyright 2012, 2018 Free Software Foundation, Inc.
- * Copyright 2021 Graham J. Norbury
+ * Copyright 2021-2025 Graham J. Norbury
  *
  * This file is part of GNU Radio
  *
@@ -34,6 +34,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <cstdio>
+#include <sstream>
 #include <stdexcept>
 
 #ifdef _MSC_VER
@@ -154,18 +155,18 @@ bool iqfile_source_impl::seek(int64_t seek_point, int whence)
             seek_point = d_length_items - seek_point;
             break;
         default:
-            GR_LOG_WARN(d_logger, "bad seek mode");
+            d_logger->warn("bad seek mode {:d}", whence);
             return 0;
         }
 
         if ((seek_point < (int64_t)d_start_offset_items) ||
             (seek_point > (int64_t)(d_start_offset_items + d_length_items - 1))) {
-            GR_LOG_WARN(d_logger, "bad seek point");
+            d_logger->warn("bad seek point {:d}", seek_point);
             return 0;
         }
         return GR_FSEEK((FILE*)d_fp, seek_point * d_itemsize, SEEK_SET) == 0;
     } else {
-        GR_LOG_WARN(d_logger, "file not seekable");
+        d_logger->warn("file not seekable");
         return 0;
     }
 }
@@ -185,14 +186,14 @@ void iqfile_source_impl::open(const char* filename,
     }
 
     if ((d_new_fp = fopen(filename, "rb")) == NULL) {
-        GR_LOG_ERROR(d_logger, boost::format("%s: %s") % filename % strerror(errno));
+        d_logger->error("[fopen] {:s}: {:s}", filename, strerror(errno));
         throw std::runtime_error("can't open file");
     }
 
     struct GR_STAT st;
 
     if (GR_FSTAT(GR_FILENO(d_new_fp), &st)) {
-        GR_LOG_ERROR(d_logger, boost::format("%s: %s") % filename % strerror(errno));
+        d_logger->error("[fstat] {:s}: {:s}", filename, strerror(errno));
         throw std::runtime_error("can't fstat file");
     }
     if (S_ISREG(st.st_mode)) {
@@ -211,9 +212,11 @@ void iqfile_source_impl::open(const char* filename,
         // Make sure there will be at least one item available
         if ((file_size / d_itemsize) < (start_offset_items + 1)) {
             if (start_offset_items) {
-                GR_LOG_WARN(d_logger, "file is too small for start offset");
+                d_logger->warn("file is too small for start offset: {:d} < {:d}",
+                               file_size - 1,
+                               start_offset_items * d_itemsize);
             } else {
-                GR_LOG_WARN(d_logger, "file is too small");
+                d_logger->warn("file is too small ({:d})", file_size);
             }
             fclose(d_new_fp);
             throw std::runtime_error("file is too small");
@@ -228,7 +231,9 @@ void iqfile_source_impl::open(const char* filename,
     if (length_items == 0) {
         length_items = items_available;
         if (file_size % d_itemsize) {
-            GR_LOG_WARN(d_logger, "file size is not a multiple of item size");
+            d_logger->warn("file size is not a multiple of item size ({:d} ≠ N·{:d})",
+                           file_size,
+                           d_itemsize);
         }
     }
 
@@ -236,7 +241,9 @@ void iqfile_source_impl::open(const char* filename,
     // exception.
     if (length_items > items_available) {
         length_items = items_available;
-        GR_LOG_WARN(d_logger, "file too short, will read fewer than requested items");
+        d_logger->warn("file too short, will read fewer than requested items {:d} > {:d}",
+                       length_items,
+                       items_available);
     }
 
     // Rewind to start offset

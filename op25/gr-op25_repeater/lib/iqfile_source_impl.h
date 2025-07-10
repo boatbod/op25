@@ -24,7 +24,7 @@
 #define INCLUDED_OP25_REPEATER_IQFILE_SOURCE_IMPL_H
 
 #include <gnuradio/op25_repeater/iqfile_source.h>
-#include <boost/thread/mutex.hpp>
+#include <gnuradio/thread/thread.h>
 
 namespace gr {
 namespace op25_repeater {
@@ -51,7 +51,7 @@ private:
     long d_repeat_cnt;
     pmt::pmt_t d_add_begin_tag;
 
-    boost::mutex fp_mutex;
+    gr::thread::mutex fp_mutex;
     pmt::pmt_t _id;
 
     void do_update();
