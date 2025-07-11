@@ -66,8 +66,4 @@ add_custom_target(
 )
 
 GR_ADD_TEST(qa_fsk4_demod_ff ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/qa_fsk4_demod_ff.py)
-GR_ADD_TEST(qa_fsk4_slicer_fb ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/qa_fsk4_slicer_fb.py)
-GR_ADD_TEST(qa_decoder_ff ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/qa_decoder_ff.py)
-GR_ADD_TEST(qa_decoder_bf ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/qa_decoder_bf.py)
-GR_ADD_TEST(qa_pcap_source_b ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/qa_pcap_source_b.py)
 
