@@ -29,11 +29,7 @@ include(GrPybind)
 ########################################################################
 
 list(APPEND op25_python_files
-    decoder_bf_python.cc
-    decoder_ff_python.cc
     fsk4_demod_ff_python.cc
-    fsk4_slicer_fb_python.cc
-    pcap_source_b_python.cc
     python_bindings.cc)
 
 GR_PYBIND_MAKE_OOT(op25

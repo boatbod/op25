@@ -22,9 +22,5 @@
 ########################################################################
 install(FILES
     api.h
-    fsk4_demod_ff.h
-    fsk4_slicer_fb.h
-    decoder_ff.h
-    decoder_bf.h
-    pcap_source_b.h DESTINATION include/gnuradio/op25
+    fsk4_demod_ff.h DESTINATION include/gnuradio/op25
 )

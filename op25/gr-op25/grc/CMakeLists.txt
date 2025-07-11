@@ -17,9 +17,5 @@
 # the Free Software Foundation, Inc., 51 Franklin Street,
 # Boston, MA 02110-1301, USA.
 install(FILES
-    op25_fsk4_demod_ff.xml
-    op25_fsk4_slicer_fb.xml
-    op25_decoder_ff.xml
-    op25_decoder_bf.xml
-    op25_pcap_source_b.xml DESTINATION share/gnuradio/grc/blocks
+    op25_fsk4_demod_ff.xml DESTINATION share/gnuradio/grc/blocks
 )

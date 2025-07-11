@@ -21,11 +21,7 @@ namespace py = pybind11;
 // Please do not delete
 /**************************************/
 // BINDING_FUNCTION_PROTOTYPES(
-    void bind_decoder_bf(py::module& m);
-    void bind_decoder_ff(py::module& m);
     void bind_fsk4_demod_ff(py::module& m);
-    void bind_fsk4_slicer_fb(py::module& m);
-    void bind_pcap_source_b(py::module& m);
 // ) END BINDING_FUNCTION_PROTOTYPES
 
 
@@ -54,10 +50,6 @@ PYBIND11_MODULE(op25_python, m)
     // Please do not delete
     /**************************************/
     // BINDING_FUNCTION_CALLS(
-    bind_decoder_bf(m);
-    bind_decoder_ff(m);
     bind_fsk4_demod_ff(m);
-    bind_fsk4_slicer_fb(m);
-    bind_pcap_source_b(m);
     // ) END BINDING_FUNCTION_CALLS
 }
