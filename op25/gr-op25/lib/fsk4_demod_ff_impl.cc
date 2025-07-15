@@ -186,7 +186,7 @@ namespace gr {
 		  gr::io_signature::make(1, 1, sizeof(float)),
 		  gr::io_signature::make(1, 1, sizeof(float))),
 	d_block_rate(sample_rate_Hz / symbol_rate_Hz),
-	d_history(new float[NTAPS]),
+	d_history(NTAPS, 0.0),
 	d_history_last(0),
 	d_queue(queue),
 	d_symbol_clock(0.0),
@@ -196,8 +196,6 @@ namespace gr {
     {
       fine_frequency_correction = 0.0;
       coarse_frequency_correction = 0.0;
-
-      std::fill(&d_history[0], &d_history[NTAPS], 0.0);
     }
 
     /*

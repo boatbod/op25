@@ -24,7 +24,6 @@
 #ifndef INCLUDED_IMBE_DECODER_H 
 #define INCLUDED_IMBE_DECODER_H 
 
-#include <boost/noncopyable.hpp>
 #include <deque>
 #include <vector>
 #include <memory>
@@ -37,7 +36,7 @@ typedef std::vector<bool> voice_codeword;
  * imbe_decoder is the interface to the various mechanisms for
  * translating P25 voice codewords into audio samples.
  */
-class imbe_decoder : public boost::noncopyable {
+class imbe_decoder {
 public:
    typedef std::shared_ptr<imbe_decoder> imbe_decoder_sptr;
 
@@ -48,6 +47,12 @@ public:
     * \return A shared_ptr to an imbe_decoder.
     */
    static imbe_decoder_sptr make();
+
+   /**
+    * imbe_decoder noncopyable
+    */
+   imbe_decoder(const imbe_decoder&) = delete;
+   imbe_decoder& operator=(const imbe_decoder&) = delete;
 
    /**
     * imbe_decoder (virtual) destructor.
