@@ -24,8 +24,7 @@
 #ifndef INCLUDED_OP25_FSK4_DEMOD_FF_IMPL_H
 #define INCLUDED_OP25_FSK4_DEMOD_FF_IMPL_H
 
-#include <boost/scoped_array.hpp>
-#include <boost/scoped_ptr.hpp>
+#include <vector>
 #include <gnuradio/op25/fsk4_demod_ff.h>
 
 namespace gr {
@@ -35,7 +34,7 @@ namespace gr {
     {
      private:
       float d_block_rate;
-      boost::scoped_array<float> d_history;
+      std::vector<float> d_history;
       size_t d_history_last;
       gr::msg_queue::sptr d_queue;
       double d_symbol_clock;
