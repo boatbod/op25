@@ -132,6 +132,9 @@ class device(object):
                 sys.stderr.write("be optimal.  You may want to use one of the following rates\n")
                 sys.stderr.write('%s\n' % speeds)
             sys.stderr.write('Device name: "%s", osmosdr args: "%s"\n' % (self.name, str(config['args'])))
+            #dev_list = osmosdr.device.find(osmosdr.device_t("nofake"))
+            #for dev_t in dev_list:
+            #    sys.stderr.write("gr-osmosdr device: %s\n" % dev_t.to_string())
             self.src = osmosdr.source(str(config['args']))
 
             if 'gain_mode' in config:
