@@ -32,7 +32,7 @@ def extract_duid(b):
 
 def mk_duid_lookup():
     duid_map = {}
-    g = np.array(np.mat('1 0 0 0 1 1 0 1; 0 1 0 0 1 0 1 1; 0 0 1 0 1 1 1 0; 0 0 0 1 0 1 1 1'))
+    g = np.array(np.asmatrix('1 0 0 0 1 1 0 1; 0 1 0 0 1 0 1 1; 0 0 1 0 1 1 1 0; 0 0 0 1 0 1 1 1'))
     for i in range(16):
         codeword = mk_str(np.dot(mk_array(i, 4), g))
         duid_map[codeword] = i
