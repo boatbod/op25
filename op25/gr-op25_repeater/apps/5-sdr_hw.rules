@@ -1,3 +1,6 @@
+# HydraSDR RFOne
+ACTION=="remove", SUBSYSTEM=="usb", ENV{PRODUCT}=="38af/1/100", RUN+="/bin/bash /home/pi/op25/op25/gr-op25_repeater/apps/sdrhw_removed.sh"
+#
 # Airspy Mini
 ACTION=="remove", SUBSYSTEM=="usb", ENV{PRODUCT}=="1d50/60a1/100", RUN+="/bin/bash /home/pi/op25/op25/gr-op25_repeater/apps/sdrhw_removed.sh"
 #
