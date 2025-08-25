@@ -74,8 +74,10 @@ op25_audio::op25_audio(const char* udp_host, int port, int debug) :
     d_debug(debug),
     d_write_port(port),
     d_audio_port(port),
+    d_ws_port(port),
     d_write_sock(0),
-    d_file_enabled(false)
+    d_file_enabled(false),
+    d_ws_enabled(false)
 {
     char ip[20];
     if (hostname_to_ip(udp_host, ip) == 0)
@@ -93,6 +95,8 @@ op25_audio::~op25_audio()
     if (d_file_enabled)
         close(d_write_sock);
     close_socket();
+    if (d_ws_enabled)
+        ws_stop();
 }
 
 // constructor
@@ -101,12 +105,15 @@ op25_audio::op25_audio(const char* destination, int debug) :
     d_debug(debug),
     d_write_port(0),
     d_audio_port(0),
+    d_ws_port(0),
     d_write_sock(0),
-    d_file_enabled(false)
+    d_file_enabled(false),
+    d_ws_enabled(false)
 {
     static const int DEFAULT_UDP_PORT = 23456;
-    static const char P_UDP[] = "udp://";
+    static const char P_UDP[]  = "udp://";
     static const char P_FILE[] = "file://";
+    static const char P_WS[]   = "ws:";
     int port = DEFAULT_UDP_PORT;
 
     if (memcmp(destination, P_UDP, strlen(P_UDP)) == 0) {
@@ -122,15 +129,15 @@ op25_audio::op25_audio(const char* destination, int debug) :
         if (hostname_to_ip(host, ip) == 0) {
             strncpy(d_udp_host, ip, sizeof(d_udp_host)-1);
             d_udp_host[sizeof(d_udp_host)-1] = 0;
-            d_write_port = d_audio_port = port;
+            d_write_port = d_audio_port = d_ws_port = port;
             open_socket();
         }
     } else if (memcmp(destination, P_FILE, strlen(P_FILE)) == 0) {
         const char * filename = destination+strlen(P_FILE);
         size_t l = strlen(filename);
         if (l > 4 && (strcmp(&filename[l-4], ".wav") == 0 || strcmp(&filename[l-4], ".WAV") == 0)) {
-		fprintf (stderr, "Warning! Output file %s will be written, but in raw form ***without*** a WAV file header!\n", filename);
-	}
+            fprintf(stderr, "Warning! Output file %s will be written, but in raw form ***without*** a WAV file header!\n", filename);
+        }
         d_write_sock = open(filename, O_WRONLY | O_CREAT, 0644);
         if (d_write_sock < 0) {
             fprintf(stderr, "op25_audio::open file %s: error: %d (%s)\n", filename, errno, strerror(errno));
@@ -138,6 +145,21 @@ op25_audio::op25_audio(const char* destination, int debug) :
             return;
         }
         d_file_enabled = true;
+    } else if (memcmp(destination, P_WS, strlen(P_WS)) == 0) {
+        const char * p1 = destination+strlen(P_WS);
+        sscanf(p1, "%d", &port);
+        d_write_port = d_audio_port = d_ws_port = port;
+
+        d_ws_endpt.set_error_channels(websocketpp::log::elevel::all);
+        d_ws_endpt.set_access_channels(websocketpp::log::alevel::all ^ websocketpp::log::alevel::frame_payload);
+        d_ws_endpt.init_asio();
+        d_ws_endpt.set_open_handler(std::bind(&op25_audio::ws_open_handler, this, std::placeholders::_1));
+        d_ws_endpt.set_close_handler(std::bind(&op25_audio::ws_close_handler, this, std::placeholders::_1));
+        d_ws_endpt.set_fail_handler(std::bind(&op25_audio::ws_fail_handler, this, std::placeholders::_1));
+        d_ws_endpt.set_message_handler(std::bind(&op25_audio::ws_msg_handler, this, std::placeholders::_1, std::placeholders::_2));
+        d_ws_endpt.listen(d_ws_port);
+        d_ws_endpt.start_accept();
+        ws_start();
     }
 }
 // open socket and set up data structures
@@ -178,7 +200,8 @@ void op25_audio::close_socket()
         d_udp_enabled = false;
 }
 
-ssize_t op25_audio::do_send(const void * buf, size_t len, int port, bool is_ctrl ) const {
+ssize_t op25_audio::do_send(const void * buf, size_t len, int port, bool is_ctrl ) const
+{
         ssize_t rc = 0;
         struct sockaddr_in tmp_sockaddr;
         if (len <= 0)
@@ -243,4 +266,47 @@ ssize_t op25_audio::send_audio_flag_channel(const udpFlagEnumType udp_flag, ssiz
 ssize_t op25_audio::send_audio_flag(const op25_audio::udpFlagEnumType udp_flag) const
 {
         return send_audio_flag_channel(udp_flag, 0);
+}
+
+// websocket message handler callback
+void op25_audio::ws_msg_handler(websocketpp::connection_hdl hdl, websocketpp::server<websocketpp::config::asio>::message_ptr msg)
+{
+    d_ws_endpt.send(hdl, msg->get_payload(), msg->get_opcode()); //simple echo server for debugging
+}
+
+// websocket open connection callback
+void op25_audio::ws_open_handler(websocketpp::connection_hdl hdl)
+{
+    fprintf(stderr, "op25_audio::op25_audio: websocket connection opened\n");
+}
+
+// websocket close connection callback
+void op25_audio::ws_close_handler(websocketpp::connection_hdl hdl)
+{
+    fprintf(stderr, "op25_audio::op25_audio: websocket connection closed\n");
+}
+
+// websocket close connection callback
+void op25_audio::ws_fail_handler(websocketpp::connection_hdl hdl)
+{
+    fprintf(stderr, "op25_audio::op25_audio: websocket connection failed\n");
+}
+
+// websocket server thread
+void op25_audio::ws_start()
+{
+    ws_thread = std::thread([this]() { this->d_ws_endpt.run(); });
+    ws_thread.detach();
+    d_ws_enabled = true;
+    fprintf(stderr, "op25_audio::op25_audio: Started websocket server on port %d\n", d_ws_port);
+}
+
+// websocket graceful shutdown
+void op25_audio::ws_stop()
+{
+    fprintf(stderr, "op25_audio::op25_audio: Shutting down websocket server on port %d\n", d_ws_port);
+    d_ws_endpt.stop_listening();
+    d_ws_endpt.stop(); // Definitely not the way to shut down gracefully
+    ws_thread.join();
+    fprintf(stderr, "op25_audio::op25_audio: Aborted websocket server on port %d\n", d_ws_port);
 }

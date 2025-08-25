@@ -26,6 +26,11 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <thread>
+
+#define ASIO_STANDALONE
+#include <websocketpp/config/asio_no_tls.hpp>
+#include <websocketpp/server.hpp>
 
 class op25_audio
 {
@@ -41,14 +46,26 @@ private:
     int         d_debug;
     int         d_write_port;
     int         d_audio_port;
+    int         d_ws_port;
     char        d_udp_host[128];
     int         d_write_sock;
     bool        d_file_enabled;
+    bool        d_ws_enabled;
     struct      sockaddr_in d_sock_addr;
 
     void open_socket();
     void close_socket();
     ssize_t do_send(const void * bufp, size_t len, int port, bool is_ctrl) const;
+
+private:
+    std::thread ws_thread;
+    websocketpp::server<websocketpp::config::asio> d_ws_endpt;
+    void ws_msg_handler(websocketpp::connection_hdl hdl, websocketpp::server<websocketpp::config::asio>::message_ptr msg);
+    void ws_open_handler(websocketpp::connection_hdl hdl);
+    void ws_close_handler(websocketpp::connection_hdl hdl);
+    void ws_fail_handler(websocketpp::connection_hdl hdl);
+    void ws_start();
+    void ws_stop();
 
 public:
     op25_audio(const char* udp_host, int port, int debug);
