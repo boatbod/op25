@@ -27,6 +27,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <thread>
+#include <vector>
 
 #define ASIO_STANDALONE
 #include <websocketpp/config/asio_no_tls.hpp>
@@ -55,15 +56,17 @@ private:
 
     void open_socket();
     void close_socket();
-    ssize_t do_send(const void * bufp, size_t len, int port, bool is_ctrl) const;
+    ssize_t do_send(const void * bufp, size_t len, int port, bool is_ctrl);
 
 private:
     std::thread ws_thread;
     websocketpp::server<websocketpp::config::asio> d_ws_endpt;
+    std::vector<websocketpp::connection_hdl> d_ws_connections;
     void ws_msg_handler(websocketpp::connection_hdl hdl, websocketpp::server<websocketpp::config::asio>::message_ptr msg);
     void ws_open_handler(websocketpp::connection_hdl hdl);
     void ws_close_handler(websocketpp::connection_hdl hdl);
     void ws_fail_handler(websocketpp::connection_hdl hdl);
+    void ws_send_audio(const void *buf, size_t len);
     void ws_start();
     void ws_stop();
 
@@ -75,13 +78,13 @@ public:
     inline bool enabled() const { return d_udp_enabled; }
     inline void set_debug(int debug) { d_debug = debug; }
 
-    ssize_t send_to(const void *buf, size_t len) const;
+    ssize_t send_to(const void *buf, size_t len);
 
-    ssize_t send_audio(const void *buf, size_t len) const;
-    ssize_t send_audio_flag(const udpFlagEnumType udp_flag) const;
+    ssize_t send_audio(const void *buf, size_t len);
+    ssize_t send_audio_flag(const udpFlagEnumType udp_flag);
 
-    ssize_t send_audio_channel(const void *buf, size_t len, ssize_t slot_id) const;
-    ssize_t send_audio_flag_channel(const udpFlagEnumType udp_flag, ssize_t slot_id) const;
+    ssize_t send_audio_channel(const void *buf, size_t len, ssize_t slot_id);
+    ssize_t send_audio_flag_channel(const udpFlagEnumType udp_flag, ssize_t slot_id);
 
 }; // class op25_audio
 

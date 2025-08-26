@@ -150,7 +150,7 @@ static void clear_bits(bit_vector& v) {
 	}
 }
 
-p25p1_voice_encode::p25p1_voice_encode(bool verbose_flag, int stretch_amt, const op25_audio& udp, bool raw_vectors_flag, std::deque<uint8_t> &_output_queue) :
+p25p1_voice_encode::p25p1_voice_encode(bool verbose_flag, int stretch_amt, op25_audio& udp, bool raw_vectors_flag, std::deque<uint8_t> &_output_queue) :
 	frame_cnt(0),
 	write_bufp(0),
 	peak_amplitude(0),
