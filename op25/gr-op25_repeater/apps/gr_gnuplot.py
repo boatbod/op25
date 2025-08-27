@@ -71,7 +71,7 @@ class wrap_gp(object):
         self.attach_gp()
 
     def attach_gp(self):
-        args = (GNUPLOT, '-noraise')
+        args = [GNUPLOT, '-noraise']
         exe  = GNUPLOT
         self.gp = subprocess.Popen(args, executable=exe, stdin=subprocess.PIPE)
 
