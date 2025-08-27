@@ -36,6 +36,7 @@
 #include <algorithm>
 
 #include "op25_audio.h"
+#include "url_parser.h"
 
 // convert hostname to ip address
 static int hostname_to_ip(const char *hostname , char *ip)
@@ -67,19 +68,30 @@ static int hostname_to_ip(const char *hostname , char *ip)
      
     freeaddrinfo(servinfo); // all done with this structure
     return 0;
-
 }
 
-// constructor
+// tokenize a string using a delimiter
+void tokenize(std::string str, std::vector<std::string> &token_v, std::string delim)
+{
+    size_t start = str.find_first_not_of(delim), end=start;
+
+    while (start != std::string::npos) {
+        end = str.find(delim, start);
+        token_v.push_back(str.substr(start, end-start));
+        start = str.find_first_not_of(delim, end);
+    }
+}
+
+// constructor (legacy p25_frame_assembler entry point)
 op25_audio::op25_audio(const char* udp_host, int port, int debug) :
     d_udp_enabled(false),
     d_debug(debug),
     d_write_port(port),
     d_audio_port(port),
-    d_ws_port(port),
     d_write_sock(0),
     d_file_enabled(false),
-    d_ws_enabled(false)
+    d_ws_enabled(false),
+    d_ws_port(port)
 {
     d_ws_connections.clear();
     char ip[20];
@@ -106,60 +118,72 @@ op25_audio::op25_audio(const char* destination, int debug) :
     d_udp_enabled(false),
     d_debug(debug),
     d_write_port(0),
-    d_audio_port(0),
-    d_ws_port(0),
+    d_audio_port(232456),
     d_write_sock(0),
     d_file_enabled(false),
-    d_ws_enabled(false)
+    d_ws_enabled(false),
+    d_ws_port(9000)
 {
-    static const int DEFAULT_UDP_PORT = 23456;
-    static const char P_UDP[]  = "udp://";
-    static const char P_FILE[] = "file://";
-    int port = DEFAULT_UDP_PORT;
+    static const std::string P_UDP  = "udp";
+    static const std::string P_FILE = "file";
+    static const std::string P_WS   = "ws";
+    d_ws_host.clear();
     d_ws_connections.clear();
 
-    if (memcmp(destination, P_UDP, strlen(P_UDP)) == 0) {
-        char ip[20];
-        char host[128];
-        const char * p1 = destination+strlen(P_UDP);
-        strncpy(host, p1, sizeof(host)-1);
-        char * pc = index(host, ':');
-        if (pc) {
-            sscanf(pc+1, "%d", &port);
-            *pc = 0;
-        }
-        if (hostname_to_ip(host, ip) == 0) {
-            strncpy(d_udp_host, ip, sizeof(d_udp_host)-1);
-            d_udp_host[sizeof(d_udp_host)-1] = 0;
-            d_write_port = d_audio_port = d_ws_port = port;
-            open_socket();
-        }
-    } else if (memcmp(destination, P_FILE, strlen(P_FILE)) == 0) {
-        const char * filename = destination+strlen(P_FILE);
-        size_t l = strlen(filename);
-        if (l > 4 && (strcmp(&filename[l-4], ".wav") == 0 || strcmp(&filename[l-4], ".WAV") == 0)) {
-            fprintf(stderr, "Warning! Output file %s will be written, but in raw form ***without*** a WAV file header!\n", filename);
-        }
-        d_write_sock = open(filename, O_WRONLY | O_CREAT, 0644);
-        if (d_write_sock < 0) {
-            fprintf(stderr, "op25_audio::open file %s: error: %d (%s)\n", filename, errno, strerror(errno));
-            d_write_sock = 0;
-            return;
-        }
-        d_file_enabled = true;
-    }
+    std::string dest_str(destination);
+    std::vector<std::string> destinations;
+    dest_str.erase(remove_if(dest_str.begin(), dest_str.end(), isspace), dest_str.end()); // first strip any whitespace
+    tokenize(dest_str, destinations, ",");                                                // then split into individual destinations
 
-    d_ws_port = port + 10000;
-    d_ws_endpt.set_error_channels(websocketpp::log::elevel::all);
-    d_ws_endpt.set_access_channels(websocketpp::log::alevel::all ^ websocketpp::log::alevel::frame_payload);
-    d_ws_endpt.init_asio();
-    d_ws_endpt.set_open_handler(std::bind(&op25_audio::ws_open_handler, this, std::placeholders::_1));
-    d_ws_endpt.set_close_handler(std::bind(&op25_audio::ws_close_handler, this, std::placeholders::_1));
-    d_ws_endpt.set_fail_handler(std::bind(&op25_audio::ws_fail_handler, this, std::placeholders::_1));
-    d_ws_endpt.set_message_handler(std::bind(&op25_audio::ws_msg_handler, this, std::placeholders::_1, std::placeholders::_2));
-    d_ws_endpt.listen(d_ws_port);
-    d_ws_endpt.start_accept();
-    ws_start();
+    //TODO: the following block needs to be seriously cleaned up!
+    for (auto & dest : destinations) {
+        URLParser::HTTP_URL dest_url = URLParser::Parse(dest);
+        if (dest_url.host.empty() && dest_url.scheme != std::string("file")) {            // dirty hack for broken parser 
+            dest_url = URLParser::Parse(dest + "/");
+        }
+        fprintf(stderr, "op25_audio::op25_audio: destination: %s [schema: %s, host: %s, port: %s]\n",
+                dest.c_str(), dest_url.scheme.c_str(), dest_url.host.c_str(), dest_url.port.c_str());
+        if (dest_url.scheme == P_UDP) {
+            char ip[20];
+            if (hostname_to_ip(dest_url.host.c_str(), ip) == 0) {
+                strncpy(d_udp_host, ip, sizeof(d_udp_host)-1);
+                d_udp_host[sizeof(d_udp_host)-1] = 0;
+                d_write_port = std::stoi(dest_url.port);
+                open_socket();
+            }
+        } else if (dest_url.scheme == P_FILE) {
+            const char * filename = dest.c_str() + P_FILE.length() + 3; //fixme! 
+            size_t l = strlen(filename);
+            if (l > 4 && (strcmp(&filename[l-4], ".wav") == 0 || strcmp(&filename[l-4], ".WAV") == 0)) {
+                fprintf(stderr, "Warning! Output file %s will be written, but in raw form ***without*** a WAV file header!\n", filename);
+            }
+            d_write_sock = open(filename, O_WRONLY | O_CREAT, 0644);
+            if (d_write_sock < 0) {
+                fprintf(stderr, "op25_audio::open file %s: error: %d (%s)\n", filename, errno, strerror(errno));
+                d_write_sock = 0;
+                return;
+            }
+            d_file_enabled = true;
+        } else if (dest_url.scheme == P_WS) {
+            // generic websocket initialization
+            d_ws_endpt.set_error_channels(websocketpp::log::elevel::all);
+            d_ws_endpt.set_access_channels(websocketpp::log::alevel::all ^ websocketpp::log::alevel::frame_payload);
+            d_ws_endpt.init_asio();
+            d_ws_endpt.set_open_handler(std::bind(&op25_audio::ws_open_handler, this, std::placeholders::_1));
+            d_ws_endpt.set_close_handler(std::bind(&op25_audio::ws_close_handler, this, std::placeholders::_1));
+            d_ws_endpt.set_fail_handler(std::bind(&op25_audio::ws_fail_handler, this, std::placeholders::_1));
+            d_ws_endpt.set_message_handler(std::bind(&op25_audio::ws_msg_handler, this, std::placeholders::_1, std::placeholders::_2));
+
+            char ip[20];
+            if (hostname_to_ip(dest_url.host.c_str(), ip) == 0) {
+                d_ws_host = dest_url.host;
+                d_ws_port = std::stoi(dest_url.port);
+            }
+            d_ws_endpt.listen(d_ws_port);
+            d_ws_endpt.start_accept();
+            ws_start();
+        }
+    }
 }
 // open socket and set up data structures
 void op25_audio::open_socket()

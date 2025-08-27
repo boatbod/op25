@@ -47,11 +47,9 @@ private:
     int         d_debug;
     int         d_write_port;
     int         d_audio_port;
-    int         d_ws_port;
     char        d_udp_host[128];
     int         d_write_sock;
     bool        d_file_enabled;
-    bool        d_ws_enabled;
     struct      sockaddr_in d_sock_addr;
 
     void open_socket();
@@ -59,6 +57,9 @@ private:
     ssize_t do_send(const void * bufp, size_t len, int port, bool is_ctrl);
 
 private:
+    bool        d_ws_enabled;
+    int         d_ws_port;
+    std::string d_ws_host;
     std::thread ws_thread;
     websocketpp::server<websocketpp::config::asio> d_ws_endpt;
     std::vector<websocketpp::connection_hdl> d_ws_connections;
