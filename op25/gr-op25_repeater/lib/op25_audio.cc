@@ -118,7 +118,7 @@ op25_audio::op25_audio(const char* destination, int debug) :
     d_udp_enabled(false),
     d_debug(debug),
     d_write_port(0),
-    d_audio_port(232456),
+    d_audio_port(23456),
     d_write_sock(0),
     d_file_enabled(false),
     d_ws_enabled(false),
@@ -145,7 +145,7 @@ op25_audio::op25_audio(const char* destination, int debug) :
             if (hostname_to_ip(dest_url.host.c_str(), ip) == 0) {
                 strncpy(d_udp_host, ip, sizeof(d_udp_host)-1);
                 d_udp_host[sizeof(d_udp_host)-1] = 0;
-                d_write_port = std::stoi(dest_url.port);
+                d_write_port = d_audio_port = std::stoi(dest_url.port);
                 open_socket();
             }
         } else if (dest_url.scheme == P_FILE) { //TODO: this block of code is broken
