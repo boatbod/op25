@@ -63,13 +63,13 @@ private:
     std::thread ws_thread;
     websocketpp::server<websocketpp::config::asio> d_ws_endpt;
     std::vector<websocketpp::connection_hdl> d_ws_connections;
-    void ws_msg_handler(websocketpp::connection_hdl hdl, websocketpp::server<websocketpp::config::asio>::message_ptr msg);
-    void ws_open_handler(websocketpp::connection_hdl hdl);
-    void ws_close_handler(websocketpp::connection_hdl hdl);
-    void ws_fail_handler(websocketpp::connection_hdl hdl);
-    void ws_send_audio(const void *buf, size_t len);
-    void ws_start();
-    void ws_stop();
+    void        ws_msg_handler(websocketpp::connection_hdl hdl, websocketpp::server<websocketpp::config::asio>::message_ptr msg);
+    void        ws_open_handler(websocketpp::connection_hdl hdl);
+    void        ws_close_handler(websocketpp::connection_hdl hdl);
+    void        ws_fail_handler(websocketpp::connection_hdl hdl);
+    void        ws_send_audio(const void *buf, size_t len);
+    void        ws_start();
+    void        ws_stop();
 
 public:
     op25_audio(const char* udp_host, int port, int debug);
@@ -79,13 +79,13 @@ public:
     inline bool enabled() const { return d_udp_enabled; }
     inline void set_debug(int debug) { d_debug = debug; }
 
-    ssize_t send_to(const void *buf, size_t len);
+    ssize_t     send_to(const void *buf, size_t len);
 
-    ssize_t send_audio(const void *buf, size_t len);
-    ssize_t send_audio_flag(const udpFlagEnumType udp_flag);
+    ssize_t     send_audio(const void *buf, size_t len);
+    ssize_t     send_audio_flag(const udpFlagEnumType udp_flag);
 
-    ssize_t send_audio_channel(const void *buf, size_t len, ssize_t slot_id);
-    ssize_t send_audio_flag_channel(const udpFlagEnumType udp_flag, ssize_t slot_id);
+    ssize_t     send_audio_channel(const void *buf, size_t len, ssize_t slot_id);
+    ssize_t     send_audio_flag_channel(const udpFlagEnumType udp_flag, ssize_t slot_id);
 
 }; // class op25_audio
 

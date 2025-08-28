@@ -1,6 +1,6 @@
 /* -*- c++ -*- */
 /* 
- * Copyright 2017 Graham J Norbury, gnorbury@bondcar.com
+ * Copyright 2017-2025 Graham J Norbury, gnorbury@bondcar.com
  * from op25_audio; rewrite Nov 2017 Copyright 2017 Max H. Parke KA1RBI
  * 
  * This is free software; you can redistribute it and/or modify
@@ -135,13 +135,10 @@ op25_audio::op25_audio(const char* destination, int debug) :
     dest_str.erase(remove_if(dest_str.begin(), dest_str.end(), isspace), dest_str.end()); // first strip any whitespace
     tokenize(dest_str, destinations, ",");                                                // then split into individual destinations
 
-    //TODO: the following block needs to be seriously cleaned up!
+    // TODO: the following block needs to be seriously cleaned up!
     for (auto & dest : destinations) {
         URLParser::HTTP_URL dest_url = URLParser::Parse(dest);
-        if (dest_url.host.empty() && dest_url.scheme != std::string("file")) {            // dirty hack for broken parser 
-            dest_url = URLParser::Parse(dest + "/");
-        }
-        fprintf(stderr, "op25_audio::op25_audio: destination: %s [schema: %s, host: %s, port: %s]\n",
+        fprintf(stderr, "op25_audio::op25_audio(): destination: %s [schema: %s, host: %s, port: %s]\n",
                 dest.c_str(), dest_url.scheme.c_str(), dest_url.host.c_str(), dest_url.port.c_str());
         if (dest_url.scheme == P_UDP) {
             char ip[20];
@@ -151,8 +148,9 @@ op25_audio::op25_audio(const char* destination, int debug) :
                 d_write_port = std::stoi(dest_url.port);
                 open_socket();
             }
-        } else if (dest_url.scheme == P_FILE) {
-            const char * filename = dest.c_str() + P_FILE.length() + 3; //fixme! 
+        } else if (dest_url.scheme == P_FILE) { //TODO: this block of code is broken
+#if 0
+            const char * filename = dest.c_str() + P_FILE.length() + 3;
             size_t l = strlen(filename);
             if (l > 4 && (strcmp(&filename[l-4], ".wav") == 0 || strcmp(&filename[l-4], ".WAV") == 0)) {
                 fprintf(stderr, "Warning! Output file %s will be written, but in raw form ***without*** a WAV file header!\n", filename);
@@ -164,8 +162,10 @@ op25_audio::op25_audio(const char* destination, int debug) :
                 return;
             }
             d_file_enabled = true;
+#endif
         } else if (dest_url.scheme == P_WS) {
             // generic websocket initialization
+            websocketpp::lib::error_code ec;
             d_ws_endpt.set_error_channels(websocketpp::log::elevel::all);
             d_ws_endpt.set_access_channels(websocketpp::log::alevel::all ^ websocketpp::log::alevel::frame_payload);
             d_ws_endpt.init_asio();
@@ -179,9 +179,15 @@ op25_audio::op25_audio(const char* destination, int debug) :
                 d_ws_host = dest_url.host;
                 d_ws_port = std::stoi(dest_url.port);
             }
-            d_ws_endpt.listen(d_ws_port);
-            d_ws_endpt.start_accept();
-            ws_start();
+            d_ws_endpt.listen(d_ws_port, ec);
+            if (ec) {
+                fprintf(stderr, "op25_audio::op25_audio(): port [%d], websocket listen error: %s\n", d_ws_port, ec.message().c_str());
+            } else
+            {
+                d_ws_endpt.start_accept();
+                ws_start();
+                d_ws_enabled = true;
+            }
         }
     }
 }
@@ -332,10 +338,14 @@ void op25_audio::ws_fail_handler(websocketpp::connection_hdl hdl)
 // websocket send audio message to clients
 void op25_audio::ws_send_audio(const void *buf, size_t len)
 {
+    websocketpp::lib::error_code ec;
     for (auto & hdl : d_ws_connections) {
         if ( hdl.expired() )
             continue;
-        d_ws_endpt.send(hdl, buf, len, websocketpp::frame::opcode::binary);
+        d_ws_endpt.send(hdl, buf, len, websocketpp::frame::opcode::binary, ec);
+        if (ec) {
+            fprintf(stderr, "op25_audio::ws_send_audio: port [%d], websocket error: %s\n", d_ws_port, ec.message().c_str());
+        }
     }
 }
 

@@ -4,6 +4,8 @@
 // Website : https://github.com/dongbum/URLParser
 // Usage : Just include this header file.
 //
+// Corrected and converted to C++11, August 27, 2025
+// (C) gnorbury@bondcar.com
 
 #pragma once
 
@@ -34,8 +36,13 @@ public:
 		size_t st = 0;
 		size_t before = 0;
 
-		URLParserFunction::FindKeyword(input_url, st, before, "://", http_url.scheme);
-		URLParserFunction::FindKeyword(input_url, st, before, "/", http_url.host);
+		if (!URLParserFunction::FindKeyword(input_url, st, before, "://", http_url.scheme))
+        {
+            http_url.scheme.clear();
+            return http_url; //stop decode if scheme is missing
+        }
+
+		bool has_path   = URLParserFunction::FindKeyword(input_url, st, before, "/", http_url.host);
 
 		size_t temp_st = 0;
 		size_t temp_before = 0;
@@ -48,22 +55,28 @@ public:
 			http_url.host = temp_ip;
 		}
 
+        if (!has_path)
+            return http_url;
+
+        std::string full_path;
+        bool has_query = URLParserFunction::FindKeyword(input_url, st, before, "?", full_path);
+        temp_st = st;
+        temp_before = before;
+        st = 0;
+        before = 0;
 		while (true)
 		{
 			std::string path;
-			if (false == URLParserFunction::FindKeyword(input_url, st, before, "/", path))
+			bool rc = URLParserFunction::FindKeyword(full_path, st, before, "/", path);
+            if (!path.empty())
+			    http_url.path.push_back(path);
+            
+			if (rc == false)
 				break;
-
-			http_url.path.push_back(path);
 		}
-
-		std::string path;
-		if (false == URLParserFunction::FindKeyword(input_url, st, before, "?", path))
-		{
-			path = std::string(&input_url[st + 1]);
-			http_url.path.push_back(path);
-			return http_url;
-		}
+        st = temp_st;
+        if (!has_query)
+            return http_url;
 
 		if (st < input_url.length())
 		{
