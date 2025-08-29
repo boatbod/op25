@@ -164,7 +164,7 @@ op25_audio::op25_audio(const char* destination, int debug) :
             d_file_enabled = true;
 #endif
         } else if (dest_url.scheme == P_WS) {
-            // generic websocket initialization
+            // websocket initialization
             websocketpp::lib::error_code ec;
             d_ws_endpt.set_error_channels(websocketpp::log::elevel::all);
             d_ws_endpt.set_access_channels(websocketpp::log::alevel::all ^ websocketpp::log::alevel::frame_payload);
@@ -173,13 +173,9 @@ op25_audio::op25_audio(const char* destination, int debug) :
             d_ws_endpt.set_close_handler(std::bind(&op25_audio::ws_close_handler, this, std::placeholders::_1));
             d_ws_endpt.set_fail_handler(std::bind(&op25_audio::ws_fail_handler, this, std::placeholders::_1));
             d_ws_endpt.set_message_handler(std::bind(&op25_audio::ws_msg_handler, this, std::placeholders::_1, std::placeholders::_2));
-
-            char ip[20];
-            if (hostname_to_ip(dest_url.host.c_str(), ip) == 0) {
-                d_ws_host = dest_url.host;
-                d_ws_port = std::stoi(dest_url.port);
-            }
-            d_ws_endpt.listen(d_ws_port, ec);
+            d_ws_host = dest_url.host;
+            d_ws_port = std::stoi(dest_url.port);
+            d_ws_endpt.listen(dest_url.host, dest_url.port, ec);
             if (ec) {
                 fprintf(stderr, "op25_audio::op25_audio(): port [%d], websocket listen error: %s\n", d_ws_port, ec.message().c_str());
             } else
