@@ -72,6 +72,7 @@ private:
     void        ws_close_handler(websocketpp::connection_hdl hdl);
     void        ws_fail_handler(websocketpp::connection_hdl hdl);
     void        ws_send_audio(const void *buf, size_t len);
+    void        ws_send_audio_flag(const udpFlagEnumType udp_flag);
     void        ws_start();
     void        ws_stop();
 

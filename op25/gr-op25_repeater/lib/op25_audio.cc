@@ -286,16 +286,17 @@ ssize_t op25_audio::send_audio_channel(const void *buf, size_t len, ssize_t slot
 // send flag to audio destination 
 ssize_t op25_audio::send_audio_flag_channel(const udpFlagEnumType udp_flag, ssize_t slot_id)
 {
-        char audio_flag[2];
-        // 16 bit little endian encoding
-        audio_flag[0] = (udp_flag & 0x00ff);
-        audio_flag[1] = ((udp_flag & 0xff00) >> 8);
-        return do_send(audio_flag, 2, d_audio_port + slot_id*2, true);
+    char audio_flag[2];
+    // 16 bit little endian encoding
+    audio_flag[0] = (udp_flag & 0x00ff);
+    audio_flag[1] = ((udp_flag & 0xff00) >> 8);
+    return do_send(audio_flag, 2, d_audio_port + slot_id*2, true);
 }
 
 ssize_t op25_audio::send_audio_flag(const op25_audio::udpFlagEnumType udp_flag)
 {
-        return send_audio_flag_channel(udp_flag, 0);
+    ws_send_audio_flag(udp_flag);
+    return send_audio_flag_channel(udp_flag, 0);
 }
 
 // websocket message handler callback
@@ -345,6 +346,25 @@ void op25_audio::ws_send_audio(const void *buf, size_t len)
         d_ws_endpt.send(hdl, buf, len, websocketpp::frame::opcode::binary, ec);
         if (ec) {
             fprintf(stderr, "%s op25_audio::ws_send_audio: port [%d], websocket error: %s\n", logts.get(d_msgq_id), d_ws_port, ec.message().c_str());
+        }
+    }
+}
+
+// websocket send audio flag to clients
+void op25_audio::ws_send_audio_flag(const udpFlagEnumType udp_flag)
+{
+    char audio_flag[2];
+    // 16 bit little endian encoding
+    audio_flag[0] = (udp_flag & 0x00ff);
+    audio_flag[1] = ((udp_flag & 0xff00) >> 8);
+
+    websocketpp::lib::error_code ec;
+    for (auto & hdl : d_ws_connections) {
+        if ( hdl.expired() )
+            continue;
+        d_ws_endpt.send(hdl, audio_flag, sizeof(audio_flag), websocketpp::frame::opcode::binary, ec);
+        if (ec) {
+            fprintf(stderr, "%s op25_audio::ws_send_audio_flag: port [%d], websocket error: %s\n", logts.get(d_msgq_id), d_ws_port, ec.message().c_str());
         }
     }
 }
