@@ -63,7 +63,7 @@ namespace gr {
                     gr::io_signature::make (0, 0, 0)),
             d_msgq_id(msgq_id),
             d_msg_queue(queue),
-            d_audio(options, debug)
+            d_audio(options, logts, debug, msgq_id)
         {
         }
 

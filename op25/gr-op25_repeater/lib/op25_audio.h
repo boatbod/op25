@@ -33,6 +33,8 @@
 #include <websocketpp/config/asio_no_tls.hpp>
 #include <websocketpp/server.hpp>
 
+#include "log_ts.h"
+
 class op25_audio
 {
 public:
@@ -45,12 +47,14 @@ public:
 private:
     bool        d_udp_enabled;
     int         d_debug;
+    int         d_msgq_id;
     int         d_write_port;
     int         d_audio_port;
     char        d_udp_host[128];
     int         d_write_sock;
     bool        d_file_enabled;
     struct      sockaddr_in d_sock_addr;
+    log_ts&     logts;
 
     void open_socket();
     void close_socket();
@@ -72,8 +76,8 @@ private:
     void        ws_stop();
 
 public:
-    op25_audio(const char* udp_host, int port, int debug);
-    op25_audio(const char* destination, int debug);
+    op25_audio(const char* udp_host, int port, log_ts& logger, int debug, int msgq_id);
+    op25_audio(const char* destination, log_ts& logger, int debug, int msgq_id);
     ~op25_audio();
 
     inline bool enabled() const { return d_udp_enabled; }

@@ -113,12 +113,12 @@ namespace gr {
             gr::io_signature::make ((do_output) ? 1 : 0, (do_output) ? 1 : 0, (do_audio_output && do_output) ? sizeof(int16_t) : ((do_output) ? sizeof(char) : 0 ))),
             d_debug(debug),
         	d_do_output(do_output),
-        	p1fdma(op25audio, logts, debug, do_imbe, do_output, do_msgq, queue, output_queue, do_audio_output),
+        	p1fdma(op25audio, logts, debug, do_imbe, do_output, do_msgq, queue, output_queue, do_audio_output, 0),
         	d_do_audio_output(do_audio_output),
-        	p2tdma(op25audio, logts, 0, debug, do_msgq, queue, output_queue, do_audio_output),
+        	p2tdma(op25audio, logts, 0, debug, do_msgq, queue, output_queue, do_audio_output, 0),
         	d_do_msgq(do_msgq),
         	output_queue(),
-        	op25audio(udp_host, port, debug)
+        	op25audio(udp_host, port, logts, debug, 0)
         {
             fprintf(stderr, "p25_frame_assembler_impl: do_imbe[%d], do_output[%d], do_audio_output[%d], do_phase2_tdma[%d], do_nocrypt[%d]\n", do_imbe, do_output, do_audio_output, do_phase2_tdma, do_nocrypt);
         }
