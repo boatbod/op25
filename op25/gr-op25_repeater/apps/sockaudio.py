@@ -515,7 +515,7 @@ class socket_audio(object):
         self.sock_a.setblocking(0)
         self.sock_b.setblocking(0)
         self.sock_a.bind((udp_host, udp_port))
-        self.sock_b.bind((udp_host, udp_port + 2))
+        self.sock_b.bind((udp_host, udp_port + 1))
         return
 
     def close_sockets(self):

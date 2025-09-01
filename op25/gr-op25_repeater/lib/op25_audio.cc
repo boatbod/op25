@@ -283,7 +283,7 @@ ssize_t op25_audio::send_audio(const void *buf, size_t len)
 // send audio data on specifed channel to destination
 ssize_t op25_audio::send_audio_channel(const void *buf, size_t len, ssize_t slot_id)
 {
-    return do_send(buf, len, d_audio_port + slot_id*2, false);
+    return do_send(buf, len, d_audio_port + slot_id, false);
 }
 
 // send flag to audio destination 
