@@ -34,9 +34,12 @@
 #include <netdb.h>
 #include <vector>
 #include <algorithm>
+#include <nlohmann/json.hpp>
 
 #include "op25_audio.h"
 #include "url_parser.h"
+
+using json = nlohmann::json;
 
 // convert hostname to ip address
 static int hostname_to_ip(const char *hostname , char *ip)
@@ -353,16 +356,26 @@ void op25_audio::ws_send_audio(const void *buf, size_t len)
 // websocket send audio flag to clients
 void op25_audio::ws_send_audio_flag(const udpFlagEnumType udp_flag)
 {
-    char audio_flag[2];
-    // 16 bit little endian encoding
-    audio_flag[0] = (udp_flag & 0x00ff);
-    audio_flag[1] = ((udp_flag & 0xff00) >> 8);
+    json j;
+
+    switch(udp_flag) {
+        case DRAIN:
+            j["cmd"] = "audio_drain";
+            break;
+
+        case DROP:
+            j["cmd"] = "audio_drop";
+            break;
+
+        default:
+            return;
+    }
 
     websocketpp::lib::error_code ec;
     for (auto & hdl : d_ws_connections) {
         if ( hdl.expired() )
             continue;
-        d_ws_endpt.send(hdl, audio_flag, sizeof(audio_flag), websocketpp::frame::opcode::binary, ec);
+        d_ws_endpt.send(hdl, j.dump(), websocketpp::frame::opcode::text, ec);
         if (ec) {
             fprintf(stderr, "%s op25_audio::ws_send_audio_flag: port [%d], websocket error: %s\n", logts.get(d_msgq_id), d_ws_port, ec.message().c_str());
         }
