@@ -174,7 +174,8 @@ op25_audio::op25_audio(const char* destination, log_ts& logger, int debug, int m
             // websocket initialization
             websocketpp::lib::error_code ec;
             d_ws_endpt.set_error_channels(websocketpp::log::elevel::all);
-            d_ws_endpt.set_access_channels(websocketpp::log::alevel::all ^ websocketpp::log::alevel::frame_payload);
+            //d_ws_endpt.set_access_channels(websocketpp::log::alevel::all ^ websocketpp::log::alevel::frame_payload);
+            d_ws_endpt.set_access_channels(websocketpp::log::alevel::none);
             d_ws_endpt.init_asio();
             d_ws_endpt.set_open_handler(std::bind(&op25_audio::ws_open_handler, this, std::placeholders::_1));
             d_ws_endpt.set_close_handler(std::bind(&op25_audio::ws_close_handler, this, std::placeholders::_1));
@@ -194,7 +195,7 @@ op25_audio::op25_audio(const char* destination, log_ts& logger, int debug, int m
         }
     }
 }
-// open socket and set up data structures
+// open udp socket and set up data structures
 void op25_audio::open_socket()
 {
     memset (&d_sock_addr, 0, sizeof(d_sock_addr));
@@ -305,19 +306,29 @@ ssize_t op25_audio::send_audio_flag(const op25_audio::udpFlagEnumType udp_flag)
 // websocket message handler callback
 void op25_audio::ws_msg_handler(websocketpp::connection_hdl hdl, websocketpp::server<websocketpp::config::asio>::message_ptr msg)
 {
-    d_ws_endpt.send(hdl, msg->get_payload(), msg->get_opcode()); //simple echo server for debugging
+    // d_ws_endpt.send(hdl, msg->get_payload(), msg->get_opcode()); //simple echo server for debugging
+    //TODO: process any incoming commands
 }
 
 // websocket open connection callback
 void op25_audio::ws_open_handler(websocketpp::connection_hdl hdl)
 {
-    fprintf(stderr, "%s op25_audio::op25_audio: websocket connection opened\n", logts.get(d_msgq_id));
+    websocketpp::lib::error_code ec;
+    websocketpp::server<websocketpp::config::asio>::connection_ptr con = d_ws_endpt.get_con_from_hdl(hdl, ec);
+    if (!ec) {
+        fprintf(stderr, "%s op25_audio::op25_audio: websocket connection from [%s] opened on port [%d]\n", logts.get(d_msgq_id), con->get_host().c_str(), con->get_port());
+    }
     d_ws_connections.push_back(hdl);
 }
 
 // websocket close connection callback
 void op25_audio::ws_close_handler(websocketpp::connection_hdl hdl)
 {
+    websocketpp::lib::error_code ec;
+    websocketpp::server<websocketpp::config::asio>::connection_ptr con = d_ws_endpt.get_con_from_hdl(hdl, ec);
+    if (!ec) {
+        fprintf(stderr, "%s op25_audio::op25_audio: websocket connection from [%s] closed on port [%d]\n", logts.get(d_msgq_id), con->get_host().c_str(), con->get_port());
+    }
     auto it = std::find_if(d_ws_connections.begin(), d_ws_connections.end(), [&hdl](const websocketpp::connection_hdl& ptr1) {
         return ptr1.lock() == hdl.lock();
     } );
@@ -330,6 +341,11 @@ void op25_audio::ws_close_handler(websocketpp::connection_hdl hdl)
 // websocket close connection callback
 void op25_audio::ws_fail_handler(websocketpp::connection_hdl hdl)
 {
+    websocketpp::lib::error_code ec;
+    websocketpp::server<websocketpp::config::asio>::connection_ptr con = d_ws_endpt.get_con_from_hdl(hdl, ec);
+    if (!ec) {
+        fprintf(stderr, "%s op25_audio::op25_audio: websocket connection from [%s] failed on port [%d]\n", logts.get(d_msgq_id), con->get_host().c_str(), con->get_port());
+    }
     auto it = std::find_if(d_ws_connections.begin(), d_ws_connections.end(), [&hdl](const websocketpp::connection_hdl& ptr1) {
         return ptr1.lock() == hdl.lock();
     } );
