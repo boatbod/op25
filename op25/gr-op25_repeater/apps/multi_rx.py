@@ -195,6 +195,7 @@ class channel(object):
         self.config = config
         self.symbol_rate = int(from_dict(config, 'symbol_rate', _def_symbol_rate))
         self.channel_rate = self.symbol_rate
+        self.ws_instance = get_ws_instance(from_dict(config, 'destination', ""))
         if dev.args == 'wavsrc':
             self.demod = p25_demodulator.p25_demod_fb(
                              msgq_id = self.msgq_id,
@@ -882,6 +883,15 @@ class rx_block (gr.top_block):
                 self.ui_in_q.insert_tail(msg)
         elif s == 'set_full_config':
             pass
+        elif s == 'get_ws_instances':
+            ws_instances = {}
+            for chan in self.channels:
+                ws_instances[chan.msgq_id] = chan.ws_instance
+            ws_instances['json_type'] = "ws_instances"
+            js = json.dumps(ws_instances)
+            msg = gr.message().make_from_string(js, -4, 0, 0)
+            if not self.ui_in_q.full_p():
+                self.ui_in_q.insert_tail(msg)
         elif s == 'dump_tgids':
             self.trunk_rx.dump_tgids()
         elif s == 'capture':
@@ -891,8 +901,6 @@ class rx_block (gr.top_block):
             msgq_id = int(msg.arg2())
             self.find_channel(msgq_id).toggle_capture()
         elif s == 'dump_buffer':
-            #msgq_id = int(msg.arg2())
-            #self.find_channel(msgq_id).decoder.control(json.dumps({'tuner': msgq_id, 'cmd': 'dump_buffer'}))
             for chan in self.channels:
                 chan.decoder.control(json.dumps({'tuner': chan.msgq_id, 'cmd': 'dump_buffer'}))
         elif s == 'watchdog':
