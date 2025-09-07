@@ -2014,6 +2014,7 @@ function ws_create(channel) {
 
     ws_endpt = new WebSocket(ws_endpoints[channel]);
     ws_channel = channel;
+    ws_endpt.binaryType = 'arraybuffer';
     console.log("WebSocket connection opened:", ws_endpt.url);
 
     ws_endpt.onmessage = function(event) {      // play the received binary audio from here
