@@ -906,7 +906,8 @@ class rx_block (gr.top_block):
         elif s == 'watchdog':
             if self.ui_last_update > 0 and (time.time() > (self.ui_last_update + self.ui_timeout)):
                 self.ui_last_update = 0
-                sys.stderr.write("%s UI Timeout\n" % log_ts.get())
+                if self.verbosity > 10:
+                    sys.stderr.write("%s UI Timeout\n" % log_ts.get())
                 for chan in self.channels:
                     chan.close_plots()
             # Experimental automatic fine tuning 
