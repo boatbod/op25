@@ -130,6 +130,7 @@ class p25_rx_block (gr.top_block):
         self.eye_sink = None
         self.mixer_sink = None
         self.fll_sink = None
+        self.demod = None
         self.target_freq = 0.0
         self.last_error_update = 0
         self.tuning_error = 0
@@ -155,7 +156,7 @@ class p25_rx_block (gr.top_block):
                 sys.stdout.write("osmosdr source_c creation failure\n")
                 ignore = True
  
-            if any(x in options.args.lower() for x in ['rtl', 'airspy', 'hackrf', 'uhd']):
+            if any(x in options.args.lower() for x in ['rtl', 'airspy', 'hackrf', 'uhd', 'hydrasdr']):
                 self.rtl_found = True
 
             if options.gain_mode is not None:
