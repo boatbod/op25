@@ -23,6 +23,7 @@
 import sys
 import json
 import ast
+from threading import Lock
 from urllib.parse import urlparse
 from urllib.parse import urlunparse
 from log_ts import log_ts
@@ -175,3 +176,36 @@ def get_ws_instance(destinations):
             ws_instance = urlunparse((url.scheme, url.netloc, "", "", "", ""))
             break
     return ws_instance
+
+# threading Lock with timeout
+class TimeoutLock():
+    timeout = None
+    lock    = None
+
+    # Semi-transparent __init__ method
+    def __init__(self, timeout=None, *args, **kwargs):
+        self.timeout = timeout
+        self.lock    = Lock(*args, **kwargs)
+
+    # Context management protocol __enter__ method
+    def __enter__(self, *args, **kwargs):
+        rc = self.lock.acquire(timeout=self.timeout)
+        if rc is False:
+            raise TimeoutError(f"Could not acquire lock within " 
+                               f"specified timeout of {self.timeout}s") 
+        return rc
+
+    def __exit__(self, *args, **kwargs):
+        return self.lock.release()
+
+    # Transparent method calls for rest of Lock's public methods:
+    def acquire(self, *args, **kwargs):
+        return self.lock.acquire(*args, **kwargs)
+
+    def release(self, *args, **kwargs):
+        return self.lock.release(*args, **kwargs)
+
+    def locked(self, *args, **kwargs):
+        return self.lock.locked(*args, **kwargs)
+
+
