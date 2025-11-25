@@ -10,8 +10,8 @@ fi
 #
 # Install required packages
 #
-sudo pacman -S --needed --noconfirm gnuradio gnuradio-osmosdr rtl-sdr libuhd cmake cppunit doxygen boost libpcap orc base-devel clang pkgconf python-thrift pybind11 python-numpy python-waitress python-setuptools gnuplot libsndfile spdlog hackrf
-yay -S --noconfirm itpp castxml python-pygccxml
+sudo pacman -S --needed --noconfirm gnuradio gnuradio-osmosdr rtl-sdr libuhd cmake cppunit doxygen boost orc base-devel clang pkgconf python-thrift pybind11 python-numpy python-waitress python-setuptools gnuplot libsndfile spdlog hackrf
+yay -S --noconfirm castxml python-pygccxml
 
 #
 # Check and fix missing libthrift-0.17.0.so (currently required for gnuradio modtool)
