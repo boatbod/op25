@@ -18,7 +18,7 @@
 ########################################################################
 # Setup library
 ########################################################################
-include(GrPlatform) #define LIB_SUFFIX
+include(GNUInstallDirs)
 
 list(APPEND op25_repeater_sources
     ambe_encoder_sb_impl.cc
