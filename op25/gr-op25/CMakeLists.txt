@@ -57,7 +57,7 @@ include(GrCompilerSettings)
 ########################################################################
 include(GrVersion)
 
-include(GrPlatform) #define LIB_SUFFIX
+include(GNUInstallDirs)
 
 if(NOT CMAKE_MODULES_DIR)
   set(CMAKE_MODULES_DIR lib${LIB_SUFFIX}/cmake)
@@ -94,8 +94,6 @@ endif(APPLE)
 # Find gnuradio build dependencies
 ########################################################################
 #find_package(Doxygen)
-find_package(ITPP REQUIRED)
-find_package(pcap REQUIRED)
 ########################################################################
 # Setup doxygen option
 ########################################################################

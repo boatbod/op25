@@ -33,7 +33,7 @@ if [ ${GR_VER} = "3.10" ]; then
     sudo apt-get update
     echo "Installing dependencies"
     sudo apt-get build-dep gnuradio $([ "$FORCE" = true ] && echo "-y")
-    sudo apt-get install gnuradio gnuradio-dev gr-osmosdr librtlsdr-dev libuhd-dev libhackrf-dev libitpp-dev libpcap-dev liborc-dev cmake git build-essential pkg-config doxygen clang-format python3-pybind11 python3-numpy python3-waitress python3-requests gnuplot-x11 libsndfile1-dev libspdlog-dev $([ "$FORCE" = true ] && echo "-y")
+    sudo apt-get install gnuradio gnuradio-dev gr-osmosdr librtlsdr-dev libuhd-dev libhackrf-dev liborc-dev cmake git build-essential pkg-config doxygen clang-format python3-pybind11 python3-numpy python3-waitress python3-requests gnuplot-x11 libsndfile1-dev libspdlog-dev $([ "$FORCE" = true ] && echo "-y")
 
     # Tell op25 to use python3
     echo "/usr/bin/python3" > op25/gr-op25_repeater/apps/op25_python

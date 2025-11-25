@@ -9,7 +9,7 @@
 ########################################################################
 # Setup library
 ########################################################################
-include(GrPlatform) #define LIB_SUFFIX
+include(GNUInstallDirs)
 
 list(APPEND op25_sources
     fsk4_demod_ff_impl.cc
@@ -24,12 +24,10 @@ endif(NOT op25_sources)
 
 add_library(gnuradio-op25 SHARED ${op25_sources})
 
-target_link_libraries(gnuradio-op25 gnuradio::gnuradio-runtime itpp pcap)
+target_link_libraries(gnuradio-op25 gnuradio::gnuradio-runtime)
 target_include_directories(gnuradio-op25
     PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include>
     PUBLIC $<INSTALL_INTERFACE:include>
-    PRIVATE "${ITPP_INCLUDE_DIR}"
-    PRIVATE "${PCAP_INCLUDE_DIR}"
   )
 set_target_properties(gnuradio-op25 PROPERTIES DEFINE_SYMBOL "gnuradio_op25_EXPORTS")
 
