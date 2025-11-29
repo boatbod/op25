@@ -1,0 +1,49 @@
+id: op25_repeater_p25_frame_assembler
+label: p25 frame assembler
+category: '[Op25_repeater]'
+templates:
+  imports: from gnuradio import op25_repeater
+  make: op25_repeater.p25_frame_assembler(${udp_host}, ${port}, ${debug}, ${do_imbe},
+    ${do_output}, ${do_msgq}, ${queue}, ${do_audio_output}, ${do_phase2_tdma}, ${do_nocrypt})
+parameters:
+- id: udp_host
+  label: Udp_host
+  dtype: raw
+- id: port
+  label: Port
+  dtype: int
+- id: debug
+  label: Debug
+  dtype: int
+- id: do_imbe
+  label: Do_imbe
+  dtype: raw
+- id: do_output
+  label: Do_output
+  dtype: raw
+- id: do_msgq
+  label: Do_msgq
+  dtype: raw
+- id: queue
+  label: Queue
+  dtype: raw
+- id: do_audio_output
+  label: Do_audio_output
+  dtype: raw
+- id: do_phase2_tdma
+  label: Do_phase2_tdma
+  dtype: raw
+- id: do_nocrypt
+  label: Do_nocrypt
+  dtype: raw
+inputs:
+- label: in
+  domain: stream
+  dtype: byte
+  multiplicity: MAX_IN
+outputs:
+- label: out
+  domain: stream
+  dtype: raw
+  multiplicity: '(do_output) ? 1 : 0'
+file_format: 1

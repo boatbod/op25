@@ -1,6 +1,6 @@
 # Helper functions module
 #
-# Copyright 2020 Graham J. Norbury - gnorbury@bondcar.com
+# Copyright 2025 Graham J. Norbury - gnorbury@bondcar.com
 # 
 # This file is part of OP25
 # 
@@ -23,6 +23,9 @@
 import sys
 import json
 import ast
+from threading import Lock
+from urllib.parse import urlparse
+from urllib.parse import urlunparse
 from log_ts import log_ts
 
 #################
@@ -163,3 +166,46 @@ def read_tsv_file(tsv_filename, key):
 
 def get_fractional_ppm(tuned_freq, adj_val):
     return (adj_val * 1e6 / tuned_freq)
+
+def get_ws_instance(destinations):
+    ws_instance = None
+    dest_list = destinations.replace(' ','').split(',')
+    for destination in dest_list:   # match first occurrence of ws:// or wss:// in destinations list
+        url = urlparse(destination)
+        if ((url.scheme == "ws") or (url.scheme == "wss")) and (url.netloc != ""):
+            ws_instance = urlunparse((url.scheme, url.netloc, "", "", "", ""))
+            break
+    return ws_instance
+
+# threading Lock with timeout
+class TimeoutLock():
+    timeout = None
+    lock    = None
+
+    # Semi-transparent __init__ method
+    def __init__(self, timeout=None, *args, **kwargs):
+        self.timeout = timeout
+        self.lock    = Lock(*args, **kwargs)
+
+    # Context management protocol __enter__ method
+    def __enter__(self, *args, **kwargs):
+        rc = self.lock.acquire(timeout=self.timeout)
+        if rc is False:
+            raise TimeoutError(f"Could not acquire lock within " 
+                               f"specified timeout of {self.timeout}s") 
+        return rc
+
+    def __exit__(self, *args, **kwargs):
+        return self.lock.release()
+
+    # Transparent method calls for rest of Lock's public methods:
+    def acquire(self, *args, **kwargs):
+        return self.lock.acquire(*args, **kwargs)
+
+    def release(self, *args, **kwargs):
+        return self.lock.release(*args, **kwargs)
+
+    def locked(self, *args, **kwargs):
+        return self.lock.locked(*args, **kwargs)
+
+

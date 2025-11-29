@@ -44,7 +44,7 @@
 namespace gr {
   namespace op25_repeater {
 
-p25p1_voice_decode::p25p1_voice_decode(bool verbose_flag, const op25_audio& udp, std::deque<int16_t> &_output_queue) :
+p25p1_voice_decode::p25p1_voice_decode(bool verbose_flag, op25_audio& udp, std::deque<int16_t> &_output_queue) :
 	write_bufp(0),
 	rxbufp(0),
 	op25audio(udp),

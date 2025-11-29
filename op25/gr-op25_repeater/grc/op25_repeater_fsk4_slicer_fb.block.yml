@@ -1,0 +1,27 @@
+id: op25_repeater_fsk4_slicer_fb
+label: fsk4 slicer fb
+category: '[Op25_repeater]'
+templates:
+  imports: from gnuradio import op25_repeater
+  make: op25_repeater.fsk4_slicer_fb(${msgq_id}, ${debug}, ${slice_levels})
+parameters:
+- id: msgq_id
+  label: Msgq_id
+  dtype: int
+- id: debug
+  label: Debug
+  dtype: int
+- id: slice_levels
+  label: Slice_levels
+  dtype: real_vector
+inputs:
+- label: in
+  domain: stream
+  dtype: float
+  multiplicity: MAX_IN
+outputs:
+- label: out
+  domain: stream
+  dtype: byte
+  multiplicity: MAX_OUT
+file_format: 1

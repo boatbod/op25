@@ -32,6 +32,7 @@
 #include "op25_audio.h"
 #include "p25p1_voice_encode.h"
 #include "p25p1_voice_decode.h"
+#include "log_ts.h"
 
 namespace gr {
   namespace op25_repeater {
@@ -61,6 +62,8 @@ namespace gr {
 		    gr_vector_int &ninput_items,
 		    gr_vector_const_void_star &input_items,
 		    gr_vector_void_star &output_items);
+
+      log_ts logts;
 
   private:
 

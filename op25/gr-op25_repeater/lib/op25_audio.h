@@ -26,6 +26,14 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <thread>
+#include <vector>
+
+#define ASIO_STANDALONE
+#include <websocketpp/config/asio_no_tls.hpp>
+#include <websocketpp/server.hpp>
+
+#include "log_ts.h"
 
 class op25_audio
 {
@@ -39,32 +47,50 @@ public:
 private:
     bool        d_udp_enabled;
     int         d_debug;
+    int         d_msgq_id;
     int         d_write_port;
     int         d_audio_port;
     char        d_udp_host[128];
     int         d_write_sock;
     bool        d_file_enabled;
     struct      sockaddr_in d_sock_addr;
+    log_ts&     logts;
 
     void open_socket();
     void close_socket();
-    ssize_t do_send(const void * bufp, size_t len, int port, bool is_ctrl) const;
+    ssize_t do_send(const void * bufp, size_t len, int port, bool is_ctrl);
+
+private:
+    bool        d_ws_enabled;
+    int         d_ws_port;
+    std::string d_ws_host;
+    std::thread ws_thread;
+    websocketpp::server<websocketpp::config::asio> d_ws_endpt;
+    std::vector<websocketpp::connection_hdl> d_ws_connections;
+    void        ws_msg_handler(websocketpp::connection_hdl hdl, websocketpp::server<websocketpp::config::asio>::message_ptr msg);
+    void        ws_open_handler(websocketpp::connection_hdl hdl);
+    void        ws_close_handler(websocketpp::connection_hdl hdl);
+    void        ws_fail_handler(websocketpp::connection_hdl hdl);
+    void        ws_send_audio(const void *buf, size_t len);
+    void        ws_send_audio_flag(const udpFlagEnumType udp_flag);
+    void        ws_start();
+    void        ws_stop();
 
 public:
-    op25_audio(const char* udp_host, int port, int debug);
-    op25_audio(const char* destination, int debug);
+    op25_audio(const char* udp_host, int port, log_ts& logger, int debug, int msgq_id);
+    op25_audio(const char* destination, log_ts& logger, int debug, int msgq_id);
     ~op25_audio();
 
     inline bool enabled() const { return d_udp_enabled; }
     inline void set_debug(int debug) { d_debug = debug; }
 
-    ssize_t send_to(const void *buf, size_t len) const;
+    ssize_t     send_to(const void *buf, size_t len);
 
-    ssize_t send_audio(const void *buf, size_t len) const;
-    ssize_t send_audio_flag(const udpFlagEnumType udp_flag) const;
+    ssize_t     send_audio(const void *buf, size_t len);
+    ssize_t     send_audio_flag(const udpFlagEnumType udp_flag);
 
-    ssize_t send_audio_channel(const void *buf, size_t len, ssize_t slot_id) const;
-    ssize_t send_audio_flag_channel(const udpFlagEnumType udp_flag, ssize_t slot_id) const;
+    ssize_t     send_audio_channel(const void *buf, size_t len, ssize_t slot_id);
+    ssize_t     send_audio_flag_channel(const udpFlagEnumType udp_flag, ssize_t slot_id);
 
 }; // class op25_audio
 

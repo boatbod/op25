@@ -54,6 +54,9 @@ var c_name = "";
 var channel_list = [];
 var channel_index = 0;
 var default_channel = null;
+var ws_endpoints = {};
+var ws_channel = 0;
+var ws_endpt = null;
 var enc_sym = "&#216;";
 // var presets = [];
 var site_alias = [];
@@ -209,6 +212,7 @@ function do_onload() {
     send_command("get_terminal_config", 0, 0);
     setInterval(do_update, 1000);
     send_command("get_full_config", 0, 0);
+    send_command("get_ws_instances", 0, 0);
 }
 
 function find_parent(ele, tagname) {
@@ -503,6 +507,8 @@ function channel_update(d) {
         }
         channel_status();
 		loadPresets(c_system);
+
+        ws_create(channel_list[channel_index])
     }
 }
 
@@ -1170,7 +1176,8 @@ function handle_response(dl) {
         rx_update: rx_update,
         terminal_config: term_config,
         plot: plot,
-        full_config: full_config
+        full_config: full_config,
+        ws_instances: ws_instances
     };
 
     for (let i = 0; i < dl.length; i++) {
@@ -1981,6 +1988,47 @@ async function loadPresets(sysname) {
     }
 } // end loadPresets
 
+function ws_instances(instances) {
+	Object.entries(instances).forEach(([key, value]) => {
+        if (key == 'json_type')
+            return; // continue forEach loop
+
+        if (!(key in ws_endpoints) || ((key in ws_endpoints) && (ws_endpoints[key] != value))) {
+            ws_endpoints[key] = value;			// can trigger here if something new shows up
+        }
+    });
+}
+
+function ws_create(channel) {
+    if ((ws_endpt != null) && (ws_channel == channel) && (ws_endpt.readyState <= 1))
+        return;                                // we are already on the required channel
+
+    if ((ws_endpt != null) && (ws_endpt.readyState <= 1)) {
+        ws_endpt.close(1000, 'Closing connection normally');
+        return;
+    }
+
+    if ((!(channel in ws_endpoints)) || (ws_endpoints[channel] == null)) {
+        return;
+    }
+
+    ws_endpt = new WebSocket(ws_endpoints[channel]);
+    ws_channel = channel;
+    ws_endpt.binaryType = 'arraybuffer';
+    console.log("WebSocket connection opened:", ws_endpt.url);
+
+    ws_endpt.onmessage = function(event) {      // play the received binary audio from here
+        console.log("Message received:", event.data);
+    };
+  
+    ws_endpt.onclose = function(event) {
+        ws_endpt = null;
+    };
+
+    ws_endpt.onerror = function(event) {
+        console.log("WebSocket error:", event);
+    };
+}
 
 function full_config(config) {
 
