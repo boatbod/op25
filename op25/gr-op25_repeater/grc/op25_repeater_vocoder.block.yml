@@ -1,0 +1,63 @@
+id: op25_repeater_vocoder
+label: vocoder
+category: '[Op25_repeater]'
+templates:
+  imports: from gnuradio import op25_repeater
+  make: op25_repeater.vocoder(${encode_flag}, ${verbose_flag}, ${stretch_amt}, ${udp_host},
+    ${udp_port}, ${raw_vectors_flag})
+parameters:
+- id: encode_flag
+  label: Encode_flag
+  dtype: raw
+- id: verbose_flag
+  label: Verbose_flag
+  dtype: raw
+- id: stretch_amt
+  label: Stretch_amt
+  dtype: int
+- id: udp_host
+  label: Udp_host
+  dtype: raw
+- id: udp_port
+  label: Udp_port
+  dtype: int
+- id: raw_vectors_flag
+  label: Raw_vectors_flag
+  dtype: raw
+inputs:
+- label: in
+  domain: stream
+  dtype: byte
+  vlen: ${ M_IN(encode_flag }
+- label: in
+  domain: stream
+  dtype: byte
+  vlen: ${  udp_port) }
+- label: in
+  domain: stream
+  dtype: byte
+  vlen: ${  S_IN(encode_flag }
+- label: in
+  domain: stream
+  dtype: byte
+  vlen: ${  udp_port) }
+  multiplicity: udp_port)
+outputs:
+- label: out
+  domain: stream
+  dtype: byte
+  vlen: ${ M_OUT(encode_flag }
+- label: out
+  domain: stream
+  dtype: byte
+  vlen: ${  udp_port) }
+- label: out
+  domain: stream
+  dtype: byte
+  vlen: ${  S_OUT(encode_flag }
+- label: out
+  domain: stream
+  dtype: byte
+  vlen: ${  udp_port) }
+  multiplicity: udp_port)
+file_format: 1

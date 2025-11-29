@@ -1,0 +1,30 @@
+id: op25_repeater_gardner_cc
+label: gardner cc
+category: '[Op25_repeater]'
+templates:
+  imports: from gnuradio import op25_repeater
+  make: op25_repeater.gardner_cc(${samples_per_symbol}, ${gain_mu}, ${gain_omega},
+    ${lock_threshold})
+parameters:
+- id: samples_per_symbol
+  label: Samples_per_symbol
+  dtype: float
+- id: gain_mu
+  label: Gain_mu
+  dtype: float
+- id: gain_omega
+  label: Gain_omega
+  dtype: float
+- id: lock_threshold
+  label: Lock_threshold
+  default: ' 0.28'
+  dtype: float
+inputs:
+- label: in
+  domain: stream
+  dtype: complex
+outputs:
+- label: out
+  domain: stream
+  dtype: complex
+file_format: 1

@@ -1,0 +1,25 @@
+id: op25_repeater_costas_loop_cc
+label: costas loop cc
+category: '[Op25_repeater]'
+templates:
+  imports: from gnuradio import op25_repeater
+  make: op25_repeater.costas_loop_cc(${loop_bw}, ${order}, ${max_phase})
+parameters:
+- id: loop_bw
+  label: Loop_bw
+  dtype: float
+- id: order
+  label: Order
+  dtype: int
+- id: max_phase
+  label: Max_phase
+  dtype: float
+inputs:
+- label: in
+  domain: stream
+  dtype: complex
+outputs:
+- label: out
+  domain: stream
+  dtype: complex
+file_format: 1
