@@ -1,0 +1,31 @@
+id: op25_repeater_iqfile_source
+label: iqfile source
+category: '[Op25_repeater]'
+templates:
+  imports: from gnuradio import op25_repeater
+  make: op25_repeater.iqfile_source(${itemsize}, ${filename}, ${iq_signed}, ${offset},
+    ${len})
+parameters:
+- id: itemsize
+  label: Itemsize
+  dtype: raw
+- id: filename
+  label: Filename
+  dtype: raw
+- id: iq_signed
+  label: Iq_signed
+  default: ' false'
+  dtype: raw
+- id: offset
+  label: Offset
+  default: ' 0'
+  dtype: raw
+- id: len
+  label: Len
+  default: ' 0'
+  dtype: raw
+outputs:
+- label: out
+  domain: stream
+  dtype: complex
+file_format: 1

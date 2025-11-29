@@ -25,7 +25,6 @@ import collections
 import ctypes
 import time
 import json
-import threading
 from helper_funcs import *
 from log_ts import log_ts
 from collections import deque
@@ -83,7 +82,7 @@ class rx_ctl(object):
         self.systems = {}
         self.chans = chans
         self.call_log = deque(maxlen=CALL_LOG_MAX_LEN)
-        self.call_log_mutex = threading.Lock()
+        self.call_log_mutex = TimeoutLock(timeout=1.0)
 
         for chan in self.chans:
             sysname = chan['sysname']
@@ -218,9 +217,9 @@ class osw_receiver(object):
         self.osw_q = deque(maxlen=OSW_QUEUE_SIZE)
         self.voice_frequencies = {}
         self.talkgroups = {}
-        self.talkgroups_mutex = threading.Lock()
+        self.talkgroups_mutex = TimeoutLock(timeout=1.0)
         self.patches = {}
-        self.patches_mutex = threading.Lock()
+        self.patches_mutex = TimeoutLock(timeout=1.0)
         self.skiplist = {}
         self.blacklist = {}
         self.whitelist = None

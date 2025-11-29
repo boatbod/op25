@@ -17,8 +17,14 @@
 # the Free Software Foundation, Inc., 51 Franklin Street,
 # Boston, MA 02110-1301, USA.
 install(FILES
-    op25_repeater_vocoder.xml
-    op25_repeater_gardner_costas_cc.xml
-    op25_repeater_p25_frame_assembler.xml
-    op25_repeater_fsk4_slicer_fb.xml DESTINATION share/gnuradio/grc/blocks
+    op25_repeater_ambe_encoder_sb.block.yml
+    op25_repeater_costas_loop_cc.block.yml
+    op25_repeater_fsk4_slicer_fb.block.yml
+    op25_repeater_iqfile_source.block.yml
+    op25_repeater_rmsagc_ff.block.yml
+    op25_repeater_analog_udp.block.yml
+    op25_repeater_frame_assembler.block.yml
+    op25_repeater_gardner_cc.block.yml
+    op25_repeater_p25_frame_assembler.block.yml
+    op25_repeater_vocoder.block.yml DESTINATION share/gnuradio/grc/blocks
 )

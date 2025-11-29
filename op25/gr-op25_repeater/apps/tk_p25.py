@@ -27,7 +27,6 @@ import time
 import json
 import codecs
 import ast
-import threading
 from collections import deque
 from helper_funcs import *
 from log_ts import log_ts
@@ -121,7 +120,7 @@ class rx_ctl(object):
         self.chans = chans
         self.cleanup_timer = time.time()
         self.call_log = deque(maxlen=CALL_LOG_MAX_LEN)
-        self.call_log_mutex = threading.Lock()
+        self.call_log_mutex = TimeoutLock(timeout=1.0)
 
         for chan in self.chans:
             sysname = chan['sysname']
@@ -299,11 +298,11 @@ class p25_system(object):
         self.freq_table = {}
         self.voice_frequencies = {}
         self.talkgroups = {}
-        self.talkgroups_mutex = threading.Lock()
+        self.talkgroups_mutex = TimeoutLock(timeout=1.0)
         self.sourceids = {}
         self.sourceid_history = rid_history(self.sourceids, 10)
         self.patches = {}
-        self.patches_mutex = threading.Lock()
+        self.patches_mutex = TimeoutLock(timeout=1.0)
         self.blacklist = {}
         self.whitelist = None
         self.crypt_behavior = 1
@@ -1724,6 +1723,8 @@ class p25_system(object):
             srcaddrs = []
             srctags = []
             for tgid in tgids:
+                if tgid is None or tgid == "":
+                    continue
                 try:
                     tgid_int = int(tgid)
                     tag = self.talkgroups.get(tgid_int, {}).get('tag', None)

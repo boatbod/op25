@@ -245,7 +245,7 @@ rx_sync::rx_sync(const char * options, log_ts& logger, int debug, int msgq_id, g
 	d_msg_queue(queue),
 	d_stereo(true),
 	d_debug(debug),
-	d_audio(options, debug),
+	d_audio(options, logger, debug, msgq_id),
     logts(logger)
 {
 	if (msgq_id >= 0)

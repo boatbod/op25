@@ -72,7 +72,7 @@ namespace gr {
     output_queue_decode(),
     opt_udp_port(udp_port),
     opt_encode_flag(encode_flag),
-    op25audio(udp_host, udp_port, 0),
+    op25audio(udp_host, udp_port, logts, 0, 0),
     p1voice_encode(verbose_flag, stretch_amt, op25audio, raw_vectors_flag, output_queue),
     p1voice_decode(verbose_flag, op25audio, output_queue_decode)
     {

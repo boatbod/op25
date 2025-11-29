@@ -1,0 +1,129 @@
+{
+    "channels": [
+        {
+            "name": "TalbotFire", 
+            "device": "sdr0",
+            "trunking_sysname": "FiRST Talbot",
+            "demod_type": "cqpsk", 
+            "destination": "udp://127.0.0.1:23456", 
+            "meta_stream_name": "",
+            "excess_bw": 0.2, 
+            "filter_type": "rc", 
+            "frequency": 773843750, 
+            "if_rate": 24000, 
+            "plot": "",
+            "symbol_rate": 4800,
+            "enable_analog": "off",
+            "blacklist": "",
+            "whitelist": "talbot-fire.wlist"
+        },
+        {
+            "name": "DorchFire", 
+            "device": "sdr1",
+            "trunking_sysname": "FiRST Dorchester",
+            "demod_type": "cqpsk", 
+            "destination": "udp://127.0.0.1:23466", 
+            "meta_stream_name": "",
+            "excess_bw": 0.2, 
+            "filter_type": "rc", 
+            "frequency": 774193750, 
+            "if_rate": 24000, 
+            "plot": "",
+            "symbol_rate": 4800,
+            "enable_analog": "off",
+            "blacklist": "",
+            "whitelist": "dorc-fire.wlist"
+        }
+    ], 
+    "devices": [
+        {
+            "args": "rtl=0", 
+            "frequency": 773843750, 
+            "gains": "LNA:36", 
+            "name": "sdr0", 
+            "offset": 0, 
+            "ppm": 0.0, 
+            "rate": 1000000, 
+            "tunable": true
+        },
+        {
+            "args": "rtl=1", 
+            "frequency": 773843750, 
+            "gains": "LNA:36", 
+            "name": "sdr1", 
+            "offset": 0, 
+            "ppm": 0.0, 
+            "rate": 1000000, 
+            "tunable": true
+        }
+    ],
+    "trunking": {
+        "module": "tk_p25.py",
+        "chans": [
+            {
+                "nac": "0x4a6",
+                "sysname": "FiRST Talbot",
+                "control_channel_list": "773.84375",
+                "whitelist": "",
+                "tgid_tags_file": "first.tsv",
+                "crypt_behavior": 2
+            },
+            {
+                "nac": "0x4a5",
+                "sysname": "FiRST Dorchester",
+                "control_channel_list": "774.19375",
+                "whitelist": "",
+                "tgid_tags_file": "first.tsv",
+                "crypt_behavior": 2
+            }
+        ]
+    },
+    "metadata": {
+        "module": "icemeta.py",
+        "streams": [
+            {
+                "stream_name": "stream0",
+                "icecastServerAddress": "stream_host1:80",
+                "icecastMountpoint": "stream1",
+                "icecastMountExt": ".xspf",
+                "icecastPass": "passwd",
+                "delay": 0.0
+            },
+            {
+                "stream_name": "stream1",
+                "icecastServerAddress": "stream_host2:80",
+                "icecastMountpoint": "stream1",
+                "icecastMountExt": ".xspf",
+                "icecastPass": "passwd",
+                "delay": 0.0
+            }
+        ]
+    },
+    "audio": {
+        "module": "sockaudio.py",
+        "instances": [
+            {
+                "instance_name": "audio1",
+                "device_name": "pulse",
+                "udp_port": 23456,
+                "audio_gain": 1.0,
+                "number_channels": 1
+            },
+            {
+                "instance_name": "audio2",
+                "device_name": "pulse",
+                "udp_port": 23466,
+                "audio_gain": 1.0,
+                "number_channels": 1
+            }
+        ]
+    },
+    "terminal": {
+        "module": "terminal.py",
+        "terminal_type": "curses",
+        "#terminal_type": "http:127.0.0.1:8080",
+        "curses_plot_interval": 0.1,
+        "http_plot_interval": 1.0,
+        "http_plot_directory": "../www/images"
+    }
+}

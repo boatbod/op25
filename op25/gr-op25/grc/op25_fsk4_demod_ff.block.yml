@@ -1,0 +1,29 @@
+id: op25_fsk4_demod_ff
+label: fsk4 demod ff
+category: '[Op25]'
+templates:
+  imports: from gnuradio import op25
+  make: op25.fsk4_demod_ff(${queue}, ${sample_rate_Hz}, ${symbol_rate_Hz}, ${bfsk})
+parameters:
+- id: queue
+  label: Queue
+  dtype: raw
+- id: sample_rate_Hz
+  label: Sample_rate_hz
+  dtype: float
+- id: symbol_rate_Hz
+  label: Symbol_rate_hz
+  dtype: float
+- id: bfsk
+  label: Bfsk
+  default: ' false'
+  dtype: raw
+inputs:
+- label: in
+  domain: stream
+  dtype: float
+outputs:
+- label: out
+  domain: stream
+  dtype: float
+file_format: 1

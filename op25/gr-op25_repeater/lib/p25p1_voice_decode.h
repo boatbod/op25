@@ -42,7 +42,7 @@ namespace gr {
       // Nothing to declare in this block.
 
      public:
-      p25p1_voice_decode(bool verbose_flag, const op25_audio& udp, std::deque<int16_t> &_output_queue);
+      p25p1_voice_decode(bool verbose_flag, op25_audio& udp, std::deque<int16_t> &_output_queue);
       ~p25p1_voice_decode();
 	void rxframe(const voice_codeword& cw);
 	void rxframe(const uint32_t u[]);
@@ -59,7 +59,7 @@ namespace gr {
 	imbe_vocoder vocoder;
 	software_imbe_decoder software_decoder;
 	bool d_software_imbe_decoder;
-        const op25_audio& op25audio;
+	op25_audio& op25audio;
 
 	std::deque<int16_t> &output_queue;
 

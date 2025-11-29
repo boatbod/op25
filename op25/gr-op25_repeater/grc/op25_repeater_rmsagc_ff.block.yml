@@ -1,0 +1,24 @@
+id: op25_repeater_rmsagc_ff
+label: rmsagc ff
+category: '[Op25_repeater]'
+templates:
+  imports: from gnuradio import op25_repeater
+  make: op25_repeater.rmsagc_ff(${alpha}, ${k})
+parameters:
+- id: alpha
+  label: Alpha
+  default: ' 0.01'
+  dtype: real
+- id: k
+  label: K
+  default: ' 1.0'
+  dtype: real
+inputs:
+- label: in
+  domain: stream
+  dtype: float
+outputs:
+- label: out
+  domain: stream
+  dtype: float
+file_format: 1

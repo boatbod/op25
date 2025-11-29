@@ -1,0 +1,25 @@
+id: op25_repeater_frame_assembler
+label: frame assembler
+category: '[Op25_repeater]'
+templates:
+  imports: from gnuradio import op25_repeater
+  make: op25_repeater.frame_assembler(${options}, ${debug}, ${msgq_id}, ${queue})
+parameters:
+- id: options
+  label: Options
+  dtype: raw
+- id: debug
+  label: Debug
+  dtype: int
+- id: msgq_id
+  label: Msgq_id
+  dtype: int
+- id: queue
+  label: Queue
+  dtype: raw
+inputs:
+- label: in
+  domain: stream
+  dtype: byte
+  multiplicity: MAX_IN
+file_format: 1

@@ -1,0 +1,22 @@
+id: op25_repeater_ambe_encoder_sb
+label: ambe encoder sb
+category: '[Op25_repeater]'
+templates:
+  imports: from gnuradio import op25_repeater
+  make: op25_repeater.ambe_encoder_sb(${versbose_flag})
+parameters:
+- id: versbose_flag
+  label: Versbose_flag
+  dtype: int
+inputs:
+- label: in
+  domain: stream
+  dtype: raw
+  multiplicity: MAX_IN
+outputs:
+- label: out
+  domain: stream
+  dtype: byte
+  vlen: '36'
+  multiplicity: MAX_OUT
+file_format: 1
