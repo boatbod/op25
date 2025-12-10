@@ -41,83 +41,83 @@
 //class p25p2_tdma;
 class p25p2_tdma
 {
-public:
-	p25p2_tdma(op25_audio& udp, log_ts& logger, int slotid, int debug, bool do_msgq, gr::msg_queue::sptr queue, std::deque<int16_t> &qptr, bool do_audio_output, int msgq_id = 0) ;	// constructor
-	int handle_packet(uint8_t dibits[], const uint64_t fs, bool skip_sync_check = true);
-	void set_slotid(int slotid);
-	void call_end();
-	void crypt_reset();
-	void crypt_key(uint16_t keyid, uint8_t algid, const std::vector<uint8_t> &key);
-	uint8_t* tdma_xormask;
-	uint32_t symbols_received;
-	uint32_t packets;
-	~p25p2_tdma();	// destructor
-	void set_xormask(const char*p);
-	inline void set_nac(int nac) { d_nac = nac; }
-	void crypt_behavior(int behavior);
-	inline void set_debug(int debug) { d_debug = debug; }
-	bool rx_sym(uint8_t sym);
-	int handle_frame(void) ;
-private:
-	p25p2_sync sync;
-	p25p2_duid duid;
-	p25p2_vf vf;
-	int write_bufp;
-	char write_buf[512];
-	int d_slotid;
-	int d_tdma_slot_first_4v;
-	mbe_parms cur_mp;
-	mbe_parms prev_mp;
-	mbe_parms enh_mp;
-	mbe_tone tone_mp;
-	mbe_errs errs_mp;
-	int mbe_err_cnt;
-	bool tone_frame;
-	software_imbe_decoder software_decoder;
-	gr::msg_queue::sptr d_msg_queue;
-	std::deque<int16_t> &output_queue_decode;
-	bool d_do_msgq;
-	int d_msgq_id;
-	bool d_do_audio_output;
-	op25_audio& op25audio;
-    log_ts& logts;
-    int d_nac;
-    int d_behavior;
-	int d_debug;
-	int burst_id;
-	int burst_type;
-	inline int track_vb(void) { burst_id++; return burst_id = (burst_type == 0) ? (burst_id % 5) : 4; }
-	inline void reset_vb(void) { burst_id = -1; }
+    public:
+        p25p2_tdma(op25_audio& udp, log_ts& logger, int slotid, int debug, bool do_msgq, gr::msg_queue::sptr queue, std::deque<int16_t> &qptr, bool do_audio_output, int msgq_id = 0) ;	// constructor
+        int handle_packet(uint8_t dibits[], const uint64_t fs, bool skip_sync_check = true);
+        void set_slotid(int slotid);
+        void call_end();
+        void crypt_reset();
+        void crypt_key(uint16_t keyid, uint8_t algid, const std::vector<uint8_t> &key);
+        uint8_t* tdma_xormask;
+        uint32_t symbols_received;
+        uint32_t packets;
+        ~p25p2_tdma();	// destructor
+        void set_xormask(const char*p);
+        inline void set_nac(int nac) { d_nac = nac; }
+        void crypt_behavior(int behavior);
+        inline void set_debug(int debug) { d_debug = debug; }
+        bool rx_sym(uint8_t sym);
+        int handle_frame(void) ;
+    private:
+        p25p2_sync sync;
+        p25p2_duid duid;
+        p25p2_vf vf;
+        int write_bufp;
+        char write_buf[512];
+        int d_slotid;
+        int d_tdma_slot_first_4v;
+        mbe_parms cur_mp;
+        mbe_parms prev_mp;
+        mbe_parms enh_mp;
+        mbe_tone tone_mp;
+        mbe_errs errs_mp;
+        int mbe_err_cnt;
+        bool tone_frame;
+        software_imbe_decoder software_decoder;
+        gr::msg_queue::sptr d_msg_queue;
+        std::deque<int16_t> &output_queue_decode;
+        bool d_do_msgq;
+        int d_msgq_id;
+        bool d_do_audio_output;
+        op25_audio& op25audio;
+        log_ts& logts;
+        int d_nac;
+        int d_behavior;
+        int d_debug;
+        int burst_id;
+        int burst_type;
+        inline int track_vb(void) { burst_id++; return burst_id = (burst_type == 0) ? (burst_id % 5) : 4; }
+        inline void reset_vb(void) { burst_id = -1; }
 
-	ezpwd::RS<63,35> rs28;      // Reed-Solomon decoder object
-	std::vector<uint8_t> ESS_A; // ESS_A and ESS_B are hexbits vectors
-	std::vector<uint8_t> ESS_B;
+        ezpwd::RS<63,35> rs28;      // Reed-Solomon decoder object
+        std::vector<uint8_t> ESS_A; // ESS_A and ESS_B are hexbits vectors
+        std::vector<uint8_t> ESS_B;
 
-	uint16_t ess_keyid;
-	uint8_t ess_algid;
-	uint8_t ess_mi[9] = {0};
-	uint16_t next_keyid;
-	uint8_t next_algid;
-	uint8_t next_mi[9] = {0};
+        uint16_t ess_keyid;
+        uint8_t ess_algid;
+        uint8_t ess_mi[9] = {0};
+        uint16_t next_keyid;
+        uint8_t next_algid;
+        uint8_t next_mi[9] = {0};
 
-	p25p2_framer p2framer;
-    op25_crypt_algs crypt_algs;
+        p25p2_framer p2framer;
+        op25_crypt_algs crypt_algs;
 
-	int handle_acch_frame(const uint8_t dibits[], bool fast, bool is_lcch) ;
-	void handle_voice_frame(const uint8_t dibits[], int slot, int voice_subframe);
-	int  process_mac_pdu(const uint8_t byte_buf[], const unsigned int len, const int rs_errs) ;
-	void handle_mac_signal(const uint8_t byte_buf[], const unsigned int len, const int rs_errs) ;
-	void handle_mac_ptt(const uint8_t byte_buf[], const unsigned int len, const int rs_errs) ;
-	void handle_mac_end_ptt(const uint8_t byte_buf[], const unsigned int len, const int rs_errs) ;
-	void handle_mac_idle(const uint8_t byte_buf[], const unsigned int len, const int rs_errs) ;
-	void handle_mac_active(const uint8_t byte_buf[], const unsigned int len, const int rs_errs) ;
-	void handle_mac_hangtime(const uint8_t byte_buf[], const unsigned int len, const int rs_errs) ;
-	void decode_mac_msg(const uint8_t byte_buf[], const unsigned int len, const uint16_t nac = 0xffff) ;
-    void convert_abbrev_msg(const uint8_t byte_buf[], const uint16_t nac, const uint8_t mfid = 0x00);
-	void handle_4V2V_ess(const uint8_t dibits[]);
-	inline bool encrypted() { return (ess_algid != 0x80); }
-    inline void reset_ess() { ess_algid = 0x80; memset(ess_mi, 0, sizeof(ess_mi)); }
+        int handle_acch_frame(const uint8_t dibits[], bool fast, bool is_lcch) ;
+        void handle_voice_frame(const uint8_t dibits[], int slot, int voice_subframe);
+        int  process_mac_pdu(const uint8_t byte_buf[], const unsigned int len, const int rs_errs) ;
+        void handle_mac_signal(const uint8_t byte_buf[], const unsigned int len, const int rs_errs) ;
+        void handle_mac_ptt(const uint8_t byte_buf[], const unsigned int len, const int rs_errs) ;
+        void handle_mac_end_ptt(const uint8_t byte_buf[], const unsigned int len, const int rs_errs) ;
+        void handle_mac_idle(const uint8_t byte_buf[], const unsigned int len, const int rs_errs) ;
+        void handle_mac_active(const uint8_t byte_buf[], const unsigned int len, const int rs_errs) ;
+        void handle_mac_hangtime(const uint8_t byte_buf[], const unsigned int len, const int rs_errs) ;
+        void decode_mac_msg(const uint8_t byte_buf[], const unsigned int len, const uint16_t nac = 0xffff) ;
+        void convert_abbrev_msg(const uint8_t byte_buf[], const uint16_t nac, const uint8_t mfid = 0x00);
+        void handle_4V2V_ess(const uint8_t dibits[]);
+        inline bool encrypted() { return (ess_algid != 0x80); }
+        inline void reset_ess() { ess_algid = 0x80; memset(ess_mi, 0, sizeof(ess_mi)); }
 
-	void send_msg(const std::string msg_str, long msg_type);
+        void send_msg(const std::string msg_str, long msg_type);
 };
 #endif /* INCLUDED_P25P2_TDMA_H */
