@@ -302,6 +302,8 @@ class pa_sound(object):
         return self.error.value
 
     def close(self):
+        if self.out is None:
+            return
         self.libpa.pa_simple_free(c_void_p(self.out))
         self.out = None
 
@@ -312,14 +314,20 @@ class pa_sound(object):
         return 0
 
     def write(self, pcm_data):
+        if self.out is None:
+            return -1
         self.libpa.pa_simple_write(c_void_p(self.out), pcm_data, len(pcm_data), byref(self.error))
         return self.error
 
     def drain(self):
+        if self.out is None:
+            return -1
         self.libpa.pa_simple_drain(c_void_p(self.out), byref(self.error))
         return self.error.value
 
     def drop(self):
+        if self.out is None:
+            return -1
         self.libpa.pa_simple_flush(c_void_p(self.out), byref(self.error))
         return self.error.value
 
