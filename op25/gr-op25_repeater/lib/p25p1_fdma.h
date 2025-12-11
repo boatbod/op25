@@ -82,8 +82,8 @@ namespace gr {
                 std::deque<int16_t> &output_queue;
                 p25_framer* framer;
                 op25_timer qtimer;
-				software_imbe_decoder software_decoder;
-				int16_t snd[SND_FRAME];
+                software_imbe_decoder software_decoder;
+                int16_t snd[SND_FRAME];
                 op25_audio& op25audio;
                 log_ts& logts;
                 op25_crypt_algs crypt_algs;
