@@ -514,81 +514,75 @@ void p25p2_tdma::handle_voice_frame(const uint8_t dibits[], int slot, int voice_
 	char log_str[40];
 	frame_type fr_type;
 
-	// Deinterleave and figure out frame type:
-	errs = vf.process_vcw(&errs_mp, dibits, b, u);
-	strcpy(log_str, logts.get(d_msgq_id)); // param eval order not guaranteed; force timestamp computation first
-	if (d_debug >= 9 && !encrypted() && d_behavior == -1) {
-		vf.pack_cw(p_cw, u);
-		p_cw[0] = 0xF8;
-        p_cw[1] = 0x01;
-        p_cw[2] = 0xA9;
-        p_cw[3] = 0x9F;
-        p_cw[4] = 0x8C;
-        p_cw[5] = 0xE0;
-        p_cw[6] = 0x00;
-        vf.unpack_cw(p_cw, u);
-        vf.unpack_b(b, u);
-		fprintf(stderr, "%s AMBE %02x %02x %02x %02x %02x %02x %02x errs %lu err_rate %f, dt %f\n",
-			    log_str,
-			    p_cw[0], p_cw[1], p_cw[2], p_cw[3], p_cw[4], p_cw[5], p_cw[6], errs, errs_mp.ER,
-				logts.get_tdiff());            // dt is time in seconds since last AMBE frame processed
-	}
-	else if(d_debug < 9 && !encrypted() && d_behavior == -1) {
-		packed_codeword p_cw;
-		vf.pack_cw(p_cw, u);
-		// Force mute clear voice
-		p_cw[0] = 0xF8;
-		p_cw[1] = 0x01;
-		p_cw[2] = 0xA9;
-		p_cw[3] = 0x9F;
-		p_cw[4] = 0x8C;
-		p_cw[5] = 0xE0;
-		p_cw[6] = 0x00;
-		vf.unpack_cw(p_cw, u);
-		vf.unpack_b(b, u);
-	}
-	else if (d_debug >= 9 && !encrypted() && d_behavior != -1) {
-		packed_codeword p_cw;
-		vf.pack_cw(p_cw, u);
-		fprintf(stderr, "%s AMBE %02x %02x %02x %02x %02x %02x %02x errs %lu err_rate %f, dt %f\n",
-			log_str,
-			p_cw[0], p_cw[1], p_cw[2], p_cw[3], p_cw[4], p_cw[5], p_cw[6], errs, errs_mp.ER,
-			logts.get_tdiff());            // dt is time in seconds since last AMBE frame processed
-	}
+    // Deinterleave and figure out frame type:
+    errs = vf.process_vcw(&errs_mp, dibits, b, u);
 
-	// Pass encrypted traffic through the decryption algorithms
-	if (encrypted()) {
-		switch (burst_id) {
-			case 0:
-				fr_type = FT_4V_0;
-				break;
-			case 1:
-				fr_type = FT_4V_1;
-				break;
-			case 2:
-				fr_type = FT_4V_2;
-				break;
-			case 3:
-				fr_type = FT_4V_3;
-				break;
-			case 4:
-				fr_type = FT_2V;
-				break;
-		}
-		vf.pack_cw(p_cw, u);
-		audio_valid = crypt_algs.process(p_cw, fr_type, voice_subframe);
-		if (!audio_valid)
-			return;
+    // Logging
+    strcpy(log_str, logts.get(d_msgq_id)); // param eval order not guaranteed; force timestamp computation first
+    if (d_debug >= 9) {
+        vf.pack_cw(p_cw, u);
+        vf.unpack_b(b, u);
+        if (!encrypted()) {
+            fprintf(stderr, "%s AMBE (CLEARTEXT) %02x %02x %02x %02x %02x %02x %02x errs %lu err_rate %f, dt %f\n",
+                    log_str,
+                    p_cw[0], p_cw[1], p_cw[2], p_cw[3], p_cw[4], p_cw[5], p_cw[6], errs, errs_mp.ER,
+                    logts.get_tdiff());            // dt is time in seconds since last AMBE frame processed
+        } else {
+            fprintf(stderr, "%s AMBE (CIPHERTXT) %02x %02x %02x %02x %02x %02x %02x errs %lu err_rate %f, dt %f\n",
+                    log_str,
+                    p_cw[0], p_cw[1], p_cw[2], p_cw[3], p_cw[4], p_cw[5], p_cw[6], errs, errs_mp.ER,
+                    logts.get_tdiff());            // dt is time in seconds since last AMBE frame processed
+        }
+    }
+
+    // Silence unencrypted traffic when crypt_behavior = -1
+    if (!encrypted() && d_behavior == -1) {
+        return;
+        //vf.pack_cw(p_cw, u);
+        //p_cw[0] = 0xF8;
+        //p_cw[1] = 0x01;
+        //p_cw[2] = 0xA9;
+        //p_cw[3] = 0x9F;
+        //p_cw[4] = 0x8C;
+        //p_cw[5] = 0xE0;
+        //p_cw[6] = 0x00;
+        //vf.unpack_cw(p_cw, u);
+        //vf.unpack_b(b, u);
+    }
+
+    // Pass encrypted traffic through the decryption algorithms
+    if (encrypted()) {
+        switch (burst_id) {
+            case 0:
+                fr_type = FT_4V_0;
+                break;
+            case 1:
+                fr_type = FT_4V_1;
+                break;
+            case 2:
+                fr_type = FT_4V_2;
+                break;
+            case 3:
+                fr_type = FT_4V_3;
+                break;
+            case 4:
+                fr_type = FT_2V;
+                break;
+        }
+        vf.pack_cw(p_cw, u);
+        audio_valid = crypt_algs.process(p_cw, fr_type, voice_subframe);
+        if (!audio_valid)
+            return;
         if (d_debug >= 9) {
             strcpy(log_str, logts.get(d_msgq_id));
-            fprintf(stderr, "%s AMBE %02x %02x %02x %02x %02x %02x %02x errs %lu err_rate %f, dt %f\n",
-			        log_str,
-			        p_cw[0], p_cw[1], p_cw[2], p_cw[3], p_cw[4], p_cw[5], p_cw[6], errs, errs_mp.ER,
-				    logts.get_tdiff());
+            fprintf(stderr, "%s AMBE (PLAINTEXT) %02x %02x %02x %02x %02x %02x %02x errs %lu err_rate %f, dt %f\n",
+                    log_str,
+                    p_cw[0], p_cw[1], p_cw[2], p_cw[3], p_cw[4], p_cw[5], p_cw[6], errs, errs_mp.ER,
+                    logts.get_tdiff());
         }
-		vf.unpack_cw(p_cw, u);  // unpack plaintext codewords
+        vf.unpack_cw(p_cw, u);  // unpack plaintext codewords
         vf.unpack_b(b, u);      // for unencrypted traffic this is done inside vf.process_vcw()
-	}
+    }
 
     if (d_debug >= 9) {
 		logts.mark_ts();        // only vf update timestamp if log level is sufficient to show it
