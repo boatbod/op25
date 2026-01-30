@@ -243,6 +243,7 @@ class rx_ctl(object):
         for system in self.systems:
             self.systems[system]['system'].dump_tgids()
             self.systems[system]['system'].dump_patches()
+            self.systems[system]['system'].dump_wuids()
             self.systems[system]['system'].dump_rids()
             self.systems[system]['system'].sourceid_history.dump()
 
@@ -301,6 +302,9 @@ class p25_system(object):
         self.talkgroups_mutex = TimeoutLock(timeout=1.0)
         self.sourceids = {}
         self.sourceid_history = rid_history(self.sourceids, 10)
+        self.registered_suids = {}
+        self.registered_wuids = {}
+        self.suids_mutex = TimeoutLock(timeout=1.0)
         self.patches = {}
         self.patches_mutex = TimeoutLock(timeout=1.0)
         self.blacklist = {}
@@ -625,6 +629,19 @@ class p25_system(object):
             gav   = (mbt_data >> 120) & 0x3
             if self.debug >= 10:
                 sys.stderr.write('%s [%d] mbt(0x28) grp_aff_rsp: mfrid: 0x%x wacn: 0x%x syid: 0x%x lg: %d gav: %d aga: %d ga: %d ta: %d\n\n' %(log_ts.get(), m_rxid, mfrid, wacn, syid, lg, gav, aga, ga, ta))
+            if gav == 0:
+                self.affiliate_sgid(wacn, syid, gid, ga, aga, ta, self.last_tsbk)
+        elif opcode == 0x2c:  # u_reg_rsp
+            mfrid = (header >> 56) & 0xff
+            wacn  = ((header << 4) & 0xffff0) + ((mbt_data >> 92) & 0xf) 
+            syid  = (mbt_data >> 80) & 0xfff
+            sid   = (mbt_data >> 56) & 0xffffff
+            rv    = (mbt_data >> 48) & 0x3
+            #if self.debug >= 10:
+            if self.debug >= 1:
+                sys.stderr.write('%s [%d] mbt(0x2c) u_reg_rsp: mfid: 0x%x rv: %d wacn: 0x%x syid: 0x%x sid: %d sa: %d\n' % (log_ts.get(), m_rxid, mfrid, rv, wacn, syid, sid, src))
+            if rv == 0:
+                self.register_suid(wacn, syid, sid, src, self.last_tsbk)
         elif opcode == 0x3c:  # adjacent status
             syid = (header >> 48) & 0xfff
             rfid = (header >> 24) & 0xff
@@ -798,6 +815,8 @@ class p25_system(object):
             ta     = (tsbk >> 16) & 0xffffff
             if self.debug >= 10:
                 sys.stderr.write('%s [%d] tsbk(0x28) grp_aff_rsp: mfid: 0x%x gav: %d aga: %d ga: %d ta: %d\n' % (log_ts.get(), m_rxid, mfrid, gav, aga, ga, ta))
+            if gav == 0:
+                self.affiliate_sgid(self.ns_wacn, self.ns_syid, ga, ga, aga, ta, self.last_tsbk)
         elif opcode == 0x29:   # secondary cc explicit form
             mfrid = (tsbk >> 80) & 0xff
             rfid  = (tsbk >> 72) & 0xff
@@ -820,6 +839,8 @@ class p25_system(object):
             sa     = (tsbk >> 16) & 0xffffff
             if self.debug >= 10:
                 sys.stderr.write('%s [%d] tsbk(0x2c) u_reg_rsp: mfid: 0x%x rv: %d syid: 0x%x sid: %d sa: %d\n' % (log_ts.get(), m_rxid, mfrid, rv, syid, sid, sa))
+            if rv == 0:
+                self.register_suid(self.ns_wacn, syid, sid, sa, self.last_tsbk)
         elif opcode == 0x2f:   # u_de_reg_ack
             mfrid  = (tsbk >> 80) & 0xff
             wacn   = (tsbk >> 52) & 0xfffff
@@ -827,6 +848,7 @@ class p25_system(object):
             sid    = (tsbk >> 16) & 0xffffff
             if self.debug >= 10:
                 sys.stderr.write('%s [%d] tsbk(0x2f) u_de_reg_ack: mfid: 0x%x wacn: 0x%x syid: 0x%x sid: %d\n' % (log_ts.get(), m_rxid, mfrid, wacn, syid, sid))
+            self.deregister_suid(wacn, syid, sid)
         elif opcode == 0x30:
             mfrid  = (tsbk >> 80) & 0xff
             if mfrid == 0xA4:  # GRG_EXENC_CMD
@@ -1615,6 +1637,59 @@ class p25_system(object):
         else:
             return self.sourceids[srcaddr]['tag']
 
+    def register_suid(self, wacn_id, sys_id, source_id, src_addr, ts):
+        if (source_id == 0 or sys_id == 0 or wacn_id == 0 or src_addr == 0):
+            return
+        suid = ("%05x%03x%06x" % (wacn_id, sys_id, source_id))
+        wuid = ("%06x" % src_addr)
+        if suid in self.registered_suids and self.registered_suids[suid]['wuid'] != wuid:
+            self.deregister_suid(wacn_id, sys_id, source_id)
+        with self.suids_mutex:
+            if suid not in self.registered_suids:
+                self.registered_suids[suid] = {"wuid" : wuid, "aff_sgid" : 0, "ts": ts}
+                self.registered_wuids[wuid] = {"suid" : suid, "aff_aga"  : 0, "aff_ga"  : 0, "ts": ts}
+                if self.debug >= 10:
+                    sys.stderr.write("%s [%s] register_suid: suid(%s), wuid(%d)\n" % (log_ts.get(), self.sysname, suid, int(wuid, 16)))
+            else:
+                self.registered_suids[suid]['ts'] = ts
+                self.registered_wuids[wuid]['ts'] = ts
+
+    def deregister_suid(self, wacn_id, sys_id, source_id):
+        if (source_id == 0 or sys_id == 0 or wacn_id == 0):
+            return
+        suid = ("%05x%03x%06x" % (wacn_id, sys_id, source_id))
+        if suid in self.registered_suids:
+            with self.suids_mutex:
+                wuid = self.registered_suids[suid]['wuid']
+                self.registered_suids.pop(suid, None)
+                self.registered_wuids.pop(wuid, None)
+            if self.debug >= 10:
+                sys.stderr.write("%s [%s] deregister_suid: suid(%s), wuid(%d)\n" % (log_ts.get(), self.sysname, suid, int(wuid, 16)))
+
+    def affiliate_sgid(self, wacn_id, sys_id, group_id, group_addr, ann_group_addr, src_addr, ts):
+        if (sys_id == 0 or wacn_id == 0 or src_addr == 0):
+            return
+
+        wuid = ("%06x" % src_addr)
+        if wuid not in self.registered_wuids:
+            self.register_suid(wacn_id, sys_id, src_addr, src_addr, ts)   # this only legitimately works for same-system where source_id == src_addr
+
+        suid = self.registered_wuids[wuid]['suid']
+        sgid = ("%05x%03x%04x" % (wacn_id, sys_id, group_id))
+        with self.suids_mutex:
+            if self.registered_suids[suid]['aff_sgid'] != sgid:
+                self.registered_suids[suid]['aff_sgid'] = sgid
+                self.registered_wuids[wuid]["aff_aga"] = ann_group_addr
+                self.registered_wuids[wuid]["aff_ga"] = group_addr
+                if self.debug >= 10:
+                    sys.stderr.write("%s [%s] affiliate_sgid: suid(%s), sgid(%s), wuid(%d), aga(%d), ga(%d)\n" % (log_ts.get(), self.sysname, suid, sgid, int(wuid, 16), ann_group_addr, group_addr))
+            self.registered_suids[suid]['ts'] = ts
+            self.registered_wuids[wuid]["ts"] = ts
+
+    def expire_registrations(self):
+        # TODO: TIA-102.AABD WUID Validity Timer is 4 hours
+        pass
+
     def dump_tgids(self):
         sys.stderr.write("%s [%s] Known talkgroup ids: {\n" % (log_ts.get(), self.sysname))
         for tgid in sorted(self.talkgroups.keys()):
@@ -1631,6 +1706,12 @@ class p25_system(object):
         sys.stderr.write("%s [%s] Known radio ids: {\n" % (log_ts.get(), self.sysname))
         for rid in sorted(self.sourceids.keys()):
             sys.stderr.write('%d\t"%s"\t# tgids %s\n' % (rid, self.sourceids[rid]['tag'], self.sourceids[rid]['tgs']));
+        sys.stderr.write("}\n") 
+
+    def dump_wuids(self):
+        sys.stderr.write("%s [%s] Registered subscriber unit ids: {\n" % (log_ts.get(), self.sysname))
+        for wuid in sorted(self.registered_wuids.keys()):
+            sys.stderr.write('%d\tsuid(%s)\taffiliation(%d)\tannouncement(%d)\n' % (int(wuid, 16), self.registered_wuids[wuid]['suid'], self.registered_wuids[wuid]['aff_ga'], self.registered_wuids[wuid]['aff_aga']));
         sys.stderr.write("}\n") 
 
     def to_json(self):  # ugly but required for compatibility with P25 trunking and terminal modules
@@ -1660,6 +1741,7 @@ class p25_system(object):
         d['frequencies']    = {}
         d['frequency_data'] = {}
         d['patch_data']     = {}
+        d['wuid_data']      = {}
         d['last_tsbk']      = self.last_tsbk
 
         t = time.time()
@@ -1753,6 +1835,14 @@ class p25_system(object):
                 sg_tag = self.talkgroups.get(sg, {}).get('tag', None)
                 ga_tag = self.talkgroups.get(ga, {}).get('tag', None)
                 d['patch_data'][sg][ga] = {'sg': sg_dec, 'sgtag': sg_tag, 'ga': ga_dec, 'gatag': ga_tag}
+
+        # Subscriber Registrations
+        self.expire_registrations()
+        for wuid in sorted(self.registered_wuids.keys()):
+            d['wuid_data'][wuid] = {'suid'   : self.registered_wuids[wuid]['suid'],
+                                    'srcaddr': int(wuid, 16),
+                                    'aff_ga' : self.registered_wuids[wuid]['aff_ga'],
+                                    'aff_aga': self.registered_wuids[wuid]['aff_aga'] }
 
         # Adjacent sites
         d['adjacent_data'] = self.adjacent_data
