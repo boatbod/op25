@@ -1721,23 +1721,20 @@ class p25_system(object):
         if ts_now < (self.expire_registrations_check + 300.0):                      # run this check once every 5 minutes
             return
 
-        if self.debug >= 10:
-            sys.stderr.write("%s [%s] expire_registrations: starting check for expired WUID registration\n" % (log_ts.get(), self.sysname ))
+        # Build the expiry list first (no mutex lock needed)
         self.expire_registrations_check = ts_now
-
-        # Build the expiry list
         for suid in sorted(self.registered_suids.keys()):
             if ts_now > (self.registered_suids[suid]['ts'] + WUID_EXPIRY_TIME):
                 expired_suids.append(suid)
 
-        # Delete the expired entries
+        # Delete the expired entries (with mutex lock)
         with self.suids_mutex:
             for suid in expired_suids:
                 wuid = self.registered_suids[suid]['wuid']
                 self.registered_suids.pop(suid, None)
                 self.registered_wuids.pop(wuid, None)
                 if self.debug >= 10:
-                    sys.stderr.write("%s [%s] expire_registrations: expiring registration for suid(%s), wuid(%d)\n" % (log_ts.get(), self.sysname, suid, int(wuid, 16)))
+                    sys.stderr.write("%s [%s] expire_registrations: remove expired suid(%s), wuid(%d)\n" % (log_ts.get(), self.sysname, suid, int(wuid, 16)))
 
     def dump_tgids(self):
         sys.stderr.write("%s [%s] Known talkgroup ids: {\n" % (log_ts.get(), self.sysname))
@@ -1893,7 +1890,8 @@ class p25_system(object):
             d['wuid_data'][wuid] = {'suid'   : self.registered_wuids[wuid]['suid'],
                                     'srcaddr': int(wuid, 16),
                                     'aff_ga' : self.registered_wuids[wuid]['aff_ga'],
-                                    'aff_aga': self.registered_wuids[wuid]['aff_aga'] }
+                                    'aff_aga': self.registered_wuids[wuid]['aff_aga'],
+                                    'time'   : self.registered_wuids[wuid]['ts']}
 
         # Adjacent sites
         d['adjacent_data'] = self.adjacent_data
