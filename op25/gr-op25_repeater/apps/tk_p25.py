@@ -44,6 +44,7 @@ TGID_EXPIRY_TIME = 1.0   # Number of seconds to allow tgid to remain active with
 FREQ_EXPIRY_TIME = 1.2   # Number of seconds to allow freq to remain active with no updates received
 EXPIRY_TIMER = 0.2       # Number of seconds between checks for tgid/freq expiry
 PATCH_EXPIRY_TIME = 20.0 # Number of seconds until patch expiry
+WUID_EXPIRY_TIME = 14400 # Number of seconds until WUID registration expiry (4hrs, per TIA-102.AABD)
 CLEANUP_TIMER = 0.5      # Number of seconds between cleanup intervals
 CALL_LOG_MAX_LEN = 10    # Maximum number of call_log entries to retain
 
@@ -304,6 +305,7 @@ class p25_system(object):
         self.sourceid_history = rid_history(self.sourceids, 10)
         self.registered_suids = {}
         self.registered_wuids = {}
+        self.expire_registrations_check = time.time()
         self.suids_mutex = TimeoutLock(timeout=1.0)
         self.patches = {}
         self.patches_mutex = TimeoutLock(timeout=1.0)
@@ -637,8 +639,7 @@ class p25_system(object):
             syid  = (mbt_data >> 80) & 0xfff
             sid   = (mbt_data >> 56) & 0xffffff
             rv    = (mbt_data >> 48) & 0x3
-            #if self.debug >= 10:
-            if self.debug >= 1:
+            if self.debug >= 10:
                 sys.stderr.write('%s [%d] mbt(0x2c) u_reg_rsp: mfid: 0x%x rv: %d wacn: 0x%x syid: 0x%x sid: %d sa: %d\n' % (log_ts.get(), m_rxid, mfrid, rv, wacn, syid, sid, src))
             if rv == 0:
                 self.register_suid(wacn, syid, sid, src, self.last_tsbk)
@@ -831,6 +832,17 @@ class p25_system(object):
                 add_unique_freq(self.cc_list, f1)
             if self.debug >= 10:
                 sys.stderr.write('%s [%d] tsbk(0x29) sccb_exp: rfid: %x stid: %d ch1: %x(%s) ch2: %x(%s)\n' %(log_ts.get(), m_rxid, rfid, stid, ch1, self.channel_id_to_string(ch1), ch2, self.channel_id_to_string(ch2)))
+        elif opcode == 0x2b:   # loc_reg_rsp
+            mfrid  = (tsbk >> 80) & 0xff
+            rv     = (tsbk >> 72) & 0x3
+            ga     = (tsbk >> 56) & 0xffff
+            rfid   = (tsbk >> 48) & 0xff
+            stid   = (tsbk >> 40) & 0xff
+            ta     = (tsbk >> 16) & 0xffffff
+            if self.debug >= 10:
+                sys.stderr.write('%s [%d] tsbk(0x2b) loc_reg_rsp: mfid: 0x%x rv: %d ga: %d rfid: 0x%x stid: 0x%x ta: %d\n' % (log_ts.get(), m_rxid, mfrid, rv, ga, rfid, stid, ta))
+            if rv == 0:
+                self.affiliate_sgid(self.ns_wacn, self.ns_syid, ga, ga, 0, ta, self.last_tsbk)
         elif opcode == 0x2c:   # u_reg_rsp
             mfrid  = (tsbk >> 80) & 0xff
             rv     = (tsbk >> 76) & 0x3
@@ -1506,7 +1518,8 @@ class p25_system(object):
             if self.talkgroups[tgid]['receiver'] is not None and srcaddr is not None and srcaddr > 0 and srcaddr < 0xffffff and self.talkgroups[tgid]['srcaddr'] != srcaddr:
                 ui_log_update = True
 
-            self.talkgroups[tgid]['time'] = time.time()
+            ts = time.time()
+            self.talkgroups[tgid]['time'] = ts
             self.talkgroups[tgid]['counter'] += 1
             self.talkgroups[tgid]['frequency'] = frequency
             self.talkgroups[tgid]['tdma_slot'] = tdma_slot
@@ -1518,6 +1531,7 @@ class p25_system(object):
                         self.talkgroups[tgid]['srcaddr'] = srcaddr      # don't overwrite with null srcaddr for active calls
                 else:
                     self.talkgroups[tgid]['srcaddr'] = srcaddr
+                self.update_wuid_ts(srcaddr, tgid, ts)
 
         if ui_log_update:   # log update to UI outside of the mutex protection
             self.rx_ctl.log_call(self.ns_syid,
@@ -1686,9 +1700,44 @@ class p25_system(object):
             self.registered_suids[suid]['ts'] = ts
             self.registered_wuids[wuid]["ts"] = ts
 
+    def update_wuid_ts(self, src_addr, tgid, ts):
+        if (src_addr == 0 or src_addr == 0xffffff):
+            return
+
+        wuid = ("%06x" % src_addr) 
+        if wuid not in self.registered_wuids:                                               # Auto-affiliate an active subscriber unit
+            self.affiliate_sgid(self.ns_wacn, self.ns_syid, tgid, tgid, 0, src_addr, ts)    # making assumption WUID is local not roaming
+
+        suid = self.registered_wuids[wuid]['suid']
+        with self.suids_mutex:
+            self.registered_suids[suid]['ts'] = ts
+            self.registered_wuids[wuid]["ts"] = ts
+        if self.debug >= 10:
+            sys.stderr.write("%s [%s] update_wuid_ts: suid(%s), wuid(%d)\n" % (log_ts.get(), self.sysname, suid, int(wuid, 16)))
+
     def expire_registrations(self):
-        # TODO: TIA-102.AABD WUID Validity Timer is 4 hours
-        pass
+        expired_suids = []
+        ts_now = time.time()
+        if ts_now < (self.expire_registrations_check + 300.0):                      # run this check once every 5 minutes
+            return
+
+        if self.debug >= 10:
+            sys.stderr.write("%s [%s] expire_registrations: starting check for expired WUID registration\n" % (log_ts.get(), self.sysname ))
+        self.expire_registrations_check = ts_now
+
+        # Build the expiry list
+        for suid in sorted(self.registered_suids.keys()):
+            if ts_now > (self.registered_suids[suid]['ts'] + WUID_EXPIRY_TIME):
+                expired_suids.append(suid)
+
+        # Delete the expired entries
+        with self.suids_mutex:
+            for suid in expired_suids:
+                wuid = self.registered_suids[suid]['wuid']
+                self.registered_suids.pop(suid, None)
+                self.registered_wuids.pop(wuid, None)
+                if self.debug >= 10:
+                    sys.stderr.write("%s [%s] expire_registrations: expiring registration for suid(%s), wuid(%d)\n" % (log_ts.get(), self.sysname, suid, int(wuid, 16)))
 
     def dump_tgids(self):
         sys.stderr.write("%s [%s] Known talkgroup ids: {\n" % (log_ts.get(), self.sysname))
@@ -1711,7 +1760,9 @@ class p25_system(object):
     def dump_wuids(self):
         sys.stderr.write("%s [%s] Registered subscriber unit ids: {\n" % (log_ts.get(), self.sysname))
         for wuid in sorted(self.registered_wuids.keys()):
-            sys.stderr.write('%d\tsuid(%s)\taffiliation(%d)\tannouncement(%d)\n' % (int(wuid, 16), self.registered_wuids[wuid]['suid'], self.registered_wuids[wuid]['aff_ga'], self.registered_wuids[wuid]['aff_aga']));
+            ts = self.registered_wuids[wuid]['ts']
+            fmt_ts = "{:s}{:s}".format(time.strftime("%m/%d/%y %H:%M:%S",time.localtime(ts)),"{:.6f}".format(ts - int(ts)).lstrip("0"))
+            sys.stderr.write('%d\tsuid(%s)\taffil_grp(%5d)\tann_grp(%5d)\tlast(%s)\n' % (int(wuid, 16), self.registered_wuids[wuid]['suid'], self.registered_wuids[wuid]['aff_ga'], self.registered_wuids[wuid]['aff_aga'], fmt_ts));
         sys.stderr.write("}\n") 
 
     def to_json(self):  # ugly but required for compatibility with P25 trunking and terminal modules
