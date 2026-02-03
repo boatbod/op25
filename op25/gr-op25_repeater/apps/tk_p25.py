@@ -1658,10 +1658,11 @@ class p25_system(object):
         wuid = ("%06x" % src_addr)
         if suid in self.registered_suids and self.registered_suids[suid]['wuid'] != wuid:
             self.deregister_suid(wacn_id, sys_id, source_id)
+        tag = self.get_rid_tag(src_addr)
         with self.suids_mutex:
             if suid not in self.registered_suids:
-                self.registered_suids[suid] = {"wuid" : wuid, "aff_sgid" : 0, "ts": ts}
-                self.registered_wuids[wuid] = {"suid" : suid, "aff_aga"  : 0, "aff_ga"  : 0, "ts": ts}
+                self.registered_suids[suid] = {"wuid" : wuid, "tag" : tag, "aff_sgid" : 0, "ts": ts}
+                self.registered_wuids[wuid] = {"suid" : suid, "tag" : tag, "aff_aga"  : 0, "aff_ga"  : 0, "ts": ts}
                 if self.debug >= 10:
                     sys.stderr.write("%s [%s] register_suid: suid(%s), wuid(%d)\n" % (log_ts.get(), self.sysname, suid, int(wuid, 16)))
             else:
@@ -1759,7 +1760,7 @@ class p25_system(object):
         for wuid in sorted(self.registered_wuids.keys()):
             ts = self.registered_wuids[wuid]['ts']
             fmt_ts = "{:s}{:s}".format(time.strftime("%m/%d/%y %H:%M:%S",time.localtime(ts)),"{:.6f}".format(ts - int(ts)).lstrip("0"))
-            sys.stderr.write('%d\tsuid(%s)\taffil_grp(%5d)\tann_grp(%5d)\tlast(%s)\n' % (int(wuid, 16), self.registered_wuids[wuid]['suid'], self.registered_wuids[wuid]['aff_ga'], self.registered_wuids[wuid]['aff_aga'], fmt_ts));
+            sys.stderr.write('%d\ttag(%s)\tsuid(%s)\taffil_grp(%5d)\tann_grp(%5d)\tlast(%s)\n' % (int(wuid, 16), self.registered_wuids[wuid]['tag'], self.registered_wuids[wuid]['suid'], self.registered_wuids[wuid]['aff_ga'], self.registered_wuids[wuid]['aff_aga'], fmt_ts));
         sys.stderr.write("}\n") 
 
     def to_json(self):  # ugly but required for compatibility with P25 trunking and terminal modules
@@ -1889,6 +1890,7 @@ class p25_system(object):
         for wuid in sorted(self.registered_wuids.keys()):
             d['wuid_data'][wuid] = {'suid'   : self.registered_wuids[wuid]['suid'],
                                     'srcaddr': int(wuid, 16),
+                                    'tag'    : self.registered_wuids[wuid]['tag'],
                                     'aff_ga' : self.registered_wuids[wuid]['aff_ga'],
                                     'aff_aga': self.registered_wuids[wuid]['aff_aga'],
                                     'time'   : self.registered_wuids[wuid]['ts']}
