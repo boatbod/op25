@@ -1760,7 +1760,7 @@ class p25_system(object):
         for wuid in sorted(self.registered_wuids.keys()):
             ts = self.registered_wuids[wuid]['ts']
             fmt_ts = "{:s}{:s}".format(time.strftime("%m/%d/%y %H:%M:%S",time.localtime(ts)),"{:.6f}".format(ts - int(ts)).lstrip("0"))
-            sys.stderr.write('%d\ttag(%s)\tsuid(%s)\taffil_grp(%5d)\tann_grp(%5d)\tlast(%s)\n' % (int(wuid, 16), self.registered_wuids[wuid]['tag'], self.registered_wuids[wuid]['suid'], self.registered_wuids[wuid]['aff_ga'], self.registered_wuids[wuid]['aff_aga'], fmt_ts));
+            sys.stderr.write('%d\ttag(%14s)\tsuid(%s)\taffil_grp(%5d)\tann_grp(%5d)\tlast(%s)\n' % (int(wuid, 16), self.registered_wuids[wuid]['tag'], self.registered_wuids[wuid]['suid'], self.registered_wuids[wuid]['aff_ga'], self.registered_wuids[wuid]['aff_aga'], fmt_ts));
         sys.stderr.write("}\n") 
 
     def to_json(self):  # ugly but required for compatibility with P25 trunking and terminal modules
@@ -1888,12 +1888,14 @@ class p25_system(object):
         # Subscriber Registrations
         self.expire_registrations()
         for wuid in sorted(self.registered_wuids.keys()):
-            d['wuid_data'][wuid] = {'suid'   : self.registered_wuids[wuid]['suid'],
-                                    'srcaddr': int(wuid, 16),
-                                    'tag'    : self.registered_wuids[wuid]['tag'],
-                                    'aff_ga' : self.registered_wuids[wuid]['aff_ga'],
-                                    'aff_aga': self.registered_wuids[wuid]['aff_aga'],
-                                    'time'   : self.registered_wuids[wuid]['ts']}
+            d['wuid_data'][wuid] = {'suid'        : self.registered_wuids[wuid]['suid'],
+                                    'srcaddr'     : int(wuid, 16),
+                                    'tag'         : self.registered_wuids[wuid]['tag'],
+                                    'aff_ga'      : self.registered_wuids[wuid]['aff_ga'],
+                                    'aff_ga_tag'  : self.talkgroups.get(self.registered_wuids[wuid]['aff_ga'], {}).get('tag', None),
+                                    'aff_aga'     : self.registered_wuids[wuid]['aff_aga'],
+                                    'aff_aga_tag' : self.talkgroups.get(self.registered_wuids[wuid]['aff_aga'], {}).get('tag', None),
+                                    'time'        : self.registered_wuids[wuid]['ts']}
 
         # Adjacent sites
         d['adjacent_data'] = self.adjacent_data
