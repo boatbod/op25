@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 
-<!-- OP25 index.html 27 APR 2025 0940 -->
+<!-- OP25 index.html 04 Feb 2026 0940 -->
 
 <html>
 
@@ -35,7 +35,7 @@
 			  <a href="legacy-index.html" class="nav-item" id="btn-legacy">Legacy UI</a>        
 			  
   			  <a href="#" class="nav-item" id="btn-new-settings" onclick="togglePopup('aboutPopupContainer', true);">About</a>
-  			  
+
 			</div>
 			<div class="nav-right">
 			  <!-- SVG Logo -->
@@ -81,7 +81,7 @@
 		<div class="about-content">
 		
 			<p class="copyr">
-			&copy; 2017–2025 Max H. Parke & Graham J. Norbury [boatbod version]<br>
+			&copy; 2017–2026 Max H. Parke & Graham J. Norbury [boatbod version]<br>
 			UI Updates, Michael Rose - Last UI Update: <span id="lastUiUpdate"> - </span>
 			</p>
 			
@@ -205,9 +205,26 @@
 				  <input type="checkbox" id="callHistoryToggle" checked>
 				  Show Call History
 				</label>
+			  </div>  
+			
+			  <div style="margin-bottom: 15px;">
+				<label for="trackSubsToggle" style="color: #ccc;">
+				  <input type="checkbox" id="trackSubsToggle" checked>
+				  Track Subscriber Affiliations
+				</label>
 			  </div>
-				
-		   
+
+
+			  <div style="margin-bottom: 15px;">
+				<label for="callHistoryToggle" style="color: #ccc;">
+				  Track Affiliations Mode
+				  <select id="subMode" name="subMode">
+				  <option value="all">All Channels</option>
+				  <option value="selected">Selected Channel Only</option>
+				</select>
+				</label>
+			  </div>  
+			  	   
 			<div style="margin: 5px 0; text-align: left;">
 			  <label for="callHistorySource" style="color: #ccc;">Call History Source:</label>
 			  <select id="callHistorySource" style="margin-left: 5px;">
@@ -340,16 +357,6 @@
 		  <th class="th-section" colspan="2" style="padding: 0;">
 			<div style="display: flex; justify-content: space-between; align-items: center; padding: 4px 8px;">
 			  <span id="channes-container-title" style="flex: 1; text-align: center;">Channels</span>
-<!-- 
-			  <button onclick="csvTable()" title="Save Call History to CSV" style="background: none; border: none; cursor: pointer; padding: 0; margin-left: auto;">
-				<!~~ Save Icon SVG ~~>
-				<svg xmlns="http://www.w3.org/2000/svg" height="20" viewBox="0 0 24 24" width="20" fill="#ccc">
-				  <path d="M0 0h24v24H0z" fill="none"/>
-				  <path d="M17 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7l-4-4zm0 2.5L18.5 7H17V5.5zM5 19V5h10v4h4v10H5z"/>
-				  <path d="M12 17a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"/>
-				</svg>
-			  </button>
- -->
 			</div>
 		  </th>
 		</tr>
@@ -421,7 +428,91 @@
 			</td>
 		  </tr>
 		</table>
+
+		<table class="outer-table" id="subContainer">
 		
+		  <!-- header row -->
+		  <tr>
+			<th class="th-section" colspan="2" style="padding:0;">
+		
+		<table style="width:100%; border-collapse:collapse; table-layout:fixed;">
+		  <tr style="height:28px;">
+			<!-- left -->
+			<td style="width:50px; text-align:left;">
+			  &nbsp;&nbsp;
+			</td>
+		
+			<!-- middle -->
+			<td style="text-align:center;">
+			  <span id="subCount">0</span> Subscriber Registrations <span id="sysCount"> <span>
+			</td>
+		
+			<!-- right -->
+			<td style="width:50px; text-align:right;">
+			  <a href="#" onclick="openSubSearchModal()">&#128269;</a>&nbsp;&nbsp;
+			</td>
+		  </tr>																					
+		</table>
+		
+			</th>
+		  </tr>
+		
+		  <!-- table body -->
+		  <tr>
+			<td>
+			  <div class="call-history-scroll" style="height:260px; overflow-y:auto;">
+				<table class="compact-table" id="subscribers">
+				  <tr>
+					<th class="th-section">Time</th>   						
+					<th class="th-section">System</th>
+					<th class="th-section" colspan="2">Talkgroup</th>		
+					<th class="th-section">Source</th>					
+					<th class="th-section">AG</th>							
+				  </tr>
+				</table>
+			  </div>
+			</td>
+		  </tr>
+		
+		</table>
+		
+		<!-- Subscriber Search Modal -->
+		
+		<div id="searchSubsPopup" aria-hidden="true">
+		  <div class="search-popup-content" role="dialog" aria-modal="true" aria-labelledby="subSearchTitle">
+			<div class="popup-header">
+			  <h3 id="subSearchTitle" style="margin:0;">Search Subscriber Registrations</h3>
+			  <span class="close-icon" onclick="closeSubSearchModal()" title="Close" style="font-size:22px;">&times;</span>
+			</div>
+		
+			<div style="margin: 12px 0;">
+			  <div style="display:flex; gap:10px; align-items:center;">
+				<input
+				  id="subSearchInput"
+				  type="text"
+				  placeholder="Type to filter (any column)..."
+				  style="flex:1; padding:10px; background:#222; color:#eee; border:1px solid #555; border-radius:6px;"
+				  oninput="filterSubSearchTable()"
+				/>
+				<button class="button-3d" type="button" onclick="refreshSubSearchSnapshot()">Refresh Snapshot</button>
+				<button class="button-3d" type="button" onclick="clearSubSearch()">Clear</button>
+			  </div>
+		
+			  <div id="subSearchMeta" style="margin-top:8px; color:#999; font-size:12px;">
+				Snapshot not loaded.
+			  </div>
+			</div>
+		
+			<div class="call-history-scroll" style="height:60vh;">
+			  <table class="compact-table" id="subSearchTable">
+				<!-- populated by JS -->
+			  </table>
+			</div>
+		  </div>
+		</div>
+
+
+
       <table class="outer-table" id="plot-container" style="display: none;">
 		<tr><th class="th-section">Plots</th></tr>
 		  <tr>
