@@ -767,4 +767,45 @@ input[type="checkbox"]:checked::after {
   }
 }
 
+
 /* END 2 COLUMN LAYOUT ELEMENTS */
+
+#subscribers td:nth-child(4),
+#subscribers td:nth-child(6) {
+  text-align: left;
+}
+
+
+/* Subscriber Search modal */
+#searchSubsPopup {
+  display: none;            /* default hidden */
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  justify-content: center;
+  align-items: center;
+  background: rgba(0,0,0,0.7);
+}
+
+#searchSubsPopup.show {
+  display: flex;            /* visible when open */
+}
+
+.search-popup-content {
+  background-color: #333;
+  padding: 20px;
+  border-radius: 12px;
+  max-height: 80vh;
+  margin: 5% auto;
+  overflow-y: auto;
+  color: #fff;
+  font-family: sans-serif;
+  animation: popupFade 0.1s ease;
+  width: 70vw;         /* 90% of viewport width */
+  max-width: 1400px;   /* cap on large screens */
+  min-width: 700px;    /* prevent narrow layout */  
+
+  /* Glowing border */
+  border: 2px solid var(--values); 
+  box-shadow: 0 0 3px var(--values), 0 0 7px var(--values);
+}
