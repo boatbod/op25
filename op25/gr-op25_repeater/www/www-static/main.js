@@ -1,7 +1,7 @@
 
 // Copyright 2017, 2018 Max H. Parke KA1RBI
 // Copyright 2018, 2019, 2020, 2021 gnorbury@bondcar.com
-// JavaScript UI Updates, Michael Rose, 2025
+// JavaScript UI Updates, Michael Rose, 2025, 2026
 //
 // This file is part of OP25
 //
@@ -20,7 +20,7 @@
 // Software Foundation, Inc., 51 Franklin Street, Boston, MA
 // 02110-1301, USA.
 
-const lastUpdate = "28-Apr-2025 9:46";
+const lastUpdate = "05-Feb-2026 16:59";
 
 var d_debug = 1;
 // default smartColors - will be overwritten by smartColors contained in json, if present
@@ -63,8 +63,10 @@ var site_alias = [];
 var newPresets = [];
 var noPresetsCounter = 0;
 localStorage.setItem('getConfigBtn', 0);
-var lg_step = 1200;  // these are defaults, they are updated in term_config() if present.
+
+var lg_step = 1200;  				// these are defaults, they are updated in term_config() if present.
 var sm_step = 100;
+
 const MAX_HISTORY_ROWS 		= 10; 	// number of rows to consider "recent" and duplicate by appendCallHistory
 const MAX_HISTORY_SECONDS 	= 5; 	// number of rows to consider "recent" and duplicate by appendCallHistory
 const MAX_TG_CHARS 			= 20;	// max number of characters for talkgroup tags in freq table
@@ -128,6 +130,8 @@ document.addEventListener("DOMContentLoaded", function() {
 	document.getElementById("radioIdFreqTable").addEventListener("change", saveSettingsToLocalStorage);	
 	document.getElementById("channelsTableToggle").addEventListener("change", saveSettingsToLocalStorage);	
 	document.getElementById("showBandPlan").addEventListener("change", saveSettingsToLocalStorage);	
+	document.getElementById("trackSubsToggle").addEventListener("change", saveSettingsToLocalStorage);	
+	document.getElementById("subMode").addEventListener("change", saveSettingsToLocalStorage);	
 	
 	document.getElementById("valueColorPicker").addEventListener("change", function() {
 		document.documentElement.style.setProperty('--values', this.value);
@@ -225,50 +229,6 @@ function find_parent(ele, tagname) {
     }
     return null;
 }
-
-
-// this was from Osmocom config editor, not used here.
-
-	// function f_command(ele, command) {
-	//     var myrow = find_parent(ele, "TR");
-	//     if (command == "delete") {
-	//         var ok = confirm ("Confirm delete");
-	//         if (ok)
-	//             myrow.parentNode.removeChild(myrow);
-	//     } else if (command == "clone") {
-	//         var newrow = myrow.cloneNode(true);
-	//         if (myrow.nextSibling)
-	//             myrow.parentNode.insertBefore(newrow, myrow.nextSibling);
-	//         else
-	//             myrow.parentNode.appendChild(newrow);
-	//     } else if (command == "new") {
-	//         var mytbl = find_parent(ele, "TABLE");
-	//         var newrow = null;
-	//         if (mytbl.id == "chtable")
-	//             newrow = document.getElementById("chrow").cloneNode(true);
-	//         else if (mytbl.id == "devtable")
-	//             newrow = document.getElementById("devrow").cloneNode(true);
-	//         else
-	//             return;
-	//         mytbl.appendChild(newrow);
-	//     }
-	// }
-
-// Deprecated
-
-	// function nav_update(command) {
-	// 	var names = ["b1", "b2", "b3"];
-	// 	var bmap = { "status": "b1", "plot": "b2", "about": "b3" };
-	// 	var id = bmap[command];
-	// 	for (var id1 in names) {
-	// 		b = document.getElementById(names[id1]);
-	// 		if (names[id1] == id) {
-	// 			b.className = "nav-button-active";
-	// 		} else {
-	// 			b.className = "nav-button";
-	// 		}
-	// 	}
-	// }
 
 function is_digit(s) {
     if (s >= "0" && s <= "9")
@@ -764,11 +724,178 @@ function adjacent_sites(d) {
     return html;
 }
 
+
+function update_sub_reg(r, systemId) {
+
+	// update subscriber registrations table for the selected channel only
+
+	var cb = document.getElementById('trackSubsToggle');
+	var enabled = cb && cb.checked;
+	if (!enabled) {
+	    document.getElementById('subContainer').style.display = "none";
+		return;  // Settings checkbox, do nothing if unchecked
+	} 
+	
+	document.getElementById('subContainer').style.display = "";
+	
+ 	var systemIdHex = Number(systemId).toString(16).padStart(3, "0");    
+	
+	var subCount = Object.keys(r).length;  // display the count in the UI table header (234 Subscribers Registered)
+	
+	var table = document.getElementById("subscribers");
+    	if (!table) return;
+
+    var obj = Object.values(r || {})[0];
+    if (!obj) return;
+
+    var suid    	= obj.suid;
+    var srcaddr 	= obj.srcaddr;
+    var aff_aga 	= obj.aff_aga;
+    var aff_ga  	= obj.aff_ga;
+    var t       	= obj.time;
+
+	var wacn   		= suid.substring(0, 5);
+	var sysid  		= suid.substring(5, 8);
+	var suidHex 	= suid.substring(8);
+
+	if (sysid !== systemIdHex) return; // Don't process, we're not on this channel
+
+    // epoch time to 24h
+    var tz = new Date(t * 1000);
+    var timeStr = tz.toLocaleTimeString([], { hour12: false });
+
+    
+	// Remove old data rows (keep first 2 header rows)
+    while (table.rows.length > 1) {
+        table.deleteRow(1);
+    }
+
+	document.getElementById('subCount').innerText = subCount;
+	
+    Object.values(r).forEach(function (obj) {
+        var suid    = obj.suid;
+        var srcaddr = obj.srcaddr;
+		var aff_aga = obj.aff_aga + (obj.aff_aga_tag ? ' ' + obj.aff_aga_tag : '');
+        var aff_ga  = obj.aff_ga;
+		var srctg 	= obj.aff_ga_tag ? obj.aff_ga_tag	: ('Talkgroup ' + aff_ga);
+        var t       = obj.time;
+
+		var wacn   		= suid.substring(0, 5);
+		var sysid  		= suid.substring(5, 8);
+		var suidHex 	= suid.substring(8);
+
+        // epoch → 24h time
+        var d = new Date(t * 1000);
+        var timeStr = d.toLocaleTimeString([], {
+            hour12: false,
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+        });
+
+        var row = table.insertRow(-1);
+
+        row.insertCell(0).textContent = timeStr;
+        row.insertCell(1).textContent = wacn.toUpperCase() + '-' + sysid.toUpperCase();
+        row.insertCell(2).textContent = aff_ga;
+        row.insertCell(3).textContent = srctg;
+	    row.insertCell(4).textContent = 'ID: ' + srcaddr;
+        row.insertCell(5).textContent = (aff_aga == 0 ? '-' : aff_aga);
+    });
+    
+    	document.getElementById('sysCount').innerText = ' on System ' + systemIdHex.toUpperCase();
+    	applySmartColorsSubReg();
+}
+
+function update_sub_reg_all(d) {
+
+	// update subscriber registrations table for all channels
+
+	var cb = document.getElementById('trackSubsToggle');
+	var enabled = cb && cb.checked;
+	var el = document.getElementById('subContainer');
+	
+	if (!enabled) {
+		el.style.display = "none";
+		return;   // do nothing if unchecked
+	}
+	
+	el.style.display = "";
+
+	var totalReg = 0;
+	var totalSys = 0;
+
+	var table = document.getElementById("subscribers");
+    	if (!table) return;
+    	
+    // Remove old data rows (keep first 2 header rows)
+    while (table.rows.length > 1) {
+        table.deleteRow(1);
+    }    	
+    	
+	Object.values(d).forEach(function (s) {
+
+	  // s can be a string/number (json_type, nac, etc). Skip those.
+	  if (!s || typeof s !== 'object' || !('wuid_data' in s) || !s.wuid_data || typeof s.wuid_data !== 'object')
+		return;
+	
+	  totalSys++;
+	
+	  Object.values(s.wuid_data).forEach(function (obj) {
+	
+		if (!obj || typeof obj !== 'object') return;
+	
+		totalReg++;
+	
+		var suid    = String(obj.suid || "");
+		var srcaddr = obj.srcaddr;		
+		var aff_aga = obj.aff_aga + (obj.aff_aga_tag ? ' ' + obj.aff_aga_tag : '');
+		var aff_ga  = obj.aff_ga;
+		var srctg = obj.aff_ga_tag ? obj.aff_ga_tag	: ('Talkgroup ' + aff_ga);
+		var t       = Number(obj.time || 0);
+	
+		if (!suid || suid.length < 8) return;
+	
+		var wacn    = suid.substring(0, 5);
+		var sysid   = suid.substring(5, 8);
+		var suidHex = suid.substring(8);
+	
+		// epoch → 24h time
+		var dt = new Date(t * 1000);
+		var timeStr = dt.toLocaleTimeString([], {
+		  hour12: false,
+		  hour: '2-digit',
+		  minute: '2-digit',
+		  second: '2-digit'
+		});
+	
+		var row = table.insertRow(-1);
+	
+		row.insertCell(0).textContent = timeStr;
+		row.insertCell(1).textContent = wacn.toUpperCase() + '-' + sysid.toUpperCase();
+		row.insertCell(2).textContent = aff_ga;
+		row.insertCell(3).textContent = srctg;
+		row.insertCell(4).textContent = 'ID: ' + srcaddr;
+		row.insertCell(5).textContent = (Number(aff_aga) === 0 ? '-' : aff_aga);
+	  });
+	
+	});
+
+	document.getElementById('subCount').innerText = totalReg;
+	
+	var label = totalSys === 1 ? 'System' : 'Systems';
+	document.getElementById('sysCount').innerText =
+		` on ${totalSys} ${label}`;
+		
+	applySmartColorsSubReg();		
+}
+
+
 // additional system info: wacn, sysID, rfss, site id, secondary control channels, freq error
+
 
 function trunk_update(d) {
 
-		
     var do_hex = {"syid":0, "sysid":0, "wacn": 0};
     var do_float = {"rxchan":0, "txchan":0};
     var srcaddr = 0;
@@ -777,6 +904,12 @@ function trunk_update(d) {
 
     if (d['nac'] != undefined)
         c_nac = d['nac']
+
+	var subMode = document.getElementById("subMode").value;
+	// "all" or "selected"
+
+	if (subMode === "all")
+		update_sub_reg_all(d);
 
     for (var nac in d) {
         if (!is_digit(nac.charAt(0)))
@@ -797,6 +930,10 @@ function trunk_update(d) {
         else if (nac != c_nac) {
             continue;
         }
+        
+		if (subMode === "selected")
+			update_sub_reg(d[nac]['wuid_data'],d[nac]['sysid']);      
+
 
         var is_p25 = (d[nac]['type'] == 'p25');
         var is_smartnet = (d[nac]['type'] == 'smartnet');
@@ -1051,16 +1188,11 @@ function trunk_update(d) {
 			});
 		}
 
-
-
 		// finish up
 		
-		applySmartColorsToFrequencyTable();
-		
+		applySmartColorsToFrequencyTable();		
         patches(d[nac]);
-        
         adjacent_sites(d[nac]);
-        
         
     }
 
@@ -1265,44 +1397,6 @@ async function send_process() {
         console.error("Fetch Exception Details:", error.stack || error);
     }
 }
-
-// function send_process() {
-// 
-//     const cmd = JSON.stringify(send_queue);
-//     send_queue = [];
-//     
-//     const wbox = document.getElementById('warning-box');
-//     const wtxt = document.getElementById('warning-text');
-// 
-//     fetch("/", {
-//         method: "POST",
-//         headers: {
-//             "Content-Type": "application/json"
-//         },
-//         body: cmd
-//     })
-//     .then(response => {
-//         if (!response.ok) {
-// 			http_errors += 1;
-//             wbox.style.display = "flex";
-//             wtxt.innerText = "HTTP Error: ", response.status;
-//             return;
-//         }
-//         http_ok += 1;
-//         return response.json();
-//     })
-//     .then(dl => {
-//         if (!dl) return;
-//         wbox.style.display = "none";
-//         handle_response(dl);
-//     })
-//     .catch(error => {
-// 			fetch_errors += 1;
-//             wbox.style.display = "flex";
-//             wtxt.innerText = "Error: " + error + "\n" + "Stack:"  + error.stack + "\n" + "Error Message: " + error.message;
-// //             console.warn(error);
-//     });
-// }
 
 function f_chan_button(command) {
     channel_index += command;
@@ -1625,6 +1719,45 @@ function applySmartColorsToChannels() {
 } // end applySmartColorsToChannels
 
 
+
+function applySmartColorsSubReg() {
+  if (!document.getElementById("smartColorToggle").checked) return;
+  if (smartColors.length == 0) return;
+  
+  const rows = document.querySelectorAll("#subscribers tr");
+
+  rows.forEach(row => {
+    const cells = row.querySelectorAll("td");
+    if (cells.length < 5) return;
+
+    const tgidCell = cells[2];
+    const tgTagCell = cells[3];
+    const sourceCell = cells[4];
+    
+
+    const cellText = tgTagCell.textContent.toLowerCase();
+
+    let matched = false;
+
+    for (const colorGroup of smartColors) {
+      if (colorGroup.keywords.some(keyword => cellText.includes(keyword.toLowerCase()))) {
+        tgidCell.style.color = colorGroup.color;
+        sourceCell.style.color = colorGroup.color;
+        tgTagCell.style.color = colorGroup.color;
+        matched = true;
+        break;
+      }
+    }
+
+    if (!matched) {
+      tgidCell.style.color = "";
+      sourceCell.style.color = "";
+      tgTagCell.style.color = "";
+    }
+  });
+} // end applySmartColorsToSubReg
+
+
 function applySmartColorsToCallHistory() {
   if (!document.getElementById("smartColorToggle").checked) return;
   if (smartColors.length == 0) return;
@@ -1721,6 +1854,7 @@ function applySmartColorToTgidSpan() {
   }
 
   el.style.color = "";
+  
 } // end applySmartColorToTgidSpan
 
 function getSiteAlias(sysname, rfss, site) {
@@ -1738,26 +1872,6 @@ function getSiteAlias(sysname, rfss, site) {
         return `Site ${site}`;
     }
 }
-
-
-// function getSiteAlias(sysid, rfss, site) {
-// 
-//	by sysid
-//
-// 	console.log(sysid, rfss, site);
-// 	
-// 	if (site_alias.length == 0) {
-// 		send_command('get_full_config');
-// 	}
-// 	
-// 	try {
-// 		const alias = site_alias?.[sysid]?.[rfss]?.[site]?.alias;
-// 		return alias ?? `Site ${site}`;
-// 	} catch (err) {
-// 		console.warn("Error looking up site alias:", err);
-// 		return `Site ${site}`;
-// 	}
-// }
 
 function toggleDivById(divId, buttonId) {
   const el = document.getElementById(divId);
@@ -1825,7 +1939,9 @@ function saveSettingsToLocalStorage() {
   localStorage.setItem("radioIdFreqTable", document.getElementById("radioIdFreqTable").checked);
   localStorage.setItem("channelsTableToggle", document.getElementById("channelsTableToggle").checked);
   localStorage.setItem("valueColor", document.getElementById("valueColorPicker").value);
-  localStorage.setItem("showBandPlan", document.getElementById("showBandPlan").checked);  
+  localStorage.setItem("showBandPlan", document.getElementById("showBandPlan").checked);
+  localStorage.setItem("trackSubsToggle", document.getElementById("trackSubsToggle").checked);
+  localStorage.setItem("subMode", document.getElementById("subMode").value); 
 }  // end saveSettingsToLocalStorage
 
 
@@ -1838,17 +1954,27 @@ function loadSettingsFromLocalStorage() {
 	const radioIdFreqTable = localStorage.getItem("radioIdFreqTable");
 	const channelsTableToggle = localStorage.getItem("channelsTableToggle");
 	const showBandPlan = localStorage.getItem("showBandPlan");
+	const trackSubsToggle = localStorage.getItem("trackSubsToggle");
+	const savedSubMode = localStorage.getItem("subMode");
+	
+	if (savedSubMode !== null) {
+		document.getElementById("subMode").value = savedSubMode;
+	}	
+
+	document.getElementById("trackSubsToggle").checked = trackSubsToggle === "true";	
 	
 	document.getElementById("showBandPlan").checked = showBandPlan === "true";	
 	
 	document.getElementById("radioIdFreqTable").checked = radioIdFreqTable === "true";
 	
 	document.getElementById("callHeightControl").value = callHeight;
+	
 	document.querySelector(".call-history-scroll").style.height = `${callHeight}px`;
 	
 	document.getElementById("plotSizeControl").value = plotWidth;
+	
 	document.querySelectorAll(".plot-image").forEach(img => {
-	img.style.width = `${plotWidth}px`;
+		img.style.width = `${plotWidth}px`;
 	});
 	
 	const smartColorEnabled = smartColorsToggle === null ? true : smartColorsToggle === "true";
@@ -1873,6 +1999,8 @@ function loadSettingsFromLocalStorage() {
 	const valueColor = localStorage.getItem("valueColor") || "#00ffff"; // fallback if missing
 	document.getElementById("valueColorPicker").value = valueColor;
 	document.documentElement.style.setProperty('--values', valueColor);  
+
+
 
 } // end loadSettingsFromLocalStorage
 
@@ -2000,6 +2128,7 @@ function ws_instances(instances) {
 }
 
 function ws_create(channel) {
+
     if ((ws_endpt != null) && (ws_channel == channel) && (ws_endpt.readyState <= 1))
         return;                                // we are already on the required channel
 
@@ -2011,6 +2140,8 @@ function ws_create(channel) {
     if ((!(channel in ws_endpoints)) || (ws_endpoints[channel] == null)) {
         return;
     }
+
+//
 
     ws_endpt = new WebSocket(ws_endpoints[channel]);
     ws_channel = channel;
@@ -2190,57 +2321,142 @@ function buildSiteAliases(sa) {
     return siteAliases;
 } // end buildSiteAliases
 
-// function buildSiteAliases(sa) {
-// 
-// 	// by sysid
-// 	
-//     const siteAliases = {};
-// 
-//     // If input is not an array or is empty, bail out
-//     if (!Array.isArray(sa) || sa.length === 0) {
-//         console.warn("buildSiteAliases: Invalid or empty input.");
-//         return siteAliases;
-//     }
-// 
-//     sa.forEach(system => {
-//         // Verify required fields exist
-//         if (!system || typeof system !== 'object' || !system.sysid || !system.site_alias) {
-//             console.warn("buildSiteAliases: Skipping invalid system entry:", system);
-//             return;
-//         }
-// 
-//         const sysid = String(system.sysid).replace(/^0x/i, "").toUpperCase();  // Normalize sysid
-//         const aliases = system.site_alias;
-// 
-//         if (!sysid || typeof aliases !== 'object') {
-//             console.warn("buildSiteAliases: Invalid sysid or aliases structure.");
-//             return;
-//         }
-// 
-//         siteAliases[sysid] = {};
-// 
-//         for (const rfssId in aliases) {
-//             if (Object.prototype.hasOwnProperty.call(aliases, rfssId)) {
-//                 siteAliases[sysid][rfssId] = {};
-// 
-//                 for (const siteId in aliases[rfssId]) {
-//                     if (Object.prototype.hasOwnProperty.call(aliases[rfssId], siteId)) {
-//                         const aliasObj = aliases[rfssId][siteId];
-// 
-//                         if (aliasObj && typeof aliasObj.alias === 'string') {
-//                             siteAliases[sysid][rfssId][siteId] = { alias: aliasObj.alias };
-//                         } else {
-//                             console.warn(`buildSiteAliases: Missing alias for sysid=${sysid}, rfss=${rfssId}, site=${siteId}`);
-//                         }
-//                     }
-//                 }
-//             }
-//         }
-//     });
-// 
-//     return siteAliases;
-// } // end buildSiteAliases
 
+// Subscriber search 
+
+function openSubSearchModal() {
+
+  var container = document.getElementById("searchSubsPopup");
+  if (!container)  {
+  	return;
+  }
+
+  refreshSubSearchSnapshot();
+
+  container.classList.add("show");
+  container.setAttribute("aria-hidden", "false");
+
+  // focus the search box
+  setTimeout(function () {
+    var input = document.getElementById("subSearchInput");
+    if (input) input.focus();
+  }, 0);
+}
+
+function closeSubSearchModal() {
+
+  var container = document.getElementById("searchSubsPopup");
+  if (!container) { console.warn('error no container at 2368'); return; }
+
+  container.classList.remove("show");
+  container.setAttribute("aria-hidden", "true");
+}
+
+function clearSubSearch() {
+  var input = document.getElementById("subSearchInput");
+  if (input) input.value = "";
+  filterSubSearchTable();
+}
+
+function refreshSubSearchSnapshot() {
+
+  var live = document.getElementById("subscribers");
+  var snap = document.getElementById("subSearchTable");
+  var meta = document.getElementById("subSearchMeta");
+
+  if (!live || !snap) {
+  	console.warn('error no live, no snap');
+  	return;
+  }
+
+  // Clone the current table contents (header + rows)
+  snap.innerHTML = live.innerHTML;
+
+  // Update meta
+  var rowCount = Math.max(0, snap.querySelectorAll("tr").length - 1); // minus header row
+  var now = new Date();
+  var hh = String(now.getHours()).padStart(2, "0");
+  var mm = String(now.getMinutes()).padStart(2, "0");
+  var ss = String(now.getSeconds()).padStart(2, "0");
+
+  if (meta) meta.textContent = "Snapshot: " + hh + ":" + mm + ":" + ss + "  |  Rows: " + rowCount;
+
+  // Apply current filter (if any)
+  filterSubSearchTable();
+}
+
+function filterSubSearchTable() {
+  var input = document.getElementById("subSearchInput");
+  var table = document.getElementById("subSearchTable");
+  var meta  = document.getElementById("subSearchMeta");
+  if (!table) return;
+
+  var q = (input ? input.value : "").toLowerCase().trim();
+  var rows = table.querySelectorAll("tr");
+
+  var visibleCount = 0;
+
+  for (var i = 1; i < rows.length; i++) {
+    var row = rows[i];
+    var text = (row.textContent || "").toLowerCase();
+    var show = (!q || text.indexOf(q) !== -1);
+
+    row.style.display = show ? "" : "none";
+    if (show) visibleCount++;
+  }
+
+  if (meta) {
+    var t = meta.dataset.snapshotTime || "--:--:--";
+    var total = meta.dataset.totalRows || visibleCount;
+
+    meta.textContent =
+      "Snapshot: " + t +
+      " | Matches: " + visibleCount +
+      " / " + total;
+  }
+}
+
+// Close modal on backdrop click
+document.addEventListener("click", function (e) {
+  var container = document.getElementById("searchSubsPopup");
+  if (!container || !container.classList.contains("show")) return;
+  if (e.target === container) closeSubSearchModal();
+});
+
+// Close modal on Esc
+document.addEventListener("keydown", function (e) {
+  if (e.key !== "Escape") return;
+  var container = document.getElementById("searchSubsPopup");
+  if (container && container.classList.contains("show")) closeSubSearchModal();
+});
+
+
+
+function refreshSubSearchSnapshot() {
+  var live = document.getElementById("subscribers");
+  var snap = document.getElementById("subSearchTable");
+  var meta = document.getElementById("subSearchMeta");
+
+  if (!live || !snap) return;
+
+  snap.innerHTML = live.innerHTML;
+
+  var rowCount = Math.max(0, snap.querySelectorAll("tr").length - 1);
+
+  var now = new Date();
+  var hh = String(now.getHours()).padStart(2, "0");
+  var mm = String(now.getMinutes()).padStart(2, "0");
+  var ss = String(now.getSeconds()).padStart(2, "0");
+
+  if (meta) {
+    meta.dataset.snapshotTime = hh + ":" + mm + ":" + ss;
+    meta.dataset.totalRows = rowCount;
+  }
+
+  filterSubSearchTable();
+}
+
+// Subscriber search  end
 
 function getCaller() {
 	
@@ -2259,6 +2475,7 @@ function getCaller() {
 	}
 }
 
+
 function csvTable() {
 	// save the call history table to csv
 	
@@ -2274,6 +2491,7 @@ function csvTable() {
         const headers = Array.from(headerRow).map(cell => {
             let data = cell.innerText.trim().replace(/(\r\n|\n|\r)/gm, '').replace(/\s+/g, ' ');
             data = data.replace(/"/g, '""');
+            
             return `"${data}"`;
         });
         csv.push(headers.join(separator));
@@ -2293,7 +2511,8 @@ function csvTable() {
     }
 
     const csv_string = csv.join('\n');
-    const filename = `export_${table_id}_${new Date().toLocaleDateString().replace(/\//g, '-')}.csv`;
+
+    const filename = "export_" + table_id + "_" + new Date().toLocaleDateString().split("/").join("-") + ".csv";
 
     const link = document.createElement('a');
     link.style.display = 'none';
@@ -2303,3 +2522,9 @@ function csvTable() {
     link.click();
     document.body.removeChild(link);
 }
+
+
+
+
+
+
