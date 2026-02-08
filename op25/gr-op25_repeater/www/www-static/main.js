@@ -775,6 +775,7 @@ function update_sub_reg(r, systemId) {
     Object.values(r).forEach(function (obj) {
         var suid    = obj.suid;
         var srcaddr = obj.srcaddr;
+        var srctag  = obj.tag ? obj.tag : ('ID: ' + srcaddr);
 		var aff_aga = obj.aff_aga + (obj.aff_aga_tag ? ' ' + obj.aff_aga_tag : '');
         var aff_ga  = obj.aff_ga;
 		var srctg 	= obj.aff_ga_tag ? obj.aff_ga_tag	: ('Talkgroup ' + aff_ga);
@@ -799,7 +800,7 @@ function update_sub_reg(r, systemId) {
         row.insertCell(1).textContent = wacn.toUpperCase() + '-' + sysid.toUpperCase();
         row.insertCell(2).textContent = aff_ga;
         row.insertCell(3).textContent = srctg;
-	    row.insertCell(4).textContent = 'ID: ' + srcaddr;
+		row.insertCell(4).textContent = srctag;
         row.insertCell(5).textContent = (aff_aga == 0 ? '-' : aff_aga);
     });
     
