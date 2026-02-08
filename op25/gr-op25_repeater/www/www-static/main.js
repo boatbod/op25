@@ -748,6 +748,8 @@ function update_sub_reg(r, systemId) {
     var obj = Object.values(r || {})[0];
     if (!obj) return;
 
+    var rfss        = obj.rfss;
+    var site        = obj.site;
     var suid    	= obj.suid;
     var srcaddr 	= obj.srcaddr;
     var aff_aga 	= obj.aff_aga;
@@ -773,6 +775,8 @@ function update_sub_reg(r, systemId) {
 	document.getElementById('subCount').innerText = subCount;
 	
     Object.values(r).forEach(function (obj) {
+        var rfss    = obj.rfss;
+        var site    = obj.site;
         var suid    = obj.suid;
         var srcaddr = obj.srcaddr;
         var srctag  = obj.tag ? obj.tag : ('ID: ' + srcaddr);
@@ -797,14 +801,14 @@ function update_sub_reg(r, systemId) {
         var row = table.insertRow(-1);
 
         row.insertCell(0).textContent = timeStr;
-        row.insertCell(1).textContent = wacn.toUpperCase() + '-' + sysid.toUpperCase();
+        row.insertCell(1).textContent = wacn.toUpperCase() + '/' + sysid.toUpperCase() + '/' + rfss + '/' + site;
         row.insertCell(2).textContent = aff_ga;
         row.insertCell(3).textContent = srctg;
 		row.insertCell(4).textContent = srctag;
         row.insertCell(5).textContent = (aff_aga == 0 ? '-' : aff_aga);
     });
     
-    	document.getElementById('sysCount').innerText = ' on System ' + systemIdHex.toUpperCase();
+    	document.getElementById('sysCount').innerText = ' on System ' + systemIdHex.toUpperCase() + '/' + rfss + '/' + site;
     	applySmartColorsSubReg();
 }
 
@@ -848,6 +852,8 @@ function update_sub_reg_all(d) {
 	
 		totalReg++;
 	
+        var rfss    = obj.rfss;
+        var site    = obj.site;
 		var suid    = String(obj.suid || "");
 		var srcaddr = obj.srcaddr;		
         var srctag  = obj.tag ? obj.tag : ('ID: ' + srcaddr);
@@ -874,7 +880,7 @@ function update_sub_reg_all(d) {
 		var row = table.insertRow(-1);
 	
 		row.insertCell(0).textContent = timeStr;
-		row.insertCell(1).textContent = wacn.toUpperCase() + '-' + sysid.toUpperCase();
+        row.insertCell(1).textContent = wacn.toUpperCase() + '/' + sysid.toUpperCase() + '/' + rfss + '/' + site;
 		row.insertCell(2).textContent = aff_ga;
 		row.insertCell(3).textContent = srctg;
 		row.insertCell(4).textContent = srctag;
