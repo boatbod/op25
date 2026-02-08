@@ -1661,8 +1661,8 @@ class p25_system(object):
         tag = self.get_rid_tag(src_addr)
         with self.suids_mutex:
             if suid not in self.registered_suids:
-                self.registered_suids[suid] = {"wuid" : wuid, "tag" : tag, "aff_sgid" : 0, "ts": ts}
-                self.registered_wuids[wuid] = {"suid" : suid, "tag" : tag, "aff_aga"  : 0, "aff_ga"  : 0, "ts": ts}
+                self.registered_suids[suid] = {"rfid": self.rfss_rfid, "stid": self.rfss_stid, "wuid" : wuid, "tag" : tag, "aff_sgid" : 0, "ts": ts}
+                self.registered_wuids[wuid] = {"rfid": self.rfss_rfid, "stid": self.rfss_stid, "suid" : suid, "tag" : tag, "aff_aga"  : 0, "aff_ga"  : 0, "ts": ts}
                 if self.debug >= 10:
                     sys.stderr.write("%s [%s] register_suid: suid(%s), wuid(%d)\n" % (log_ts.get(), self.sysname, suid, int(wuid, 16)))
             else:
@@ -1888,7 +1888,9 @@ class p25_system(object):
         # Subscriber Registrations
         self.expire_registrations()
         for wuid in sorted(self.registered_wuids.keys()):
-            d['wuid_data'][wuid] = {'suid'        : self.registered_wuids[wuid]['suid'],
+            d['wuid_data'][wuid] = {'rfss'        : self.registered_wuids[wuid]['rfid'],
+                                    'site'        : self.registered_wuids[wuid]['stid'],
+                                    'suid'        : self.registered_wuids[wuid]['suid'],
                                     'srcaddr'     : int(wuid, 16),
                                     'tag'         : self.registered_wuids[wuid]['tag'],
                                     'aff_ga'      : self.registered_wuids[wuid]['aff_ga'],
