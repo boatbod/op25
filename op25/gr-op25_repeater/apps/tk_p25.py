@@ -1653,7 +1653,7 @@ class p25_system(object):
 
     def register_suid(self, wacn_id, sys_id, source_id, src_addr, ts):
         if (source_id == 0 or sys_id == 0 or wacn_id == 0 or src_addr == 0):
-            return
+            return None
         suid = ("%05x%03x%06x" % (wacn_id, sys_id, source_id))
         wuid = ("%06x" % src_addr)
         if suid in self.registered_suids and self.registered_suids[suid]['wuid'] != wuid:
@@ -1668,6 +1668,7 @@ class p25_system(object):
             else:
                 self.registered_suids[suid]['ts'] = ts
                 self.registered_wuids[wuid]['ts'] = ts
+        return suid
 
     def deregister_suid(self, wacn_id, sys_id, source_id):
         if (source_id == 0 or sys_id == 0 or wacn_id == 0):
@@ -1683,11 +1684,12 @@ class p25_system(object):
 
     def affiliate_sgid(self, wacn_id, sys_id, group_id, group_addr, ann_group_addr, src_addr, ts):
         if (sys_id == 0 or wacn_id == 0 or src_addr == 0):
-            return
+            return None
 
         wuid = ("%06x" % src_addr)
-        if wuid not in self.registered_wuids:
-            self.register_suid(wacn_id, sys_id, src_addr, src_addr, ts)   # this only legitimately works for same-system where source_id == src_addr
+        if (wuid not in self.registered_wuids and 
+            self.register_suid(wacn_id, sys_id, src_addr, src_addr, ts) is None):   # this only legitimately works for same-system where source_id == src_addr
+            return None
 
         suid = self.registered_wuids[wuid]['suid']
         sgid = ("%05x%03x%04x" % (wacn_id, sys_id, group_id))
@@ -1700,14 +1702,16 @@ class p25_system(object):
                     sys.stderr.write("%s [%s] affiliate_sgid: suid(%s), sgid(%s), wuid(%d), aga(%d), ga(%d)\n" % (log_ts.get(), self.sysname, suid, sgid, int(wuid, 16), ann_group_addr, group_addr))
             self.registered_suids[suid]['ts'] = ts
             self.registered_wuids[wuid]["ts"] = ts
+        return sgid
 
     def update_wuid_ts(self, src_addr, tgid, ts):
         if (src_addr == 0 or src_addr == 0xffffff):
             return
 
         wuid = ("%06x" % src_addr) 
-        if wuid not in self.registered_wuids:                                               # Auto-affiliate an active subscriber unit
-            self.affiliate_sgid(self.ns_wacn, self.ns_syid, tgid, tgid, 0, src_addr, ts)    # making assumption WUID is local not roaming
+        if (wuid not in self.registered_wuids and 
+            self.affiliate_sgid(self.ns_wacn, self.ns_syid, tgid, tgid, 0, src_addr, ts) is None):    # making assumption WUID is local not roaming
+            return
 
         suid = self.registered_wuids[wuid]['suid']
         with self.suids_mutex:
