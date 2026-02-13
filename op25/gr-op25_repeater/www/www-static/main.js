@@ -20,7 +20,7 @@
 // Software Foundation, Inc., 51 Franklin Street, Boston, MA
 // 02110-1301, USA.
 
-const lastUpdate = "05-Feb-2026 16:59";
+const lastUpdate = "12-Feb-2026 16:40";
 
 var d_debug = 1;
 // default smartColors - will be overwritten by smartColors contained in json, if present
@@ -67,10 +67,40 @@ localStorage.setItem('getConfigBtn', 0);
 var lg_step = 1200;  				// these are defaults, they are updated in term_config() if present.
 var sm_step = 100;
 
-const MAX_HISTORY_ROWS 		= 10; 	// number of rows to consider "recent" and duplicate by appendCallHistory
-const MAX_HISTORY_SECONDS 	= 5; 	// number of rows to consider "recent" and duplicate by appendCallHistory
-const MAX_TG_CHARS 			= 20;	// max number of characters for talkgroup tags in freq table
 
+// MAX_HISTORY_ROWS: Maximum number of entries retained in the Call History table.
+// Older rows beyond this limit should be pruned to prevent unbounded
+// table growth and UI performance degradation.
+const MAX_HISTORY_ROWS = 1000;
+
+
+// MAX_HISTORY_SECONDS: Time window (in seconds) used by appendCallHistory() to suppress duplicates.
+// If the same system + talkgroup + source appears again within this many seconds,
+// the entry is treated as already logged and will not be added again.
+const MAX_HISTORY_SECONDS 	= 5 ;
+
+
+// MAX_TG_CHARS: Maximum length of talkgroup tag text shown in the frequency table.
+// Tags longer than this should be truncated to keep the table readable
+// and prevent layout stretching.
+const MAX_TG_CHARS = 20;
+
+
+// remember sysid:tgid:tgtags for when a tgid shows up without its tag.
+var TG_TAG_CACHE = {}; // { "1A2": { "1234": "PD Dispatch", ... }, ... }
+
+// stores the time a tg was last seen so duplicates are avoided in the call history table
+var callHistorySeen = new Map(); // key -> lastSeenMs
+
+// stores sort params for the seen talkgroup table popup
+var SEEN_TG_SORT = { col: null, asc: true };
+var SEEN_TG_SORT_COL = 0;   // default: System
+var SEEN_TG_SORT_DIR = 1;   // 1 = asc, -1 = desc
+
+// ---- SubReg sort state (no sorting until user clicks) ----
+var subSortKey = null;  // time | system | tgid | tgtag | id | ag
+var subSortDir = 1;     // 1 asc, -1 desc
+var SUB_SEARCH_SORT = { col: null, dir: "asc" }; // popup-only sort state
 
 const mediaQuery = window.matchMedia("(min-width: 1500px)");
 mediaQuery.addEventListener("change", handleColumnLayoutChange);
@@ -217,17 +247,6 @@ function do_onload() {
     setInterval(do_update, 1000);
     send_command("get_full_config", 0, 0);
     send_command("get_ws_instances", 0, 0);
-}
-
-function find_parent(ele, tagname) {
-    while (ele) {
-        if (ele.nodeName == tagname)
-            return (ele);
-        else if (ele.nodeName == "HTML")
-            return null;
-        ele = ele.parentNode;
-    }
-    return null;
 }
 
 function is_digit(s) {
@@ -638,7 +657,6 @@ function patches(d) {
 
 } // end patch table
 
-
 // adjacent sites table
 
 function adjacent_sites(d) {
@@ -724,183 +742,330 @@ function adjacent_sites(d) {
     return html;
 }
 
-
 function update_sub_reg(r, systemId) {
 
-	// update subscriber registrations table for the selected channel only
+  // update subscriber registrations table for the selected channel only
 
-	var cb = document.getElementById('trackSubsToggle');
-	var enabled = cb && cb.checked;
-	if (!enabled) {
-	    document.getElementById('subContainer').style.display = "none";
-		return;  // Settings checkbox, do nothing if unchecked
-	} 
-	
-	document.getElementById('subContainer').style.display = "";
-	
- 	var systemIdHex = Number(systemId).toString(16).padStart(3, "0");    
-	
-	var subCount = Object.keys(r).length;  // display the count in the UI table header (234 Subscribers Registered)
-	
-	var table = document.getElementById("subscribers");
-    	if (!table) return;
+  var cb = document.getElementById('trackSubsToggle');
+  var enabled = cb && cb.checked;
 
-    var obj = Object.values(r || {})[0];
-    if (!obj) return;
+  var container = document.getElementById('subContainer');
+  if (!enabled) {
+    if (container) container.style.display = "none";
+    return;
+  }
+  if (container) container.style.display = "";
 
-    var rfss        = obj.rfss;
-    var site        = obj.site;
-    var suid    	= obj.suid;
-    var srcaddr 	= obj.srcaddr;
-    var aff_aga 	= obj.aff_aga;
-    var aff_ga  	= obj.aff_ga;
-    var t       	= obj.time;
+  var systemIdHex = Number(systemId).toString(16).padStart(3, "0"); // lower hex, we'll compare consistently
 
-	var wacn   		= suid.substring(0, 5);
-	var sysid  		= suid.substring(5, 8);
-	var suidHex 	= suid.substring(8);
+  var table = document.getElementById("subscribers");
+  if (!table) return;
 
-	if (sysid !== systemIdHex) return; // Don't process, we're not on this channel
+  // Clear table (keep header row)
+  while (table.rows.length > 1) table.deleteRow(1);
 
-    // epoch time to 24h
-    var tz = new Date(t * 1000);
-    var timeStr = tz.toLocaleTimeString([], { hour12: false });
+  // If r includes non-objects, ignore them safely
+  var rows = [];
+  var totalReg = 0;
 
-    
-	// Remove old data rows (keep first 2 header rows)
-    while (table.rows.length > 1) {
-        table.deleteRow(1);
-    }
+  var rfss = "";
+  var site = "";
 
-	document.getElementById('subCount').innerText = subCount;
-	
-    Object.values(r).forEach(function (obj) {
-        var rfss    = obj.rfss;
-        var site    = obj.site;
-        var suid    = obj.suid;
-        var srcaddr = obj.srcaddr;
-        var srctag  = obj.tag ? obj.tag : ('ID: ' + srcaddr);
-		var aff_aga = obj.aff_aga + (obj.aff_aga_tag ? ' ' + obj.aff_aga_tag : '');
-        var aff_ga  = obj.aff_ga;
-		var srctg 	= obj.aff_ga_tag ? obj.aff_ga_tag	: ('Talkgroup ' + aff_ga);
-        var t       = obj.time;
+  Object.values(r || {}).forEach(function (obj) {
 
-		var wacn   		= suid.substring(0, 5);
-		var sysid  		= suid.substring(5, 8);
-		var suidHex 	= suid.substring(8);
+    if (!obj || typeof obj !== "object") return;
 
-        // epoch → 24h time
-        var d = new Date(t * 1000);
-        var timeStr = d.toLocaleTimeString([], {
-            hour12: false,
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit'
-        });
+    var suid = String(obj.suid || "");
+    if (!suid || suid.length < 8) return;
 
-        var row = table.insertRow(-1);
+    var wacn = suid.substring(0, 5).toUpperCase();
+    var sysid = suid.substring(5, 8).toUpperCase();
 
-        row.insertCell(0).textContent = timeStr;
-        row.insertCell(1).textContent = wacn.toUpperCase() + '/' + sysid.toUpperCase() + '/' + rfss + '/' + site;
-        row.insertCell(2).textContent = aff_ga;
-        row.insertCell(3).textContent = srctg;
-		row.insertCell(4).textContent = srctag;
-        row.insertCell(5).textContent = (aff_aga == 0 ? '-' : aff_aga);
+    // filter to selected system only
+    if (sysid !== systemIdHex.toUpperCase()) return;
+
+    // capture rfss/site for header
+    rfss = (obj.rfss != null ? obj.rfss : rfss);
+    site = (obj.site != null ? obj.site : site);
+
+    var srcaddr = obj.srcaddr;
+    if (srcaddr === 0 || srcaddr === "0") return;
+
+    var aff_ga = obj.aff_ga;
+    if (aff_ga === 0 || aff_ga === "0") return;
+
+    var t = Number(obj.time || 0);
+
+    // time string
+    var dt = new Date(t * 1000);
+    var timeStr = dt.toLocaleTimeString([], {
+      hour12: false,
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
     });
-    
-    	document.getElementById('sysCount').innerText = ' on System ' + systemIdHex.toUpperCase() + '/' + rfss + '/' + site;
-    	applySmartColorsSubReg();
+
+    // display fields
+    var srctag = (obj.tag != null && obj.tag !== "") ? obj.tag : ('ID: ' + srcaddr);
+    var srctg = (obj.aff_ga_tag != null && obj.aff_ga_tag !== "") ? obj.aff_ga_tag : ('Talkgroup ' + aff_ga);
+
+    var affAgaRaw = obj.aff_aga;
+    var affAgaTag = (obj.aff_aga_tag != null && obj.aff_aga_tag !== "") ? obj.aff_aga_tag : "";
+    var affAgaDisp = (Number(affAgaRaw) === 0) ? "-" : (String(affAgaRaw) + (affAgaTag ? (" " + affAgaTag) : ""));
+
+    totalReg++;
+
+    rows.push({
+      // sort keys
+      time: t,
+      system: wacn + "-" + sysid + "-" + String(rfss) + "-" + String(site),
+      tgid: aff_ga,
+      tgtag: srctg,
+      id: srcaddr,
+      ag: (affAgaRaw == null ? 0 : affAgaRaw),
+
+      // display strings
+      timeStr: timeStr,
+      systemStr: wacn + ' . ' + sysid + ' . ' + rfss + ' . ' + site,
+      tgidStr: String(aff_ga),
+      tgtagStr: srctg,
+      idStr: srctag,
+      agStr: affAgaDisp
+    });
+  });
+
+  // counts
+  var subCountEl = document.getElementById('subCount');
+  if (subCountEl) subCountEl.innerText = totalReg;
+
+  var sysCountEl = document.getElementById('sysCount');
+  if (sysCountEl) {
+    var sysLine = ' on System ' + systemIdHex.toUpperCase();
+    if (rfss !== "" && site !== "") sysLine += ' . ' + rfss + ' . ' + site;
+    sysCountEl.innerText = sysLine;
+  }
+
+  // optional sort (only if user clicked a header)
+  if (subSortKey) {
+    rows.sort(function (a, b) {
+      return subSortDir * cmp(a[subSortKey], b[subSortKey]);
+    });
+  }
+
+  // render
+  rows.forEach(function (r) {
+    var row = table.insertRow(-1);
+
+    row.insertCell(0).textContent = r.timeStr;
+    row.insertCell(1).textContent = r.systemStr;
+    row.insertCell(2).textContent = r.tgidStr;
+
+    var c3 = row.insertCell(3);
+    c3.textContent = r.tgtagStr;
+    c3.style.textAlign = "left";
+
+    row.insertCell(4).textContent = r.idStr;
+
+    var c5 = row.insertCell(5);
+    c5.textContent = r.agStr;
+    c5.style.textAlign = "left";
+  });
+
+  // update ▲▼ indicators after rebuild
+  updateSubSortHeaderIndicators();
+
+  applySmartColorsSubReg();
+  filterSubscribers();
 }
 
 function update_sub_reg_all(d) {
 
-	// update subscriber registrations table for all channels
+  // update subscriber registrations table for all channels
 
-	var cb = document.getElementById('trackSubsToggle');
-	var enabled = cb && cb.checked;
-	var el = document.getElementById('subContainer');
-	
-	if (!enabled) {
-		el.style.display = "none";
-		return;   // do nothing if unchecked
-	}
-	
-	el.style.display = "";
+  var cb = document.getElementById('trackSubsToggle');
+  var enabled = cb && cb.checked;
+  var el = document.getElementById('subContainer');
 
-	var totalReg = 0;
-	var totalSys = 0;
+  if (!enabled) {
+    if (el) el.style.display = "none";
+    return;
+  }
 
-	var table = document.getElementById("subscribers");
-    	if (!table) return;
-    	
-    // Remove old data rows (keep first 2 header rows)
-    while (table.rows.length > 1) {
-        table.deleteRow(1);
-    }    	
-    	
-	Object.values(d).forEach(function (s) {
+  if (el) el.style.display = "";
 
-	  // s can be a string/number (json_type, nac, etc). Skip those.
-	  if (!s || typeof s !== 'object' || !('wuid_data' in s) || !s.wuid_data || typeof s.wuid_data !== 'object')
-		return;
-	
-	  totalSys++;
-	
-	  Object.values(s.wuid_data).forEach(function (obj) {
-	
-		if (!obj || typeof obj !== 'object') return;
-	
-		totalReg++;
-	
-        var rfss    = obj.rfss;
-        var site    = obj.site;
-		var suid    = String(obj.suid || "");
-		var srcaddr = obj.srcaddr;		
-        var srctag  = obj.tag ? obj.tag : ('ID: ' + srcaddr);
-		var aff_aga = obj.aff_aga + (obj.aff_aga_tag ? ' ' + obj.aff_aga_tag : '');
-		var aff_ga  = obj.aff_ga;
-		var srctg = obj.aff_ga_tag ? obj.aff_ga_tag	: ('Talkgroup ' + aff_ga);
-		var t       = Number(obj.time || 0);
-	
-		if (!suid || suid.length < 8) return;
-	
-		var wacn    = suid.substring(0, 5);
-		var sysid   = suid.substring(5, 8);
-		var suidHex = suid.substring(8);
-	
-		// epoch → 24h time
-		var dt = new Date(t * 1000);
-		var timeStr = dt.toLocaleTimeString([], {
-		  hour12: false,
-		  hour: '2-digit',
-		  minute: '2-digit',
-		  second: '2-digit'
-		});
-	
-		var row = table.insertRow(-1);
-	
-		row.insertCell(0).textContent = timeStr;
-        row.insertCell(1).textContent = wacn.toUpperCase() + '/' + sysid.toUpperCase() + '/' + rfss + '/' + site;
-		row.insertCell(2).textContent = aff_ga;
-		row.insertCell(3).textContent = srctg;
-		row.insertCell(4).textContent = srctag;
-		row.insertCell(5).textContent = (Number(aff_aga) === 0 ? '-' : aff_aga);
-	  });
-	
-	});
+  var totalReg = 0;
+  var totalSys = 0;
 
-	document.getElementById('subCount').innerText = totalReg;
-	
-	var label = totalSys === 1 ? 'System' : 'Systems';
-	document.getElementById('sysCount').innerText =
-		` on ${totalSys} ${label}`;
-		
-	applySmartColorsSubReg();		
+  var table = document.getElementById("subscribers");
+  if (!table) return;
+
+  // clear old rows (keep header row)
+  while (table.rows.length > 1) table.deleteRow(1);
+
+  // ---- collect rows first (so we can sort) ----
+  var rows = [];
+
+  Object.values(d || {}).forEach(function (s) {
+
+    // s can be a string/number (json_type, nac, etc). Skip those.
+    if (!s || typeof s !== 'object' || !s.wuid_data || typeof s.wuid_data !== 'object') return;
+
+    totalSys++;
+
+    Object.values(s.wuid_data).forEach(function (obj) {
+
+      if (!obj || typeof obj !== 'object') return;
+
+      var suid = String(obj.suid || "");
+      if (!suid || suid.length < 8) return;
+
+      var srcaddr = obj.srcaddr;
+      if (srcaddr === 0 || srcaddr === "0") return; // server sometimes sends 0
+
+      var aff_ga = obj.aff_ga;
+      if (aff_ga === 0 || aff_ga === "0") return;   // server sometimes sends tg 0
+
+      var t = Number(obj.time || 0);
+
+      var wacn  = suid.substring(0, 5).toUpperCase();
+      var sysid = suid.substring(5, 8).toUpperCase();
+
+      // epoch → 24h time
+      var dt = new Date(t * 1000);
+      var timeStr = dt.toLocaleTimeString([], {
+        hour12: false,
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      });
+
+      // tags
+      var srctg = (obj.aff_ga_tag != null && obj.aff_ga_tag !== "")
+        ? obj.aff_ga_tag
+        : ('Talkgroup ' + aff_ga);
+
+      var affAgaRaw = obj.aff_aga;
+      var affAgaTag = (obj.aff_aga_tag != null && obj.aff_aga_tag !== "") ? obj.aff_aga_tag : "";
+      var affAgaDisp = (Number(affAgaRaw) === 0) ? "-" : (String(affAgaRaw) + (affAgaTag ? (" " + affAgaTag) : ""));
+
+      totalReg++;
+
+      rows.push({
+        // sort keys
+        time: t,
+        system: wacn + "-" + sysid,
+        tgid: aff_ga,
+        tgtag: srctg,
+        id: srcaddr,
+        ag: (affAgaRaw == null ? 0 : affAgaRaw),
+
+        // display values
+        timeStr: timeStr,
+        systemStr: wacn + "-" + sysid,
+        tgidStr: String(aff_ga),
+        tgtagStr: srctg,
+        idStr: 'ID: ' + srcaddr,
+        agStr: affAgaDisp
+      });
+    });
+  });
+
+  // ---- optional sort (only if user clicked a header) ----
+  if (subSortKey) {
+    rows.sort(function(a, b) {
+      var av = a[subSortKey];
+      var bv = b[subSortKey];
+      return subSortDir * cmp(av, bv);
+    });
+  }
+
+  // ---- render ----
+  rows.forEach(function(r) {
+    var row = table.insertRow(-1);
+
+    row.insertCell(0).textContent = r.timeStr;
+    row.insertCell(1).textContent = r.systemStr;
+    row.insertCell(2).textContent = r.tgidStr;
+    row.insertCell(3).textContent = r.tgtagStr;
+    row.insertCell(4).textContent = r.idStr;
+    row.insertCell(5).textContent = r.agStr;
+
+    // align left for cols 3 and 5 (like you wanted previously)
+    row.cells[3].style.textAlign = "left";
+    row.cells[5].style.textAlign = "left";
+  });
+
+  // counts
+  var subCount = document.getElementById('subCount');
+  if (subCount) subCount.innerText = totalReg;
+
+  var sysCount = document.getElementById('sysCount');
+  if (sysCount) {
+    var label = totalSys === 1 ? 'System' : 'Systems';
+    sysCount.innerText = ' on ' + totalSys + ' ' + label;
+  }
+
+  // keep header arrows correct after rebuild
+  updateSubSortHeaderIndicators();
+
+  applySmartColorsSubReg();
+  filterSubscribers();
 }
 
+function cleanStr(v) {
+  return (v == null) ? "" : String(v).trim();
+}
+
+function hasValue(v) {
+  return cleanStr(v).length > 0;
+}
+
+function sysHex3(sysid) {
+  // sysid may arrive as number or string
+  var n = Number(sysid);
+  if (!Number.isFinite(n)) return cleanStr(sysid).toUpperCase(); // fallback
+  return n.toString(16).toUpperCase().padStart(3, "0");
+}
+
+function rememberTag(sysidHex, tgid, tagFromServer) {
+
+  if (!hasValue(sysidHex) || !hasValue(tgid)) return;
+
+  var sys = String(sysidHex).toUpperCase();
+  var tg  = String(tgid);
+
+  if (!TG_TAG_CACHE[sys]) TG_TAG_CACHE[sys] = {};
+  if (!TG_TAG_CACHE[sys][tg] || typeof TG_TAG_CACHE[sys][tg] !== "object") {
+    TG_TAG_CACHE[sys][tg] = { tag: "", hits: 0 };
+  }
+
+  // always count the hit
+  TG_TAG_CACHE[sys][tg].hits++;
+
+  // only store tag if it came from server and is non-empty AND not a placeholder
+  if (hasValue(tagFromServer) && typeof tagFromServer === "string") {
+    var t = cleanStr(tagFromServer);
+    if (t && !/^Talkgroup\s+\d+$/i.test(t)) {
+      TG_TAG_CACHE[sys][tg].tag = t; // override placeholder/blank with real tag
+    }
+  }
+}
+
+function bestTag(sysidHex, tgid, tagFromServer, fallback) {
+  // Prefer server tag if it’s a real string
+  var serverTag = tagToString(tagFromServer);
+  if (serverTag) return serverTag;
+
+  // Next: cache (if you have it)
+  var cached = (TG_TAG_CACHE && TG_TAG_CACHE[sysidHex]) ? TG_TAG_CACHE[sysidHex][String(tgid)] : "";
+  cached = tagToString(cached);
+  if (cached) return cached;
+
+  // Finally: fallback (string)
+  return tagToString(fallback);
+}
 
 // additional system info: wacn, sysID, rfss, site id, secondary control channels, freq error
-
 
 function trunk_update(d) {
 
@@ -1053,7 +1218,7 @@ function trunk_update(d) {
         html += "<col span=\"1\" style=\"width:15%;\">";
         html += "<col span=\"1\" style=\"width:12.5%;\">";
         html += "</colgroup>";
-        html += "<tr><th>Frequency</th><th>Last</th><th colspan=2>Active Talkgoup&nbspID</th><th>Mode</th><th>Voice Count</th></tr>";
+        html += "<tr><th>Frequency</th><th>Last</th><th colspan=2>Active Talkgroup ID</th><th>Mode</th><th>Voice Count</th></tr>";
         
         var radioIdFreqTable = document.getElementById('radioIdFreqTable').checked;
                 
@@ -1064,14 +1229,48 @@ function trunk_update(d) {
             tg1 = d[nac]['frequency_data'][freq]['tgids'][0];
             tg2 = d[nac]['frequency_data'][freq]['tgids'][1];
             
-		
-			let tag1 = (tg1 != null && tg1 !== "")
-			  ? (d[nac]?.frequency_data?.[freq]?.tags?.[0] || `Talkgroup ${tg1}`)
-			  : " ";
+            
+        
+// 			
+// 			let tag1 = (tg1 != null && tg1 !== "")
+// 			  ? (d[nac]?.frequency_data?.[freq]?.tags?.[0] || `Talkgroup[0] ${tg1}`)
+// 			  : " ";
+// 			
+// 			let tag2 = (tg2 != null && tg2 !== "")
+// 			  ? (d[nac]?.frequency_data?.[freq]?.tags?.[1] || `Talkgroup[1] ${tg2}`)
+// 			  : " ";
+
+
+			// new method remembers previously seen TG tags and uses those if a tgid shows up without its tag
+			var sysidHex = sysHex3(d[nac]?.sysid);
 			
-			let tag2 = (tg2 != null && tg2 !== "")
-			  ? (d[nac]?.frequency_data?.[freq]?.tags?.[1] || `Talkgroup ${tg2}`)
-			  : " ";
+			var tg1TagFromServer = d[nac]?.frequency_data?.[freq]?.tags?.[0];
+			var tg2TagFromServer = d[nac]?.frequency_data?.[freq]?.tags?.[1];
+			
+			var tag1 = hasValue(tg1)
+			  ? bestTag(sysidHex, tg1, tg1TagFromServer, `Talkgroup ${tg1}`)
+			  : "";
+			
+			var tag2 = hasValue(tg2)
+			  ? bestTag(sysidHex, tg2, tg2TagFromServer, "Talkgroup " + tg2)
+			  : "";
+			
+			if (tag1 === "" && tg1TagFromServer && typeof tg1TagFromServer === "object") {
+			  console.warn("tg1TagFromServer was object; ignored:", tg1TagFromServer);
+			}
+
+
+			if (tag2 === "" && tg2TagFromServer && typeof tg2TagFromServer === "object") {
+			  console.warn("tg2TagFromServer was object; ignored:", tg2TagFromServer);
+			}
+
+if (hasValue(tg1)) {
+  rememberTag(sysidHex, tg1, tg1TagFromServer);
+}
+
+if (hasValue(tg2)) {
+  rememberTag(sysidHex, tg2, tg2TagFromServer);
+}
 
             let src1 = d[nac]['frequency_data'][freq]['srcaddrs'][0];
             let src2 = d[nac]['frequency_data'][freq]['srcaddrs'][1];
@@ -1079,19 +1278,38 @@ function trunk_update(d) {
             let srctag1 = d[nac]['frequency_data'][freq]['srctags'][0];
 			let srctag2 = d[nac]['frequency_data'][freq]['srctags'][1];
 			
-			
-			let source1 = (srctag1 != null && srctag1 !== "")
-				? srctag1
-				: (src1 != null && src1 !== "" && src1 !== 0)
-					? `ID: ${src1}`
-					: null;
-			
-			let source2 = (srctag2 != null && srctag2 !== "")
-				? srctag2
-				: (src2 != null && src2 !== "" && src2 !== 0)
-					? `ID: ${src2}`
-					: null;
 
+// 			let source1 = (srctag1 != null && srctag1 !== "")
+// 				? srctag1
+// 				: (src1 != null && src1 !== "" && src1 !== 0)
+// 					? `ID: ${src1}`
+// 					: null;
+// 			
+// 			let source2 = (srctag2 != null && srctag2 !== "")
+// 				? srctag2
+// 				: (src2 != null && src2 !== "" && src2 !== 0)
+// 					? `ID: ${src2}`
+// 					: null;
+
+			let source1 =
+			  (srctag1 != null && String(srctag1).trim() !== "")
+				? srctag1
+				: (src1 != null && String(src1).trim() !== "" && Number(src1) !== 0)
+					? `ID: ${src1}`
+					: "-";
+			
+			let source2 =
+			  (srctag2 != null && String(srctag2).trim() !== "")
+				? srctag2
+				: (src2 != null && String(src2).trim() !== "" && Number(src2) !== 0)
+					? `ID: ${src2}`
+					: `ID: ${src1}` 	// there may be a bug python side that causes the ID for srctag[1] to show up in [0] when
+								    	// a tgtag is not present python side.
+			
+			
+			
+			
+			
 			dispSrc1 = (source1 == null) ? "-" : source1;
 			dispSrc2 = (source2 == null) ? "-" : source2;
 			
@@ -1158,9 +1376,9 @@ function trunk_update(d) {
                         achMode = "TDMA";
 					}                    
                     if (tg1 == null)
-                        tg1 = "&nbsp&nbsp-&nbsp&nbsp";
+                        tg1 = " - ";
                     if (tg2 == null)
-                        tg2 = "&nbsp&nbsp-&nbsp&nbsp";
+                        tg2 = " - ";
                     //tg_str = "<td style=\"text-align:center;white-space: nowrap;\">" + tg1 + " &nbsp; " + tag1.substring(0, MAX_TG_CHARS) + contentId1 + "<td style=\"text-align:center;white-space: nowrap;\">" + tg2 + " &nbsp; " + tag2.substring(0, MAX_TG_CHARS) + contentId2;
                     tg_str = "<td style=\"text-align:center;white-space: nowrap;\">" + tag1.substring(0, MAX_TG_CHARS) + contentId1 + "<td style=\"text-align:center;white-space: nowrap;\">" + tag2.substring(0, MAX_TG_CHARS) + contentId2;
                 }
@@ -1168,6 +1386,7 @@ function trunk_update(d) {
 
 			// Append Call History
         	if (d[nac]['sysid'] !== undefined && (tg1 !== undefined || tg2 !== undefined)) {
+
 				appendCallHistory(d[nac]['sysid'], tg1, tg2, tag1, tag2, (parseInt(freq) / 1000000.0).toFixed(6), source1, source2, "frequency");
 			}          
 
@@ -1217,7 +1436,6 @@ function trunk_update(d) {
     channel_status();
     
 }  // end trunk_update() - system freqencies table
-
 
 function plot(d) {
     //TODO: implement local plot rendering using json data
@@ -1305,8 +1523,6 @@ function call_log(d) {
 }  // end call_log
 
 function handle_response(dl) {
-
-	// formerly known as function http_req_cb()
 	
     const dispatch = {
         call_log: call_log,
@@ -1362,7 +1578,6 @@ function send_command(command, arg1 = 0, arg2 = 0) {
     send_process();
 }
 
-
 async function send_process() {
     const cmd = JSON.stringify(send_queue);
     send_queue = [];  // Clear the queue immediately
@@ -1395,6 +1610,7 @@ async function send_process() {
         try {
             handle_response(dl);
         } catch (err) {
+        	console.error("err: " + err);
             console.error("Error inside handle_response():", err.stack || err);
         }
 
@@ -1429,7 +1645,6 @@ function f_dump_buffer(command) {
 function f_cap_button(command) {
     send_command('capture', 0, Number(channel_list[channel_index]));
 }
-
 
 function f_tune_button(command) {
 
@@ -1566,12 +1781,10 @@ function f_debug() {
 	div_debug.innerHTML = html;
 }
 
-
 function comma(x) {
     // add comma formatting to whatever you give it (xx,xxxx,xxxx)
     return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 }
-
 
 function getTime(ts) {
     const date = new Date(ts * 1000); // convert to milliseconds
@@ -1587,115 +1800,160 @@ function extractLastNumber(str) {
 }
 
 function appendCallHistory(sysid, tg1, tg2, tag1, tag2, freq, sourceId1, sourceId2, dataSource) {
+  // dataSource is one of 'frequency' or 'voice'
 
-	// dataSource is one of 'frequency' or 'voice' 
+  var configuredSourceEl = document.getElementById("callHistorySource");
+  var configuredSource = configuredSourceEl ? configuredSourceEl.value : "";
+  if (dataSource !== configuredSource) return;
 
-	// appends the call history table only when the current call is not already there
-	// or is older than 5 seconds.
-	// called by trunk_update()
+  // title the call history table
+  var titleTh = document.getElementById("callHistoryTableTitle");
+  if (titleTh) {
+    if (configuredSource === "display") titleTh.innerText = "Call History - Display";
+    else if (configuredSource === "frequency") titleTh.innerText = "Call History - Frequency Data";
+    else titleTh.innerText = "Call History";
+  }
 
-	const configuredSource = document.getElementById("callHistorySource").value;
-	if (dataSource !== configuredSource) {
-	  return;
-	}
+  var tableBody = document.getElementById("callHistoryBody");
+  if (!tableBody) return;
 
-	// title the call history table
-	const titleTh = document.getElementById("callHistoryTableTitle");
-	if (configuredSource === "display") {
-		titleTh.innerText = "Call History - Display";
-	} else if (configuredSource === "frequency") {
-		titleTh.innerText = "Call History - Frequency Data";
-	} 
+  var now = new Date();
+  var timestamp = now.toTimeString().split(" ")[0]; // "HH:MM:SS"
+  var epochMs = now.getTime();
+
+  // Normalize sysid -> 3-digit hex
+  var sysHex = Number(sysid).toString(16).toUpperCase().padStart(3, "0");
+
+  // helpers
+  function cleanStr(v) {
+    if (v === undefined || v === null) return "";
+    return String(v).trim();
+  }
+
+  function hasValue(v) {
+    return cleanStr(v).length > 0;
+  }
+
+  function makeKey(tgid, sourceId) {
+    // include freq to avoid TDMA/dual-path collisions across freqs
+    // add slot later if you have it: `${sysHex}|${freq}|${slot}|${tg}|${src}`
+    return sysHex + "|" + cleanStr(freq) + "|" + cleanStr(tgid) + "|" + cleanStr(sourceId);
+  }
+
+  function isDuplicate(tgid, sourceId) {
+    var key = makeKey(tgid, sourceId);
+    var last = callHistorySeen.get(key);
+    if (!last) return false;
+
+    // MAX_HISTORY_SECONDS assumed global; store in ms
+    var ttlMs = (Number(MAX_HISTORY_SECONDS) || 5) * 1000;
+    return (epochMs - last) <= ttlMs;
+  }
+
+  function markSeen(tgid, sourceId) {
+    callHistorySeen.set(makeKey(tgid, sourceId), epochMs);
+
+    // Optional: prevent unbounded growth
+    // If you want, prune occasionally:
+    if (callHistorySeen.size > 5000) {
+      // cheap prune: clear all (or implement better pruning)
+      // callHistorySeen.clear();
+    }
+  }
+
+  function addRow(tgid, tag, sourceId, source) {
+    var tgStr = cleanStr(tgid);
+    var srcStr = cleanStr(sourceId);
+    if (!tgStr || !srcStr) {
+      // don’t append blanks
+      return;
+    }
+
+    var tgName = hasValue(tag) ? cleanStr(tag) : ("Talkgroup " + tgStr);
+
+    var newRow = document.createElement("tr");
+    newRow.innerHTML =
+      "<td>" + timestamp + "</td>" +
+      "<td>" + sysHex + "</td>" +
+      "<td>" + cleanStr(freq) + "</td>" +
+      "<td>" + tgStr + "</td>" +
+      "<td style=\"text-align:left;\">" + tgName + "</td>" +
+      "<td style=\"text-align:left;\">" + srcStr + "</td>";
+
+    tableBody.insertBefore(newRow, tableBody.firstChild);
+
+    // cap rows (assumes MAX_HISTORY_ROWS global)
+    var maxRows = Number(MAX_HISTORY_ROWS) || 200;
+    while (tableBody.rows.length > maxRows) {
+      tableBody.deleteRow(tableBody.rows.length - 1);
+    }
+  }
+
+function processLeg(tg, tag, src, method) {
+
+  if (!hasValue(tg)) {
+//     console.log("processLeg skip: missing tg", {
+//       tg: tg,
+//       tag: tag,
+//       src: src,
+//       method: method
+//     });
+    return;
+  }
+
+  if (!hasValue(src)) {
+//     console.log("processLeg skip: missing src", {
+//       tg: tg,
+//       tag: tag,
+//       src: src,
+//       method: method
+//     });
+    return;
+  }
+
+  // normalize once
+  var tgStr  = cleanStr(tg);
+  var srcStr = cleanStr(src);
+
+  if (isDuplicate(tgStr, srcStr)) {
+//     console.log("processLeg skip: duplicate", {
+//       tg: tgStr,
+//       src: srcStr,
+//       method: method
+//     });
+    return;
+  }
+
+// 
+//   console.log("processLeg addRow", {
+//     tg: tgStr,
+//     tag: tag,
+//     src: srcStr,
+//     method: method
+//   });
+
+  addRow(tgStr, tag, srcStr, method);
+  markSeen(tgStr, srcStr);
+}
+
+  // Process both legs (even if equal — you can decide whether to suppress same TG)
+  processLeg(tg1, tag1, sourceId1, "tg1");
+  processLeg(tg2, tag2, sourceId2, "tg2");
 
 
-	// populate the table
-    const tableBody = document.getElementById("callHistoryBody");
-    const now = new Date();
-    const timestamp = now.toTimeString().split(' ')[0]; // "HH:MM:SS"
-    const epoch = now.getTime(); // current time in ms
-    const sysHex = sysid.toString(16).toUpperCase().padStart(3, '0');
-    const slot = "S"; // Placeholder for slot
+  applySmartColorsToCallHistory();
 
-    // Helper to check if a similar row already exists
-		function isDuplicate(tgid, sourceId) {
-			const recentRows = tableBody.querySelectorAll("tr");
-		
-			for (let i = 0; i < Math.min(MAX_HISTORY_ROWS, recentRows.length); i++) {
-				const cells = recentRows[i].querySelectorAll("td");
-				if (cells.length < 6) continue;
-		
-				const rowTime   = cells[0].textContent.trim();
-				const rowSys    = cells[1].textContent.trim();
-				const rowTgid   = cells[3].textContent.trim();
-				const rowSrcId  = cells[5].textContent.trim(); // <-- updated to index 5
-		
-				if (rowSys === sysHex && rowTgid === String(tgid) && rowSrcId === String(sourceId)) {
-					const rowDate = new Date();
-					const [hours, minutes, seconds] = rowTime.split(':').map(Number);
-					rowDate.setHours(hours, minutes, seconds, 0);
-		
-					const rowEpochSec = Math.floor(rowDate.getTime() / 1000);
-					const nowSec = Math.floor(epoch / 1000);
-					const delta = Math.abs(nowSec - rowEpochSec);
-		
-					if (delta <= MAX_HISTORY_SECONDS) {
-						return true;
-					}
-				}
-			}
-		
-			return false;
-		}
+  filterCallHistgory();
 
-    // Helper to add a row
-		function addRow(tgid, tag, sourceId) {
-				
-			// Only proceed if tgid is defined and its string length > 2
-			if (tgid === undefined || String(tgid).length <= 2) return;
-		
-			const tgEntry = tag;
-			const tgName = tgEntry;
-		
-			const newRow = document.createElement("tr");
-			
-			// TODO: src
-			newRow.innerHTML = `
-				<td>${timestamp}</td>
-				<td>${sysHex}</td>
-				<td>${freq}</td>
-				<td>${tgid}</td>
-				<td style="text-align: left;">${tgName}</td>
-				<td style="text-align: left;">${sourceId}</td>
-			`;
-		
-			tableBody.insertBefore(newRow, tableBody.firstChild);
-		}
-
-    // Process single or both entries, don't log entries where source id is not present.
-	if (tg1 !== undefined) {
-		if (!isDuplicate(tg1, sourceId1) && sourceId1) {
-			addRow(tg1, tag1, sourceId1);
-		}
-	}
-	
-	if (tg2 !== undefined && tg2 !== tg1) {
-		if (!isDuplicate(tg2, sourceId2) && sourceId2) {
-			addRow(tg2, tag2, sourceId2);
-		}
-	}
-	
-	applySmartColorsToCallHistory();
-	
-	const table = document.getElementById("callHistoryContainer");
-
-	if (table) {
-	  const headerRow = table.querySelector("thead tr");
-	  if (headerRow && headerRow.cells.length > 2) {
-		headerRow.cells[2].innerText = "Frequency";
-	  }
-	}
-} // end appendCallHistory()
-
+  // Header label tweak
+  var table = document.getElementById("callHistoryContainer");
+  if (table) {
+    var headerRow = table.querySelector("thead tr");
+    if (headerRow && headerRow.cells.length > 2) {
+      headerRow.cells[2].innerText = "Frequency";
+    }
+  }
+}
 
 function applySmartColorsToChannels() {
   if (!document.getElementById("smartColorToggle").checked) return;
@@ -1725,8 +1983,6 @@ function applySmartColorsToChannels() {
     }
   });
 } // end applySmartColorsToChannels
-
-
 
 function applySmartColorsSubReg() {
   if (!document.getElementById("smartColorToggle").checked) return;
@@ -1765,6 +2021,40 @@ function applySmartColorsSubReg() {
   });
 } // end applySmartColorsToSubReg
 
+function applySmartColorsSeenTg() {
+  if (!document.getElementById("smartColorToggle").checked) return;
+  if (smartColors.length == 0) return;
+  
+  const rows = document.querySelectorAll("#seenTgTable tr");
+
+  rows.forEach(row => {
+    const cells = row.querySelectorAll("td");
+    if (cells.length < 3) return;
+
+    const tgidCell = cells[1];
+    const tgTagCell = cells[2];
+//     const sourceCell = cells[4];
+    
+
+    const cellText = tgTagCell.textContent.toLowerCase();
+
+    let matched = false;
+
+    for (const colorGroup of smartColors) {
+      if (colorGroup.keywords.some(keyword => cellText.includes(keyword.toLowerCase()))) {
+        tgidCell.style.color = colorGroup.color;
+        tgTagCell.style.color = colorGroup.color;
+        matched = true;
+        break;
+      }
+    }
+
+    if (!matched) {
+      tgidCell.style.color = "";
+      tgTagCell.style.color = "";
+    }
+  });
+} // end applySmartColorsToSubReg
 
 function applySmartColorsToCallHistory() {
   if (!document.getElementById("smartColorToggle").checked) return;
@@ -1801,7 +2091,6 @@ function applySmartColorsToCallHistory() {
     }
   });
 } // end applySmartColorsToCallHistory
-
 
 function applySmartColorsToFrequencyTable() {
   if (!document.getElementById("smartColorToggle").checked) return;
@@ -1937,7 +2226,6 @@ function handleColumnLayoutChange(e) {
   }
 }
 
-
 function saveSettingsToLocalStorage() {
   localStorage.setItem("callHeight", document.getElementById("callHeightControl").value);
   localStorage.setItem("plotWidth", document.getElementById("plotSizeControl").value);
@@ -1951,7 +2239,6 @@ function saveSettingsToLocalStorage() {
   localStorage.setItem("trackSubsToggle", document.getElementById("trackSubsToggle").checked);
   localStorage.setItem("subMode", document.getElementById("subMode").value); 
 }  // end saveSettingsToLocalStorage
-
 
 function loadSettingsFromLocalStorage() {
 	const callHeight = localStorage.getItem("callHeight") || "600";
@@ -2012,7 +2299,6 @@ function loadSettingsFromLocalStorage() {
 
 } // end loadSettingsFromLocalStorage
 
-
 function showHome() {
   const settings = document.getElementById("settings-container");
   const about = document.getElementById("about-container");
@@ -2064,7 +2350,6 @@ async function get_presets_from_config(sysname, retries = 3, delay = 500) {
     console.error("Failed to fetch presets after retries.");
     return null;
 }
-
 
 async function findPresetsForSysname(targetSysname) {
     const configData = await get_presets_from_config(targetSysname);
@@ -2366,6 +2651,7 @@ function clearSubSearch() {
   filterSubSearchTable();
 }
 
+
 function refreshSubSearchSnapshot() {
 
   var live = document.getElementById("subscribers");
@@ -2373,7 +2659,7 @@ function refreshSubSearchSnapshot() {
   var meta = document.getElementById("subSearchMeta");
 
   if (!live || !snap) {
-  	console.warn('error no live, no snap');
+  	console.warn('error no live, no snap in refreshSubSearchSnapshot()');
   	return;
   }
 
@@ -2391,6 +2677,198 @@ function refreshSubSearchSnapshot() {
 
   // Apply current filter (if any)
   filterSubSearchTable();
+}
+
+// --- Sub Search (popup) snapshot + sort ---
+
+function refreshSubSearchSnapshot() {
+  var live = document.getElementById("subscribers");
+  var snap = document.getElementById("subSearchTable");
+  var meta = document.getElementById("subSearchMeta");
+
+  if (!live || !snap) {
+    console.warn("error no live, no snap in refreshSubSearchSnapshot()");
+    return;
+  }
+
+  // Grab header labels from the live table (first <tr>)
+  var liveHeader = live.querySelector("tr");
+  var headerCells = liveHeader ? liveHeader.querySelectorAll("th") : null;
+
+  // Grab only DATA rows from live table (skip header row)
+  var liveRows = live.querySelectorAll("tr");
+  var html = "";
+
+	html += "<thead><tr>";
+	if (headerCells && headerCells.length) {
+	  for (var h = 0; h < headerCells.length; h++) {
+		var label = (headerCells[h].textContent || "").trim();
+		html += '<th class="th-section" data-ss-col="' + h + '">' + escHtml(label) + "</th>";
+	  }
+	} else {
+	  html += '<th class="th-section" data-ss-col="0">Time</th>' +
+			  '<th class="th-section" data-ss-col="1">System</th>' +
+			  '<th class="th-section" data-ss-col="2">TGID</th>' +
+			  '<th class="th-section" data-ss-col="3">Talkgroup</th>' +
+			  '<th class="th-section" data-ss-col="4">Source</th>' +
+			  '<th class="th-section" data-ss-col="5">AG</th>';
+	}
+	html += "</tr></thead>";
+	
+	// Start TBODY for data rows
+	html += "<tbody>";
+	for (var i = 1; i < liveRows.length; i++) {
+	  html += liveRows[i].outerHTML;
+	}
+	html += "</tbody>";
+
+  // Append the live data rows (skip index 0 header)
+  for (var i = 1; i < liveRows.length; i++) {
+    html += liveRows[i].outerHTML;
+  }
+
+  snap.innerHTML = html;
+
+  // Wire up popup-only sorting on the new header
+  bindSubSearchSortHandlers();
+
+  // Meta
+  var rowCount = Math.max(0, snap.querySelectorAll("tr").length - 1);
+  var now = new Date();
+  var hh = String(now.getHours()).padStart(2, "0");
+  var mm = String(now.getMinutes()).padStart(2, "0");
+  var ss = String(now.getSeconds()).padStart(2, "0");
+  if (meta) meta.textContent = "Snapshot: " + hh + ":" + mm + ":" + ss + "  |  Rows: " + rowCount;
+
+  // Apply current filter (if any)
+  filterSubSearchTable();
+
+  // Re-apply popup sort if user already selected one
+  if (SUB_SEARCH_SORT.col != null) {
+    sortSubSearchTable(SUB_SEARCH_SORT.col, SUB_SEARCH_SORT.dir, true);
+  }
+}
+
+function bindSubSearchSortHandlers() {
+  var snap = document.getElementById("subSearchTable");
+  if (!snap) return;
+
+  var ths = snap.querySelectorAll("tr:first-child th[data-ss-col]");
+  for (var i = 0; i < ths.length; i++) {
+    // remove previous handler if we ever rebind
+    ths[i].onclick = null;
+
+    ths[i].style.cursor = "pointer";
+    ths[i].style.userSelect = "none";
+
+    ths[i].addEventListener("click", function (e) {
+      var col = parseInt(this.getAttribute("data-ss-col"), 10);
+      if (isNaN(col)) return;
+
+      // toggle direction if clicking same col
+      if (SUB_SEARCH_SORT.col === col) {
+        SUB_SEARCH_SORT.dir = (SUB_SEARCH_SORT.dir === "asc") ? "desc" : "asc";
+      } else {
+        SUB_SEARCH_SORT.col = col;
+        SUB_SEARCH_SORT.dir = "asc";
+      }
+
+      sortSubSearchTable(SUB_SEARCH_SORT.col, SUB_SEARCH_SORT.dir);
+      updateSubSearchSortIndicators();
+    });
+  }
+
+  updateSubSearchSortIndicators();
+}
+
+function sortSubSearchTable(colIndex, dir, preserveIndicatorsOnly) {
+  var table = document.getElementById("subSearchTable");
+  if (!table) return;
+
+  var rows = Array.from(table.querySelectorAll("tr")).slice(1); // skip header
+  // keep current filter state: we sort all rows (visible + hidden)
+  rows.sort(function (a, b) {
+    var aText = getCellText(a, colIndex);
+    var bText = getCellText(b, colIndex);
+
+    // Time column: "HH:MM:SS" -> sortable
+    if (colIndex === 0) {
+      var at = timeToSortable(aText);
+      var bt = timeToSortable(bText);
+      return (dir === "asc") ? (at - bt) : (bt - at);
+    }
+
+    // Numeric-ish compare if possible (TGID etc)
+    var aNum = isNumLike(aText);
+    var bNum = isNumLike(bText);
+    var cmp = 0;
+
+    if (aNum && bNum) {
+      cmp = Number(aText) - Number(bText);
+    } else {
+      cmp = String(aText).localeCompare(String(bText), undefined, { numeric: true, sensitivity: "base" });
+    }
+
+    return (dir === "asc") ? cmp : -cmp;
+  });
+
+  // Re-append rows in sorted order
+  for (var i = 0; i < rows.length; i++) table.appendChild(rows[i]);
+
+  if (!preserveIndicatorsOnly) {
+    // keep filter applied after sort
+    filterSubSearchTable();
+  }
+}
+
+function updateSubSearchSortIndicators() {
+  var table = document.getElementById("subSearchTable");
+  if (!table) return;
+
+  var ths = table.querySelectorAll("tr:first-child th[data-ss-col]");
+  for (var i = 0; i < ths.length; i++) {
+    var th = ths[i];
+    var base = (th.textContent || "").replace(/\s*[▲▼]\s*$/, ""); // strip old arrow
+    var col = parseInt(th.getAttribute("data-ss-col"), 10);
+
+    if (SUB_SEARCH_SORT.col === col) {
+      th.textContent = base + (SUB_SEARCH_SORT.dir === "asc" ? " ▲" : " ▼");
+    } else {
+      th.textContent = base;
+    }
+  }
+}
+
+function getCellText(tr, idx) {
+  var tds = tr.querySelectorAll("td");
+  var cell = tds[idx];
+  return cell ? (cell.textContent || "").trim() : "";
+}
+
+function isNumLike(v) {
+  if (v == null) return false;
+  var s = String(v).trim();
+  if (s === "") return false;
+  return !isNaN(Number(s));
+}
+
+function timeToSortable(hms) {
+  // "HH:MM:SS" -> seconds since midnight
+  var m = String(hms || "").trim().match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+  if (!m) return 0;
+  var hh = parseInt(m[1], 10) || 0;
+  var mm = parseInt(m[2], 10) || 0;
+  var ss = parseInt(m[3] || "0", 10) || 0;
+  return hh * 3600 + mm * 60 + ss;
+}
+
+function escHtml(s) {
+  return String(s == null ? "" : s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 }
 
 function filterSubSearchTable() {
@@ -2424,46 +2902,6 @@ function filterSubSearchTable() {
   }
 }
 
-// Close modal on backdrop click
-document.addEventListener("click", function (e) {
-  var container = document.getElementById("searchSubsPopup");
-  if (!container || !container.classList.contains("show")) return;
-  if (e.target === container) closeSubSearchModal();
-});
-
-// Close modal on Esc
-document.addEventListener("keydown", function (e) {
-  if (e.key !== "Escape") return;
-  var container = document.getElementById("searchSubsPopup");
-  if (container && container.classList.contains("show")) closeSubSearchModal();
-});
-
-
-
-function refreshSubSearchSnapshot() {
-  var live = document.getElementById("subscribers");
-  var snap = document.getElementById("subSearchTable");
-  var meta = document.getElementById("subSearchMeta");
-
-  if (!live || !snap) return;
-
-  snap.innerHTML = live.innerHTML;
-
-  var rowCount = Math.max(0, snap.querySelectorAll("tr").length - 1);
-
-  var now = new Date();
-  var hh = String(now.getHours()).padStart(2, "0");
-  var mm = String(now.getMinutes()).padStart(2, "0");
-  var ss = String(now.getSeconds()).padStart(2, "0");
-
-  if (meta) {
-    meta.dataset.snapshotTime = hh + ":" + mm + ":" + ss;
-    meta.dataset.totalRows = rowCount;
-  }
-
-  filterSubSearchTable();
-}
-
 // Subscriber search  end
 
 function getCaller() {
@@ -2482,7 +2920,6 @@ function getCaller() {
 		return "Unknown caller";
 	}
 }
-
 
 function csvTable() {
 	// save the call history table to csv
@@ -2531,8 +2968,401 @@ function csvTable() {
     document.body.removeChild(link);
 }
 
+function filterSubscribers() {
+    var input = document.getElementById("subFilter1");
+    var table = document.getElementById("subscribers");
+    if (!input || !table) return;
+
+    var filter = input.value.toLowerCase();
+    var rows = table.getElementsByTagName("tr");
+
+    // skip header row (index 0)
+    for (var i = 1; i < rows.length; i++) {
+        var row = rows[i];
+        var text = row.textContent.toLowerCase();
+
+        row.style.display = text.includes(filter) ? "" : "none";
+    }
+}
+
+function filterCallHistgory() {
+    var input = document.getElementById("historyFilter");
+    var table = document.getElementById("callHistory");
+    if (!input || !table) return;
+
+    var filter = input.value.toLowerCase();
+    var rows = table.getElementsByTagName("tr");
+
+    // skip header row (index 0)
+    for (var i = 1; i < rows.length; i++) {
+        var row = rows[i];
+        var text = row.textContent.toLowerCase();
+
+        row.style.display = text.includes(filter) ? "" : "none";
+    }
+}
+
+function setSubSort(th) {
+  try {
+    var key = th && th.getAttribute ? th.getAttribute("data-sort") : null;
+    if (!key) return;
+
+    if (subSortKey === key) subSortDir *= -1;
+    else { subSortKey = key; subSortDir = 1; }
+
+    updateSubSortHeaderIndicators();
+
+    // Rebuild with whatever data source you already call update_sub_reg_all() from.
+    // If you have the last payload cached, call update_sub_reg_all(lastSubRegData).
+  } catch (e) {
+    console.log("setSubSort error:", e);
+  }
+}
+
+function updateSubSortHeaderIndicators() {
+  var table = document.getElementById("subscribers");
+  if (!table) return;
+
+  var ths = table.querySelectorAll("tr:first-child th[data-sort]");
+  ths.forEach(function(th) {
+    var base = (th.textContent || "").replace(/[▲▼]\s*$/, "").trim();
+    th.textContent = base;
+    var key = th.getAttribute("data-sort");
+    if (key === subSortKey) th.textContent = base + (subSortDir === 1 ? " ▲" : " ▼");
+  });
+}
 
 
+// Seen Talkgroups
 
+function openSeenTgModal() {
+  var container = document.getElementById("seenTgPopup");
+  if (!container) return;
 
+  refreshSeenTgSnapshot();
+
+  container.classList.add("show");
+  container.setAttribute("aria-hidden", "false");
+
+  setTimeout(function () {
+    var input = document.getElementById("seenTgFilter");
+    if (input) input.focus();
+  }, 0);
+}
+
+function closeSeenTgModal() {
+  var container = document.getElementById("seenTgPopup");
+  if (!container) return;
+
+  container.classList.remove("show");
+  container.setAttribute("aria-hidden", "true");
+}
+
+function clearSeenTgFilter() {
+  var input = document.getElementById("seenTgFilter");
+  if (input) input.value = "";
+  filterSeenTgTable();
+}
+
+function refreshSeenTgSnapshot() {
+
+  var table = document.getElementById("seenTgTable");
+  var meta  = document.getElementById("seenTgMeta");
+  if (!table) { console.error("Seen Talkgroup Table not found."); return; }
+
+  // Build rows from TG_TAG_CACHE
+  var rows = [];
+  var sysCount = 0;
+
+  Object.keys(TG_TAG_CACHE || {}).forEach(function (sysid) {
+    var tgMap = TG_TAG_CACHE[sysid];
+    if (!tgMap || typeof tgMap !== "object") return;
+
+    sysCount++;
+
+    Object.keys(tgMap).forEach(function (tgid) {
+      var entry = tgMap[tgid];
+
+      // entry might be string (old) or object (new: {tag, hits})
+      var tag = "";
+      var hits = 0;
+
+      if (entry != null && typeof entry === "object") {
+        tag = entry.tag == null ? "" : String(entry.tag);
+        hits = Number(entry.hits || 0);
+      } else {
+        tag = entry == null ? "" : String(entry);
+        hits = 0;
+      }
+
+      rows.push({
+        sysid: String(sysid),
+        tgid: String(tgid),
+        tag: tag,
+        hits: hits
+      });
+    });
+  });
+
+  // Sort based on current selected header
+  rows.sort(function(a, b) {
+    var col = SEEN_TG_SORT_COL;
+    var dir = SEEN_TG_SORT_DIR;
+
+    // 0=System, 1=TGID, 2=Tag, 3=Hits
+    if (col === 0) return dir * a.sysid.localeCompare(b.sysid);
+
+    if (col === 1) {
+      var an = parseInt(a.tgid, 10), bn = parseInt(b.tgid, 10);
+      if (!isNaN(an) && !isNaN(bn)) return dir * (an - bn);
+      return dir * a.tgid.localeCompare(b.tgid);
+    }
+
+    if (col === 2) return dir * a.tag.localeCompare(b.tag);
+
+    if (col === 3) return dir * ((a.hits || 0) - (b.hits || 0));
+
+    return 0;
+  });
+
+  // Render table with THEAD/TBODY so sticky headers work
+  table.innerHTML = "";
+
+  var thead = document.createElement("thead");
+  var htr = document.createElement("tr");
+  var headers = ["System", "TGID", "Talkgroup", "Hits"];
+
+  headers.forEach(function (h, idx) {
+    var th = document.createElement("th");
+    th.className = "th-section";
+    th.textContent = seenTgHeaderLabel(h, idx);
+
+    // store col index for click sort
+    th.setAttribute("data-seen-col", String(idx));
+
+    htr.appendChild(th);
+  });
+
+  thead.appendChild(htr);
+  table.appendChild(thead);
+
+  var tbody = document.createElement("tbody");
+
+  rows.forEach(function (r) {
+    var tr = document.createElement("tr");
+
+    tr.insertCell(0).textContent = r.sysid;
+    tr.insertCell(1).textContent = r.tgid;
+
+    var td2 = tr.insertCell(2);
+    td2.textContent = r.tag;
+    td2.style.textAlign = "left";
+
+    tr.insertCell(3).textContent = String(r.hits || 0);
+
+    tbody.appendChild(tr);
+  });
+
+  table.appendChild(tbody);
+
+  // Hook sorting clicks after header exists
+  wireSeenTgSortHandlers();
+
+  // Meta
+  var now = new Date();
+  var hh = String(now.getHours()).padStart(2, "0");
+  var mm = String(now.getMinutes()).padStart(2, "0");
+  var ss = String(now.getSeconds()).padStart(2, "0");
+
+  if (meta) {
+    meta.textContent =
+      "Snapshot: " + hh + ":" + mm + ":" + ss +
+      "  |  Systems: " + sysCount +
+      "  |  Rows: " + rows.length;
+  }
+
+  filterSeenTgTable();
+  applySmartColorsSeenTg();
+}
+
+function filterSeenTgTable() {
+  var input = document.getElementById("seenTgFilter");
+  var table = document.getElementById("seenTgTable");
+  var meta  = document.getElementById("seenTgMeta");
+  if (!table) return;
+
+  var q = (input ? input.value : "").toLowerCase().trim();
+  var trs = table.querySelectorAll("tr");
+
+  var visible = 0;
+  for (var i = 1; i < trs.length; i++) { // skip header
+    var tr = trs[i];
+    var text = (tr.textContent || "").toLowerCase();
+    var show = (!q || text.indexOf(q) !== -1);
+    tr.style.display = show ? "" : "none";
+    if (show) visible++;
+  }
+
+  // If you want the meta to include match count without “appending”
+  if (meta) {
+    // Rewrite meta but keep the prefix before " | Matches:"
+    var base = meta.textContent || "";
+    base = base.replace(/\s*\|\s*Matches:\s*\d+\s*$/i, "");
+    meta.textContent = base + "  |  Matches: " + visible;
+  }
+}
+
+function sortSeenTgRows(rows) {
+  if (SEEN_TG_SORT.col === null) return rows;
+
+  var col = SEEN_TG_SORT.col;
+  var asc = SEEN_TG_SORT.asc ? 1 : -1;
+
+  rows.sort(function (a, b) {
+    var va, vb;
+
+    switch (col) {
+      case 0: va = a.sysid; vb = b.sysid; break;
+      case 1: va = a.tgid;  vb = b.tgid;  break;
+      case 2: va = a.tag;   vb = b.tag;   break;
+      case 3: va = a.hits;  vb = b.hits;  break;
+      default: return 0;
+    }
+
+    // numeric compare where possible
+    var na = Number(va);
+    var nb = Number(vb);
+    if (!isNaN(na) && !isNaN(nb)) {
+      return (na - nb) * asc;
+    }
+
+    return String(va).localeCompare(String(vb)) * asc;
+  });
+
+  return rows;
+}
+
+function wireSeenTgSortHandlers() {
+  var table = document.getElementById("seenTgTable");
+  if (!table) return;
+
+  var ths = table.querySelectorAll("thead th[data-seen-col]");
+  ths.forEach(function (th) {
+    th.style.cursor = "pointer";
+    th.onclick = function () {
+      var col = Number(th.getAttribute("data-seen-col"));
+
+      if (SEEN_TG_SORT_COL === col) {
+        SEEN_TG_SORT_DIR = -SEEN_TG_SORT_DIR; // toggle
+      } else {
+        SEEN_TG_SORT_COL = col;
+        SEEN_TG_SORT_DIR = 1; // default asc
+      }
+
+      refreshSeenTgSnapshot();
+    };
+  });
+}
+
+function tagToString(v) {
+  if (v == null) return "";                 // null/undefined
+  if (typeof v === "string") return v.trim();
+  if (typeof v === "number" || typeof v === "boolean") return String(v);
+
+  // objects: try common shapes, otherwise blank
+  if (typeof v === "object") {
+    if (typeof v.tag === "string") return v.tag.trim();
+    if (typeof v.name === "string") return v.name.trim();
+    if (typeof v.label === "string") return v.label.trim();
+    if (typeof v.text === "string") return v.text.trim();
+    // Last resort: don't stringify "[object Object]" into UI
+    return "";
+  }
+
+  return "";
+}
+
+function seenTgCompare(a, b, col, dir) {
+  var mult = (dir === "desc") ? -1 : 1;
+
+  // 0=sysid, 1=tgid, 2=tag, 3=hits
+  if (col === 0) {
+    return mult * a.sysid.localeCompare(b.sysid);
+  }
+  if (col === 1) {
+    var an = parseInt(a.tgid, 10), bn = parseInt(b.tgid, 10);
+    if (!isNaN(an) && !isNaN(bn)) return mult * (an - bn);
+    return mult * a.tgid.localeCompare(b.tgid);
+  }
+  if (col === 2) {
+    return mult * String(a.tag || "").localeCompare(String(b.tag || ""));
+  }
+  if (col === 3) {
+    return mult * ((Number(a.hits) || 0) - (Number(b.hits) || 0));
+  }
+
+  // fallback stable-ish
+  return mult * a.sysid.localeCompare(b.sysid);
+}
+
+function seenTgHeaderLabel(label, colIndex) {
+  // active column shows ▲ or ▼, others show ⇅
+  if (colIndex === SEEN_TG_SORT_COL) {
+    return label + (SEEN_TG_SORT_DIR === 1 ? " ▲" : " ▼");
+  }
+  return label + " ⇅";
+}
+
+function clearFilter(id) {
+  var el = document.getElementById(id);
+  if (!el) return;
+
+  el.value = "";
+  el.dispatchEvent(new Event("input")); // triggers existing filters
+}
+
+// Compare two values for sorting.
+// If both values look numeric, compare them numerically.
+// Otherwise, fall back to locale-aware string comparison,
+// using numeric-aware ordering and case-insensitive matching.
+function cmp(a, b) {
+  // numeric compare if possible, else string compare
+  var aNum = isNumLike(a), bNum = isNumLike(b);
+  if (aNum && bNum) return Number(a) - Number(b);
+  return String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: "base" });
+}
+
+function isNumLike(v) {
+  if (v === null || v === undefined) return false;
+  var s = String(v).trim();
+  if (s === "") return false;
+  return !Number.isNaN(Number(s));
+}
+
+// Backdrop + Esc close (mirrors your other modal style)
+document.addEventListener("click", function (e) {
+  var container = document.getElementById("seenTgPopup");
+  if (!container || !container.classList.contains("show")) return;
+  if (e.target === container) closeSeenTgModal();
+});
+
+document.addEventListener("keydown", function (e) {
+  if (e.key !== "Escape") return;
+  var container = document.getElementById("seenTgPopup");
+  if (container && container.classList.contains("show")) closeSeenTgModal();
+});
+
+// Close modal on backdrop click
+document.addEventListener("click", function (e) {
+  var container = document.getElementById("searchSubsPopup");
+  if (!container || !container.classList.contains("show")) return;
+  if (e.target === container) closeSubSearchModal();
+});
+
+// Close modal on Esc
+document.addEventListener("keydown", function (e) {
+  if (e.key !== "Escape") return;
+  var container = document.getElementById("searchSubsPopup");
+  if (container && container.classList.contains("show")) closeSubSearchModal();
+});
 
