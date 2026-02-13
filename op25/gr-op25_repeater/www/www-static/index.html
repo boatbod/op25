@@ -1,550 +1,543 @@
 <!DOCTYPE html>
-
 <!-- OP25 index.html 04 Feb 2026 0940 -->
-
 <html>
-
-<head>
-	<title>OP25</title>
-	<link rel="stylesheet" type="text/css" href="main.css">
-	<script src="main.js"></script>
-	<meta http-equiv="Content-Type" content="text/html;charset=UTF-8">
-</head>
-
-
-<body style="background-color: #111; color: #E0E0E0; font-family: Arial, Helvetica, sans-serif;" onload="javascript:do_onload();">
- 
-<!--  START OF 2-COLUMN LAYOUT -->
-
-   <div class="row">   <!--  START OF 2 COLUMN LAYOUT -->
-   
-   <div class="column" style="width: 750px;"> <!-- START FIRST COLUMN -->
-  
-		<div class="top-nav-container">
-		  <div class="top-nav">
-			<div class="nav-left">
-			
-			  <a href="#" class="nav-item" id="btn-home" onclick="showHome();">Home</a>
-			  
-			  <a href="#" class="nav-item" id="btn-plot" onclick="toggleDivById('plot-container', 'btn-plot')">Plot</a>
-
-			  <a href="#" class="nav-item" id="btn-new-settings" onclick="togglePopup('settingsPopupContainer', true);">Settings</a>
-			  
-			  <a href="#" class="nav-item" id="btn-config" onclick="localStorage.setItem('getConfigBtn', 1); send_command('get_full_config');">View Config</a>
-			  
-			  <a href="legacy-index.html" class="nav-item" id="btn-legacy">Legacy UI</a>        
-			  
-  			  <a href="#" class="nav-item" id="btn-new-settings" onclick="togglePopup('aboutPopupContainer', true);">About</a>
-
-			</div>
-			<div class="nav-right">
-			  <!-- SVG Logo -->
-			  <svg class="logo" viewBox="0 0 300 100" xmlns="http://www.w3.org/2000/svg">
-				<rect width="300" height="100" fill="#222" rx="10" />
-				<polygon points="50,70 70,30 90,70" fill="#66aaff" />             <!-- the sail -->
-				<rect x="50" y="70" width="40" height="5" fill="#ffaa55" rx="2" /> <!-- orange boat -->
-				<text x="110" y="50" fill="#ffffff" font-size="32" font-family="Arial, sans-serif" font-weight="bold">O P 2 5</text>
-				<text x="110" y="75" fill="#ccc" font-size="24" font-family="Arial, sans-serif">b o a t b o d</text>
-			  </svg>
-			</div>
-		  </div>
-		
-		<div class="warning-box" id="warning-box">
-		  <span id="icon">
-			<svg width="24" height="24" viewBox="0 0 24 24" fill="#f44336" xmlns="http://www.w3.org/2000/svg" aria-label="Warning icon">
-			  <path d="M1 21h22L12 2 1 21z"/>
-			  <path d="M13 16h-2v2h2v-2zm0-6h-2v4h2v-4z" fill="#fff"/>
-			</svg>		    
-		  </span>
-		  <span id="warning-text">  </span>
-		</div>
-		</div>
-		
-	
-<div id="aboutPopupContainer">
-  <div class="about-popup-content">
-    <div class="popup-header">
-			  <svg class="logo-lg" viewBox="0 0 300 100" xmlns="http://www.w3.org/2000/svg">
-				<rect width="300" height="100" fill="#333" rx="10" />
-				<polygon points="50,70 70,30 90,70" fill="#66aaff" />             <!-- the sail -->
-				<rect x="50" y="70" width="40" height="5" fill="#ffaa55" rx="2" /> <!-- orange boat -->
-				<text x="110" y="50" fill="#ffffff" font-size="32" font-family="Arial, sans-serif" font-weight="bold">O P 2 5</text>
-				<text x="110" y="75" fill="#ccc" font-size="24" font-family="Arial, sans-serif">b o a t b o d</text>
-			  </svg>
-      <svg onclick="togglePopup('aboutPopupContainer', false);" xmlns="http://www.w3.org/2000/svg" height="24" width="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="close-icon">
-        <line x1="18" y1="6" x2="6" y2="18"></line>
-        <line x1="6" y1="6" x2="18" y2="18"></line>
-      </svg>
-    </div>
-
-    <div class="popup-body">
-		<div class="about-content">
-		
-			<p class="copyr">
-			&copy; 2017–2026 Max H. Parke & Graham J. Norbury [boatbod version]<br>
-			UI Updates, Michael Rose - Last UI Update: <span id="lastUiUpdate"> - </span>
-			</p>
-			
-			<p>This program comes with <strong>ABSOLUTELY NO WARRANTY</strong>.</p>
-			
-			<p>
-			OP25 is free software, and you are welcome to redistribute it under certain conditions.<br>
-			For further details refer to the "License" link below.
-			</p>
-			
-			<p><strong>License:</strong> <a href="https://www.gnu.org/licenses/gpl-3.0.en.html" target="_blank">GPLv3 License</a></p>
-			<p><strong>Download:</strong><br>
-			<code>git clone https://git.osmocom.org/op25</code> &nbsp;
-			<a href="https://gitea.osmocom.org/op25/op25?h=master" target="_blank">[original]</a><br>
-			<code>git clone https://github.com/boatbod/op25</code> &nbsp;
-			<a href="https://github.com/boatbod/op25" target="_blank">[boatbod fork]</a>
-			</p>
-			<p><strong>Website:</strong> <a href="http://op25.osmocom.org" target="_blank">http://op25.osmocom.org</a></p>
-		
-		</div>
-	</div>
-</div>
-
-
-</div> <!-- end about popup -->
-<!-- Settings Popup Container -->
-<div id="settingsPopupContainer">
-  <div class="settings-popup-content">
-    <div class="popup-header">
-      <h2>UI Settings</h2>
-      <svg onclick="togglePopup('settingsPopupContainer', false);" xmlns="http://www.w3.org/2000/svg" height="24" width="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="close-icon">
-        <line x1="18" y1="6" x2="6" y2="18"></line>
-        <line x1="6" y1="6" x2="18" y2="18"></line>
-      </svg>
-    </div>
-
-    <div class="popup-body">
-
-		<table class="" id="settings-container" style="text-align:left; margin-top: 10px;">
-		<tr><td colspan='2' style="padding: 0px;">All settings are automatically saved to the browser.<br><br></td></tr>
-		  <tr>
-			<!-- LEFT COLUMN -->
-			<td style="vertical-align: top; width: 50%; padding-right: 20px; padding: 0px; border-right: 1px solid grey;">
-		
-			  <div style="margin-bottom: 10px;">
-				<button class="small-button" id="s2_ch_dmp" onclick="f_dump_button(0);" title="Log talkgroups to stderr2">Log Talkgroups</button>
-				<button class="small-button" id="s2_ch_dmp" onclick="f_dump_buffer(-1);" title="Dump buffer">Dump Buffer</button>
-			  </div>
-		
-			  <div style="margin-bottom: 10px;">
-				<button class="small-button" onclick="f_scan_button('set_debug');" title="Set logging level">Log Verbosity</button>
-			  </div>
-		
-			  <div class="s2_cell_h" id="s2_ch_cap" style="margin-bottom: 10px;">
-				<button class="small-button" id="cap_bn" onclick="f_cap_button(0);">Start Capture</button>
-			  </div>
-		
-			  <div style="margin-bottom: 10px;">
-				<button class="small-button" onclick="f_scan_button('lockout');">Blacklist TGID</button>
-				<button class="small-button" onclick="f_scan_button('whitelist');">Whitelist TGID</button>
-			  </div>
-		
-			  <div style="margin-bottom: 15px;">
-				<label for="callHeightControl" style="color: #ccc;">Call History Height (px):</label><br>
-				<input type="number" id="callHeightControl" min="200" max="1000" value="500" style="width: 80px;">
-			  </div>
-		
-			  <div style="margin-bottom: 15px;">
-				<label for="plotSizeControl" style="color: #ccc;">Plot Image Width (px):</label><br>
-				<input type="number" id="plotSizeControl" min="100" max="1000" value="300" style="width: 80px;">
-			  </div>
-			  
-			  <div style="margin-bottom: 15px;">
-				<label for="valueColorPicker">Accent Color:</label>
-				<input type="color" id="valueColorPicker" value="#00ffff">
-				<button id="resetColor" class="small-button" style="width: 60px;">Default</button>
-			  </div>
-			  		
-			</td>
-			
-			<!-- RIGHT COLUMN -->
-			<td style="vertical-align: top; width: 50%; padding-left: 20px;">
-		
-			  <div style="margin-bottom: 15px;">
-				<label for="smartColorToggle" style="color: #ccc;">
-				  <input type="checkbox" id="smartColorToggle" checked>
-				  Enable Smart Colors
-				</label>
-			  </div>
-		
-			  <div style="margin-bottom: 15px;">
-				<label for="radioIdFreqTable" style="color: #ccc;">
-				  <input type="checkbox" id="radioIdFreqTable">
-				  Show Radio ID in Frequency Table
-				</label>
-			  </div> 
-		
-			  <div style="margin-bottom: 15px;">
-				<label for="showBandPlan" style="color: #ccc;">
-				  <input type="checkbox" id="showBandPlan" checked>
-				  Show P25 Band Plan
-				</label>
-			  </div> 		
-		
-			  <div style="margin-bottom: 15px;">
-				<label for="adjacentSitesToggle" style="color: #ccc;">
-				  <input type="checkbox" id="adjacentSitesToggle" checked>
-				  Show Adjacent Sites
-				</label>
-			  </div>
-			  
-			  <div style="margin-bottom: 15px;">
-				<label for="channelsTableToggle" style="color: #ccc;">
-				  <input type="checkbox" id="channelsTableToggle" checked>
-				  Show Channels Table
-				</label>
-			  </div>        
-			  
-			  <div style="margin-bottom: 15px;">
-				<label for="callHistoryToggle" style="color: #ccc;">
-				  <input type="checkbox" id="callHistoryToggle" checked>
-				  Show Call History
-				</label>
-			  </div>  
-			
-			  <div style="margin-bottom: 15px;">
-				<label for="trackSubsToggle" style="color: #ccc;">
-				  <input type="checkbox" id="trackSubsToggle" checked>
-				  Track Subscriber Affiliations
-				</label>
-			  </div>
-
-
-			  <div style="margin-bottom: 15px;">
-				<label for="callHistoryToggle" style="color: #ccc;">
-				  Track Affiliations Mode
-				  <select id="subMode" name="subMode">
-				  <option value="all">All Channels</option>
-				  <option value="selected">Selected Channel Only</option>
-				</select>
-				</label>
-			  </div>  
-			  	   
-			<div style="margin: 5px 0; text-align: left;">
-			  <label for="callHistorySource" style="color: #ccc;">Call History Source:</label>
-			  <select id="callHistorySource" style="margin-left: 5px;">
-				<option value="frequency">Frequency Data</option>
-				<option value="voice">Voice Grant (Python)</option>
-				<option value="display">Main Display</option>		
-			  </select>
-			</div>
-		
-			  <div style="margin-bottom: 10px; color: #ccc;">
-				Stream URL: <span id="streamURL">None</span>
-			  </div>
-		
-			  <hr style="margin: 10px 0;">
-		
-			  <div id="div_debug" style="font-size: 0.8em;">
-				<strong>Debug Log</strong>
-			  </div>
-		
-			</td>
-		  </tr>
-		
-		</table> <!-- End settings table -->
-		
-    </div>
-  </div>
-</div> <!-- end settings popup -->
-
-<div id="popupContainer" class="popup-container">
-  <div class="popup-content" style="position: relative; display: flex; flex-direction: column; height: 80vh; width: 70vw;">
-    <div class="popup-header">
-    	<h2>Server Side Configuration</h2>
-    	<svg onclick="togglePopup('popupContainer', false);" xmlns="http://www.w3.org/2000/svg" height="24" width="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="close-icon">
-        <line x1="18" y1="6" x2="6" y2="18"></line>
-        <line x1="6" y1="6" x2="18" y2="18"></line>
-       </svg>
-    </div>	
-
-
-    <!-- Scrollable content area -->
-    <div id="configDisplay" class="config-container" style="overflow-y: auto; flex: 1; padding: 10px;">
-      Configuration...
-    </div>
-  </div>
-</div>   <!-- End config popup container -->
-
-
-
-  <table class="outer-table" id="main-display">
-    <tr>
-      <!-- Left panel: vertical buttons --> 
-      <td class="left-panel">
-        <button class="button-3d" onclick="f_scan_button('skip'); this.blur();">SCAN</button> <br>
-        <button class="button-3d" id="btn-hold" onclick="f_scan_button('hold'); this.blur();">HOLD</button><br>
-        <button class="button-3d" onclick="f_scan_button('lockout'); this.blur();">LOCKOUT</button><br>
-        <button class="button-3d" onclick="f_scan_button('goto'); this.blur();">GO TO</button><br>
-      </td>
-      <!-- Main info area -->
-      <td class="main-info">
-        <table class="inner-table table-gradient-bg">
+  <head>
+    <title>OP25</title>
+    <link rel="stylesheet" type="text/css" href="main.css">
+    <script src="main.js"></script>
+    <meta http-equiv="Content-Type" content="text/html;charset=UTF-8">
+  </head>
+  <body style="background-color: #111; color: #E0E0E0; font-family: Arial, Helvetica, sans-serif;" onload="javascript:do_onload();">
+    <!--  START OF 2-COLUMN LAYOUT -->
+    <div class="row">
+      <!--  START OF 2 COLUMN LAYOUT -->
+      <div class="column" style="width: 750px;">
+        <!-- START FIRST COLUMN -->
+        <div class="top-nav-container">
+          <div class="top-nav">
+            <div class="nav-left">
+              <a href="#" class="nav-item" id="btn-home" onclick="showHome();">Home</a>
+              <a href="#" class="nav-item" id="btn-plot" onclick="toggleDivById('plot-container', 'btn-plot')">Plot</a>
+              <a href="#" class="nav-item" id="btn-new-settings" onclick="togglePopup('settingsPopupContainer', true);">Settings</a>
+              <a href="#" class="nav-item" id="btn-config" onclick="localStorage.setItem('getConfigBtn', 1); send_command('get_full_config');">View Config</a>
+              <a href="legacy-index.html" class="nav-item" id="btn-legacy">Legacy UI</a>
+              <a href="#" class="nav-item" id="btn-new-settings" onclick="togglePopup('aboutPopupContainer', true);">About</a>
+            </div>
+            <div class="nav-right">
+              <!-- SVG Logo -->
+              <svg class="logo" viewBox="0 0 300 100" xmlns="http://www.w3.org/2000/svg">
+                <rect width="300" height="100" fill="#222" rx="10" />
+                <polygon points="50,70 70,30 90,70" fill="#66aaff" />
+                <!-- the sail -->
+                <rect x="50" y="70" width="40" height="5" fill="#ffaa55" rx="2" />
+                <!-- orange boat -->
+                <text x="110" y="50" fill="#ffffff" font-size="32" font-family="Arial, sans-serif" font-weight="bold">O P 2 5</text>
+                <text x="110" y="75" fill="#ccc" font-size="24" font-family="Arial, sans-serif">b o a t b o d</text>
+              </svg>
+            </div>
+          </div>
+          <div class="warning-box" id="warning-box">
+            <span id="icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="#f44336" xmlns="http://www.w3.org/2000/svg" aria-label="Warning icon">
+                <path d="M1 21h22L12 2 1 21z" />
+                <path d="M13 16h-2v2h2v-2zm0-6h-2v4h2v-4z" fill="#fff" />
+              </svg>
+            </span>
+            <span id="warning-text"></span>
+          </div>
+        </div>
+        <div id="aboutPopupContainer">
+          <div class="about-popup-content">
+            <div class="popup-header">
+              <svg class="logo-lg" viewBox="0 0 300 100" xmlns="http://www.w3.org/2000/svg">
+                <rect width="300" height="100" fill="#333" rx="10" />
+                <polygon points="50,70 70,30 90,70" fill="#66aaff" />
+                <!-- the sail -->
+                <rect x="50" y="70" width="40" height="5" fill="#ffaa55" rx="2" />
+                <!-- orange boat -->
+                <text x="110" y="50" fill="#ffffff" font-size="32" font-family="Arial, sans-serif" font-weight="bold">O P 2 5</text>
+                <text x="110" y="75" fill="#ccc" font-size="24" font-family="Arial, sans-serif">b o a t b o d</text>
+              </svg>
+              <svg onclick="togglePopup('aboutPopupContainer', false);" xmlns="http://www.w3.org/2000/svg" height="24" width="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="close-icon">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </div>
+            <div class="popup-body">
+              <div class="about-content">
+                <p class="copyr"> &copy; 2017–2026 Max H. Parke & Graham J. Norbury [boatbod version] <br> UI Updates, Michael Rose - Last UI Update: <span id="lastUiUpdate"> - </span>
+                </p>
+                <p>This program comes with <strong>ABSOLUTELY NO WARRANTY</strong>. </p>
+                <p> OP25 is free software, and you are welcome to redistribute it under certain conditions. <br> For further details refer to the "License" link below. </p>
+                <p>
+                  <strong>License:</strong>
+                  <a href="https://www.gnu.org/licenses/gpl-3.0.en.html" target="_blank">GPLv3 License</a>
+                </p>
+                <p>
+                  <strong>Download:</strong>
+                  <br>
+                  <code>git clone https://git.osmocom.org/op25</code> &nbsp; <a href="https://gitea.osmocom.org/op25/op25?h=master" target="_blank">[original]</a>
+                  <br>
+                  <code>git clone https://github.com/boatbod/op25</code> &nbsp; <a href="https://github.com/boatbod/op25" target="_blank">[boatbod fork]</a>
+                </p>
+                <p>
+                  <strong>Website:</strong>
+                  <a href="http://op25.osmocom.org" target="_blank">http://op25.osmocom.org</a>
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- end about popup -->
+        <!-- Settings Popup Container -->
+        <div id="settingsPopupContainer">
+          <div class="settings-popup-content">
+            <div class="popup-header">
+              <h2>UI Settings</h2>
+              <svg onclick="togglePopup('settingsPopupContainer', false);" xmlns="http://www.w3.org/2000/svg" height="24" width="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="close-icon">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </div>
+            <div class="popup-body">
+              <table class="" id="settings-container" style="text-align:left; margin-top: 10px;">
+                <tr>
+                  <td colspan='2' style="padding: 0px;">All settings are automatically saved to the browser. <br>
+                    <br>
+                  </td>
+                </tr>
+                <tr>
+                  <!-- LEFT COLUMN -->
+                  <td style="vertical-align: top; width: 50%; padding-right: 20px; padding: 0px; border-right: 1px solid grey;">
+                    <div style="margin-bottom: 10px;">
+                      <button class="small-button" id="s2_ch_dmp" onclick="f_dump_button(0);" title="Log talkgroups to stderr2">Log Talkgroups</button>
+                      <button class="small-button" id="s2_ch_dmp" onclick="f_dump_buffer(-1);" title="Dump buffer">Dump Buffer</button>
+                    </div>
+                    <div style="margin-bottom: 10px;">
+                      <button class="small-button" onclick="f_scan_button('set_debug');" title="Set logging level">Log Verbosity</button>
+                    </div>
+                    <div class="s2_cell_h" id="s2_ch_cap" style="margin-bottom: 10px;">
+                      <button class="small-button" id="cap_bn" onclick="f_cap_button(0);">Start Capture</button>
+                    </div>
+                    <div style="margin-bottom: 10px;">
+                      <button class="small-button" onclick="f_scan_button('lockout');">Blacklist TGID</button>
+                      <button class="small-button" onclick="f_scan_button('whitelist');">Whitelist TGID</button>
+                    </div>
+                    <div style="margin-bottom: 15px;">
+                      <label for="callHeightControl" style="color: #ccc;">Call History Height (px):</label>
+                      <br>
+                      <input type="number" id="callHeightControl" min="200" max="1000" value="500" style="width: 80px;">
+                    </div>
+                    <div style="margin-bottom: 15px;">
+                      <label for="plotSizeControl" style="color: #ccc;">Plot Image Width (px):</label>
+                      <br>
+                      <input type="number" id="plotSizeControl" min="100" max="1000" value="300" style="width: 80px;">
+                    </div>
+                    <div style="margin-bottom: 15px;">
+                      <label for="valueColorPicker">Accent Color:</label>
+                      <input type="color" id="valueColorPicker" value="#00ffff">
+                      <button id="resetColor" class="small-button" style="width: 60px;">Default</button>
+                    </div>
+                  </td>
+                  <!-- RIGHT COLUMN -->
+                  <td style="vertical-align: top; width: 50%; padding-left: 20px;">
+                    <div style="margin-bottom: 15px;">
+                      <label for="smartColorToggle" style="color: #ccc;">
+                        <input type="checkbox" id="smartColorToggle" checked> Enable Smart Colors </label>
+                    </div>
+                    <div style="margin-bottom: 15px;">
+                      <label for="radioIdFreqTable" style="color: #ccc;">
+                        <input type="checkbox" id="radioIdFreqTable"> Show Radio ID in Frequency Table </label>
+                    </div>
+                    <div style="margin-bottom: 15px;">
+                      <label for="showBandPlan" style="color: #ccc;">
+                        <input type="checkbox" id="showBandPlan" checked> Show P25 Band Plan </label>
+                    </div>
+                    <div style="margin-bottom: 15px;">
+                      <label for="adjacentSitesToggle" style="color: #ccc;">
+                        <input type="checkbox" id="adjacentSitesToggle" checked> Show Adjacent Sites </label>
+                    </div>
+                    <div style="margin-bottom: 15px;">
+                      <label for="channelsTableToggle" style="color: #ccc;">
+                        <input type="checkbox" id="channelsTableToggle" checked> Show Channels Table </label>
+                    </div>
+                    <div style="margin-bottom: 15px;">
+                      <label for="callHistoryToggle" style="color: #ccc;">
+                        <input type="checkbox" id="callHistoryToggle" checked> Show Call History </label>
+                    </div>
+                    <div style="margin-bottom: 15px;">
+                      <label for="trackSubsToggle" style="color: #ccc;">
+                        <input type="checkbox" id="trackSubsToggle" checked> Track Subscriber Affiliations </label>
+                    </div>
+                    <div style="margin-bottom: 15px;">
+                      <label for="callHistoryToggle" style="color: #ccc;"> Track Affiliations Mode <select id="subMode" name="subMode">
+                          <option value="all">All Channels</option>
+                          <option value="selected">Selected Channel Only</option>
+                        </select>
+                      </label>
+                    </div>
+                    <div style="margin: 5px 0; text-align: left;">
+                      <label for="callHistorySource" style="color: #ccc;">Call History Source:</label>
+                      <select id="callHistorySource" style="margin-left: 5px;">
+                        <option value="frequency">Frequency Data</option>
+                        <option value="voice">Voice Grant (Python)</option>
+                        <option value="display">Main Display</option>
+                      </select>
+                    </div>
+                    <div style="margin-bottom: 10px; color: #ccc;"> Stream URL: <span id="streamURL">None</span>
+                    </div>
+                    <hr style="margin: 10px 0;">
+                    <div id="div_debug" style="font-size: 0.8em;">
+                      <strong>Debug Log</strong>
+                    </div>
+                  </td>
+                </tr>
+              </table>
+              <!-- End settings table -->
+            </div>
+          </div>
+        </div>
+        <!-- end settings popup -->
+        <div id="popupContainer" class="popup-container">
+          <div class="popup-content" style="position: relative; display: flex; flex-direction: column; height: 80vh; width: 70vw;">
+            <div class="popup-header">
+              <h2>Server Side Configuration</h2>
+              <svg onclick="togglePopup('popupContainer', false);" xmlns="http://www.w3.org/2000/svg" height="24" width="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="close-icon">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </div>
+            <!-- Scrollable content area -->
+            <div id="configDisplay" class="config-container" style="overflow-y: auto; flex: 1; padding: 10px;"> Configuration... </div>
+          </div>
+        </div>
+        <!-- End config popup container -->
+        <table class="outer-table" id="main-display">
           <tr>
-            <td><span class="info-large" id="displaySystem">Waiting for data...</span></td>
-            <td style="text-align:center; white-space: nowrap; width: 1%;">
-            	<span class="small-label">Frequency</span><br> <span class="trunk-value" id="displayFreq">----</span>
+            <!-- Left panel: vertical buttons -->
+            <td class="left-panel">
+              <button class="button-3d" onclick="f_scan_button('skip'); this.blur();">SCAN</button>
+              <br>
+              <button class="button-3d" id="btn-hold" onclick="f_scan_button('hold'); this.blur();">HOLD</button>
+              <br>
+              <button class="button-3d" onclick="f_scan_button('lockout'); this.blur();">LOCKOUT</button>
+              <br>
+              <button class="button-3d" onclick="f_scan_button('goto'); this.blur();">GO TO</button>
+              <br>
+            </td>
+            <!-- Main info area -->
+            <td class="main-info">
+              <table class="inner-table table-gradient-bg">
+                <tr>
+                  <td>
+                    <span class="info-large" id="displaySystem">Waiting for data...</span>
+                  </td>
+                  <td style="text-align:center; white-space: nowrap; width: 1%;">
+                    <span class="small-label">Frequency</span>
+                    <br>
+                    <span class="trunk-value" id="displayFreq">----</span>
+                  </td>
+                </tr>
+                <tr>
+                  <td>
+                    <span class="info-large" id="displayTalkgroup"></span>
+                    </span>
+                  </td>
+                  <td style="text-align:center; white-space: nowrap; width: 1%;">
+                    <span class="small-label">Talkgroup</span>
+                    <br>
+                    <span class="trunk-value" id="displayTgid">----</span>
+                  </td>
+                </tr>
+                <tr>
+                  <td>
+                    <span class="info-large" id="displaySource"></span>
+                  </td>
+                  <td style="text-align:center; white-space: nowrap; width: 1%;">
+                    <span class="small-label">Source</span>
+                    <br>
+                    <span class="trunk-value" id="displaySourceId">----</span>
+                  </td>
+                </tr>
+                <tr>
+                  <td colspan=2 style="padding-top:8px; padding-bottom:8px; text-align:center;">
+                    <span class="small-label">Encryption: </span>
+                    <span class="small-value" id="displayEnc">-</span> &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span class="small-label">Emergency: </span>
+                    <span class="small-value" id="displayEmg">-</span> &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span class="small-label">Service: </span>
+                    <span class="small-value" id="displayService">-</span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+            <!-- Right panel: logo area -->
+            <td class="right-logo">
+              <span class="small-label">Channel</span>
+              <br>
+              <input type="button" class="tune-button" name="c_dn" id="ch-dn" value="&darr;" title="Prev Channel" onclick="javascript:f_chan_button(-1);">
+              <input type="button" class="tune-button" name="c_up" id="ch-up" value="&uarr;" title="Next Channel" onclick="javascript:f_chan_button(1);">
+              <br>
+              <span class="small-value" id="displayChannel"> - </span>
+              <br>
+              <span id="streamButton" style="display: inline-block; margin: 10px;"></span>
+              <!-- This will be a speaker icon with link when the c_stream_url is present -->
+              <br>
+              <span class="small-label">Tuning</span>
+              <br>
+              <input type="button" class="tune-button" id="tune1" name="" onclick="this.blur(); f_tune_button('ld')" value="&lt;&lt;">
+              <input type="button" class="tune-button" id="tune2" name="" onclick="this.blur(); f_tune_button('sd')" value="&lt;">
+              <input type="button" class="tune-button" id="tune3" name="" onclick="this.blur(); f_tune_button('su')" value="&gt;">
+              <input type="button" class="tune-button" id="tune4" name="" onclick="this.blur(); f_tune_button('lu')" value="&gt;&gt;">
+              <br>
+              <span class="small-label">Error: </span>
+              <span class="small-value" id="errorVal">-</span>
             </td>
           </tr>
+          <!-- Bottom row: preset buttons -->
           <tr>
-            <td><span class="info-large" id="displayTalkgroup"> </span></span></td>
-            <td style="text-align:center; white-space: nowrap; width: 1%;">
-            	<span class="small-label">Talkgroup</span><br><span class="trunk-value" id="displayTgid">----</span>
+            <td colspan="3" class="bottom-buttons" id="presetButtons" style="display: none;">
+              <button id="preset-btn-1" class="" onclick="this.blur(); f_preset(1)">Preset 1</button>
+              <button id="preset-btn-2" class="" onclick="this.blur(); f_preset(2)">Preset 2</button>
+              <button id="preset-btn-3" class="" onclick="this.blur(); f_preset(3)">Preset 3</button>
+              <button id="preset-btn-4" class="" onclick="this.blur(); f_preset(4)">Preset 4</button>
+              <button id="preset-btn-5" class="" onclick="this.blur(); f_preset(5)">Preset 5</button>
+              <button id="preset-btn-6" class="" onclick="this.blur(); f_preset(6)">Preset 6</button>
             </td>
           </tr>
-          <tr>
-            <td><span class="info-large" id="displaySource"> </span></td>
-            <td style="text-align:center; white-space: nowrap; width: 1%;">
-            	<span class="small-label">Source</span><br><span class="trunk-value"id="displaySourceId">----</span>
-            </td>
-          </tr>
-          <tr>
-            <td colspan=2 style="padding-top:8px; padding-bottom:8px; text-align:center;">
-            
-            <span class="small-label">Encryption: </span><span class="small-value" id="displayEnc">-</span> &nbsp;&nbsp;&nbsp;
-            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-            <span class="small-label">Emergency: </span><span class="small-value" id="displayEmg">-</span> &nbsp;&nbsp;&nbsp;
-            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-            <span class="small-label">Service: </span> <span class="small-value" id="displayService">-</span>
-            
-            </td>
-          </tr>
-
         </table>
-      </td>
-      <!-- Right panel: logo area -->
-      <td class="right-logo">
-
-      		<span class="small-label">Channel</span><br>
-      		<input type="button" class="tune-button" name="c_dn" id="ch-dn" value="&darr;" title="Prev Channel" onclick="javascript:f_chan_button(-1);">
-      		<input type="button" class="tune-button" name="c_up" id="ch-up" value="&uarr;" title="Next Channel" onclick="javascript:f_chan_button(1);">
-      		<br>
-          	<span class="small-value" id="displayChannel"> - </span><br>  		
-			<span id="streamButton" style="display: inline-block; margin: 10px;"> </span> <!-- This will be a speaker icon with link when the c_stream_url is present -->
-			<br>
-		
-		
-      <span class="small-label">Tuning</span><br>
-      <input type="button" class="tune-button" id="tune1" name="" onclick="this.blur(); f_tune_button('ld')" value="&lt;&lt;">
-      <input type="button" class="tune-button" id="tune2" name="" onclick="this.blur(); f_tune_button('sd')" value="&lt;">
-      <input type="button" class="tune-button" id="tune3" name="" onclick="this.blur(); f_tune_button('su')"value="&gt;">
-      <input type="button" class="tune-button" id="tune4" name="" onclick="this.blur(); f_tune_button('lu')" value="&gt;&gt;">
-      <br>
-      <span class="small-label">Error: </span> <span class="small-value" id="errorVal">-</span>
-      
-      </td>
-    </tr>
-    <!-- Bottom row: preset buttons -->
-    <tr>
-      <td colspan="3" class="bottom-buttons" id="presetButtons" style="display: none;">
-		  <button id="preset-btn-1" class="" onclick="this.blur(); f_preset(1)">Preset 1</button>
-		  <button id="preset-btn-2" class="" onclick="this.blur(); f_preset(2)">Preset 2</button>
-		  <button id="preset-btn-3" class="" onclick="this.blur(); f_preset(3)">Preset 3</button>
-		  <button id="preset-btn-4" class="" onclick="this.blur(); f_preset(4)">Preset 4</button>
-		  <button id="preset-btn-5" class="" onclick="this.blur(); f_preset(5)">Preset 5</button>
-		  <button id="preset-btn-6" class="" onclick="this.blur(); f_preset(6)">Preset 6</button>   
-      </td>
-    </tr>
-  </table>
-  
-  <table class="outer-table" id="channels-container" style="text-align:left;">
-		<tr>
-		  <th class="th-section" colspan="2" style="padding: 0;">
-			<div style="display: flex; justify-content: space-between; align-items: center; padding: 4px 8px;">
-			  <span id="channes-container-title" style="flex: 1; text-align: center;">Channels</span>
-			</div>
-		  </th>
-		</tr>
-		  <tr>
-		  	<td>
-		  	 <div id="channelInfo">
-				<!-- Channel Info Table				 -->
-		  	 </div>
-		  	</td>
-		  </tr>
-		</table>
-  </table>
-
-      <table class="outer-table">
-		<tr>
-		<td>
-		<div id="frequenciesTable">
-		</div>
-      </table>
-        
-      <table class="outer-table" id='adjacentSitesContainer'>
-		<tr>
-		<td>
-		<div id="adjacentSitesTable">
-		</div>
-      </table>
-      
-      <table class="outer-table" id="patchesContainer">
-		<tr>
-		<td>
-		<div id="patchesTable">
-		</div>
-      </table>            
-      
-</div>   <!-- END FIRST COLUMN -->
-
-
-
-<!-- START SECOND COLUMN -->   
-  <div class="column" id="second-column" style="margin: 0px 0px 0px 0px;">
-		<table class="outer-table" id="callHistoryContainer">
-		<tr>
-		  <th class="th-section" colspan="2" style="padding: 0;">
-			<div style="display: flex; justify-content: space-between; align-items: center; padding: 4px 8px;">
-			  <span id="callHistoryTableTitle" style="flex: 1; text-align: center;">Call History</span>
-			  <button onclick="csvTable()" title="Save Call History to CSV" style="background: none; border: none; cursor: pointer; padding: 0; margin-left: auto;">
-				<!-- Save Icon SVG -->
-				<svg xmlns="http://www.w3.org/2000/svg" height="20" viewBox="0 0 24 24" width="20" fill="#ccc">
-				  <path d="M0 0h24v24H0z" fill="none"/>
-				  <path d="M17 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7l-4-4zm0 2.5L18.5 7H17V5.5zM5 19V5h10v4h4v10H5z"/>
-				  <path d="M12 17a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"/>
-				</svg>
-			  </button>
-			</div>
-		  </th>
-		</tr>
-		  <tr>
-			<td>
-			  <div class="call-history-scroll">
-				<table class="compact-table" id="callHistory">
-				  <thead>
-				    <tr><th>Time</th><th>Sys</th><th>Frequency</th><th colspan=2>Talkgroup</th><th>Source</th></tr>
-				  </thead>
-				  <tbody id="callHistoryBody">
-					<!-- JavaScript will insert <tr> rows here -->
-				  </tbody>
-				</table>
-			  </div>
-			</td>
-		  </tr>
-		</table>
-
-		<table class="outer-table" id="subContainer">
-		
-		  <!-- header row -->
-		  <tr>
-			<th class="th-section" colspan="2" style="padding:0;">
-		
-		<table style="width:100%; border-collapse:collapse; table-layout:fixed;">
-		  <tr style="height:28px;">
-			<!-- left -->
-			<td style="width:50px; text-align:left;">
-			  &nbsp;&nbsp;
-			</td>
-		
-			<!-- middle -->
-			<td style="text-align:center;">
-			  <span id="subCount">0</span> Subscriber Registrations <span id="sysCount"> <span>
-			</td>
-		
-			<!-- right -->
-			<td style="width:50px; text-align:right;">
-			  <a href="#" onclick="openSubSearchModal()">&#128269;</a>&nbsp;&nbsp;
-			</td>
-		  </tr>																					
-		</table>
-		
-			</th>
-		  </tr>
-		
-		  <!-- table body -->
-		  <tr>
-			<td>
-			  <div class="call-history-scroll" style="height:260px; overflow-y:auto;">
-				<table class="compact-table" id="subscribers">
-				  <tr>
-					<th class="th-section">Time</th>   						
-					<th class="th-section">System</th>
-					<th class="th-section" colspan="2">Affiliation Talkgroup</th>		
-					<th class="th-section">Source</th>					
-					<th class="th-section">AG</th>							
-				  </tr>
-				</table>
-			  </div>
-			</td>
-		  </tr>
-		
-		</table>
-		
-		<!-- Subscriber Search Modal -->
-		
-		<div id="searchSubsPopup" aria-hidden="true">
-		  <div class="search-popup-content" role="dialog" aria-modal="true" aria-labelledby="subSearchTitle">
-			<div class="popup-header">
-			  <h3 id="subSearchTitle" style="margin:0;">Search Subscriber Registrations</h3>
-			  <span class="close-icon" onclick="closeSubSearchModal()" title="Close" style="font-size:22px;">&times;</span>
-			</div>
-		
-			<div style="margin: 12px 0;">
-			  <div style="display:flex; gap:10px; align-items:center;">
-				<input
-				  id="subSearchInput"
-				  type="text"
-				  placeholder="Type to filter (any column)..."
-				  style="flex:1; padding:10px; background:#222; color:#eee; border:1px solid #555; border-radius:6px;"
-				  oninput="filterSubSearchTable()"
-				/>
-				<button class="button-3d" type="button" onclick="refreshSubSearchSnapshot()">Refresh Snapshot</button>
-				<button class="button-3d" type="button" onclick="clearSubSearch()">Clear</button>
-			  </div>
-		
-			  <div id="subSearchMeta" style="margin-top:8px; color:#999; font-size:12px;">
-				Snapshot not loaded.
-			  </div>
-			</div>
-		
-			<div class="call-history-scroll" style="height:60vh;">
-			  <table class="compact-table" id="subSearchTable">
-				<!-- populated by JS -->
-			  </table>
-			</div>
-		  </div>
-		</div>
-
-
-
-      <table class="outer-table" id="plot-container" style="display: none;">
-		<tr><th class="th-section">Plots</th></tr>
-		  <tr>
-			<td>
-
-				<div id="plot-controls" style="text-align:center; width: 100%;">
-					<input type="button" class="small-button" style="width: 100px;" name="pl1" id="pb-fft" value="Spectrum" title="Toggle Spectrum Plot" onclick="javascript:f_plot_button(1);">
-					<input type="button" class="small-button" style="width: 100px;" name="pl2" id="pb-constellation" value="Constellation" title="Toggle Constellation Plot" onclick="javascript:f_plot_button(2);">
-					<input type="button" class="small-button" style="width: 100px;" name="pl3" id="pb-symbol" value="Symbol" title="Toggle Symbol Plot" onclick="javascript:f_plot_button(3);">
-					<input type="button" class="small-button" style="width: 100px;" name="pl4" id="pb-eye" value="Datascope" title="Toggle Datascope Plot" onclick="javascript:f_plot_button(4);">
-					<input type="button" class="small-button" style="width: 100px;" name="pl5" id="pb-mixer" value="Mixer" title="Toggle Mixer Plot" onclick="javascript:f_plot_button(5);">
-					<input type="button" class="small-button" style="width: 100px;" name="pl6" id="pb-fll" value="Tuner" title="Toggle Tuner Plot" onclick="javascript:f_plot_button(6);">
-				<br>
-					<span class="small-label">Plots in data stream: </span> <span class="small-value" id="plotsCount">-</span> &nbsp;&nbsp;&nbsp;&nbsp;
-					<span class="small-label">Channel: </span> <span class="small-value" id="plotChannelDisplay">-</span>
-				</div> 
-
-				
-				<div id="div_plot" style="display: block; text-align:center; width: 100%;">
-					<img src="1x1.png" class="plot-image" id="img0" style="display:; none" alt="plot">
-					<img src="1x1.png" class="plot-image" id="img1" style="display:; none" alt="plot">
-					<img src="1x1.png" class="plot-image" id="img2" style="display:; none" alt="plot">
-					<img src="1x1.png" class="plot-image" id="img3" style="display:; none" alt="plot">
-					<img src="1x1.png" class="plot-image" id="img4" style="display:; none" alt="plot">
-					<img src="1x1.png" class="plot-image" id="img5" style="display:; none" alt="plot">
-				</div>
-			</td>
-		  </tr>
-		</table>
-		
-
-</div>    <!-- END SECOND COLUMN -->
-</div>        <!--  END OF 2 COLUMN LAYOUT -->
-</body>
+        <table class="outer-table" id="channels-container" style="text-align:left;">
+          <tr>
+            <th class="th-section" colspan="2" style="padding: 0;">
+              <div style="display: flex; justify-content: space-between; align-items: center; padding: 4px 8px;">
+                <span id="channes-container-title" style="flex: 1; text-align: center;">Channels</span>
+              </div>
+            </th>
+          </tr>
+          <tr>
+            <td>
+              <div id="channelInfo">
+                <!-- Channel Info Table				 -->
+              </div>
+            </td>
+          </tr>
+        </table>
+        </table>
+        <table class="outer-table">
+          <tr>
+            <td>
+              <div id="frequenciesTable"></div>
+        </table>
+        <table class="outer-table" id='adjacentSitesContainer'>
+          <tr>
+            <td>
+              <div id="adjacentSitesTable"></div>
+        </table>
+        <table class="outer-table" id="patchesContainer">
+          <tr>
+            <td>
+              <div id="patchesTable"></div>
+        </table>
+      </div>
+      <!-- END FIRST COLUMN -->
+      <!-- START SECOND COLUMN -->
+      <div class="column" id="second-column" style="margin: 0px 0px 0px 0px;">
+        <table class="outer-table" id="callHistoryContainer">
+          <tr>
+            <th class="th-section" colspan="2" style="padding:0;">
+              <div style="
+      display:grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items:center;
+      padding:4px 8px;
+      gap:8px;
+    ">
+                <!-- LEFT: filter box -->
+                <div style="justify-self:start;">
+                  <div class="filter-input-wrap">
+                    <span class="filter-icon">
+                      <svg viewBox="0 0 24 24" width="14" height="14">
+                        <path fill="currentColor" d="M3 4h18l-7 8v6l-4 2v-8z" />
+                      </svg>
+                    </span>
+                    <input type="text" id="historyFilter" class="dark-input" placeholder=" ">
+                    <button class="filter-clear" onclick="clearFilter('historyFilter')" title="Clear filter">✖</button>
+                  </div>
+                </div>
+                <!-- MIDDLE: always centered -->
+                <div style="justify-self:center; text-align:center; white-space:nowrap;">
+                  <span id="callHistoryTableTitle">Call History</span>
+                </div>
+                <!-- RIGHT: icons -->
+                <div style="justify-self:end; display:flex; align-items:center; gap:6px;">
+                  <!-- Seen Talkgroups (eye) -->
+                  <button onclick="openSeenTgModal(); return false;" title="Seen Talkgroups" style="background:none; border:none; cursor:pointer; padding:0; margin:0;">
+                    <svg xmlns="http://www.w3.org/2000/svg" height="20" width="20" viewBox="0 0 24 24" fill="#ccc">
+                      <path d="M12 5c-7 0-10 7-10 7s3 7 10 7 10-7 10-7-3-7-10-7zm0 12a5 5 0 1 1 0-10 5 5 0 0 1 0 10zm0-8a3 3 0 1 0 0 6 3 3 0 0 0 0-6z" />
+                    </svg>
+                  </button>
+                  <!-- Save CSV -->
+                  <button onclick="csvTable()" title="Save Call History to CSV" style="background:none; border:none; cursor:pointer; padding:0; margin:0;">
+                    <svg xmlns="http://www.w3.org/2000/svg" height="20" width="20" viewBox="0 0 24 24" fill="#ccc">
+                      <path d="M0 0h24v24H0z" fill="none" />
+                      <path d="M17 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7l-4-4zm0 2.5L18.5 7H17V5.5zM5 19V5h10v4h4v10H5z" />
+                      <path d="M12 17a2 2 0 1 0 0-4 2 2 0 0 0 0 4z" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </th>
+          </tr>
+          <tr>
+            <td>
+              <div class="call-history-scroll">
+                <table class="compact-table" id="callHistory">
+                  <thead>
+                    <tr>
+                      <th>Time</th>
+                      <th>Sys</th>
+                      <th>Frequency</th>
+                      <th colspan=2>Talkgroup</th>
+                      <th>Source</th>
+                    </tr>
+                  </thead>
+                  <tbody id="callHistoryBody">
+                    <!-- JavaScript will insert <tr> rows here -->
+                  </tbody>
+                </table>
+              </div>
+            </td>
+          </tr>
+        </table>
+        <table class="outer-table" id="subContainer">
+          <!-- header row -->
+          <tr>
+            <th class="th-section" colspan="2" style="padding:0;">
+              <table style="width:100%; border-collapse:collapse; table-layout:fixed;">
+                <tr style="height:32px;">
+                  <!-- left -->
+                  <td style="width:50px; text-align:left;">
+                    <div class="filter-input-wrap" style="display:flex; align-items:center; gap:6px; flex-wrap:nowrap;">
+                      <span class="filter-icon">
+                        <svg viewBox="0 0 24 24" width="14" height="14">
+                          <path fill="currentColor" d="M3 4h18l-7 8v6l-4 2v-8z" />
+                        </svg>
+                      </span>
+                      <input type="text" id="subFilter1" class="dark-input" placeholder=" ">
+                      <button class="filter-clear" onclick="clearFilter('subFilter1')" title="Clear filter">✖</button>
+                    </div>
+                  </td>
+                  <!-- middle -->
+                  <td style="text-align:center;">
+                    <span id="subCount">0</span> Subscriber Registrations <span id="sysCount" title="System . RFSS . Site">
+                      <span>
+                  </td>
+                  <!-- right -->
+                  <td style="width:50px; text-align:right;">
+                    <a href="#" onclick="openSubSearchModal()">&#128269;</a>&nbsp;&nbsp;
+                  </td>
+                </tr>
+              </table>
+            </th>
+          </tr>
+          <!-- table body -->
+          <tr>
+            <td>
+              <div class="call-history-scroll" style="height:260px; overflow-y:auto;">
+                <table class="compact-table" id="subscribers">
+                  <thead>
+                    <tr>
+                      <th class="th-section" data-sort="time" onclick="setSubSort(this)">Time</th>
+                      <th class="th-section" data-sort="system" onclick="setSubSort(this)">System</th>
+                      <th class="th-section" data-sort="tgid" onclick="setSubSort(this)">TGID</th>
+                      <th class="th-section" data-sort="tgtag" onclick="setSubSort(this)">Talkgroup</th>
+                      <th class="th-section" data-sort="id" onclick="setSubSort(this)">Source</th>
+                      <th class="th-section" data-sort="ag" onclick="setSubSort(this)">AG</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <!-- JS inserts rows here -->
+                  </tbody>
+                </table>
+              </div>
+            </td>
+          </tr>
+        </table>
+        <!-- Subscriber Search Modal -->
+        <div id="searchSubsPopup" aria-hidden="true">
+          <div class="search-popup-content" role="dialog" aria-modal="true" aria-labelledby="subSearchTitle">
+            <div class="popup-header">
+              <h3 id="subSearchTitle" style="margin:0;">Search Subscriber Registrations</h3>
+              <span class="close-icon" onclick="closeSubSearchModal()" title="Close" style="font-size:22px;">&times;</span>
+            </div>
+            <div style="margin: 12px 0;">
+              <div style="display:flex; gap:10px; align-items:center;">
+                <input id="subSearchInput" type="text" placeholder="Type to filter (any column)..." style="flex:1; padding:10px; background:#222; color:#eee; border:1px solid #555; border-radius:6px;" oninput="filterSubSearchTable()" />
+                <button class="button-3d" type="button" onclick="refreshSubSearchSnapshot()">Refresh Snapshot</button>
+                <button class="button-3d" type="button" onclick="clearSubSearch()">Clear</button>
+              </div>
+              <div id="subSearchMeta" style="margin-top:8px; color:#999; font-size:12px;"> Snapshot not loaded. </div>
+            </div>
+            <div class="call-history-scroll" style="height:60vh;">
+              <table class="compact-table" id="subSearchTable">
+                <!-- populated by JS -->
+              </table>
+            </div>
+          </div>
+        </div>
+        <!-- End SearchSubsPopup -->
+        <div id="seenTgPopup" aria-hidden="true">
+          <div class="popup-content" role="dialog" aria-modal="true" aria-labelledby="seenTgTitle" style="max-width: 1100px; width: 92vw;">
+            <div class="popup-header">
+              <h3 id="seenTgTitle" style="margin:0;">Seen Talkgroups</h3>
+              <span class="close-icon" onclick="closeSeenTgModal()" title="Close" style="font-size:22px;">&times;</span>
+            </div>
+            <div style="margin: 12px 0;">
+              <div style="display:flex; gap:10px; align-items:center;">
+                <input id="seenTgFilter" type="text" placeholder="Filter (system / tgid / tag)..." style="flex:1; padding:10px; background:#222; color:#eee; border:1px solid #555; border-radius:6px;" oninput="filterSeenTgTable()" />
+                <button class="button-3d" type="button" onclick="refreshSeenTgSnapshot()">Refresh</button>
+                <button class="button-3d" type="button" onclick="clearSeenTgFilter()">Clear</button>
+              </div>
+              <div id="seenTgMeta" style="margin-top:8px; color:#999; font-size:12px;"> Snapshot not loaded. </div>
+            </div>
+            <div class="call-history-scroll" style="height:60vh;">
+              <table class="compact-table" id="seenTgTable">
+                <!-- populated by JS -->
+              </table>
+            </div>
+          </div>
+        </div>
+        <!-- End seen talkgroups -->
+        <table class="outer-table" id="plot-container" style="display: none;">
+          <tr>
+            <th class="th-section">Plots</th>
+          </tr>
+          <tr>
+            <td>
+              <div id="plot-controls" style="text-align:center; width: 100%;">
+                <input type="button" class="small-button" style="width: 100px;" name="pl1" id="pb-fft" value="Spectrum" title="Toggle Spectrum Plot" onclick="javascript:f_plot_button(1);">
+                <input type="button" class="small-button" style="width: 100px;" name="pl2" id="pb-constellation" value="Constellation" title="Toggle Constellation Plot" onclick="javascript:f_plot_button(2);">
+                <input type="button" class="small-button" style="width: 100px;" name="pl3" id="pb-symbol" value="Symbol" title="Toggle Symbol Plot" onclick="javascript:f_plot_button(3);">
+                <input type="button" class="small-button" style="width: 100px;" name="pl4" id="pb-eye" value="Datascope" title="Toggle Datascope Plot" onclick="javascript:f_plot_button(4);">
+                <input type="button" class="small-button" style="width: 100px;" name="pl5" id="pb-mixer" value="Mixer" title="Toggle Mixer Plot" onclick="javascript:f_plot_button(5);">
+                <input type="button" class="small-button" style="width: 100px;" name="pl6" id="pb-fll" value="Tuner" title="Toggle Tuner Plot" onclick="javascript:f_plot_button(6);">
+                <br>
+                <span class="small-label">Plots in data stream: </span>
+                <span class="small-value" id="plotsCount">-</span> &nbsp;&nbsp;&nbsp;&nbsp; <span class="small-label">Channel: </span>
+                <span class="small-value" id="plotChannelDisplay">-</span>
+              </div>
+              <div id="div_plot" style="display: block; text-align:center; width: 100%;">
+                <img src="1x1.png" class="plot-image" id="img0" style="display:; none" alt="plot">
+                <img src="1x1.png" class="plot-image" id="img1" style="display:; none" alt="plot">
+                <img src="1x1.png" class="plot-image" id="img2" style="display:; none" alt="plot">
+                <img src="1x1.png" class="plot-image" id="img3" style="display:; none" alt="plot">
+                <img src="1x1.png" class="plot-image" id="img4" style="display:; none" alt="plot">
+                <img src="1x1.png" class="plot-image" id="img5" style="display:; none" alt="plot">
+              </div>
+            </td>
+          </tr>
+        </table>
+      </div>
+      <!-- END SECOND COLUMN -->
+    </div>
+    <!--  END OF 2 COLUMN LAYOUT -->
+  </body>
 </html>

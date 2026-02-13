@@ -449,6 +449,13 @@ input[type="checkbox"]:checked::after {
   background-color: #3399ff;
 }
 
+
+#callHistory thead th{
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: linear-gradient(to bottom, #333, #222, #333);   /* MUST be set so rows don't show through */
+}
 /* 
 .logo {
   width: auto;
@@ -809,3 +816,100 @@ input[type="checkbox"]:checked::after {
   border: 2px solid var(--values); 
   box-shadow: 0 0 3px var(--values), 0 0 7px var(--values);
 }
+
+.dark-input {
+    background: linear-gradient(to bottom, #000000, #2a2a2a);
+    color: #ffffff;
+    border: 0px solid #555;
+    width: 125px;
+    padding: 4px 6px;
+    font-size: 12px;
+    border-radius: 4px;
+    outline: none;
+}
+
+.dark-input::placeholder {
+    color: #aaa;
+}
+
+.dark-input:focus {
+    border-color: #888;
+}
+
+.filter-input-wrap {
+  position: relative;
+  display: inline-block;
+}
+
+.filter-input-wrap input {
+  padding-left: 28px; /* space for icon */
+}
+
+.filter-icon {
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #ccc;
+  pointer-events: none;
+}
+
+
+#subSearchTable thead th{
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: linear-gradient(to bottom, #333, #222, #333);
+}
+
+#subSearchTable th[data-sort]{ cursor: pointer; }
+#subSearchTable th{ user-select: none; }
+
+
+
+
+#subscribers thead th{
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: linear-gradient(to bottom, #333, #222, #333);
+}
+
+#subscribers th[data-sort]{ cursor: pointer; }
+#subscribers th{ user-select: none; }
+
+/* Seen Talkgroups popup: behave like a real modal overlay */
+#seenTgPopup{
+	display:none;
+	position:fixed;
+	inset:0;
+	z-index:9999;
+	background:rgba(0,0,0,0.6);
+	align-items:center;
+	justify-content:center;
+}
+
+#seenTgPopup.show{
+	display:flex;
+}
+
+.filter-clear {
+  background: none;
+  border: none;
+  color: #ccc;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 2px 6px;
+}
+
+.filter-clear:hover {
+  color: #fff;
+}
+
+#seenTgTable thead th{
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: linear-gradient(to bottom, #333, #222, #333);
+}
+  
