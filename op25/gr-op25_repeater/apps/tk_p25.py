@@ -1891,17 +1891,18 @@ class p25_system(object):
 
         # Subscriber Registrations
         self.expire_registrations()
-        for wuid in sorted(self.registered_wuids.keys()):
-            d['wuid_data'][wuid] = {'rfss'        : self.registered_wuids[wuid]['rfid'],
-                                    'site'        : self.registered_wuids[wuid]['stid'],
-                                    'suid'        : self.registered_wuids[wuid]['suid'],
-                                    'srcaddr'     : int(wuid, 16),
-                                    'tag'         : self.registered_wuids[wuid]['tag'],
-                                    'aff_ga'      : self.registered_wuids[wuid]['aff_ga'],
-                                    'aff_ga_tag'  : self.talkgroups.get(self.registered_wuids[wuid]['aff_ga'], {}).get('tag', None),
-                                    'aff_aga'     : self.registered_wuids[wuid]['aff_aga'],
-                                    'aff_aga_tag' : self.talkgroups.get(self.registered_wuids[wuid]['aff_aga'], {}).get('tag', None),
-                                    'time'        : self.registered_wuids[wuid]['ts']}
+        with self.suids_mutex:
+            for wuid in sorted(self.registered_wuids.keys()):
+                d['wuid_data'][wuid] = {'rfss'        : self.registered_wuids[wuid]['rfid'],
+                                        'site'        : self.registered_wuids[wuid]['stid'],
+                                        'suid'        : self.registered_wuids[wuid]['suid'],
+                                        'srcaddr'     : int(wuid, 16),
+                                        'tag'         : self.registered_wuids[wuid]['tag'],
+                                        'aff_ga'      : self.registered_wuids[wuid]['aff_ga'],
+                                        'aff_ga_tag'  : self.talkgroups.get(self.registered_wuids[wuid]['aff_ga'], {}).get('tag', None),
+                                        'aff_aga'     : self.registered_wuids[wuid]['aff_aga'],
+                                        'aff_aga_tag' : self.talkgroups.get(self.registered_wuids[wuid]['aff_aga'], {}).get('tag', None),
+                                        'time'        : self.registered_wuids[wuid]['ts']}
 
         # Adjacent sites
         d['adjacent_data'] = self.adjacent_data
