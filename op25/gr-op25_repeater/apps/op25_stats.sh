@@ -29,7 +29,7 @@ grep 'new tgid=' $1 | cut -d"=" -f2- | sort -n >> op25-new-tgids.txt
 # list of encryption seen
 echo "Generating list of encryption in use: op25-enc-used.txt"
 echo "# Encryption algids and keyids" > op25-enc-used.txt
-grep 'encrypt info tg=' $1 | cut -d"=" -f2,3,4- | sort -n -u | sed s/^/tg=/g | sed s/,//g >> op25-enc-used.txt
+grep 'encrypt info: tg=' $1 | cut -d"=" -f2,3,4- | sort -n -u | sed s/^/tg=/g | sed s/,//g >> op25-enc-used.txt
 
 # histogram of talkgroups
 echo "Munging log and tag files..."
