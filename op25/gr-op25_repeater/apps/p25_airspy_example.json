@@ -39,7 +39,7 @@
             "symbol_rate": 4800,
             "enable_analog": "off",
             "blacklist": "",
-            "whitelist": "talbot-fire.wlist"
+            "whitelist": "talbot-fire.wlist",
             "crypt_keys": "example_keys.json"
         },
         {
