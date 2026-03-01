@@ -18,6 +18,7 @@
             "enable_analog": "off",
             "blacklist": "",
             "whitelist": "",
+            "crypt_behavior": 2,
             "crypt_keys": ""
         }
     ], 
