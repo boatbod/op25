@@ -1973,7 +1973,7 @@ class p25_receiver(object):
         self.tune_ts = None
         
         self.fa_ctrl({'tuner': self.msgq_id, 'cmd': 'crypt_behavior', 'behavior': self.crypt_behavior})
-        sys.stderr.write("%s crypt behavior: %d\n" % (log_ts.get(), self.crypt_behavior))
+        sys.stderr.write("%s [%d] crypt behavior: %d\n" % (log_ts.get(), self.msgq_id, self.crypt_behavior))
 
     def set_debug(self, dbglvl):
         self.debug = dbglvl
