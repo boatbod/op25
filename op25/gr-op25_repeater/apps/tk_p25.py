@@ -2356,7 +2356,7 @@ class p25_receiver(object):
         if self.current_tgid is not None and self.current_tgid == tgid:                         # active call unchanged, nothing to do
             return
 
-        if tgid is None:                                                                        # no call
+        if tgid is None or freq is None:                                                        # no call
             return
 
         if self.current_tgid is None:
