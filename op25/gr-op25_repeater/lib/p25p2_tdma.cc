@@ -174,7 +174,13 @@ int p25p2_tdma::process_mac_pdu(const uint8_t byte_buf[], const unsigned int len
     unsigned int opcode = (byte_buf[0] >> 5) & 0x7;
 
     if (d_debug >= 10) {
-        fprintf(stderr, "%s process_mac_pdu: opcode %d offset %d len %d\n", logts.get(d_msgq_id), opcode, offset, len);
+        char strbuf[255];
+        unsigned int spos = 0;
+        for (unsigned int i=0; i<len; i++) {
+            sprintf(strbuf+spos, "%02x ", byte_buf[i]);
+            spos += 3;
+        }
+        fprintf(stderr, "%s process_mac_pdu: opcode %d offset %d len %d pdu %s\n", logts.get(d_msgq_id), opcode, offset, len, strbuf);
     }
 
     switch (opcode)
