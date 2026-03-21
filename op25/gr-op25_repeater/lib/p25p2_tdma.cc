@@ -331,6 +331,7 @@ void p25p2_tdma::decode_mac_msg(const uint8_t byte_buf[], const unsigned int len
 	colorcd = nac;
 	for (msg_ptr = 1; msg_ptr < len; )
 	{
+        msg_len = 0;
 		len_remaining = len - msg_ptr;
         b1b2 = byte_buf[msg_ptr] >> 6;
         mco  = byte_buf[msg_ptr] & 0x3f;
@@ -355,7 +356,8 @@ void p25p2_tdma::decode_mac_msg(const uint8_t byte_buf[], const unsigned int len
 				if (b1b2 == 0x2) {				// Manufacturer-specific ops have len field
 					mfid = byte_buf[msg_ptr+1];
 					msg_len = byte_buf[msg_ptr+2] & 0x3f;
-				} else {
+				}
+                if (msg_len == 0) {
 					msg_len = mac_msg_len[op];	// Lookup table for everything else
 				}
 		}
