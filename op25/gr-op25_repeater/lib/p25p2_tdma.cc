@@ -331,6 +331,7 @@ void p25p2_tdma::decode_mac_msg(const uint8_t byte_buf[], const unsigned int len
     colorcd = nac;
     for (msg_ptr = 1; msg_ptr < len; )
     {
+        msg_len = 0;
         len_remaining = len - msg_ptr;
         b1b2 = byte_buf[msg_ptr] >> 6;
         mco  = byte_buf[msg_ptr] & 0x3f;
@@ -352,16 +353,17 @@ void p25p2_tdma::decode_mac_msg(const uint8_t byte_buf[], const unsigned int len
                 msg_len = (((byte_buf[msg_ptr+1] & 0x3) + 1) * 3) + 2;
                 break;
             default:
-                if (b1b2 == 0x2) {				// Manufacturer-specific ops have len field
+                if (b1b2 == 0x2) {              // Manufacturer-specific ops are supposed to have a length parameter
                     mfid = byte_buf[msg_ptr+1];
                     msg_len = byte_buf[msg_ptr+2] & 0x3f;
-                } else {
-                    msg_len = mac_msg_len[op];	// Lookup table for everything else
+                }                               // but it's not always set, so continue into lookup table if necessary
+                if (msg_len == 0) {
+                    msg_len = mac_msg_len[op];  // lookup table is the last best hope to figure out the message length
                 }
         }
 
         if (d_debug >= 10) {
-            fprintf(stderr, "mco=%01x/%02x(0x%02x), len=%d", b1b2, mco, op, msg_len);
+            fprintf(stderr, "mco=%01x/%02x(0x%02x), mfid=%x, len=%d", b1b2, mco, op, mfid, msg_len);
         }
 
         // Generic message processing
@@ -380,6 +382,19 @@ void p25p2_tdma::decode_mac_msg(const uint8_t byte_buf[], const unsigned int len
             send_msg(pdu, M_P25_MAC_PDU);
         } else {
             // Discard Null, Null-Avoid-Zero-Bias, and messages with unknown length
+#if 0
+            // Report any non-null messages which are being discarded
+            if ((mco != 0x00) && (mco != 0x08)) {
+                fprintf(stderr, "Discard MAC_MSG mco=%01x/%02x(0x%02x), mfid=%x, len=%2d, len_remaining=%2d [ ", b1b2, mco, op, mfid, msg_len, len_remaining);
+                pdu.assign(len_remaining+2, 0);
+                pdu[0] = colorcd >> 8; pdu[1] = colorcd & 0xff;
+                for (int i = 0; i < len_remaining; i++) {
+                    pdu[2 + i] = byte_buf[msg_ptr + i];
+                    fprintf(stderr, "%02x ", (uint8_t)pdu[2 + i]);
+                }
+                fprintf(stderr, "]\n");
+            }
+#endif
         }
 
         msg_ptr = (msg_len == 0) ? len : (msg_ptr + msg_len);
