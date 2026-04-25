@@ -452,11 +452,13 @@ namespace gr {
         void p25p1_fdma::process_TSBK(const bit_vector& fr, uint32_t fr_len) {
             uint8_t op, lb = 0;
             block_vector deinterleave_buf;
+            d_stat_tsbk_attempted++;
             if (process_blocks(fr, fr_len, deinterleave_buf) == 0) {
                 for (size_t j = 0; (j < deinterleave_buf.size()) && (lb == 0); j++) {
                     if (crc16(deinterleave_buf[j].data(), 12) != 0) // validate CRC
                         return;
 
+                    if (j == 0) d_stat_tsbk_passed++;  // count once per TSBK call
                     lb = deinterleave_buf[j][0] >> 7;	// last block flag
                     op = deinterleave_buf[j][0] & 0x3f;	// opcode
                     process_duid(framer->duid, framer->nac, deinterleave_buf[j].data(), 10);
@@ -475,10 +477,12 @@ namespace gr {
         void p25p1_fdma::process_PDU(const bit_vector& fr, uint32_t fr_len) {
             uint8_t fmt, sap, blks, op = 0;
             block_vector deinterleave_buf;
+            d_stat_pdu_attempted++;
             if ((process_blocks(fr, fr_len, deinterleave_buf) == 0) &&
                     (deinterleave_buf.size() > 0)) {			// extract all blocks associated with this PDU
                 if (crc16(deinterleave_buf[0].data(), 12) != 0) // validate PDU header
                     return;
+                d_stat_pdu_passed++;
 
                 fmt =  deinterleave_buf[0][0] & 0x1f;
                 sap =  deinterleave_buf[0][1] & 0x3f;
@@ -771,6 +775,7 @@ namespace gr {
                     }
 
                     qtimer.reset();
+                    d_stat_timeouts++;
                     gr::message::sptr msg = gr::message::make(get_msg_type(PROTOCOL_P25, M_P25_TIMEOUT), (d_msgq_id << 1), logts.get_ts());
                     if (!d_msg_queue->full_p())
                         d_msg_queue->insert_tail(msg);

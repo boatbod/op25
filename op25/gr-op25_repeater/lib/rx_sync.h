@@ -137,6 +137,15 @@ public:
 	void crypt_behavior(int behavior);
 	void set_debug(int debug);
     void dump_buffer();
+	op25_decode_stats get_decode_stats() const override {
+		op25_decode_stats s;
+		s.tsbk_attempted = p25fdma.stat_tsbk_attempted();
+		s.tsbk_passed    = p25fdma.stat_tsbk_passed();
+		s.pdu_attempted  = p25fdma.stat_pdu_attempted();
+		s.pdu_passed     = p25fdma.stat_pdu_passed();
+		s.timeout_count  = p25fdma.stat_timeouts();
+		return s;
+	}
 	rx_sync(const char * options, log_ts& logger, int debug, int msgq_id, gr::msg_queue::sptr queue);
 	~rx_sync();
 

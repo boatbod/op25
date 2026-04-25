@@ -51,6 +51,9 @@ namespace gr {
                 void queue_msg(int duid);
                 void set_debug(int debug);
                 void control(const std::string& args);
+                op25_decode_stats get_decode_stats() const override {
+                    return d_sync ? d_sync->get_decode_stats() : op25_decode_stats{};
+                }
 
             public:
                 log_ts logts;

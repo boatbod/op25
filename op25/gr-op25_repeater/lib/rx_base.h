@@ -21,6 +21,7 @@
 #define INCLUDED_RX_BASE_H
 
 #include "log_ts.h"
+#include <gnuradio/op25_repeater/frame_assembler.h>  // op25_decode_stats
 
 namespace gr {
     namespace op25_repeater {
@@ -41,6 +42,8 @@ namespace gr {
                 // Crypt_behavior
                 virtual void set_xormask(const char* p) = 0;
                 virtual void crypt_behavior(int behavior) = 0;
+                // Survey extension: counters surfaced by p25 fdma sync; default empty.
+                virtual op25_decode_stats get_decode_stats() const { return {}; }
                 rx_base(const char * options, log_ts& logger, int debug, int msgq_id, gr::msg_queue::sptr queue) { };
                 rx_base() {}; // default constructor called by derived classes
                 virtual ~rx_base() {};
