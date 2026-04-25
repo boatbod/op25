@@ -410,6 +410,8 @@ void op25_audio::ws_start()
 // websocket graceful shutdown
 void op25_audio::ws_stop()
 {
+    if (!d_ws_enabled || !ws_thread.joinable())
+        return;  // never started — destructor calls this unconditionally
     fprintf(stderr, "%s op25_audio::op25_audio: Shutting down websocket server on port %d\n", logts.get(d_msgq_id), d_ws_port);
     d_ws_endpt.stop_listening();
     for (auto & hdl : d_ws_connections) {
