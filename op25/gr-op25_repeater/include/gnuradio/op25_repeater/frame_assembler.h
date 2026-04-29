@@ -50,7 +50,7 @@ namespace gr {
                  */
                 static sptr make(const char* options, int debug, int msgq_id, gr::msg_queue::sptr queue);
                 virtual void set_debug(int debug) {}
-                virtual void control(const std::string& args) {}
+                virtual std::string control(const std::string& args) { return {}; }
         };
 
     } // namespace op25_repeater
