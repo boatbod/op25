@@ -82,10 +82,12 @@ namespace gr {
                     d_sync->set_debug(j["debug"].get<int>());
             } else if (cmd == "crypt_behavior") {
 			    if (d_sync)
-			        d_sync->crypt_behavior(j["behavior"].get<int>());	
+			        d_sync->crypt_behavior(j["behavior"].get<int>());
 			} else if (cmd == "dump_buffer") {
 			    if (d_sync)
                     d_sync->dump_buffer();
+            } else if (cmd == "fec_stats") {
+                return d_sync ? d_sync->get_fec_stats_json() : std::string{};
             } else {
                 if (d_debug >= 10) {
                     fprintf(stderr, "%s frame_assembler_impl::control: unhandled cmd(%s)\n", logts.get(d_msgq_id), cmd.c_str());

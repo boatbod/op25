@@ -32,6 +32,8 @@
 
 #include "rx_sync.h"
 
+#include <nlohmann/json.hpp>
+
 #include "bit_utils.h"
 
 #include "check_frame_sync.h"
@@ -155,6 +157,27 @@ void rx_sync::set_debug(int debug) {
 	p25fdma.set_debug(debug);
 	p25tdma.set_debug(debug);
 	dmr.set_debug(debug);
+}
+
+// Build the FEC stats JSON envelope. Counters are monotonic since
+// construction; consumers diff between samples to compute rates.
+std::string rx_sync::get_fec_stats_json() const {
+	nlohmann::json envelope = {
+		{"cmd", "fec_stats"},
+		{"schema", 1},
+		{"data", {
+			{"control", {
+				{"tsbk_attempted",  p25fdma.stat_tsbk_attempted()},
+				{"tsbk_crc_passed", p25fdma.stat_tsbk_passed()},
+				{"pdu_attempted",   p25fdma.stat_pdu_attempted()},
+				{"pdu_crc_passed",  p25fdma.stat_pdu_passed()},
+			}},
+			{"sync", {
+				{"losses", p25fdma.stat_timeouts()},
+			}},
+		}},
+	};
+	return envelope.dump();
 }
 
 static int ysf_decode_fich(const uint8_t src[100], uint8_t dest[32]) {   // input is 100 dibits, result is 32 bits
