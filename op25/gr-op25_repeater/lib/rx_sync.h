@@ -137,6 +137,7 @@ public:
 	void crypt_behavior(int behavior);
 	void set_debug(int debug);
     void dump_buffer();
+	std::string get_fec_stats_json() const;
 	rx_sync(const char * options, log_ts& logger, int debug, int msgq_id, gr::msg_queue::sptr queue);
 	~rx_sync();
 

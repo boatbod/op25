@@ -97,6 +97,13 @@ namespace gr {
                 uint8_t  ess_mi[9] = {0};
                 uint16_t vf_tgid;
 
+                // FEC counters surfaced via fec_stats control() command.
+                uint64_t d_stat_tsbk_attempted = 0;
+                uint64_t d_stat_tsbk_passed = 0;
+                uint64_t d_stat_pdu_attempted = 0;
+                uint64_t d_stat_pdu_passed = 0;
+                uint64_t d_stat_timeouts = 0;
+
             public:
                 void set_debug(int debug);
                 void set_nac(int nac);
@@ -110,6 +117,12 @@ namespace gr {
                 ~p25p1_fdma();
                 uint32_t load_nid(const uint8_t *syms, int nsyms, const uint64_t fs);
                 bool load_body(const uint8_t * syms, int nsyms);
+
+                uint64_t stat_tsbk_attempted() const { return d_stat_tsbk_attempted; }
+                uint64_t stat_tsbk_passed()    const { return d_stat_tsbk_passed; }
+                uint64_t stat_pdu_attempted()  const { return d_stat_pdu_attempted; }
+                uint64_t stat_pdu_passed()     const { return d_stat_pdu_passed; }
+                uint64_t stat_timeouts()       const { return d_stat_timeouts; }
 
                 // Where all the action really happens
 

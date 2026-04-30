@@ -1178,7 +1178,26 @@ class p25_system(object):
             if self.debug >= 10:
                 sys.stderr.write('%s [%d] tdma(0x89) mfid90 grp_regrp_del: sg: %d wg_list: %s\n' % (log_ts.get(), m_rxid, sg, wg_list))
             self.del_patch(sg, wg_list)
-        elif op == 0xa0 and mfid == 0x90: # MFID90 Group Regroup Voice Channel User Extendd
+        elif op == 0x91 and mfid == 0x90: # MFID90 Talker Alias Header
+            ta_len =  get_ordinals(msg[5:6])
+            bn     =  get_ordinals(msg[7:8])
+            sn     = (get_ordinals(msg[8:9]) >> 4) & 0xf
+            if self.debug >= 1:
+                m_data = get_ordinals(msg)
+                sys.stderr.write('%s [%d] tdma(0x%02x) mfid90 talker_alias_header: sn: %x, bn: %d ta_len %d msg_data: 0x%x\n' % (log_ts.get(), m_rxid, op, sn, bn, ta_len, m_data))
+            if bn == 0:
+                alias_hdr = get_ordinals(msg[0:2] + msg[3:7] + bytes((0x00, 0x00)) + msg[8:17])  # convert header from TDMA to FDMA (LCW) format
+                self.rx_ctl.receivers[m_rxid]['rx_rcvr'].rx_mot_talker_alias_header(sn, bn, ta_len, alias_hdr)
+        elif op == 0x95 and mfid == 0x90: # MFID90 Talker Alias Block
+            bn     =  get_ordinals(msg[3:4])
+            sn     = (get_ordinals(msg[4:5]) >> 4) & 0xf
+            if self.debug >= 1:
+                m_data = get_ordinals(msg)
+                sys.stderr.write('%s [%d] tdma(0x%02x) mfid90 talker_alias_block: sn: %x, bn: %d msg_data: 0x%x\n' % (log_ts.get(), m_rxid, op, sn, bn, m_data))
+            if bn > 0:
+                alias_block = get_ordinals(msg[4:17]) & 0x0fffffffffffffffffffffffff
+                self.rx_ctl.receivers[m_rxid]['rx_rcvr'].rx_mot_talker_alias_block(sn, bn, 100, alias_block)
+        elif op == 0xa0 and mfid == 0x90: # MFID90 Group Regroup Voice Channel User Extended
             sg    = get_ordinals(msg[4:6])
             sa    = get_ordinals(msg[6:9])
             ssuid = get_ordinals(msg[9:16])
@@ -1356,7 +1375,8 @@ class p25_system(object):
                 if table in self.freq_table:
                     sys.stderr.write('%s [%d] tdma(0xfe) adj_sts_bcst: base freq: %s step: %s\n' % (log_ts.get(), m_rxid, self.freq_table[table]['frequency'] , self.freq_table[table]['step'] ))
         else:
-            if self.debug >= 10:
+            #if self.debug >= 10:
+            if self.debug >= 1:
                 m_data = get_ordinals(msg)
                 sys.stderr.write('%s [%d] tdma(0x%02x) unhandled: mfid: 0x%x msg_data: 0x%x\n' % (log_ts.get(), m_rxid, op, mfid, m_data))
         return updated
@@ -1944,6 +1964,68 @@ class rid_history(object):
         sys.stderr.write("}\n")
 
 #################
+# Motorola Talker Alias decoder class
+class mot_talker_alias(object):
+    def __init__(self, debug, msgq_id):
+        self.debug = debug
+        self.msgq_id = msgq_id
+        self.raw_data = 0
+        self.block_data = 0
+        self.current_sn = 0
+        self.current_ta_len = 0
+        self.current_bit_count = 0
+        self.block_bit_count = 0
+        self.next_bn = 0
+        self.alias = ""
+        self.valid = False
+
+    def reset(self):
+        self.valid = False
+        self.current_sn = 0
+        self.current_ta_len = 0
+        self.current_bit_count = 0
+        self.block_bit_count = 0
+        self.next_bn = 0
+        self.raw_data = 0
+        self.block_data = 0
+
+    def rx_header(self, sn, bn, ta_len, payload):
+        self.valid = False
+        self.current_sn = sn
+        self.current_ta_len = ta_len
+        self.current_bit_count = 136
+        self.next_bn = 1
+        self.raw_data = payload   # 136 bits
+        
+    def rx_block(self, sn, bn, bit_count, payload):
+        if (bn != self.next_bn) or (sn != self.current_sn) or (bit_count == 0) or (payload == 0): # basic validation and sequencing
+            self.reset()
+            return False # Validation failure
+        self.raw_data = (self.raw_data << bit_count) | payload
+        self.current_bit_count += bit_count
+        if bn < self.current_ta_len:
+            self.next_bn += 1
+            return False # More blocks to come
+        shiftreg = self.raw_data
+        null_count = 0;
+        while ((shiftreg & 0xff) == 0):
+            shiftreg = shiftreg >> 8
+            null_count += 8
+        self.block_bit_count  = self.current_bit_count - null_count
+        self.block_data = self.raw_data >> null_count
+        rxd_crc = self.block_data & 0xffff
+        crc_block_data = self.block_data & ((2 ** (self.block_bit_count - 72)) - 1)
+        crc_block_data >>= 16 # drop the embedded crc from the data
+        crc_block_len = self.block_bit_count - 72 - 16
+        calc_crc = ComputeCrcCCITT16d(crc_block_data, crc_block_len)
+        if (calc_crc != rxd_crc):
+            return False # CRC Failure
+        sys.stderr.write("MOT_ALIAS FULL: %x, BIT_COUNT: %d\n" % (self.block_data, self.block_bit_count))
+
+        #TODO: decode the received data block
+        return True
+
+#################
 # P25 receiver class
 class p25_receiver(object):
     def __init__(self, debug, msgq_id, frequency_set, fa_ctrl, system, config, meta_q = None, freq = 0):
@@ -1971,6 +2053,7 @@ class p25_receiver(object):
         self.tgid_hold_time = TGID_HOLD_TIME
         self.vc_retries = 0
         self.tune_ts = None
+        self.mot_talker_alias = None
         
         self.fa_ctrl({'tuner': self.msgq_id, 'cmd': 'crypt_behavior', 'behavior': self.crypt_behavior})
         sys.stderr.write("%s [%d] crypt behavior: %d\n" % (log_ts.get(), self.msgq_id, self.crypt_behavior))
@@ -2235,6 +2318,16 @@ class p25_receiver(object):
                 updated += 1
 
         return updated
+
+    def rx_mot_talker_alias_header(self, sn, bn, ta_len, payload):
+        if self.mot_talker_alias is None:
+            self.mot_talker_alias = mot_talker_alias(self.debug, self.msgq_id)
+        self.mot_talker_alias.rx_header(sn, bn, ta_len, payload)
+
+    def rx_mot_talker_alias_block(self, sn, bn, bit_count, payload):
+        if self.mot_talker_alias is None:
+            return
+        self.mot_talker_alias.rx_block(sn, bn, bit_count, payload)
 
     def add_skiplist(self, tgid, end_time=None):
         if not tgid or (tgid <= 0) or (tgid > 65534):

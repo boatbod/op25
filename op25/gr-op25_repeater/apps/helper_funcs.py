@@ -110,7 +110,7 @@ def from_dict(d, key, def_val):
     else:
         return def_val
 
-def crc16(dat,len):    # slow version
+def crc16(dat, len):    # slow version
     poly = (1<<12) + (1<<5) + (1<<0)
     crc = 0
     for i in range(len):
@@ -122,6 +122,23 @@ def crc16(dat,len):    # slow version
                 crc = (crc & 0xffff) ^ poly
     crc = crc ^ 0xffff
     return crc
+
+# This algorithm is derived from DSD-FME dmr_util.c
+# ComputeCrcCCITT16d(const uint8_t * buf, uint32_t len)
+# Not the most efficient but it seems to work
+def ComputeCrcCCITT16d(data, d_len):
+    i        = 0;
+    CRC      = 0x0000   # initialization value
+    Polynome = 0x1021   # Polynomial x^16 + x^12 + x^5 + 1
+
+    while i < d_len:
+        if (((CRC >> 15) & 1) ^ ((data >> (d_len - i - 1)) & 1)):
+            CRC = ((CRC << 1) ^ Polynome)
+        else:
+            CRC <<= 1
+        CRC &= 0xffff   # discard any overflow bits
+        i += 1
+    return (CRC ^ 0xffff)
 
 def decomment(csvfile):
     for row in csvfile:

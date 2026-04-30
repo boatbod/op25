@@ -47,8 +47,10 @@ namespace gr {
             p2tdma.set_debug(debug);
         }
 
-        // Accept and dispatch JSON formatted commands from python
-        void p25_frame_assembler_impl::control(const std::string& args) {
+        // Accept and dispatch JSON formatted commands from python.
+        // Returns a JSON-encoded response string for commands that produce
+        // output, or an empty string for commands that don't.
+        std::string p25_frame_assembler_impl::control(const std::string& args) {
             json j = json::parse(args);
             std::string cmd = j["cmd"].get<std::string>();
             if (d_debug >= 10) {
@@ -88,6 +90,7 @@ namespace gr {
                     fprintf(stderr, "%s p25_frame_assembler_impl::control: unhandled cmd(%s)\n", logts.get(0), cmd.c_str());
                 }
             }
+            return {};
         }
 
         p25_frame_assembler::sptr
