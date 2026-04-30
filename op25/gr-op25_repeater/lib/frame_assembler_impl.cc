@@ -43,8 +43,10 @@ using json = nlohmann::json;
 namespace gr {
     namespace op25_repeater {
 
-        // Accept and dispatch JSON formatted commands from python
-        void frame_assembler_impl::control(const std::string& args) {
+        // Accept and dispatch JSON formatted commands from python.
+        // Returns a JSON-encoded response string for commands that produce
+        // output, or an empty string for commands that don't.
+        std::string frame_assembler_impl::control(const std::string& args) {
             json j = json::parse(args);
             std::string cmd = j["cmd"].get<std::string>();
             if (d_debug >= 10) {
@@ -89,6 +91,7 @@ namespace gr {
                     fprintf(stderr, "%s frame_assembler_impl::control: unhandled cmd(%s)\n", logts.get(d_msgq_id), cmd.c_str());
                 }
             }
+            return {};
         }
 
         void frame_assembler_impl::set_debug(int debug) {
