@@ -50,7 +50,7 @@ namespace gr {
                 // internal functions
                 void queue_msg(int duid);
                 void set_debug(int debug);
-                void control(const std::string& args);
+                std::string control(const std::string& args);
 
             public:
                 log_ts logts;

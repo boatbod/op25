@@ -50,7 +50,7 @@ namespace gr {
        */
       static sptr make(const char* udp_host, int port, int debug, bool do_imbe, bool do_output, bool do_msgq, gr::msg_queue::sptr queue, bool do_audio_output, bool do_phase2_tdma, bool do_nocrypt);
       virtual void set_debug(int debug) {}
-      virtual void control(const std::string& args) {}
+      virtual std::string control(const std::string& args) { return {}; }
     };
 
   } // namespace op25_repeater
