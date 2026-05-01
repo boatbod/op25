@@ -617,9 +617,9 @@ class rx_block (gr.top_block):
             audio_mod = audio_mod[:-3]
         try:
             self.audio = importlib.import_module(audio_mod)
-        except:
+        except (ImportError, ModuleNotFoundError) as e:
             self.audio = None
-            sys.stderr.write("Error: unable to import audio module: %s\n%s\n" % (config['module'], sys.exc_info()[1]))
+            sys.stderr.write("Error: unable to import audio module: %s\n%s\n" % (config['module'], e))
 
         idx = 0
         for instance in config['instances']:
@@ -636,9 +636,8 @@ class rx_block (gr.top_block):
                 try:
                     audio_s = self.audio.audio_thread("127.0.0.1", audio_port, audio_device, audio_2chan, audio_gain, instance_name=instance_name)
                     self.audio_instances[instance_name] = audio_s
-                except:
-                    sys.stderr.write("Error configuring audio instance #%d; %s\n" % (idx, sys.exc_info()[1]))
-                    #sys.exc_clear()
+                except Exception as e:
+                    sys.stderr.write("Error configuring audio instance #%d; %s\n" % (idx, e))
                     self.audio_instances[instance_name] = None
             else:
                 sys.stderr.write("Ignoring unnamed audio instance #%d\n" % idx)
@@ -650,9 +649,9 @@ class rx_block (gr.top_block):
             term_mod = term_mod[:-3]
         try:
             terminal = importlib.import_module(term_mod)
-        except:
+        except (ImportError, ModuleNotFoundError) as e:
             terminal = None
-            sys.stderr.write("Error: unable to import terminal module: %s\n%s\n" % (config['module'], sys.exc_info()[1]))
+            sys.stderr.write("Error: unable to import terminal module: %s\n%s\n" % (config['module'], e))
             return
         term_type = str(from_dict(config,'terminal_type', "curses"))
         self.terminal = terminal.op25_terminal(self.ui_in_q, self.ui_out_q, term_type)
@@ -673,8 +672,8 @@ class rx_block (gr.top_block):
             tk_mod = tk_mod[:-3]
         try:
             self.trunking = importlib.import_module(tk_mod)
-        except:
-            sys.stderr.write("Error: unable to import trunking module: %s\n%s\n" % (config['module'], sys.exc_info()[1]))
+        except (ImportError, ModuleNotFoundError) as e:
+            sys.stderr.write("Error: unable to import trunking module: %s\n%s\n" % (config['module'], e))
             self.trunking = None
 
         if self.trunking is not None:
@@ -688,9 +687,9 @@ class rx_block (gr.top_block):
             meta_mod = meta_mod[:-3]
         try:
             self.metadata = importlib.import_module(meta_mod)
-        except:
+        except (ImportError, ModuleNotFoundError) as e:
             self.metadata = None
-            sys.stderr.write("Error: unable to import metadata module: %s\n%s\n" % (config['module'], sys.exc_info()[1]))
+            sys.stderr.write("Error: unable to import metadata module: %s\n%s\n" % (config['module'], e))
 
         idx = 0
         for stream in config['streams']:
@@ -704,9 +703,8 @@ class rx_block (gr.top_block):
                     meta_s = self.metadata.meta_server(meta_q, stream, debug=self.verbosity)
                     self.meta_streams[stream_name] = (meta_s, meta_q)
                     sys.stderr.write("Configuring metadata stream #%d [%s]: %s\n" % (idx, stream_name, stream['icecastServerAddress'] + "/" + stream['icecastMountpoint']))
-                except:
-                    sys.stderr.write("Error configuring metadata stream #%d; %s\n" % (idx, sys.exc_info()[1]))
-                    #sys.exc_clear()
+                except Exception as e:
+                    sys.stderr.write("Error configuring metadata stream #%d; %s\n" % (idx, e))
             else:
                 sys.stderr.write("Ignoring unnamed metadata stream #%d\n" % idx)
             idx += 1
@@ -1082,7 +1080,7 @@ class rx_main(object):
             self.tb.kill()
             self.keep_running = False
             sys.stderr.write("Ctrl-C detected\n")
-        except:
+        except Exception:
             self.tb.stop()
             self.tb.kill()
             self.keep_running = False
