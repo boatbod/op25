@@ -57,6 +57,12 @@ var default_channel = null;
 var ws_endpoints = {};
 var ws_channel = 0;
 var ws_endpt = null;
+var audioCtx = null;
+var audioQueue = [];
+var audioPlaying = false;
+var audioEnabled = false;
+var audioNextPlayTime = 0;
+const WS_AUDIO_SAMPLE_RATE = 8000;
 var enc_sym = "&#216;";
 // var presets = [];
 var site_alias = [];
@@ -570,7 +576,17 @@ function channel_status() {
     if (c_stream_url != undefined) {
         var streamHTML = "<a a href='" + c_stream_url + "' target='_blank'>&#128264;</a>";
         streamButton.innerHTML = streamHTML;
-        streamURL.innerHTML = streamHTML + " " + c_stream_url    
+        streamURL.innerHTML = streamHTML + " " + c_stream_url
+    }
+
+    // displays the headphone icon when a websocket audio endpoint is available
+    var wsAudioButton = document.getElementById("wsAudioButton");
+    if (ws_channel in ws_endpoints && ws_endpoints[ws_channel] != null) {
+        if (!audioEnabled) {
+            wsAudioButton.innerHTML = "<span title='Play audio' style='cursor:pointer;' onclick='audio_toggle()'>&#127911;</span>";
+        }
+    } else {
+        wsAudioButton.innerHTML = "";
     }
 
 	// TODO: c_ppm is not displayed anywhere in the new UI. What is it?
@@ -2418,6 +2434,41 @@ function ws_instances(instances) {
             ws_endpoints[key] = value;			// can trigger here if something new shows up
         }
     });
+    ws_create(channel_list[channel_index]);
+}
+
+function audio_play() {
+    if (!audioCtx || !audioEnabled || audioQueue.length === 0) return;
+    if (audioNextPlayTime < audioCtx.currentTime)
+        audioNextPlayTime = audioCtx.currentTime;
+    while (audioQueue.length > 0) {
+        var samples = audioQueue.shift();
+        var buffer = audioCtx.createBuffer(1, samples.length, WS_AUDIO_SAMPLE_RATE);
+        var ch = buffer.getChannelData(0);
+        for (var i = 0; i < samples.length; i++)
+            ch[i] = samples[i] / 32768.0;
+        var source = audioCtx.createBufferSource();
+        source.buffer = buffer;
+        source.connect(audioCtx.destination);
+        source.start(audioNextPlayTime);
+        audioNextPlayTime += buffer.duration;
+    }
+}
+
+function audio_toggle() {
+    var btn = document.getElementById("wsAudioButton");
+    if (!audioEnabled) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: WS_AUDIO_SAMPLE_RATE });
+        audioEnabled = true;
+        btn.innerHTML = "<span title='Stop audio' style='cursor:pointer;' onclick='audio_toggle()'>&#127911;&#9646;&#9646;</span>";
+    } else {
+        audioEnabled = false;
+        audioQueue = [];
+        audioPlaying = false;
+        audioNextPlayTime = 0;
+        if (audioCtx) { audioCtx.close(); audioCtx = null; }
+        btn.innerHTML = "<span title='Play audio' style='cursor:pointer;' onclick='audio_toggle()'>&#127911;</span>";
+    }
 }
 
 function ws_create(channel) {
@@ -2441,12 +2492,23 @@ function ws_create(channel) {
     ws_endpt.binaryType = 'arraybuffer';
     console.log("WebSocket connection opened:", ws_endpt.url);
 
-    ws_endpt.onmessage = function(event) {      // play the received binary audio from here
-        console.log("Message received:", event.data);
+    ws_endpt.onmessage = function(event) {
+        if (typeof event.data === 'string') {
+            var msg = JSON.parse(event.data);
+            if (msg.cmd === 'audio_drain' || msg.cmd === 'audio_drop') {
+                audioQueue = [];
+                audioPlaying = false;
+                audioNextPlayTime = 0;
+            }
+        } else if (audioEnabled && audioCtx) {
+            audioQueue.push(new Int16Array(event.data));
+            audio_play();
+        }
     };
   
     ws_endpt.onclose = function(event) {
         ws_endpt = null;
+        setTimeout(function() { ws_create(channel_list[channel_index]); }, 3000);
     };
 
     ws_endpt.onerror = function(event) {
