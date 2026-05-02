@@ -59,7 +59,8 @@ def static_file(environ, start_response):
         content_type = 'text/plain'
         output = status
     else:
-        output = open(pathname, 'rb').read()
+        with open(pathname, 'rb') as f:
+            output = f.read()
         content_type = content_types[suf]
         status = '200 OK'
     return status, content_type, output
