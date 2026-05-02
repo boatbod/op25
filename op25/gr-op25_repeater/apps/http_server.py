@@ -59,7 +59,8 @@ def static_file(environ, start_response):
         content_type = 'text/plain'
         output = status
     else:
-        output = open(pathname, 'rb').read()
+        with open(pathname, 'rb') as f:
+            output = f.read()
         content_type = content_types[suf]
         status = '200 OK'
     return status, content_type, output
@@ -75,7 +76,7 @@ def post_req(environ, start_response, postdata):
                 my_output_q.insert_tail(msg)
         valid_req = True
         time.sleep(0.2)
-    except:
+    except (json.JSONDecodeError, KeyError, TypeError):
         sys.stderr.write('post_req: error processing input: %s\n%s\n' % (postdata, traceback.format_exc()))
 
     resp_msg = []
@@ -116,7 +117,7 @@ def application(environ, start_response):
     failed = False
     try:
         result = http_request(environ, start_response)
-    except:
+    except Exception:
         failed = True
         sys.stderr.write('application: request failed:\n%s\n' % traceback.format_exc())
         sys.exit(1)
@@ -145,7 +146,7 @@ class http_server(object):
 
         try:
             self.server = create_server(application, host=host, port=my_port, threads=6)
-        except:
+        except (OSError, ValueError):
             sys.stderr.write('Failed to create http terminal server\n%s\n' % traceback.format_exc())
             sys.exit(1)
 
