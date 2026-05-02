@@ -2487,7 +2487,15 @@ function ws_create(channel) {
 
 //
 
-    ws_endpt = new WebSocket(ws_endpoints[channel]);
+    var ws_url = (function(endpoint) {
+        try {
+            var u = new URL(endpoint);
+            if (u.hostname === '0.0.0.0' || u.hostname === '127.0.0.1')
+                u.hostname = window.location.hostname;
+            return u.toString();
+        } catch(e) { return endpoint; }
+    })(ws_endpoints[channel]);
+    ws_endpt = new WebSocket(ws_url);
     ws_channel = channel;
     ws_endpt.binaryType = 'arraybuffer';
     console.log("WebSocket connection opened:", ws_endpt.url);
