@@ -26,6 +26,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <mutex>
 #include <thread>
 #include <vector>
 
@@ -67,6 +68,7 @@ private:
     std::thread ws_thread;
     websocketpp::server<websocketpp::config::asio> d_ws_endpt;
     std::vector<websocketpp::connection_hdl> d_ws_connections;
+    std::mutex  d_ws_mutex;
     void        ws_msg_handler(websocketpp::connection_hdl hdl, websocketpp::server<websocketpp::config::asio>::message_ptr msg);
     void        ws_open_handler(websocketpp::connection_hdl hdl);
     void        ws_close_handler(websocketpp::connection_hdl hdl);
@@ -81,7 +83,7 @@ public:
     op25_audio(const char* destination, log_ts& logger, int debug, int msgq_id);
     ~op25_audio();
 
-    inline bool enabled() const { return d_udp_enabled; }
+    inline bool enabled() const { return d_udp_enabled || d_ws_enabled; }
     inline void set_debug(int debug) { d_debug = debug; }
 
     ssize_t     send_to(const void *buf, size_t len);
