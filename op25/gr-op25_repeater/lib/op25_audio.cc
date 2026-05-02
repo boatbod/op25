@@ -318,6 +318,7 @@ void op25_audio::ws_open_handler(websocketpp::connection_hdl hdl)
     if (!ec) {
         fprintf(stderr, "%s op25_audio::op25_audio: websocket connection from [%s] opened on port [%d]\n", logts.get(d_msgq_id), con->get_host().c_str(), con->get_port());
     }
+    std::lock_guard<std::mutex> lock(d_ws_mutex);
     d_ws_connections.push_back(hdl);
 }
 
@@ -329,6 +330,7 @@ void op25_audio::ws_close_handler(websocketpp::connection_hdl hdl)
     if (!ec) {
         fprintf(stderr, "%s op25_audio::op25_audio: websocket connection from [%s] closed on port [%d]\n", logts.get(d_msgq_id), con->get_host().c_str(), con->get_port());
     }
+    std::lock_guard<std::mutex> lock(d_ws_mutex);
     auto it = std::find_if(d_ws_connections.begin(), d_ws_connections.end(), [&hdl](const websocketpp::connection_hdl& ptr1) {
         return ptr1.lock() == hdl.lock();
     } );
@@ -346,6 +348,7 @@ void op25_audio::ws_fail_handler(websocketpp::connection_hdl hdl)
     if (!ec) {
         fprintf(stderr, "%s op25_audio::op25_audio: websocket connection from [%s] failed on port [%d]\n", logts.get(d_msgq_id), con->get_host().c_str(), con->get_port());
     }
+    std::lock_guard<std::mutex> lock(d_ws_mutex);
     auto it = std::find_if(d_ws_connections.begin(), d_ws_connections.end(), [&hdl](const websocketpp::connection_hdl& ptr1) {
         return ptr1.lock() == hdl.lock();
     } );
@@ -358,6 +361,7 @@ void op25_audio::ws_fail_handler(websocketpp::connection_hdl hdl)
 // websocket send audio message to clients
 void op25_audio::ws_send_audio(const void *buf, size_t len)
 {
+    std::lock_guard<std::mutex> lock(d_ws_mutex);
     websocketpp::lib::error_code ec;
     for (auto & hdl : d_ws_connections) {
         if ( hdl.expired() )
@@ -387,6 +391,7 @@ void op25_audio::ws_send_audio_flag(const udpFlagEnumType udp_flag)
             return;
     }
 
+    std::lock_guard<std::mutex> lock(d_ws_mutex);
     websocketpp::lib::error_code ec;
     for (auto & hdl : d_ws_connections) {
         if ( hdl.expired() )
@@ -414,10 +419,13 @@ void op25_audio::ws_stop()
         return;  // never started — destructor calls this unconditionally
     fprintf(stderr, "%s op25_audio::op25_audio: Shutting down websocket server on port %d\n", logts.get(d_msgq_id), d_ws_port);
     d_ws_endpt.stop_listening();
-    for (auto & hdl : d_ws_connections) {
-        if ( hdl.expired() )
-            continue;
-        d_ws_endpt.close(hdl, 1001, "Shutting down");
+    {
+        std::lock_guard<std::mutex> lock(d_ws_mutex);
+        for (auto & hdl : d_ws_connections) {
+            if ( hdl.expired() )
+                continue;
+            d_ws_endpt.close(hdl, 1001, "Shutting down");
+        }
     }
     ws_thread.join();
 }
