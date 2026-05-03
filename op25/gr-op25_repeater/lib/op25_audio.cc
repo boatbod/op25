@@ -183,6 +183,7 @@ op25_audio::op25_audio(const char* destination, log_ts& logger, int debug, int m
             d_ws_endpt.set_message_handler(std::bind(&op25_audio::ws_msg_handler, this, std::placeholders::_1, std::placeholders::_2));
             d_ws_host = dest_url.host;
             d_ws_port = std::stoi(dest_url.port);
+            d_ws_endpt.set_reuse_addr(true);
             d_ws_endpt.listen(dest_url.host, dest_url.port, ec);
             if (ec) {
                 fprintf(stderr, "%s op25_audio::op25_audio: port [%d], websocket listen error: %s\n", logts.get(d_msgq_id), d_ws_port, ec.message().c_str());
