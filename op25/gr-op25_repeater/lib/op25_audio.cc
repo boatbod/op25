@@ -407,7 +407,6 @@ void op25_audio::ws_send_audio_flag(const udpFlagEnumType udp_flag)
 void op25_audio::ws_start()
 {
     ws_thread = std::thread([this]() { this->d_ws_endpt.run(); });
-    ws_thread.detach();
     d_ws_enabled = true;
     fprintf(stderr, "%s op25_audio::op25_audio: Started websocket server on port %d\n", logts.get(d_msgq_id), d_ws_port);
 }
@@ -415,8 +414,9 @@ void op25_audio::ws_start()
 // websocket graceful shutdown
 void op25_audio::ws_stop()
 {
-    if (!d_ws_enabled || !ws_thread.joinable())
-        return;  // never started — destructor calls this unconditionally
+    if (!d_ws_enabled)
+        return;
+    d_ws_enabled = false;
     fprintf(stderr, "%s op25_audio::op25_audio: Shutting down websocket server on port %d\n", logts.get(d_msgq_id), d_ws_port);
     d_ws_endpt.stop_listening();
     {
@@ -424,8 +424,11 @@ void op25_audio::ws_stop()
         for (auto & hdl : d_ws_connections) {
             if ( hdl.expired() )
                 continue;
-            d_ws_endpt.close(hdl, 1001, "Shutting down");
+            websocketpp::lib::error_code ec;
+            d_ws_endpt.close(hdl, websocketpp::close::status::going_away, "Shutting down", ec);
         }
     }
-    ws_thread.join();
+    d_ws_endpt.stop();
+    if (ws_thread.joinable())
+        ws_thread.join();
 }
