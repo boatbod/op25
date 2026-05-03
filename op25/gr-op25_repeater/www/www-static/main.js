@@ -55,13 +55,9 @@ var channel_list = [];
 var channel_index = 0;
 var default_channel = null;
 var ws_endpoints = {};
-var ws_channel = 0;
-var ws_endpt = null;
+var ws_connections = {};
 var audioCtx = null;
-var audioQueue = [];
-var audioPlaying = false;
-var audioEnabled = false;
-var audioNextPlayTime = 0;
+var audioChannels = {};
 const WS_AUDIO_SAMPLE_RATE = 8000;
 var enc_sym = "&#216;";
 // var presets = [];
@@ -493,7 +489,7 @@ function channel_update(d) {
         channel_status();
 		loadPresets(c_system);
 
-        ws_create(channel_list[channel_index])
+        ws_connect(channel_list[channel_index])
     }
 }
 
@@ -581,9 +577,13 @@ function channel_status() {
 
     // displays the headphone icon when a websocket audio endpoint is available
     var wsAudioButton = document.getElementById("wsAudioButton");
-    if (ws_channel in ws_endpoints && ws_endpoints[ws_channel] != null) {
-        if (!audioEnabled) {
-            wsAudioButton.innerHTML = "<span title='Play audio' style='cursor:pointer;' onclick='audio_toggle()'>&#127911;</span>";
+    var viewed_ch = channel_list[channel_index];
+    if (viewed_ch in ws_endpoints && ws_endpoints[viewed_ch] != null) {
+        var isMuted = !(viewed_ch in audioChannels) || audioChannels[viewed_ch].muted;
+        if (isMuted) {
+            wsAudioButton.innerHTML = "<span title='Play audio' style='cursor:pointer;' onclick='audio_toggle(" + viewed_ch + ")'>&#127911;</span>";
+        } else {
+            wsAudioButton.innerHTML = "<span title='Stop audio' style='cursor:pointer;' onclick='audio_toggle(" + viewed_ch + ")'>&#127911;&#9646;&#9646;</span>";
         }
     } else {
         wsAudioButton.innerHTML = "";
@@ -2426,23 +2426,22 @@ async function loadPresets(sysname) {
 } // end loadPresets
 
 function ws_instances(instances) {
-	Object.entries(instances).forEach(([key, value]) => {
+    Object.entries(instances).forEach(([key, value]) => {
         if (key == 'json_type')
-            return; // continue forEach loop
-
-        if (!(key in ws_endpoints) || ((key in ws_endpoints) && (ws_endpoints[key] != value))) {
-            ws_endpoints[key] = value;			// can trigger here if something new shows up
-        }
+            return;
+        if (!(key in ws_endpoints) || ws_endpoints[key] != value)
+            ws_endpoints[key] = value;
+        ws_connect(key);
     });
-    ws_create(channel_list[channel_index]);
 }
 
-function audio_play() {
-    if (!audioCtx || !audioEnabled || audioQueue.length === 0) return;
-    if (audioNextPlayTime < audioCtx.currentTime)
-        audioNextPlayTime = audioCtx.currentTime;
-    while (audioQueue.length > 0) {
-        var samples = audioQueue.shift();
+function audio_play(channel) {
+    var state = audioChannels[channel];
+    if (!audioCtx || state.muted || state.queue.length === 0) return;
+    if (state.nextPlayTime < audioCtx.currentTime)
+        state.nextPlayTime = audioCtx.currentTime;
+    while (state.queue.length > 0) {
+        var samples = state.queue.shift();
         var buffer = audioCtx.createBuffer(1, samples.length, WS_AUDIO_SAMPLE_RATE);
         var ch = buffer.getChannelData(0);
         for (var i = 0; i < samples.length; i++)
@@ -2450,42 +2449,34 @@ function audio_play() {
         var source = audioCtx.createBufferSource();
         source.buffer = buffer;
         source.connect(audioCtx.destination);
-        source.start(audioNextPlayTime);
-        audioNextPlayTime += buffer.duration;
+        source.start(state.nextPlayTime);
+        state.nextPlayTime += buffer.duration;
     }
 }
 
-function audio_toggle() {
-    var btn = document.getElementById("wsAudioButton");
-    if (!audioEnabled) {
+function audio_toggle(channel) {
+    if (!audioCtx)
         audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: WS_AUDIO_SAMPLE_RATE });
-        audioEnabled = true;
-        btn.innerHTML = "<span title='Stop audio' style='cursor:pointer;' onclick='audio_toggle()'>&#127911;&#9646;&#9646;</span>";
-    } else {
-        audioEnabled = false;
-        audioQueue = [];
-        audioPlaying = false;
-        audioNextPlayTime = 0;
-        if (audioCtx) { audioCtx.close(); audioCtx = null; }
-        btn.innerHTML = "<span title='Play audio' style='cursor:pointer;' onclick='audio_toggle()'>&#127911;</span>";
+    if (!(channel in audioChannels))
+        audioChannels[channel] = { queue: [], nextPlayTime: 0, muted: true };
+    var state = audioChannels[channel];
+    state.muted = !state.muted;
+    if (state.muted) {
+        state.queue = [];
+        state.nextPlayTime = 0;
     }
+    channel_status();
 }
 
-function ws_create(channel) {
-
-    if ((ws_endpt != null) && (ws_channel == channel) && (ws_endpt.readyState <= 1))
-        return;                                // we are already on the required channel
-
-    if ((ws_endpt != null) && (ws_endpt.readyState <= 1)) {
-        ws_endpt.close(1000, 'Closing connection normally');
+function ws_connect(channel) {
+    if ((channel in ws_connections) && ws_connections[channel] != null && ws_connections[channel].readyState <= 1)
         return;
-    }
 
-    if ((!(channel in ws_endpoints)) || (ws_endpoints[channel] == null)) {
+    if (!(channel in ws_endpoints) || ws_endpoints[channel] == null)
         return;
-    }
 
-//
+    if (!(channel in audioChannels))
+        audioChannels[channel] = { queue: [], nextPlayTime: 0, muted: true };
 
     var ws_url = (function(endpoint) {
         try {
@@ -2495,32 +2486,33 @@ function ws_create(channel) {
             return u.toString();
         } catch(e) { return endpoint; }
     })(ws_endpoints[channel]);
-    ws_endpt = new WebSocket(ws_url);
-    ws_channel = channel;
-    ws_endpt.binaryType = 'arraybuffer';
-    console.log("WebSocket connection opened:", ws_endpt.url);
 
-    ws_endpt.onmessage = function(event) {
+    var ws = new WebSocket(ws_url);
+    ws_connections[channel] = ws;
+    ws.binaryType = 'arraybuffer';
+    console.log("WebSocket audio connected for channel", channel, ":", ws.url);
+
+    ws.onmessage = function(event) {
+        var state = audioChannels[channel];
         if (typeof event.data === 'string') {
             var msg = JSON.parse(event.data);
             if (msg.cmd === 'audio_drain' || msg.cmd === 'audio_drop') {
-                audioQueue = [];
-                audioPlaying = false;
-                audioNextPlayTime = 0;
+                state.queue = [];
+                state.nextPlayTime = 0;
             }
-        } else if (audioEnabled && audioCtx) {
-            audioQueue.push(new Int16Array(event.data));
-            audio_play();
+        } else if (!state.muted && audioCtx) {
+            state.queue.push(new Int16Array(event.data));
+            audio_play(channel);
         }
     };
-  
-    ws_endpt.onclose = function(event) {
-        ws_endpt = null;
-        setTimeout(function() { ws_create(channel_list[channel_index]); }, 3000);
+
+    ws.onclose = function(event) {
+        ws_connections[channel] = null;
+        setTimeout(function() { ws_connect(channel); }, 3000);
     };
 
-    ws_endpt.onerror = function(event) {
-        console.log("WebSocket error:", event);
+    ws.onerror = function(event) {
+        console.log("WebSocket audio error for channel", channel, ":", event);
     };
 }
 
