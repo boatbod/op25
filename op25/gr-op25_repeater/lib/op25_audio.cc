@@ -316,7 +316,7 @@ void op25_audio::ws_open_handler(websocketpp::connection_hdl hdl)
 {
     websocketpp::lib::error_code ec;
     websocketpp::server<websocketpp::config::asio>::connection_ptr con = d_ws_endpt.get_con_from_hdl(hdl, ec);
-    if (!ec) {
+    if (!ec && (d_debug >= 5)) {
         fprintf(stderr, "%s op25_audio::op25_audio: websocket connection from [%s] opened on port [%d]\n", logts.get(d_msgq_id), con->get_host().c_str(), con->get_port());
     }
     std::lock_guard<std::mutex> lock(d_ws_mutex);
@@ -328,8 +328,8 @@ void op25_audio::ws_close_handler(websocketpp::connection_hdl hdl)
 {
     websocketpp::lib::error_code ec;
     websocketpp::server<websocketpp::config::asio>::connection_ptr con = d_ws_endpt.get_con_from_hdl(hdl, ec);
-    if (!ec) {
-        fprintf(stderr, "%s op25_audio::op25_audio: websocket connection from [%s] closed on port [%d]\n", logts.get(d_msgq_id), con->get_host().c_str(), con->get_port());
+    if (!ec && (d_debug >= 5)) {
+        fprintf(stderr, "%s op25_audio::ws_close_handler: websocket connection from [%s] closed on port [%d]\n", logts.get(d_msgq_id), con->get_host().c_str(), con->get_port());
     }
     std::lock_guard<std::mutex> lock(d_ws_mutex);
     auto it = std::find_if(d_ws_connections.begin(), d_ws_connections.end(), [&hdl](const websocketpp::connection_hdl& ptr1) {
