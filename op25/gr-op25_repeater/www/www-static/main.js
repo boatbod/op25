@@ -58,6 +58,7 @@ var ws_endpoints = {};
 var ws_connections = {};
 var audioCtx = null;
 var audioChannels = {};
+var muteAudioAtStartup = false;
 const WS_AUDIO_SAMPLE_RATE = 8000;
 var enc_sym = "&#216;";
 // var presets = [];
@@ -162,8 +163,19 @@ document.addEventListener("DOMContentLoaded", function() {
 	document.getElementById("radioIdFreqTable").addEventListener("change", saveSettingsToLocalStorage);	
 	document.getElementById("channelsTableToggle").addEventListener("change", saveSettingsToLocalStorage);	
 	document.getElementById("showBandPlan").addEventListener("change", saveSettingsToLocalStorage);	
-	document.getElementById("trackSubsToggle").addEventListener("change", saveSettingsToLocalStorage);	
-	document.getElementById("subMode").addEventListener("change", saveSettingsToLocalStorage);	
+	document.getElementById("trackSubsToggle").addEventListener("change", saveSettingsToLocalStorage);
+	document.getElementById("subMode").addEventListener("change", saveSettingsToLocalStorage);
+	document.getElementById("muteAudioAtStartup").addEventListener("change", function() {
+		muteAudioAtStartup = this.checked;
+		saveSettingsToLocalStorage();
+	});
+
+	document.addEventListener('click', function initAudioCtx() {
+		if (!muteAudioAtStartup && !audioCtx) {
+			audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: WS_AUDIO_SAMPLE_RATE });
+			Object.keys(audioChannels).forEach(function(ch) { audio_play(ch); });
+		}
+	}, { once: true });
 	
 	document.getElementById("valueColorPicker").addEventListener("change", function() {
 		document.documentElement.style.setProperty('--values', this.value);
@@ -2253,7 +2265,8 @@ function saveSettingsToLocalStorage() {
   localStorage.setItem("valueColor", document.getElementById("valueColorPicker").value);
   localStorage.setItem("showBandPlan", document.getElementById("showBandPlan").checked);
   localStorage.setItem("trackSubsToggle", document.getElementById("trackSubsToggle").checked);
-  localStorage.setItem("subMode", document.getElementById("subMode").value); 
+  localStorage.setItem("subMode", document.getElementById("subMode").value);
+  localStorage.setItem("muteAudioAtStartup", document.getElementById("muteAudioAtStartup").checked);
 }  // end saveSettingsToLocalStorage
 
 function loadSettingsFromLocalStorage() {
@@ -2309,9 +2322,11 @@ function loadSettingsFromLocalStorage() {
 	
 	const valueColor = localStorage.getItem("valueColor") || "#00ffff"; // fallback if missing
 	document.getElementById("valueColorPicker").value = valueColor;
-	document.documentElement.style.setProperty('--values', valueColor);  
+	document.documentElement.style.setProperty('--values', valueColor);
 
-
+	const muteAudio = localStorage.getItem("muteAudioAtStartup");
+	muteAudioAtStartup = muteAudio === "true";
+	document.getElementById("muteAudioAtStartup").checked = muteAudioAtStartup;
 
 } // end loadSettingsFromLocalStorage
 
@@ -2476,7 +2491,7 @@ function ws_connect(channel) {
         return;
 
     if (!(channel in audioChannels))
-        audioChannels[channel] = { queue: [], nextPlayTime: 0, muted: true };
+        audioChannels[channel] = { queue: [], nextPlayTime: 0, muted: muteAudioAtStartup };
 
     var ws_url = (function(endpoint) {
         try {
