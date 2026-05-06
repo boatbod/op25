@@ -23,6 +23,8 @@ on all interfaces.  Each channel needs it's own unique websocket port.
 Port 9000 is a suggested default, but by no means special.  If there are three
 channels you might use 9000, 9001, and 9002 respectively.
 
+The Headphones Icon between the Channel and Tuning buttons is how audio is toggled on a per-channel basis. Channels can be cycled through and the audio muted or enabled on each one depending on the user's preferences. 
+
 4. Audio is streamed on all channels configured with a websocket by default. However, modern browser security requires the user to create AudioContext in order for the audio to play. You should be able to click anywhere in the UI with most browsers to create AudioContext and play the audio. Depending on your browser and security settings, you may have to actually interact with a button or menu for your browser to allow the audio to play.
 
-5. If you want to not play audio by default, you can toggle "Mute Browser Audio at Startup" in the Settings Menu. If you have strict browser history and local storage settings configured, this setting may not be retained between program launches.
+5. If you want to mute audio by default, you can toggle "Mute Browser Audio at Startup" in the Settings Menu. If you have strict browser history and local storage settings configured, this setting may not be retained between program launches.
