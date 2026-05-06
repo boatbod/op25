@@ -23,13 +23,6 @@ on all interfaces.  Each channel needs it's own unique websocket port.
 Port 9000 is a suggested default, but by no means special.  If there are three
 channels you might use 9000, 9001, and 9002 respectively.
 
-4. Once the server is up and running, open the web terminal in the normal way
-and look for a small "headphones" icon on the left side of the upper window,
-right below the channel name.  Click on the icon and it a small "pause" symbol
-should appear next to the headphones.  This signifies the stream is connected
-and ready to play when audio is decoded by the receiver.  Click on the pause
-symbol to stop playback.
+4. Audio is streamed on all channels configured with a websocket by default. However, modern browser security requires the user to create AudioContext in order for the audio to play. You should be able to click anywhere in the UI with most browsers to create AudioContext and play the audio. Depending on your browser and security settings, you may have to actually interact with a button or menu for your browser to allow the audio to play.
 
-5. If there are multiple channels defined, you presently have to cycle through
-each channel and turn the audio on.  Once turned on, the channel will continue
-to play simultaneously with any other enabled channels.
+5. If you want to not play audio by default, you can toggle "Mute Browser Audio at Startup" in the Settings Menu. If you have strict browser history and local storage settings configured, this setting may not be retained between program launches.
