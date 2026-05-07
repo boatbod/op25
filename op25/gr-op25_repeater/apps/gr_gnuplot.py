@@ -254,9 +254,10 @@ class wrap_gp(object):
         if sys.version[0] != '2':
             dat = bytes(dat, 'utf8')
         self.gp.poll()
-        if self.gp.returncode is None:  # make sure gnuplot is still running 
+        if self.gp.returncode is None:  # make sure gnuplot is still running
             try:
                 self.gp.stdin.write(dat)
+                self.gp.stdin.flush()
             except (IOError, ValueError):
                 pass
         if filename:
