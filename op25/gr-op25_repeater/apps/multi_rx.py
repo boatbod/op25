@@ -949,8 +949,9 @@ class rx_block (gr.top_block):
         filenames = []
         for chan in self.channels:
             for sink in chan.sinks:
-                if chan.sinks[sink][0].gnuplot.filename is not None:
-                    filenames.append(chan.sinks[sink][0].gnuplot.filename)
+                fn = chan.sinks[sink][0].gnuplot.filename
+                if fn is not None and os.access(os.path.join(self.http_plot_directory, fn), os.R_OK):
+                    filenames.append(fn)
         d = {'json_type': 'rx_update', 'files': filenames}
         msg = gr.message().make_from_string(json.dumps(d), -4, 0, 0)
         if not self.ui_in_q.full_p():
