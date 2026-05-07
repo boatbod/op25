@@ -9,7 +9,7 @@
             "cqpsk_tracking": true,
             "tracking_threshold": 120,
             "tracking_feedback": 0.75,
-            "destination": "udp://127.0.0.1:2345, ws://127.0.0.1:9000",
+            "destination": "udp://0.0.0.0:2345, ws://0.0.0.0:9000",
             "excess_bw": 0.2,
             "filter_type": "rc",
             "if_rate": 24000,
@@ -107,7 +107,7 @@
     "terminal": {
         "module": "terminal.py",
         "#terminal_type": "curses",
-        "terminal_type": "http:127.0.0.1:8080",
+        "terminal_type": "http:0.0.0.0:8080",
         "curses_plot_interval": 0.1,
         "http_plot_interval": 1.0,
         "http_plot_directory": "../www/images",
