@@ -155,10 +155,16 @@ class rx_ctl(object):
         else:                            # undefined or mis-configured trunking sysname
             sys.stderr.write("Receiver '%s' configured with unknown trunking_sysname '%s'\n" % (rx_name, rx_sysname))
 
-        self.receivers[msgq_id] = {'msgq_id': msgq_id,
-                                   'config' : config,
-                                   'sysname': rx_sysname,
-                                   'rx_rcvr': rx_rcvr}
+        conv_state = None
+        if rx_rcvr is None:
+            conv_state = {'tgid': None, 'srcaddr': 0, 'encrypted': 0,
+                          'tag': 'Conventional', 'srctag': '', 'freq': freq, 'call_start': None}
+
+        self.receivers[msgq_id] = {'msgq_id':    msgq_id,
+                                   'config' :    config,
+                                   'sysname':    rx_sysname,
+                                   'rx_rcvr':    rx_rcvr,
+                                   'conv_state': conv_state}
 
     # post_init is called once after all receivers have been created
     def post_init(self):
@@ -196,6 +202,51 @@ class rx_ctl(object):
 
                 # Check for control channel reassignment
                 self.check_cc_assignments()
+
+        elif m_rxid in self.receivers and self.receivers[m_rxid]['conv_state'] is not None:
+            cs = self.receivers[m_rxid]['conv_state']
+            if self.debug >= 5:
+                sys.stderr.write("%s [%d] conv process_qmsg: type(%d)\n" % (log_ts.get(), m_rxid, m_type))
+            if m_type == -1:                                        # channel idle/timeout
+                cs['tgid']       = None
+                cs['srcaddr']    = 0
+                cs['encrypted']  = 0
+                cs['tag']        = 'Conventional'
+                cs['srctag']     = ''
+                cs['call_start'] = None
+                updated += 1
+            elif m_type == -3:                                      # P25 call data (srcaddr, grpaddr, encryption)
+                js = json.loads(msg.to_string())
+                grpaddr   = from_dict(js, 'grpaddr',   0)
+                srcaddr   = from_dict(js, 'srcaddr',   0)
+                encrypted = from_dict(js, 'encrypted', 0)
+                if self.debug >= 5:
+                    sys.stderr.write("%s [%d] conv call data: grpaddr(%d) srcaddr(%d) encrypted(%d)\n" % (log_ts.get(), m_rxid, grpaddr, srcaddr, encrypted))
+                if grpaddr != 0:
+                    if cs['call_start'] is None or grpaddr != cs['tgid']:   # new call started
+                        self.log_call(0, m_rxid, cs['freq'], 0, 0, grpaddr, '', srcaddr, '')
+                        cs['call_start'] = curr_time
+                        cs['tgid']       = grpaddr
+                    cs['srcaddr']   = srcaddr
+                    cs['encrypted'] = max(0, encrypted)
+                    updated += 1
+            elif m_type == 19:                                      # FDMA LCW — carries real TGID/srcaddr for conventional calls
+                s = msg.to_string()
+                lcw = s[2:]                                         # strip 2-byte NAC prefix
+                pb_sf_lco = get_ordinals(lcw[0:1])
+                if not (pb_sf_lco & 0x80):                          # skip encrypted LCW format
+                    if pb_sf_lco == 0x00:                           # Group Voice Channel User
+                        ga = get_ordinals(lcw[4:6])
+                        sa = get_ordinals(lcw[6:9])
+                        if self.debug >= 5:
+                            sys.stderr.write("%s [%d] conv lcw(0x00): ga(%d) sa(%d)\n" % (log_ts.get(), m_rxid, ga, sa))
+                        if ga != 0:
+                            if cs['call_start'] is None or ga != cs['tgid']:
+                                self.log_call(0, m_rxid, cs['freq'], 0, 0, ga, '', sa, '')
+                                cs['call_start'] = curr_time
+                                cs['tgid']       = ga
+                            cs['srcaddr'] = sa
+                            updated += 1
 
         if curr_time > (self.cleanup_timer + CLEANUP_TIMER):
             for rcvr in self.receivers:
@@ -252,10 +303,32 @@ class rx_ctl(object):
         d = {'json_type': 'channel_update'}
         rcvr_ids = []
         for rcvr in self.receivers:
+            rcvr_name = from_dict(self.receivers[rcvr]['config'], 'name', "")
             if self.receivers[rcvr]['rx_rcvr'] is not None:
-                rcvr_name = from_dict(self.receivers[rcvr]['config'], 'name', "")
                 d[str(rcvr)] = json.loads(self.receivers[rcvr]['rx_rcvr'].get_status())
                 d[str(rcvr)]['name'] = rcvr_name
+                rcvr_ids.append(str(rcvr))
+            elif self.receivers[rcvr]['conv_state'] is not None:
+                cs = self.receivers[rcvr]['conv_state']
+                sysname = from_dict(self.receivers[rcvr]['config'], 'trunking_sysname', '') or rcvr_name
+                d[str(rcvr)] = {
+                    'freq':         cs['freq'],
+                    'tdma':         0,
+                    'tgid':         cs['tgid'],
+                    'system':       sysname,
+                    'tag':          cs['tag'],
+                    'srcaddr':      cs['srcaddr'],
+                    'svcopts':      0,
+                    'srctag':       cs['srctag'],
+                    'encrypted':    cs['encrypted'],
+                    'emergency':    0,
+                    'hold_tgid':    0,
+                    'mode':         None,
+                    'stream':       from_dict(self.receivers[rcvr]['config'], 'meta_stream_name', ''),
+                    'msgqid':       rcvr,
+                    'name':         rcvr_name,
+                    'conventional': True,
+                }
                 rcvr_ids.append(str(rcvr))
         d['channels'] = rcvr_ids
         return json.dumps(d)
