@@ -665,10 +665,8 @@ class rx_block (gr.top_block):
         self.ui_timeout = float(from_dict(config, 'terminal_timeout', 5.0))
 
     def configure_trunking(self, config):
-        if ("module" in config and (config['module'] == "")):
-            return
+        tk_mod = str(from_dict(config, 'module', 'tk_p25.py'))
 
-        tk_mod = config['module']
         if tk_mod.endswith('.py'):
             tk_mod = tk_mod[:-3]
         try:
