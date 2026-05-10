@@ -2538,7 +2538,7 @@ function ws_connect(channel) {
 
 function full_config(config) {
 
-	var sa = config['trunking']['chans'];
+	var sa = config['trunking'] ? config['trunking']['chans'] : [];
 	site_alias = buildSiteAliases(sa);
 
     // some payloads are sending over full_config when it's not requested (plots) and not needed.
