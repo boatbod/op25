@@ -419,7 +419,12 @@ function channel_update(d) {
             capture_active = d[c_id]['capture'];
             hold_tgid = d[c_id]['hold_tgid'];
 
-            
+            if (d[c_id]['conventional'] === true) {
+                document.getElementById('frequenciesTable').innerHTML = '';
+                document.getElementById('adjacentSitesContainer').style.display = 'none';
+                document.getElementById('patchesContainer').style.display = 'none';
+            }
+
         if (hold_tgid != 0) {
             document.getElementById("btn-hold").style.color = "red";
 		} else {
@@ -1499,7 +1504,7 @@ function call_log(d) {
 			const time = `${hh}:${mm}:${ss}`;
 		
 			// Assign remaining fields to variables
-			const sysid = log.sysid.toString(16).toUpperCase().padStart(3, '0');
+			const sysid = (log.sysid != null ? log.sysid : 0).toString(16).toUpperCase().padStart(3, '0');
 			const tgid = log.tgid;
 			const tgtag = log.tgtag;
 			  var rid = log.rid;
