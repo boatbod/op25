@@ -583,6 +583,8 @@ class rx_block (gr.top_block):
 
         if "trunking" in config:
             self.configure_trunking(config['trunking'])
+        else:
+            self.configure_trunking( {"module": "tk_p25.py", "chans": []} ) # add default module for P25 Conventional terminal support
 
         self.configure_devices(config['devices'])
         self.configure_channels(config['channels'])
@@ -663,8 +665,7 @@ class rx_block (gr.top_block):
         self.ui_timeout = float(from_dict(config, 'terminal_timeout', 5.0))
 
     def configure_trunking(self, config):
-        if (("module" in config and (config['module'] == "")) or 
-            ("chans" in config and (config['chans'] == ""))):
+        if ("module" in config and (config['module'] == "")):
             return
 
         tk_mod = config['module']
