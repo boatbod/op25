@@ -584,7 +584,8 @@ class rx_block (gr.top_block):
         if "trunking" in config:
             self.configure_trunking(config['trunking'])
         else:
-            self.configure_trunking( {"module": "tk_p25.py", "chans": []} ) # add default module for P25 Conventional terminal support
+            self.config['trunking'] = {"module": "tk_p25.py", "chans": []}
+            self.configure_trunking(self.config['trunking']) # add default module for P25 Conventional terminal support
 
         self.configure_devices(config['devices'])
         self.configure_channels(config['channels'])
