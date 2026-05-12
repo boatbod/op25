@@ -443,8 +443,11 @@ function channel_update(d) {
             displaySystem.innerText 		= c_system ? c_system : "-";
             
    			displayFreq.innerText 			= (parseInt(c_freq) / 1000000.0).toFixed(6);
-            displayTalkgroup.innerText 		= c_tag ? c_tag : "Talkgroup " + current_tgid;
-            
+            if (current_tgid === null || current_tgid === undefined) {
+              displayTalkgroup.innerText = "";
+            } else {
+                displayTalkgroup.innerText 		= c_tag ? c_tag : "Talkgroup " + current_tgid;
+            }
             displayTgid.innerText 			= current_tgid ? current_tgid : "-";
             displaySource.innerText 		= c_srctag ? c_srctag : "ID: " + c_srcaddr;
             
