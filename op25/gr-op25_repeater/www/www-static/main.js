@@ -53,6 +53,7 @@ var c_nac = 0;
 var c_name = "";
 var channel_list = [];
 var channel_index = 0;
+var lastChannelData = null;
 var default_channel = null;
 var ws_endpoints = {};
 var ws_connections = {};
@@ -362,7 +363,8 @@ function change_freq(d) {
 }
 
 function channel_update(d) {
-	
+
+	lastChannelData = d;
 	channel_table(d);   // updates the channels table
 
     if (d['channels'] != undefined) {
@@ -518,7 +520,7 @@ function channel_table(d) {
 	const channelInfo = document.getElementById("channelInfo");
 	
 	let html = "<table class='compact-table' style='border-collapse: collapse;'>";
-	html += "<tr><th>Ch</th><th>Name</th><th>System</th><th>Frequency</th><th colspan='2' style='width: 140px;'>Talkgroup</th><th>Mode</th><th>Hold</th><th>Capture</th><th>Error</th></tr>";
+	html += "<tr><th>Ch</th><th>Name</th><th>Audio</th><th>System</th><th>Frequency</th><th colspan='2' style='width: 140px;'>Talkgroup</th><th>Mode</th><th>Hold</th><th>Capture</th><th>Error</th></tr>";
 	
 	for (const ch of d.channels) {
 		const entry = d[ch];
@@ -553,9 +555,18 @@ function channel_table(d) {
 		if (hold != "-")
 			tdh = " style='background-color: #500;'";
 	
+		const hasAudio = (ch in ws_endpoints) && ws_endpoints[ch] != null;
+		const isMuted = !(ch in audioChannels) || audioChannels[ch].muted;
+		const audioIcon = hasAudio
+			? (isMuted
+				? `<span title='Play audio' style='cursor:pointer;' onclick='audio_toggle(${ch})'>&#9654;</span>`
+				: `<span title='Stop audio' style='cursor:pointer;' onclick='audio_toggle(${ch})'>&#9646;&#9646;</span>`)
+			: "";
+
 		html += `<tr>
 			<td${tdc}>${ch}</td>
 			<td>${name}</td>
+			<td style='text-align:center;'>${audioIcon}</td>
 			<td>${system}</td>
 			<td>${freq}</td>
 			<td>${tgid}</td>
@@ -2493,6 +2504,7 @@ function audio_toggle(channel) {
         state.nextPlayTime = 0;
     }
     channel_status();
+    if (lastChannelData) channel_table(lastChannelData);
 }
 
 function ws_connect(channel) {
