@@ -559,8 +559,8 @@ function channel_table(d) {
 		const isMuted = !(ch in audioChannels) || audioChannels[ch].muted;
 		const audioIcon = hasAudio
 			? (isMuted
-				? `<span title='Play audio' style='cursor:pointer;' onclick='audio_toggle(${ch})'>&#127911;</span>`
-				: `<span title='Stop audio' style='cursor:pointer;' onclick='audio_toggle(${ch})'>&#127911;&#9646;&#9646;</span>`)
+				? `<span title='Play audio' style='cursor:pointer;' onclick='audio_toggle(${ch})'>&#9654;</span>`
+				: `<span title='Stop audio' style='cursor:pointer;' onclick='audio_toggle(${ch})'>&#9646;&#9646;</span>`)
 			: "";
 
 		html += `<tr>
