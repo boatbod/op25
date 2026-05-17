@@ -29,6 +29,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <deque>
+#include "op25_audio_wrapper.h"
 #include "op25_audio.h"
 #include "log_ts.h"
 
@@ -46,7 +47,7 @@ namespace gr {
                 int d_debug;
                 int d_msgq_id;
                 gr::msg_queue::sptr d_msg_queue;
-                op25_audio d_audio;
+                op25_audio& d_audio;
                 pcm_samples d_pcm;
                 log_ts logts;
 

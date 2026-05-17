@@ -49,6 +49,7 @@
 #include "p25_frame.h"
 #include "op25_imbe_frame.h"
 #include "software_imbe_decoder.h"
+#include "op25_audio_wrapper.h"
 #include "op25_audio.h"
 #include "op25_msg_types.h"
 
@@ -261,14 +262,14 @@ rx_sync::rx_sync(const char * options, log_ts& logger, int debug, int msgq_id, g
 	d_expires(0),
 	d_slot_mask(3),
 	d_slot_key(0),
-	p25fdma(d_audio, logger, debug, true, false, true, queue, d_output_queue[0], true, msgq_id),
-	p25tdma(d_audio, logger, 0, debug, true, queue, d_output_queue[0], true, msgq_id),
+	d_audio(op25_audio_wrapper::instance().get_audio(options, logger, debug, msgq_id)),
+	p25fdma(op25_audio_wrapper::instance().get_audio(options, logger, debug, msgq_id), logger, debug, true, false, true, queue, d_output_queue[0], true, msgq_id),
+	p25tdma(op25_audio_wrapper::instance().get_audio(options, logger, debug, msgq_id), logger, 0, debug, true, queue, d_output_queue[0], true, msgq_id),
 	dmr(logger, debug, msgq_id, queue),
 	d_msgq_id(msgq_id),
 	d_msg_queue(queue),
 	d_stereo(true),
 	d_debug(debug),
-	d_audio(options, logger, debug, msgq_id),
     logts(logger)
 {
 	if (msgq_id >= 0)

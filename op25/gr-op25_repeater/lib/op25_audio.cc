@@ -177,13 +177,13 @@ op25_audio::op25_audio(const char* destination, log_ts& logger, int debug, int m
             //d_ws_endpt.set_access_channels(websocketpp::log::alevel::all ^ websocketpp::log::alevel::frame_payload);
             d_ws_endpt.set_access_channels(websocketpp::log::alevel::none);
             d_ws_endpt.init_asio();
+            d_ws_endpt.set_reuse_addr(true);
             d_ws_endpt.set_open_handler(std::bind(&op25_audio::ws_open_handler, this, std::placeholders::_1));
             d_ws_endpt.set_close_handler(std::bind(&op25_audio::ws_close_handler, this, std::placeholders::_1));
             d_ws_endpt.set_fail_handler(std::bind(&op25_audio::ws_fail_handler, this, std::placeholders::_1));
             d_ws_endpt.set_message_handler(std::bind(&op25_audio::ws_msg_handler, this, std::placeholders::_1, std::placeholders::_2));
             d_ws_host = dest_url.host;
             d_ws_port = std::stoi(dest_url.port);
-            d_ws_endpt.set_reuse_addr(true);
             d_ws_endpt.listen(dest_url.host, dest_url.port, ec);
             if (ec) {
                 fprintf(stderr, "%s op25_audio::op25_audio: port [%d], websocket listen error: %s\n", logts.get(d_msgq_id), d_ws_port, ec.message().c_str());
@@ -419,7 +419,7 @@ void op25_audio::ws_stop()
         return;
     d_ws_enabled = false;
     fprintf(stderr, "%s op25_audio::op25_audio: Shutting down websocket server on port %d\n", logts.get(d_msgq_id), d_ws_port);
-    d_ws_endpt.stop_listening();
+    //d_ws_endpt.stop_listening(); // if this is called it causes a delayed SIGSEGV
     {
         std::lock_guard<std::mutex> lock(d_ws_mutex);
         for (auto & hdl : d_ws_connections) {
