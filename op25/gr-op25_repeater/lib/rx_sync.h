@@ -168,6 +168,7 @@ private:
 	int d_slot_mask;
 	int d_slot_key;
 	unsigned int d_unmute_until[2];
+	op25_audio& d_audio;
 	p25p1_fdma p25fdma;
 	p25p2_tdma p25tdma;
 	p25p2_vf interleaver;
@@ -185,7 +186,6 @@ private:
 	bool d_stereo;
 	int d_debug;
 	int d_behavior;
-	op25_audio d_audio;
 	log_ts& logts;
 };
 
