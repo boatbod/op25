@@ -531,7 +531,7 @@ void p25p2_tdma::handle_voice_frame(const uint8_t dibits[], int slot, int voice_
     int K;
     int rc = -1;
     char log_str[40];
-    frame_type fr_type;
+    frame_type fr_type = FT_4V_0;
 
     // Deinterleave and figure out frame type:
     errs = vf.process_vcw(&errs_mp, dibits, b, u);
