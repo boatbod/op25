@@ -45,6 +45,7 @@ namespace gr {
                 // frame_assembler::control(). Default empty so non-P25 sync types
                 // (Smartnet, subchannel) report nothing.
                 virtual std::string get_fec_stats_json() const { return {}; }
+                virtual void stop(void) { }
                 rx_base(const char * options, log_ts& logger, int debug, int msgq_id, gr::msg_queue::sptr queue) { };
                 rx_base() {}; // default constructor called by derived classes
                 virtual ~rx_base() {};

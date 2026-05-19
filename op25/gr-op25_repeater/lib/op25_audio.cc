@@ -196,6 +196,16 @@ op25_audio::op25_audio(const char* destination, log_ts& logger, int debug, int m
         }
     }
 }
+
+// called prior to shutdown
+void op25_audio::stop()
+{
+    if (d_file_enabled)
+        close(d_write_sock);
+    close_socket();
+    ws_stop();
+}
+
 // open udp socket and set up data structures
 void op25_audio::open_socket()
 {
@@ -341,7 +351,7 @@ void op25_audio::ws_close_handler(websocketpp::connection_hdl hdl)
     }
 }
 
-// websocket close connection callback
+// websocket fail connection callback
 void op25_audio::ws_fail_handler(websocketpp::connection_hdl hdl)
 {
     websocketpp::lib::error_code ec;
@@ -419,7 +429,7 @@ void op25_audio::ws_stop()
         return;
     d_ws_enabled = false;
     fprintf(stderr, "%s op25_audio::op25_audio: Shutting down websocket server on port %d\n", logts.get(d_msgq_id), d_ws_port);
-    //d_ws_endpt.stop_listening(); // if this is called it causes a delayed SIGSEGV
+    //d_ws_endpt.stop_listening();  // if this is called it causes a delayed SIGSEGV
     {
         std::lock_guard<std::mutex> lock(d_ws_mutex);
         for (auto & hdl : d_ws_connections) {
@@ -429,7 +439,7 @@ void op25_audio::ws_stop()
             d_ws_endpt.close(hdl, websocketpp::close::status::going_away, "Shutting down", ec);
         }
     }
-    d_ws_endpt.stop();
+    d_ws_endpt.stop();  // considered bad because it's not graceful, but at least it doesn't crash
     if (ws_thread.joinable())
         ws_thread.join();
 }

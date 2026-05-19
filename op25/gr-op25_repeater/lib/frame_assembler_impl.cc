@@ -88,6 +88,9 @@ namespace gr {
                     d_sync->dump_buffer();
             } else if (cmd == "fec_stats") {
                 return d_sync ? d_sync->get_fec_stats_json() : std::string{};
+            } else if (cmd == "stop") {
+                if (d_sync)
+                    d_sync->stop();
             } else {
                 if (d_debug >= 10) {
                     fprintf(stderr, "%s frame_assembler_impl::control: unhandled cmd(%s)\n", logts.get(d_msgq_id), cmd.c_str());

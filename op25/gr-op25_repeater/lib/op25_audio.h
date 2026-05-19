@@ -81,6 +81,7 @@ private:
 public:
     op25_audio(const char* udp_host, int port, log_ts& logger, int debug, int msgq_id);
     op25_audio(const char* destination, log_ts& logger, int debug, int msgq_id);
+    void stop();
     ~op25_audio();
 
     inline bool enabled() const { return d_udp_enabled || d_ws_enabled; }
