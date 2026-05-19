@@ -290,6 +290,11 @@ rx_sync::~rx_sync()	// destructor
 {
 }
 
+void rx_sync::stop() // called prior to shutdown
+{
+    d_audio.stop();
+}
+
 void rx_sync::sync_timeout(rx_types proto)
 {
 	if (d_debug >= 10) {

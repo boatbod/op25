@@ -959,6 +959,7 @@ class rx_block (gr.top_block):
 
     def kill(self):
         for chan in self.channels:
+            chan.decoder.control(json.dumps({'tuner': chan.msgq_id, 'cmd': 'stop'}))
             chan.kill()
 
         for instance in self.audio_instances:
@@ -1077,16 +1078,16 @@ class rx_main(object):
                 self.tb.wait() # curiously wait() matures when a flowgraph gets locked
             sys.stderr.write('Flowgraph complete. Exiting\n')
         except (KeyboardInterrupt):
-            self.tb.stop()
-            self.tb.kill()
-            self.keep_running = False
             sys.stderr.write("Ctrl-C detected\n")
-        except Exception:
             self.tb.stop()
             self.tb.kill()
             self.keep_running = False
+        except Exception:
             sys.stderr.write('main: exception occurred\n')
             sys.stderr.write('main: exception:\n%s\n' % traceback.format_exc())
+            self.tb.stop()
+            self.tb.kill()
+            self.keep_running = False
 
 if __name__ == "__main__":
     if sys.version[0] > '2':
