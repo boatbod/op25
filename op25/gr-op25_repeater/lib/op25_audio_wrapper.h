@@ -47,7 +47,7 @@ public:
     op25_audio_wrapper& operator=(const op25_audio_wrapper&&) = delete;
 
     op25_audio_wrapper() { }
-    ~op25_audio_wrapper() { fprintf(stderr, "AUDIO_WRAPPER DESTRUCTOR\n"); }
+    ~op25_audio_wrapper() { }
 
     static op25_audio_wrapper& instance() {
         static op25_audio_wrapper instance;     // Meyers’ Singleton, std c++11 and later
