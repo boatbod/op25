@@ -976,6 +976,7 @@ class rx_block (gr.top_block):
     def stop(self):
         sys.stderr.write("%s rx_block::stop() flowgraph stop called\n" % log_ts.get())
         self.kill()
+        time.sleep(0.5) # allow a little time for processes and ports to end gracefully
         gr.top_block.stop(self)
 
 # data unit receive queue
