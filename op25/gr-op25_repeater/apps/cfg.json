@@ -1,122 +1,60 @@
 {
-    "channels": [
-        {
-            "name": "Channel 0", 
-            "device": "sdr0",
-            "trunking_sysname": "Trunking System 0",
-            "meta_stream_name": "",
-            "demod_type": "cqpsk", 
-            "cqpsk_tracking": true,
-            "tracking_threshold": 120,
-            "tracking_feedback": 0.75,
-            "destination": "udp://0.0.0.0:2345, ws://0.0.0.0:9000",
-            "excess_bw": 0.2,
-            "filter_type": "rc",
-            "if_rate": 24000,
-            "plot": "",
-            "symbol_rate": 4800,
-            "enable_analog": "off",
-            "blacklist": "",
-            "whitelist": "",
-            "crypt_behavior": 2,
-            "crypt_keys": ""
-        }
-    ], 
     "devices": [
         {
-            "args": "rtl",
-            "gains": "LNA:39",
-            "gain_mode": false,
-            "name": "sdr0",
+            "name": "rtl0",
+            "args": "rtl=GATRRS",
+            "gains": "LNA:49",
+            "ppm": 0,
             "offset": 0,
-            "ppm": 0.0,
-            "rate": 1000000,
+            "rate": 2400000,
             "usable_bw_pct": 0.85,
             "tunable": true
+        }
+    ],
+    "channels": [
+        {
+            "name": "GATRRS",
+            "device": "rtl0",
+            "trunking_sysname": "GATRRS",
+            "demod_type": "cqpsk",
+            "filter_type": "rc",
+            "if_rate": 24000,
+            "symbol_rate": 4800,
+            "excess_bw": 0.2,
+            "destination": "udp://127.0.0.1:23456",
+            "plot": "",
+            "enable_analog": "off",
+            "whitelist": "",
+            "blacklist": "",
+            "crypt_keys": ""
         }
     ],
     "trunking": {
         "module": "tk_p25.py",
         "chans": [
             {
-                "sysname": "Trunking System 0",
-                "nac": "0x0",
-                "#sysid": "0x4a2",
-                "#wacn": "0xbee00",
-                "control_channel_list": "773.84375",
-                "#tgid_tags_file": "tgid-tags.tsv",
-                "#rid_tags_file": "rid-tags.tsv",
+                "sysname": "GATRRS",
+                "control_channel_list": "851.3875",
+                "nac": "0",
+                "tgid_tags_file": "/home/pi/op25_data/gatrrs-tags.tsv",
+                "rid_tags_file": "",
                 "whitelist": "",
-                "blacklist": "",
+                "blacklist": "/home/pi/op25_data/gatrrs-blacklist.tsv",
                 "tdma_cc": false,
-                "crypt_behavior": 2,
-                "#band_plan": {
-                    "0": { "offset": -45000000, "step":  6250, "frequency": 851006250 },
-                    "1": { "offset": -45000000, "step": 12500, "frequency": 851012500, "tdma": 2 }
-                },
-                "presets": [
-                    { "id": 1, "tgid": 7616, "label": "TGID 7616" },
-                    { "id": 2, "tgid": 7617, "label": "TGID 7617" },
-                    { "id": 3, "tgid": 11501, "label": "TGID 11501" },
-                    { "id": 4, "tgid": 11503, "label": "TGID 11503" },
-                    { "id": 5, "tgid": 12001, "label": "TGID 12001" },
-                    { "id": 6, "tgid": 12401, "label": "TGID 12401" }
-                ],
-                "site_alias": {
-                    "3": {
-                        "2": { "alias": "Site alias for RFSS# 3, Site# 2" },
-                        "3": { "alias": "Site alias f0r RFSS# 3, Site# 3" }
-                    },
-                    "5": {
-                        "3": { "alias": "Site alias for RFSS# 5, Site# 3" },
-                        "6": { "alias": "Site alias for RFSS# 5, Site# 6" }
-                    }
-                }
-            }
-        ]
-    },
-    "metadata": {
-        "module": "icemeta.py",
-        "streams": [
-            {
-                "stream_name": "",
-                "meta_format_idle": "[idle]",
-                "meta_format_tgid": "[%TGID%]",
-                "meta_format_tag":  "[%TGID%] %TAG%",
-                "icecastServerAddress": "192.168.1.24:8000",
-                "icecastMountpoint": "op25_stream_0",
-                "icecastMountExt": ".xspf",
-                "icecastPass": "hackme1",
-                "delay": 0.0
-            }
-        ]
-    },
-    "audio": {
-        "module": "sockaudio.py",
-        "instances": [
-            {
-                "instance_name": "audio0",
-                "device_name": "pulse",
-                "#device_name": "default",
-                "udp_port": 23456,
-                "audio_gain": 1.0,
-                "number_channels": 1
+                "crypt_behavior": 2
             }
         ]
     },
     "terminal": {
         "module": "terminal.py",
-        "#terminal_type": "curses",
         "terminal_type": "http:0.0.0.0:8080",
-        "curses_plot_interval": 0.1,
         "http_plot_interval": 1.0,
-        "http_plot_directory": "../www/images",
-        "tuning_step_large": 1200,
-        "tuning_step_small": 100,
-        "smart_colors": [
-            { "keywords": [ "fire", "fd" ], "color":"#ff5c5c" },
-            { "keywords": [ "pd", "police", "sheriff", "so", "law" ], "color": "#66aaff" },
-            { "keywords": [ "ems", "med", "ambulance" ], "color": "#ffb84d" }
-        ]
-    }
+        "http_plot_directory": "../www/images"
+    },
+    "logfile_workers": [
+        {
+            "file": "/home/pi/op25_data/activity.db",
+            "type": "sqlite"
+        }
+    ]
 }
