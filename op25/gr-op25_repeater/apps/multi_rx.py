@@ -1,6 +1,6 @@
 #!/bin/sh
 # Copyright 2011, 2012, 2013, 2014, 2015, 2016, 2017 Max H. Parke KA1RBI
-# Copyright 2020-2025 Graham J. Norbury - gnorbury@bondcar.com
+# Copyright 2020-2026 Graham J. Norbury - gnorbury@bondcar.com
 # 
 # This file is part of OP25
 # 
@@ -833,22 +833,29 @@ class rx_block (gr.top_block):
         if msg is None:
             return True
         s = msg.to_string()
+        ui_rsp = []
         if type(s) is not str and isinstance(s, bytes):
             # should only get here if python3
             s = s.decode()
+        try:    # See if we can treat the incoming message as JSON format (from HTTP UI)
+            d = json.loads(s)
+            s = d['command'] if "command" in d and d['command'] is not None else ""
+            m_uuid = d['uuid'] if "uuid" in d and d['uuid'] is not None else "no-uuid"
+        except (json.JSONDecodeError): # otherwise fall back to string format (Curses)
+            m_uuid = "no-uuid"
+
         if s == 'quit':
             return True
-        elif s == 'update':                     # UI initiated update request
+        elif s == 'update':                             # UI initiated update request
             self.ui_last_update = time.time()
-            self.ui_freq_update()
-            self.ui_calllog_update()
             if self.trunking is None or self.trunk_rx is None:
                 return False
-            js = self.trunk_rx.to_json()        # extract data from trunking module
-            msg = gr.message().make_from_string(js, -4, 0, 0)
-            if not self.ui_in_q.full_p():
-                self.ui_in_q.insert_tail(msg)   # send info back to UI as long as queue not full
-            self.ui_plot_update()
+            js = json.loads(self.trunk_rx.to_json())    # extract data from trunking module
+            js['uuid'] = m_uuid
+            ui_rsp.append(js)
+            ui_rsp.append(self.ui_freq_update())
+            ui_rsp.append(self.ui_calllog_update())
+            ui_rsp.append(self.ui_plot_update())
         elif s == 'toggle_plot':
             if not self.get_interactive():
                 sys.stderr.write("%s Cannot start plots for non-realtime (replay) sessions\n" % log_ts.get())
@@ -856,51 +863,53 @@ class rx_block (gr.top_block):
             plot_type = int(msg.arg1())
             msgq_id = int(msg.arg2())
             self.find_channel(msgq_id).toggle_plot(plot_type)
+            ui_rsp.append({'json_type': "ok", 'uuid': m_uuid})
         elif s == 'adj_tune':
             freq = msg.arg1()
             msgq_id = int(msg.arg2())
             self.find_channel(msgq_id).adj_tune(freq)
+            ui_rsp.append({'json_type': "ok", 'uuid': m_uuid})
         elif s == 'set_debug':
             dbglvl = int(msg.arg1())
             self.set_debug(dbglvl)
+            ui_rsp.append({'json_type': "ok", 'uuid': m_uuid})
         elif s == 'get_terminal_config':
             if self.terminal is not None and self.terminal_config is not None:
-                self.terminal_config['json_type'] = "terminal_config"
-                js = json.dumps(self.terminal_config)
-                msg = gr.message().make_from_string(js, -4, 0, 0)
-                if not self.ui_in_q.full_p():
-                    self.ui_in_q.insert_tail(msg)
+                js = self.terminal_config
+                js['json_type'] = "terminal_config"
+                js['uuid'] = m_uuid
+                ui_rsp.append(js)
             else:
                 return False
         elif s == 'get_full_config':
-            cfg = self.config
-            cfg['json_type'] = "full_config"
-            js = json.dumps(cfg)
-            msg = gr.message().make_from_string(js, -4, 0, 0)
-            if not self.ui_in_q.full_p():
-                self.ui_in_q.insert_tail(msg)
+            js = self.config
+            js['json_type'] = "full_config"
+            js['uuid'] = m_uuid
+            ui_rsp.append(js)
         elif s == 'set_full_config':
+            ui_rsp.append({'json_type': "ok", 'uuid': m_uuid})
             pass
         elif s == 'get_ws_instances':
-            ws_instances = {}
+            js = {}
+            js['json_type'] = "ws_instances"
+            js['uuid'] = m_uuid
             for chan in self.channels:
-                ws_instances[chan.msgq_id] = chan.ws_instance
-            ws_instances['json_type'] = "ws_instances"
-            js = json.dumps(ws_instances)
-            msg = gr.message().make_from_string(js, -4, 0, 0)
-            if not self.ui_in_q.full_p():
-                self.ui_in_q.insert_tail(msg)
+                js[chan.msgq_id] = chan.ws_instance
+            ui_rsp.append(js)
         elif s == 'dump_tgids':
             self.trunk_rx.dump_tgids()
+            ui_rsp.append({'json_type': "ok", 'uuid': m_uuid})
         elif s == 'capture':
             if not self.get_interactive():
                 sys.stderr.write("%s Cannot start capture for non-realtime (replay) sessions\n" % log_ts.get())
                 return
             msgq_id = int(msg.arg2())
             self.find_channel(msgq_id).toggle_capture()
+            ui_rsp.append({'json_type': "ok", 'uuid': m_uuid})
         elif s == 'dump_buffer':
             for chan in self.channels:
                 chan.decoder.control(json.dumps({'tuner': chan.msgq_id, 'cmd': 'dump_buffer'}))
+            ui_rsp.append({'json_type': "ok", 'uuid': m_uuid})
         elif s == 'watchdog':
             if self.ui_last_update > 0 and (time.time() > (self.ui_last_update + self.ui_timeout)):
                 self.ui_last_update = 0
@@ -915,18 +924,24 @@ class rx_block (gr.top_block):
         elif s in RX_COMMANDS:
             if self.trunking is not None and self.trunk_rx is not None:
                 self.trunk_rx.ui_command(s, msg.arg1(), msg.arg2())
+            ui_rsp.append({'json_type': "ok", 'uuid': m_uuid})
+
+        if len(ui_rsp) > 0:
+            msg = gr.message().make_from_string(json.dumps(ui_rsp), -4, 0, 0)
+            if not self.ui_in_q.full_p():
+                self.ui_in_q.insert_tail(msg)           # send info back to UI as long as queue not full
+
         return False
 
     def ui_calllog_update(self):
         if self.trunking is None or self.trunk_rx is None:
-            return False
-        msg = gr.message().make_from_string(self.trunk_rx.get_call_log(), -4, 0, 0)
-        if not self.ui_in_q.full_p():
-            self.ui_in_q.insert_tail(msg)
+            return { }
+        js = json.loads(self.trunk_rx.get_call_log())
+        return js
 
     def ui_freq_update(self):
         if self.trunking is None or self.trunk_rx is None:
-            return False
+            return { }
         params = json.loads(self.trunk_rx.get_chan_status())   # extract data from all channels
         for rx_id in params['channels']:                       # iterate and convert stream name to url
             params[rx_id]['ppm'] = self.find_channel(int(rx_id)).device.get_ppm()
@@ -937,14 +952,11 @@ class rx_block (gr.top_block):
                 continue
             meta_s, meta_q = self.meta_streams[s_name]
             params[rx_id]['stream_url'] = meta_s.get_url()
-        js = json.dumps(params)
-        msg = gr.message().make_from_string(js, -4, 0, 0)
-        if not self.ui_in_q.full_p():
-            self.ui_in_q.insert_tail(msg)
+        return params
 
     def ui_plot_update(self):
         if self.terminal_type is None or self.terminal_type != "http":
-            return
+            return { }
 
         filenames = []
         for chan in self.channels:
@@ -953,9 +965,7 @@ class rx_block (gr.top_block):
                 if fn is not None and os.access(os.path.join(self.http_plot_directory, fn), os.R_OK):
                     filenames.append(fn)
         d = {'json_type': 'rx_update', 'files': filenames}
-        msg = gr.message().make_from_string(json.dumps(d), -4, 0, 0)
-        if not self.ui_in_q.full_p():
-            self.ui_in_q.insert_tail(msg)
+        return d
 
     def kill(self):
         for chan in self.channels:

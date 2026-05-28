@@ -255,7 +255,13 @@ class p25_rx_block (gr.top_block):
         self.terminal = op25_terminal(self.input_q, self.output_q, self.options.terminal_type)
         if self.terminal is None:
             sys.exit(1)
-        self.send_terminal_config()
+        ui_rsp = []
+        js = self.send_terminal_config()
+        js['uuid'] = "no-uuid"
+        ui_rsp.append(js)
+        msg = gr.message().make_from_string(json.dumps(ui_rsp), -4, 0, 0)
+        if not self.input_q.full_p():
+            self.input_q.insert_tail(msg)
 
         # attach meta server thread
         if self.options.metacfg is not None:
@@ -536,10 +542,7 @@ class p25_rx_block (gr.top_block):
             error = self.demod.get_freq_error()
         params['error'] = error
         params['stream_url'] = self.stream_url
-        js = json.dumps(params)
-        msg = gr.message().make_from_string(js, -4, 0, 0)
-        if not self.input_q.full_p():
-            self.input_q.insert_tail(msg)
+        return params
 
     def meta_update(self, tgid, tag, rid = None):
         if self.meta_server is None:
@@ -925,39 +928,44 @@ class p25_rx_block (gr.top_block):
         if self.demod is not None:
             error = self.demod.get_freq_error()
         d = {'json_type': 'rx_update', 'error': error, 'fine_tune': self.options.fine_tune, 'files': filenames}
-        msg = gr.message().make_from_string(json.dumps(d), -4, 0, 0)
-        if not self.input_q.full_p():
-            self.input_q.insert_tail(msg)
+        return d
 
     def send_terminal_config(self):
         self.terminal_config = {'json_type': 'terminal_config', 'terminal_interface': 'legacy'}
-        js = json.dumps(self.terminal_config)
-        msg = gr.message().make_from_string(js, -4, 0, 0)
-        if not self.input_q.full_p():
-            self.input_q.insert_tail(msg)
+        return self.terminal_config
 
     def process_qmsg(self, msg):
         # return true = end top block
         RX_COMMANDS = 'skip lockout hold whitelist reload'.split()
         s = msg.to_string()
+        ui_rsp = []
         if type(s) is not str and isinstance(s, bytes):
             # should only get here if python3
             s = s.decode()
-        if s == 'quit': return True
+        try:    # See if we can treat the incoming message as JSON format (from HTTP UI)
+            d = json.loads(s)
+            s = d['command'] if "command" in d and d['command'] is not None else ""
+            m_uuid = d['uuid'] if "uuid" in d and d['uuid'] is not None else "no-uuid"
+        except (json.JSONDecodeError): # otherwise fall back to string format (Curses)
+            m_uuid = "no-uuid"
+
+        if s == 'quit':
+            return True
         elif s == 'update':
             self.ui_last_update = time.time()
-            self.freq_update()
             if self.trunk_rx is None:
                 return False    ## possible race cond - just ignore
-            js = self.trunk_rx.to_json()
-            msg = gr.message().make_from_string(js, -4, 0, 0)
-            if not self.input_q.full_p():
-                self.input_q.insert_tail(msg)
-            self.process_ajax()
+            js = json.loads(self.trunk_rx.to_json())
+            js['uuid'] = m_uuid
+            ui_rsp.append(js)
+            ui_rsp.append(self.freq_update())
+            ui_rsp.append(self.process_ajax())
         elif s == 'set_debug':
             self.set_debug(int(msg.arg1()))
         elif s == 'get_terminal_config':
-            self.send_terminal_config()
+            js = self.send_terminal_config()
+            js['uuid'] = m_uuid
+            ui_rsp.append(js)
         elif s == 'set_freq':
             freq = msg.arg1()
             self.last_freq_params['freq'] = freq
@@ -985,6 +993,12 @@ class p25_rx_block (gr.top_block):
         elif s in RX_COMMANDS:
             if not self.rx_q.full_p():
                 self.rx_q.insert_tail(msg)
+
+        if len(ui_rsp) > 0:
+            msg = gr.message().make_from_string(json.dumps(ui_rsp), -4, 0, 0)
+            if not self.input_q.full_p():
+                self.input_q.insert_tail(msg)
+
         return False
 
 ############################################################################

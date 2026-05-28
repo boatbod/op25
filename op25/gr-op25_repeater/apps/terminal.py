@@ -2,7 +2,7 @@
 #
 # Copyright 2008-2011 Steve Glass
 # Copyright 2011, 2012, 2013, 2014, 2015, 2016, 2017 Max H. Parke KA1RBI
-# Copyright 2017-2024 Graham J. Norbury
+# Copyright 2017-2026 Graham J. Norbury
 # 
 # This file is part of OP25
 # 
@@ -517,6 +517,7 @@ class curses_terminal(threading.Thread):
 
     def process_q_events(self):
         # return true signifies end of main event loop
+        rc = False
         while True:
             if curses.is_term_resized(self.maxy, self.maxx) is True:
                 self.resize_curses()
@@ -524,8 +525,10 @@ class curses_terminal(threading.Thread):
                 break
             msg = self.input_q.delete_head_nowait()
             if msg.type() == -4:
-                return self.process_json(msg.to_string())
-        return False
+                for m in json.loads(msg.to_string()):
+                    if m is not None and len(m) > 0:
+                        rc |= self.process_json(json.dumps(m))
+        return rc
 
     def send_command(self, command, arg1 = 0, arg2 = 0):
         if self.sock:

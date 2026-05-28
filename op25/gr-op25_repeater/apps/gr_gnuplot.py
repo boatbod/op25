@@ -117,7 +117,6 @@ class wrap_gp(object):
             self.buf = np.array([])
             return consumed
 
-        plot_data = { "json_type": "plot", "chan": self.chan, "mode": mode, "data": [] }
         plots = []
         s = ''
         while(len(self.buf)):
@@ -126,14 +125,12 @@ class wrap_gp(object):
                     break
                 for i in range(self.sps):
                     s += '%f\n' % self.buf[i]
-                    plot_data['data'].append( (i, self.buf[i]) )
                 s += 'e\n'
                 self.buf=self.buf[self.sps:]
                 plots.append('"-" with lines')
             elif mode == 'constellation':
                 for b in self.buf:
                     s += '%f\t%f\n' % (b.real, b.imag)
-                    plot_data['data'].append( (b.real, b.imag) )
                 s += 'e\n'
                 self.buf = []
                 plots.append('"-" with points')
@@ -141,7 +138,6 @@ class wrap_gp(object):
                 idx = 0
                 for b in self.buf:
                     s += '%f\n' % (b)
-                    plot_data['data'].append( (idx, b) )
                     idx += 1
                 s += 'e\n'
                 self.buf = []
@@ -166,7 +162,6 @@ class wrap_gp(object):
                         break
                     y_val = 20 * np.log10(self.avg_pwr[i])
                     s += '%f\t%f\n' % (self.freqs[i], y_val)
-                    plot_data['data'].append( (self.freqs[i], y_val) )
                     if ((mode == 'mixer') or (mode == 'fll')) and (self.avg_pwr[i] > 1e-5):
                         if (self.freqs[i] - self.center_freq) < 0:
                             sum_pwr -= self.avg_pwr[i]
@@ -209,23 +204,14 @@ class wrap_gp(object):
             h+= 'set xrange [-1:1]\n'
             h+= 'set yrange [-1:1]\n'
             h+= 'set title "%sConstellation"\n' % self.plot_name
-            plot_data['xrange'] = (-1,1)
-            plot_data['yrange'] = (-1,1)
-            plot_data['title'] = "%sConstellation" % self.plot_name
         elif mode == 'eye':
             h+= background
             h+= 'set yrange [-4:4]\n'
             h+= 'set title "%sDatascope"\n' % self.plot_name
-            plot_data['xrange'] = (0,len(plot_data['data']))
-            plot_data['yrange'] = (-4,4)
-            plot_data['title'] = "%sDatascope" % self.plot_name
         elif mode == 'symbol':
             h+= background
             h+= 'set yrange [-4:4]\n'
             h+= 'set title "%sSymbol"\n' % self.plot_name
-            plot_data['xrange'] = (0,len(plot_data['data']))
-            plot_data['yrange'] = (-4,4)
-            plot_data['title'] = "%sSymbol" % self.plot_name
         elif mode == 'fft' or mode == 'mixer' or mode =='fll':
             h+= 'unset arrow; unset title\n'
             h+= 'set xrange [%f:%f]\n' % (self.freqs[0], self.freqs[len(self.freqs)-1])
@@ -233,23 +219,17 @@ class wrap_gp(object):
             h+= 'set ylabel "Power(dB)"\n'
             h+= 'set grid\n'
             h+= 'set yrange [%d:0]\n' % ((self.min_y // 20) * 20)
-            plot_data['xrange'] = (self.freqs[0], self.freqs[len(self.freqs)-1])
-            plot_data['yrange'] = (((self.min_y // 20) * 20), 0)
             if mode == 'mixer':
                 h+= 'set title "%sRaw Mixer\n' % self.plot_name
-                plot_data['title'] = "%sRaw Mixer" % self.plot_name
             elif mode == 'fll':
                 h+= 'set title "%sTuned Mixer"\n' % self.plot_name
-                plot_data['title'] = "%sTuned Mixer" % self.plot_name
             else:               # fft
                 if self.center_freq:
                     arrow_pos = (self.center_freq - self.relative_freq) / 1e6
                     h+= 'set arrow from %f, graph 0 to %f, graph 1 nohead\n' % (arrow_pos, arrow_pos)
                     h+= 'set title "%sSpectrum: tuned to %f Mhz"\n' % (self.plot_name, arrow_pos)
-                    plot_data['title'] = "%sSpectrum: tuned to %f Mhz" % (self.plot_name, arrow_pos)
                 else:
                     h+= 'set title "%sSpectrum"\n' % self.plot_name
-                    plot_data['title'] = "%sSpectrum" % self.plot_name
         dat = '%splot %s\n%s' % (h, ','.join(plots), s)
         if sys.version[0] != '2':
             dat = bytes(dat, 'utf8')
@@ -262,11 +242,6 @@ class wrap_gp(object):
                 pass
         if filename:
             self.filename = filename
-
-        if self.out_q is not None and not self.out_q.full_p():      # if configured, send raw plot data to UI
-            msg = gr.message().make_from_string(json.dumps(plot_data), -4, 0, 0)
-            if not self.out_q.full_p():
-                self.out_q.insert_tail(msg)
 
         return consumed
 

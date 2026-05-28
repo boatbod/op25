@@ -1,4 +1,5 @@
 # Copyright 2017, 2018 Max H. Parke KA1RBI
+# Copyright 2026  Graham J. Norbury
 # 
 # This file is part of OP25
 # 
@@ -25,6 +26,8 @@ import json
 import socket
 import traceback
 import threading
+import uuid
+import collections
 
 from gnuradio import gr
 from waitress.server import create_server
@@ -35,6 +38,10 @@ my_input_q = None
 my_output_q = None
 my_recv_q = None
 my_port = None
+my_uuids = []
+q_mutex = threading.Lock()
+u_mutex = threading.Lock()
+
 
 """
 fake http and ajax server module
@@ -66,26 +73,51 @@ def static_file(environ, start_response):
     return status, content_type, output
 
 def post_req(environ, start_response, postdata):
-    global my_input_q, my_output_q, my_recv_q, my_port
+    global my_input_q, my_output_q, my_recv_q, my_port, q_mutex, u_mutex
     valid_req = False
+    num_req = 0
+    post_uuid = str(uuid.uuid4())
+    with u_mutex:
+        my_uuids.append(post_uuid)
     try:
         data = json.loads(postdata)
         for d in data:
-            msg = gr.message().make_from_string(str(d['command']), -2, d['arg1'], d['arg2'])
+            num_req += 1
+            d['uuid'] = post_uuid
+            msg = gr.message().make_from_string(json.dumps(d), -2, d['arg1'], d['arg2'])
+            #sys.stderr.write("post_req: req=%s\n" % json.dumps(d))
             if not my_output_q.full_p():
                 my_output_q.insert_tail(msg)
         valid_req = True
-        time.sleep(0.2)
     except (json.JSONDecodeError, KeyError, TypeError):
         sys.stderr.write('post_req: error processing input: %s\n%s\n' % (postdata, traceback.format_exc()))
 
+    # Each POST_REQ should result in one Response
     resp_msg = []
-    while not my_recv_q.empty_p():
-        msg = my_recv_q.delete_head()
-        if msg.type() == -4:
-            resp_msg.append(json.loads(msg.to_string()))
+    valid_resp = False
+    t_expiry = time.time() + 0.2
+    while valid_req and not valid_resp and (time.time() < t_expiry):  # wait for a message or timeout
+        if (len(my_recv_q) > 0):
+            with u_mutex:
+                with q_mutex:
+                    m_uuid = my_recv_q[0][0]            # inspect uuid of first message
+                    if m_uuid == post_uuid:             # message for me can be handled
+                        (m_uuid, msg) = my_recv_q.popleft()
+                        resp_msg = msg
+                        valid_resp = True
+                    elif m_uuid not in my_uuids:
+                        my_recv_q.popleft()             # orphaned message can be discarded
+                        sys.stderr.write("post_req: discard m_uuid=%s [%s]\n" % (m_uuid, msg))
+                    else:
+                        pass                            # message for someone else
+        time.sleep(0)                                   # yield to other threads
     if not valid_req:
         resp_msg = []
+    with u_mutex:
+        try:
+            my_uuids.remove(post_uuid)
+        except (ValueError):
+            pass    
     status = '200 OK'
     content_type = 'application/json'
     output = json.dumps(resp_msg)
@@ -124,12 +156,18 @@ def application(environ, start_response):
     return result
 
 def process_qmsg(msg):
-    if my_recv_q.full_p():
-        my_recv_q.delete_head_nowait()   # ignores result
-    if my_recv_q.full_p():
-        return
-    if not my_recv_q.full_p():
-        my_recv_q.insert_tail(msg)
+    if msg.type() == -4:                # we are only interested in JSON messages
+      try:
+        m_uuid = "no-uuid"
+        m = json.loads(msg.to_string()) # incoming json formatted message is a list of dictionaries
+        if len(m) == 0:
+            return
+        if "uuid" in m[0] and m[0]['uuid'] is not None: # first dict in list will contain uuid of originator
+            m_uuid = m[0]['uuid']
+            m[0].pop('uuid', None)
+        my_recv_q.append((m_uuid, m))   # collections.deque automatically limits queue size to maxlen items 
+      except (KeyError, ValueError):
+        sys.stderr.write("process_qmsg: improperly formatted message=%s\n" % json.dumps(m))
 
 class http_server(object):
     def __init__(self, input_q, output_q, endpoint, **kwds):
@@ -141,7 +179,7 @@ class http_server(object):
         my_output_q = output_q
         my_port = int(port)
 
-        my_recv_q = gr.msg_queue(10)
+        my_recv_q = collections.deque(maxlen = 10)
         self.q_watcher = queue_watcher(my_input_q, process_qmsg)
 
         try:
