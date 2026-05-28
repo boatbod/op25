@@ -564,8 +564,8 @@ function channel_table(d) {
 			: "";
 
 		html += `<tr>
-			<td${tdc}>${ch}</td>
-			<td>${name}</td>
+			<td${tdc} title='Channel ${ch}' style='cursor:pointer;' onclick='f_chan_direct(${ch})'>${ch}</td>
+			<td${tdc} title='${name} 'style='cursor:pointer;' onclick='f_chan_direct(${ch})'>${name}</td>
 			<td style='text-align:center;'>${audioIcon}</td>
 			<td>${system}</td>
 			<td>${freq}</td>
@@ -1666,6 +1666,16 @@ async function send_process() {
         wbox.style.display = "flex";
         wtxt.innerText = "Fetch Error: " + (error.message || error);
         console.error("Fetch Exception Details:", error.stack || error);
+    }
+}
+
+function f_chan_direct(command) {
+    channel_index = command;
+    if (channel_index < 0) {
+        channel_index = channel_list.length - 1;
+    }
+    else if (channel_index >= channel_list.length) {
+        channel_index = 0;
     }
 }
 
