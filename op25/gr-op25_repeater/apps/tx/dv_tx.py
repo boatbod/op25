@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 #################################################################################
 # 
@@ -114,8 +114,8 @@ class my_top_block(gr.top_block):
 
         output_gain = output_gains[options.protocol]
 
-        if options.test: # input file is in symbols of size=char
-            ENCODER = blocks.file_source(gr.sizeof_char, options.test, True)
+        if options.test: # input file is in symbols of size = char
+            ENCODER = blocks.file_source(gr.sizeof_char, options.test, options.repeat)
         elif options.protocol == 'dmr':
             max_inputs = 2
             ENCODER  = op25_repeater.ambe_encoder_sb(options.verbose)
@@ -207,10 +207,10 @@ class my_top_block(gr.top_block):
                     sys.exit(0)
                 a_resamp = filter.pfb.arb_resampler_fff(options.alt_modulator_rate / float(options.modulator_rate))
                 sys.stderr.write('adding resampler for rate change %d ===> %d\n' % (options.modulator_rate, options.alt_modulator_rate))
-                interp = filter.rational_resampler_fff(options.if_rate / options.alt_modulator_rate, 1)
+                interp = filter.rational_resampler_fff(int(options.if_rate / options.alt_modulator_rate), 1)
                 self.connect(MOD, AMP, a_resamp, interp, self.fm_modulator, self.u)
             else:
-                interp = filter.rational_resampler_fff(options.if_rate / options.modulator_rate, 1)
+                interp = filter.rational_resampler_fff(int(options.if_rate / options.modulator_rate), 1)
                 self.connect(MOD, AMP, interp, self.fm_modulator, self.u)
         else:
             self.connect(MOD, AMP, OUT)
@@ -226,7 +226,7 @@ class my_top_block(gr.top_block):
         gain_names = self.u.get_gain_names()
         for name in gain_names:
             range = self.u.get_gain_range(name)
-            print("gain: name: %s range: start %d stop %d step %d" % (name, range[0].start(), range[0].stop(), range[0].step()))
+            print("gain: name: %s range: start %d stop %d step %d" % (name, range.start(), range.stop(), range.step()))
         if options.gains:
             for tuple in options.gains.split(","):
                 name, gain = tuple.split(":")
