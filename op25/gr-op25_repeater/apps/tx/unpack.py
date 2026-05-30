@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 from gnuradio import gr, audio, eng_notation, blocks
 from gnuradio.eng_option import eng_option
 from optparse import OptionParser
