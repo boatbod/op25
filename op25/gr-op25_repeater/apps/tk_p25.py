@@ -400,6 +400,11 @@ class p25_system(object):
         self.rfss_stid = 0
         self.rfss_chan = 0
         self.rfss_txchan = 0
+        self.rfss_network_active = None  # RFSS_STS_BCST 'A' bit: 1 = active RFSS link, 0 = failsoft
+        self.rfss_lra = None             # Location Registration Area (RFSS/NET_STS octet 2)
+        self.sys_service_class = None    # SYS_SRV_BCST 'services available' (24-bit field)
+        self.utc_offset_min = None       # TIME_DATE_ANN local time offset (signed minutes)
+        self.encryption_algid = None     # P_PARM_BCST algid: set => encrypted control channel
         self.ns_syid = int(ast.literal_eval(from_dict(config, "sysid", "0")))
         self.ns_wacn = int(ast.literal_eval(from_dict(config, "wacn", "0")))
         self.ns_chan = 0
@@ -760,6 +765,11 @@ class p25_system(object):
                 add_unique_freq(self.cc_list, f1)
             if self.debug >= 10:
                 sys.stderr.write('%s [%d] mbt(0x3a) rfss_sts_bcst: sys: %x rfid: %x stid: %x ch1: %s ch2: %s\n' %(log_ts.get(), m_rxid, syid, rfid, stid, self.channel_id_to_string(ch1), self.channel_id_to_string(ch2)))
+        elif opcode == 0x3e:  # protection parameter broadcast -> encrypted control channel
+            algid = (header >> 16) & 0xff   # header octet 9; header arg is raw_header << 16
+            self.encryption_algid = algid
+            if self.debug >= 10:
+                sys.stderr.write('%s [%d] mbt(0x3e) p_parm_bcst: algid: %x\n' %(log_ts.get(), m_rxid, algid))
         else:
             if self.debug >= 10:
                 sys.stderr.write('%s [%d] mbt(0x%02x) unhandled: %x\n' %(log_ts.get(), m_rxid, opcode, mbt_data))
@@ -975,8 +985,9 @@ class p25_system(object):
             self.freq_table[iden]['offset'] = toff * spac * 125
             self.freq_table[iden]['step'] = spac * 125
             self.freq_table[iden]['frequency'] = freq * 5
+            self.freq_table[iden]['bw'] = bwvu   # 0x04 = 6.25 kHz, 0x05 = 12.5 kHz (TIA-102.AABC-B 6.2.29)
             if self.debug >= 10:
-                sys.stderr.write('%s [%d] tsbk(0x34) iden_up_vu: id: %d toff: %f spac: %f freq: %f [%s]\n' % (log_ts.get(), m_rxid, iden, toff * spac * 0.125 * 1e-3, spac * 0.125, freq * 0.000005, txt[toff_sign]))
+                sys.stderr.write('%s [%d] tsbk(0x34) iden_up_vu: id: %d toff: %f spac: %f freq: %f bw: %x [%s]\n' % (log_ts.get(), m_rxid, iden, toff * spac * 0.125 * 1e-3, spac * 0.125, freq * 0.000005, bwvu, txt[toff_sign]))
         elif opcode == 0x33:   # iden_up_tdma
             mfrid  = (tsbk >> 80) & 0xff
             if mfrid == 0:
@@ -1012,13 +1023,16 @@ class p25_system(object):
             self.freq_table[iden]['offset'] = toff * 250000
             self.freq_table[iden]['step'] = spac * 125
             self.freq_table[iden]['frequency'] = freq * 5
+            self.freq_table[iden]['bw'] = bw   # channel bandwidth (TIA-102.AABC-B 6.2.9, 125 Hz units)
             if self.debug >= 10:
-                sys.stderr.write('%s [%d] tsbk(0x3d) iden_up id: %d toff: %f spac: %f freq: %f\n' % (log_ts.get(), m_rxid, iden, toff * 0.25, spac * 0.125, freq * 0.000005))
+                sys.stderr.write('%s [%d] tsbk(0x3d) iden_up id: %d toff: %f spac: %f freq: %f bw: %x\n' % (log_ts.get(), m_rxid, iden, toff * 0.25, spac * 0.125, freq * 0.000005, bw))
         elif opcode == 0x3a:   # rfss status
             syid = (tsbk >> 56) & 0xfff
             rfid = (tsbk >> 48) & 0xff
             stid = (tsbk >> 40) & 0xff
             chan = (tsbk >> 24) & 0xffff
+            net  = (tsbk >> 68) & 0x1   # 'A' bit (octet 3): 1 = active RFSS network connection
+            lra  = (tsbk >> 72) & 0xff  # Location Registration Area (octet 2)
             f1 = self.channel_id_to_frequency(chan)
             if f1:
                 self.rfss_syid = syid
@@ -1026,9 +1040,11 @@ class p25_system(object):
                 self.rfss_stid = stid
                 self.rfss_chan = f1
                 self.rfss_txchan = f1 + self.freq_table[chan >> 12]['offset']
+                self.rfss_network_active = net
+                self.rfss_lra = lra
                 add_unique_freq(self.cc_list, f1)
             if self.debug >= 10:
-                sys.stderr.write('%s [%d] tsbk(0x3a) rfss_sts_bcst: syid: %x rfid: %x stid: %d ch1: %x(%s)\n' %(log_ts.get(), m_rxid, syid, rfid, stid, chan, self.channel_id_to_string(chan)))
+                sys.stderr.write('%s [%d] tsbk(0x3a) rfss_sts_bcst: syid: %x rfid: %x stid: %d A: %d ch1: %x(%s)\n' %(log_ts.get(), m_rxid, syid, rfid, stid, net, chan, self.channel_id_to_string(chan)))
         elif opcode == 0x39:   # secondary cc
             mfrid = (tsbk >> 80) & 0xff
             rfid  = (tsbk >> 72) & 0xff
@@ -1050,27 +1066,46 @@ class p25_system(object):
             wacn = (tsbk >> 52) & 0xfffff
             syid = (tsbk >> 40) & 0xfff
             ch1  = (tsbk >> 24) & 0xffff
+            lra  = (tsbk >> 72) & 0xff  # Location Registration Area (octet 2)
             f1 = self.channel_id_to_frequency(ch1)
             if f1:
                 self.ns_syid = syid
                 self.ns_wacn = wacn
                 self.ns_chan = f1
                 self.ns_valid = True
+                self.rfss_lra = lra
             if self.debug >= 10:
-                sys.stderr.write('%s [%d] tsbk(0x3b) net_sts_bcst: wacn: %x syid: %x ch1: %x(%s)\n' %(log_ts.get(), m_rxid, wacn, syid, ch1, self.channel_id_to_string(ch1)))
+                sys.stderr.write('%s [%d] tsbk(0x3b) net_sts_bcst: wacn: %x syid: %x lra: %x ch1: %x(%s)\n' %(log_ts.get(), m_rxid, wacn, syid, lra, ch1, self.channel_id_to_string(ch1)))
         elif opcode == 0x3c:   # adjacent status
             rfid = (tsbk >> 48) & 0xff
             stid = (tsbk >> 40) & 0xff
             ch1  = (tsbk >> 24) & 0xffff
+            cfva = (tsbk >> 68) & 0xf   # octet-3 signaling: C(onventional) F(ailure) V(alid) A(ctive net)
+            lra  = (tsbk >> 72) & 0xff  # Location Registration Area (octet 2)
             table = (ch1 >> 12) & 0xf
             f1 = self.channel_id_to_frequency(ch1)
             if f1 and table in self.freq_table:
                 self.adjacent[f1] = 'rfid: %d stid:%d uplink:%f tbl:%d' % (rfid, stid, (f1 + self.freq_table[table]['offset']) / 1000000.0, table)
-                self.adjacent_data[f1] = {'rfid': rfid, 'stid':stid, 'uplink': f1 + self.freq_table[table]['offset'], 'table': table}
+                self.adjacent_data[f1] = {'rfid': rfid, 'stid':stid, 'uplink': f1 + self.freq_table[table]['offset'], 'table': table, 'lra': lra,
+                                          'conventional': (cfva >> 3) & 1, 'failure': (cfva >> 2) & 1, 'valid': (cfva >> 1) & 1, 'active': cfva & 1}
             if self.debug >= 10:
-                sys.stderr.write('%s [%d] tsbk(0x3c) adj_sts_bcst: rfid: %x stid: %d ch1: %x(%s)\n' %(log_ts.get(), m_rxid, rfid, stid, ch1, self.channel_id_to_string(ch1)))
+                sys.stderr.write('%s [%d] tsbk(0x3c) adj_sts_bcst: rfid: %x stid: %d C: %d F: %d V: %d A: %d ch1: %x(%s)\n' %(log_ts.get(), m_rxid, rfid, stid, (cfva >> 3) & 1, (cfva >> 2) & 1, (cfva >> 1) & 1, cfva & 1, ch1, self.channel_id_to_string(ch1)))
                 if table in self.freq_table:
                     sys.stderr.write('%s [%d] tsbk(0x3c) adj_sts_bcst: base freq: %s step: %s\n' % (log_ts.get(), m_rxid, self.freq_table[table]['frequency'] , self.freq_table[table]['step'] ))
+        elif opcode == 0x38:   # system service broadcast
+            svc_avail = (tsbk >> 48) & 0xffffff  # services available (octets 3-5)
+            svc_supp  = (tsbk >> 24) & 0xffffff  # services supported (octets 6-8)
+            prio      = (tsbk >> 16) & 0xff       # request priority level (octet 9)
+            self.sys_service_class = svc_avail
+            if self.debug >= 10:
+                sys.stderr.write('%s [%d] tsbk(0x38) sys_srv_bcst: avail: %06x supp: %06x prio: %d\n' % (log_ts.get(), m_rxid, svc_avail, svc_supp, prio))
+        elif opcode == 0x35:   # time and date announcement
+            vl  = (tsbk >> 77) & 0x1    # VL: local time offset field valid (octet 2 bit 5)
+            raw = (tsbk >> 64) & 0xfff  # 12-bit local time offset, msb = subtract-from-UTC
+            if vl:
+                self.utc_offset_min = -(raw & 0x7ff) if (raw >> 11) & 1 else (raw & 0x7ff)
+            if self.debug >= 10:
+                sys.stderr.write('%s [%d] tsbk(0x35) time_date_ann: vl: %d utc_offset_min: %s\n' % (log_ts.get(), m_rxid, vl, self.utc_offset_min))
         else:
             if self.debug >= 10:
                 sys.stderr.write('%s [%d] tsbk(0x%02x) unhandled: 0x%024x\n' % (log_ts.get(), m_rxid, opcode, tsbk))
@@ -1883,6 +1918,9 @@ class p25_system(object):
         d['rxchan']         = self.rfss_chan
         d['txchan']         = self.rfss_txchan
         d['wacn']           = self.ns_wacn
+        d['network_active'] = self.rfss_network_active  # 0 == site running failsoft (RFSS_STS_BCST 'A' bit)
+        d['lra']            = self.rfss_lra
+        d['encryption_algid'] = self.encryption_algid  # not None => encrypted control channel (P_PARM_BCST)
         d['secondary']      = list(self.secondary.keys())
         d['frequencies']    = {}
         d['frequency_data'] = {}
