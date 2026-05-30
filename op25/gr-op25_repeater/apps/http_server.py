@@ -121,6 +121,7 @@ def post_req(environ, start_response, postdata):
     status = '200 OK'
     content_type = 'application/json'
     output = json.dumps(resp_msg)
+    #sys.stderr.write("post_req: resp=%s\n" % output)
     return status, content_type, output
 
 def http_request(environ, start_response):
