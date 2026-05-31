@@ -1344,32 +1344,27 @@ function trunk_update(d) {
 			  console.warn("tg2TagFromServer was object; ignored:", tg2TagFromServer);
 			}
 
-if (hasValue(tg1)) {
-  rememberTag(sysidHex, tg1, tg1TagFromServer);
-}
+			if (hasValue(tg1)) {
+			  rememberTag(sysidHex, tg1, tg1TagFromServer);
+			}
 
-if (hasValue(tg2)) {
-  rememberTag(sysidHex, tg2, tg2TagFromServer);
-}
+			if (hasValue(tg2)) {
+			  rememberTag(sysidHex, tg2, tg2TagFromServer);
+			}
 
-            let src1 = d[nac]['frequency_data'][freq]['srcaddrs'][0];
-            let src2 = d[nac]['frequency_data'][freq]['srcaddrs'][1];
+			let src1 = null;
+			let src2 = null;
+            if (d[nac]['frequency_data'][freq]['srcaddrs'] != undefined) {	// srcaddrs not sent by smartnet systems
+				let src1 = d[nac]['frequency_data'][freq]['srcaddrs'][0];
+				let src2 = d[nac]['frequency_data'][freq]['srcaddrs'][1];
+			}
             
-            let srctag1 = d[nac]['frequency_data'][freq]['srctags'][0];
-			let srctag2 = d[nac]['frequency_data'][freq]['srctags'][1];
-			
-
-// 			let source1 = (srctag1 != null && srctag1 !== "")
-// 				? srctag1
-// 				: (src1 != null && src1 !== "" && src1 !== 0)
-// 					? `ID: ${src1}`
-// 					: null;
-// 			
-// 			let source2 = (srctag2 != null && srctag2 !== "")
-// 				? srctag2
-// 				: (src2 != null && src2 !== "" && src2 !== 0)
-// 					? `ID: ${src2}`
-// 					: null;
+			let srctag1 = null;
+			let srctag2 = null;
+            if (d[nac]['frequency_data'][freq]['srctags'] != undefined) {   // srctags not sent by smartnet systems
+				let srctag1 = d[nac]['frequency_data'][freq]['srctags'][0];
+				let srctag2 = d[nac]['frequency_data'][freq]['srctags'][1];
+			}
 
 			let source1 =
 			  (srctag1 != null && String(srctag1).trim() !== "")
@@ -1384,10 +1379,6 @@ if (hasValue(tg2)) {
 				: (src2 != null && String(src2).trim() !== "" && Number(src2) !== 0)
 					? `ID: ${src2}`
 					: null;
-			
-			
-			
-			
 			
 			dispSrc1 = (source1 == null) ? "-" : source1;
 			dispSrc2 = (source2 == null) ? "-" : source2;
