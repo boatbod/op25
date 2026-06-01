@@ -6,7 +6,7 @@
             "trunking_sysname": "Trunked System",
             "demod_type": "cqpsk", 
             "#destination": "udp://0.0.0.0:23456", 
-            "destination": "udp://0.0.0.0:9000", 
+            "destination": "ws://0.0.0.0:9000", 
             "meta_stream_name": "",
             "excess_bw": 0.2, 
             "filter_type": "rc", 
