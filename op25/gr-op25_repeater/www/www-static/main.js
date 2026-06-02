@@ -1355,15 +1355,15 @@ function trunk_update(d) {
 			let src1 = null;
 			let src2 = null;
             if (d[nac]['frequency_data'][freq]['srcaddrs'] != undefined) {	// srcaddrs not sent by smartnet systems
-				let src1 = d[nac]['frequency_data'][freq]['srcaddrs'][0];
-				let src2 = d[nac]['frequency_data'][freq]['srcaddrs'][1];
+				src1 = d[nac]['frequency_data'][freq]['srcaddrs'][0];
+				src2 = d[nac]['frequency_data'][freq]['srcaddrs'][1];
 			}
             
 			let srctag1 = null;
 			let srctag2 = null;
             if (d[nac]['frequency_data'][freq]['srctags'] != undefined) {   // srctags not sent by smartnet systems
-				let srctag1 = d[nac]['frequency_data'][freq]['srctags'][0];
-				let srctag2 = d[nac]['frequency_data'][freq]['srctags'][1];
+				srctag1 = d[nac]['frequency_data'][freq]['srctags'][0];
+				srctag2 = d[nac]['frequency_data'][freq]['srctags'][1];
 			}
 
 			let source1 =
