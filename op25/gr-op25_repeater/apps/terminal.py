@@ -346,7 +346,7 @@ class curses_terminal(threading.Thread):
         if msg['json_type'] == 'trunk_update':
             nacs = [x for x in list(msg.keys()) if x.isnumeric() ]
             if not nacs:
-                return
+                return False
             sysnames = {}
             for nac in nacs:
                 if 'system' in msg[nac] and msg[nac]['system'] is not None:
@@ -416,7 +416,7 @@ class curses_terminal(threading.Thread):
             self.stdscr.refresh()
         elif msg['json_type'] == 'channel_update': # from multi_rx.py trunking
             if ('channels' not in msg) or (len(msg['channels']) == 0):
-                return
+                return False
             self.channel_list = msg['channels']
 
             # Pick the default channel if specified and this is the first update received.

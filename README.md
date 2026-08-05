@@ -1,7 +1,5 @@
 # This is the boatbod fork of op25.  
 
-Capabilities are broadly categorized into two lists - those supported by the legacy `rx.py` version of the app and those by the newer `multi_rx.py` version.  I recommend using `multi_rx.py` where at all possible as this is the focus of future development.
-
 ## `rx.py` capabilities
 
 - P25 Conventional (single frequency)
@@ -36,12 +34,17 @@ Capabilities are broadly categorized into two lists - those supported by the leg
 - RID text tagging
 - Dynamically controllable real-time plots: FFT, Constellation, Symbol, Datascope, Mixer, Tuning
 - Dynamically controllable log level
-- Awesome new HTTP based terminal by Outerdog(RR)/Triptolemus510(github)
+- Awesome new HTTP based terminal by Outerdog(RR)/Triptolemus510(github) with websocket audio
 - JSON based configuration
 - DSD .wav and .iq file replay
 - Dynamic demodulator symbol capture and replay (commanded through terminal)
 - Voice Encryption detection and skipping (configurable behavior)
 - Automatic fine tune tracking using Frequency Locked Loop (FLL)
+
+# Contributed by W1JPI fork of op25
+NBFM squelch algorithms based on the work of PA3FWM (https://www.pa3fwm.nl/technotes/tn16e.html)
+A noise squelch calibrated in dB of quieting (no per-device threshold hunting) and an optional speech
+detector, selected via `nbfm_squelch_mode`. See `op25/gr-op25_repeater/apps/README-analog.md` for details.
 
 ## Encryption capabilities
 Real-time decryption of encrypted P25 voice traffic is supported for several commonly used protocols

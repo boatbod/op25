@@ -615,7 +615,10 @@ class rx_block (gr.top_block):
         return self.interactive
 
     def configure_audio(self, config):
-        audio_mod = config['module']
+        audio_mod = str(from_dict(config, 'module', ""))
+        if audio_mod == "":    # tolerate empty/missing module: audio disabled
+            sys.stderr.write("Audio module not specified; audio output disabled\n")
+            return
         if audio_mod.endswith('.py'):
             audio_mod = audio_mod[:-3]
         try:
@@ -647,7 +650,10 @@ class rx_block (gr.top_block):
             idx += 1
 
     def configure_terminal(self, config):
-        term_mod = config['module']
+        term_mod = str(from_dict(config, 'module', ""))
+        if term_mod == "":     # tolerate empty/missing module: no terminal
+            sys.stderr.write("Terminal module not specified; terminal disabled\n")
+            return
         if term_mod.endswith('.py'):
             term_mod = term_mod[:-3]
         try:
@@ -682,7 +688,10 @@ class rx_block (gr.top_block):
             sys.stderr.write("Enabled trunking module: %s\n" % config['module'])
 
     def configure_metadata(self, config):
-        meta_mod = config['module']
+        meta_mod = str(from_dict(config, 'module', ""))
+        if meta_mod == "":     # tolerate empty/missing module: metadata disabled
+            sys.stderr.write("Metadata module not specified; metadata streaming disabled\n")
+            return
         if meta_mod.endswith('.py'):
             meta_mod = meta_mod[:-3]
         try:

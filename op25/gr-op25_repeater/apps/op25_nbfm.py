@@ -30,6 +30,7 @@ from gnuradio import filter, analog, digital, blocks
 from gnuradio.fft import window
 from math import pi
 import gnuradio.op25_repeater as op25_repeater
+import op25_squelch
 from log_ts import log_ts
 
 _PCM_RATE       = 8000   # PCM is 8kHz S16LE format
@@ -53,23 +54,47 @@ class op25_nbfm_c(gr.hier_block2):
         self.msgq_id = msgq_id
         self.subchannel_framer = None
 
-        sys.stderr.write("%s [%d] Enabling nbfm analog audio\n" % (log_ts.get(), msgq_id))
-
         # load config
         input_rate = int(from_dict(config, 'if_rate', 24000))
         deviation = int(from_dict(config, 'nbfm_deviation', 4000))
         squelch = int(from_dict(config, 'nbfm_squelch_threshold', -60))
         gain = float(from_dict(config, 'nbfm_squelch_gain', 0.0015))
+        squelch_mode = str(from_dict(config, 'nbfm_squelch_mode', "power")).lower()
+        noise_squelch_db = float(from_dict(config, 'nbfm_noise_squelch_db', 8.0))
+        noise_squelch_hang = int(from_dict(config, 'nbfm_noise_squelch_hang', 250))
+        noise_squelch_ref = float(from_dict(config, 'nbfm_noise_squelch_ref', 0.0))
         subchannel_enabled = bool(from_dict(config, 'nbfm_enable_subchannel', False))
         raw_in = str(from_dict(config, 'nbfm_raw_input', ""))
         raw_out = str(from_dict(config, 'nbfm_raw_output', ""))
+
+        if squelch_mode not in ("power", "noise", "voice"):
+            sys.stderr.write("%s [%d] Unknown nbfm_squelch_mode '%s'; using 'power'\n" % (log_ts.get(), msgq_id, squelch_mode))
+            squelch_mode = "power"
+        self.squelch_mode = squelch_mode
+
+        sys.stderr.write("%s [%d] Enabling nbfm analog audio (squelch mode: %s)\n" % (log_ts.get(), msgq_id, squelch_mode))
 
         # 'switch' enables the analog decoding to be turned on/off
         self.switch = blocks.copy(gr.sizeof_gr_complex)
         self.switch.set_enabled(False)
 
-        # power squelch
-        self.squelch = analog.simple_squelch_cc(squelch, gain)
+        # legacy power squelch (PA3FWM algorithm 1) ahead of the discriminator
+        self.squelch = None
+        # noise squelch (PA3FWM algorithm 2) on the discriminator output;
+        # "voice" additionally requires DB1NV speech detection to open
+        self.noise_squelch = None
+        if squelch_mode == "power":
+            self.squelch = analog.simple_squelch_cc(squelch, gain)
+        else:
+            self.noise_squelch = op25_squelch.noise_squelch_ff(
+                input_rate=input_rate,
+                deviation=deviation,
+                open_db=noise_squelch_db,
+                hang_ms=noise_squelch_hang,
+                voice_detect=(squelch_mode == "voice"),
+                reference=noise_squelch_ref,
+                debug=debug,
+                msgq_id=msgq_id)
 
         # quadrature demod
         fm_demod_gain = input_rate / (4 * pi * deviation)
@@ -102,15 +127,22 @@ class op25_nbfm_c(gr.hier_block2):
             self.connect(self, self.null_sink)                                  # dispose of regular input
             self.raw_file = blocks.file_source(gr.sizeof_float, raw_in, False)
             self.throttle = blocks.throttle(gr.sizeof_float, input_rate)
-            self.throttle.set_max_noutput_items(input_rate/50);
+            self.throttle.set_max_noutput_items(input_rate // 50)
             self.fm_demod = self.throttle                                       # and replace fm_demod with throttled file source
             self.connect(self.raw_file, self.throttle)
             sys.stderr.write("%s [%d] Reading nbfm demod from file: %s\n" % (log_ts.get(), msgq_id, raw_in))
 
-        else:
+        elif self.squelch is not None:
             self.connect(self, self.switch, self.squelch, self.fm_demod)
+        else:
+            # noise squelch operates downstream of the discriminator and
+            # must see the raw no-carrier noise, so no power squelch here
+            self.connect(self, self.switch, self.fm_demod)
 
-        self.connect(self.fm_demod, self.deemph, self.lp_filter, self.hp_filter, self.analog_udp)
+        if self.noise_squelch is not None:
+            self.connect(self.fm_demod, self.noise_squelch, self.deemph, self.lp_filter, self.hp_filter, self.analog_udp)
+        else:
+            self.connect(self.fm_demod, self.deemph, self.lp_filter, self.hp_filter, self.analog_udp)
 
         # raw capture
         if raw_in == "" and raw_out != "":
@@ -139,6 +171,8 @@ class op25_nbfm_c(gr.hier_block2):
 
     def control(self, action):
         self.switch.set_enabled(action)
+        if action and self.noise_squelch is not None:
+            self.noise_squelch.reset()  # discard gate state from the previous call
         if self.debug >= 5:
             sys.stderr.write("%s [%d] op25_nbfm::control: analog audio %s\n" % (log_ts.get(), self.msgq_id, ('enabled' if action else 'disabled')))
 
@@ -146,4 +180,6 @@ class op25_nbfm_c(gr.hier_block2):
         self.debug = dbglvl
         if self.subchannel_framer is not None:
             self.subchannel_framer.set_debug(dbglvl)
+        if self.noise_squelch is not None:
+            self.noise_squelch.set_debug(dbglvl)
 

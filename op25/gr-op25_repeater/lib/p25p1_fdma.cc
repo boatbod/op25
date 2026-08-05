@@ -351,6 +351,16 @@ namespace gr {
                 }
             }
 
+            // When configured to skip encrypted audio (crypt_behavior >= 2) there is no key to
+            // decrypt with, so apply a newly received encrypted AlgId before this LDU2's voice is
+            // processed. Otherwise LDU2 is decoded under the previous (cleared) crypto state and
+            // its 180 ms of vocoder output reaches the audio sink before the gate engages. Key-
+            // loaded operation (crypt_behavior 0 and 1) keeps the original ordering so that the MI
+            // and keystream sequencing used for decryption are unchanged.
+            if ((d_behavior >= 2) && next_ess_valid && (next_algid != 0x80)) {
+                ess_algid = next_algid;
+            }
+
             process_voice(A, FT_LDU2);
 
             // replace existing ess with newly received data now that voice processing is complete

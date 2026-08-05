@@ -1,0 +1,69 @@
+{
+    "#comment": "Base template for NBFM squelch field tests. Do not edit for a run --",
+    "#comment2": "run-field-test.sh renders this into results/<run>/op25.json with the",
+    "#comment3": "chosen mode, frequency and overrides. See README.md.",
+    "channels": [
+        {
+            "name": "nbfm test",
+            "frequency": 162400000,
+            "device": "sdr0",
+            "trunking_sysname": "",
+            "meta_stream_name": "",
+            "demod_type": "fsk4",
+            "destination": "udp://127.0.0.1:23456",
+            "excess_bw": 0.2,
+            "filter_type": "widepulse",
+            "if_rate": 24000,
+            "plot": "",
+            "symbol_rate": 4800,
+            "enable_analog": "on",
+            "nbfm_deviation": 4000,
+            "nbfm_squelch_mode": "noise",
+            "nbfm_noise_squelch_db": 8,
+            "nbfm_noise_squelch_hang": 250,
+            "nbfm_raw_output": "",
+            "blacklist": "",
+            "whitelist": ""
+        }
+    ],
+    "devices": [
+        {
+            "args": "rtl=0",
+            "frequency": 162400000,
+            "gains": "LNA:32",
+            "gain_mode": false,
+            "name": "sdr0",
+            "offset": 0,
+            "ppm": 0.0,
+            "rate": 960000,
+            "usable_bw_pct": 0.85,
+            "tunable": false
+        }
+    ],
+    "trunking": {
+        "module": "",
+        "chans": []
+    },
+    "audio": {
+        "module": "sockaudio.py",
+        "instances": [
+            {
+                "instance_name": "audio0",
+                "device_name": "default",
+                "udp_port": 23458,
+                "audio_gain": 1.0,
+                "number_channels": 1
+            }
+        ]
+    },
+    "terminal": {
+        "module": "terminal.py",
+        "terminal_type": "http:127.0.0.1:8080",
+        "curses_plot_interval": 0.2,
+        "http_plot_interval": 1.0,
+        "http_plot_directory": "../www/images",
+        "tuning_step_large": 1200,
+        "tuning_step_small": 100,
+        "default_channel": "nbfm test"
+    }
+}
