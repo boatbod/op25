@@ -185,6 +185,7 @@ namespace gr {
         void p25p1_fdma::set_debug(int debug)
         {
             d_debug = debug;
+            crypt_algs.set_debug(debug);
             framer->set_debug(debug);
         }
 

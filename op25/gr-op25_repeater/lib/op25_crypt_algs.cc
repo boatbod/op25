@@ -51,6 +51,14 @@ op25_crypt_algs::~op25_crypt_algs() {
     }
 }
 
+// update logging level for all algs
+void op25_crypt_algs::set_debug(int debug) {
+    d_debug = debug;
+    for (auto& it : d_algs) {
+        it.second->set_debug(debug);
+    }
+}
+
 // remove all stored keys
 void op25_crypt_algs::reset(void) {
     for (auto& it : d_algs) {

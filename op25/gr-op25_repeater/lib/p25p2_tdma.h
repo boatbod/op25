@@ -55,7 +55,7 @@ class p25p2_tdma
         void set_xormask(const char*p);
         inline void set_nac(int nac) { d_nac = nac; }
         void crypt_behavior(int behavior);
-        inline void set_debug(int debug) { d_debug = debug; }
+        inline void set_debug(int debug) { d_debug = debug; crypt_algs.set_debug(debug); }
         bool rx_sym(uint8_t sym);
         int handle_frame(void) ;
     private:

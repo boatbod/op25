@@ -809,6 +809,13 @@ void p25p2_tdma::handle_4V2V_ess(const uint8_t dibits[])
                 next_mi[i++] = (uint8_t) ((ESS_B[j+6] & 0x03) << 6) +  ESS_B[j+7];
                 j += 4;
             }
+
+            // When configured to skip encrypted audio (crypt_behavior >= 2) there is no key to
+            // decrypt with, so apply a newly received encrypted AlgId immediately to silence
+            // any encrypted voice frames where the MAC_PTT ESS may have been missed
+            if ((d_behavior >= 2) && (next_algid != 0x80)) {
+                ess_algid = next_algid;
+            }
         } else {
             // if FEC decode was bad, use the old ess info and calculate the next ess_mi
             next_algid = ess_algid;

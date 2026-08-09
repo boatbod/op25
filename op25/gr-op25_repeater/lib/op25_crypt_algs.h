@@ -45,7 +45,7 @@ class op25_crypt_algs
         bool prepare(uint8_t algid, uint16_t keyid, protocol_type pr_type, uint8_t *MI);
         bool process(packed_codeword& PCW, frame_type fr_type, int voice_subframe);
         void reset(void);
-        inline void set_debug(int debug) {d_debug = debug;}
+        void set_debug(int debug);
 
         static void cycle_p25_mi(uint8_t *MI); 
         static void expand_mi_to_128(uint8_t *MI, uint8_t *IV);

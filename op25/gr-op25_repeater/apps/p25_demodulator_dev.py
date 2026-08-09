@@ -190,6 +190,7 @@ class p25_demod_base(gr.hier_block2):
             self.slicer = op25_repeater.fsk4_slicer_fb(self.msgq_id, self.debug, levels)
 
     def set_debug(self, debug):
+        self.debug = debug
         if callable(getattr(self.slicer, 'set_debug', None)):
             self.slicer.set_debug(debug)
 
