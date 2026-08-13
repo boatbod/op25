@@ -2684,10 +2684,6 @@ class p25_receiver(object):
     def hold_talkgroup(self, tgid, curr_time):
         update_meta = False
         if tgid > 0:
-            if self.whitelist is not None and tgid not in self.whitelist:
-                if self.debug > 1:
-                    sys.stderr.write("%s [%d] hold tg(%d) not in whitelist\n" % (log_ts.get(), self.msgq_id, tgid))
-                return
             with self.system.talkgroups_mutex:
                 add_default_tgid(self.talkgroups, tgid)
             self.hold_tgid = tgid
