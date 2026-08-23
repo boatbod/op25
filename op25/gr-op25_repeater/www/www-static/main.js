@@ -63,6 +63,7 @@ var audioChannels = {};
 var muteAudioAtStartup = false;
 const WS_AUDIO_SAMPLE_RATE = 8000;
 var enc_sym = "&#216;";
+var config_cache = null;
 // var presets = [];
 var site_alias = [];
 var newPresets = [];
@@ -2252,7 +2253,9 @@ function getSiteAlias(sysname, rfss, site) {
     const sysNameUpper = String(sysname).toUpperCase();  // Normalize sysname to uppercase
 
     if (!site_alias || Object.keys(site_alias).length === 0) {
-        send_command('get_full_config');
+        if (config_cache == null) {
+            send_command('get_full_config');
+        }
     }
 
     try {
@@ -2449,7 +2452,12 @@ async function get_presets_from_config(sysname, retries = 3, delay = 500) {
 }
 
 async function findPresetsForSysname(targetSysname) {
-    const configData = await get_presets_from_config(targetSysname);
+    var configData;
+    if (config_cache == null) {
+        configData = await get_presets_from_config(targetSysname);
+    } else {
+        configData = [ config_cache ];
+    }
 
     if (!configData || !Array.isArray(configData) || configData.length === 0) {
         console.warn("Invalid config data or config data not ready yet in findPresetsForSysname()");
@@ -2599,6 +2607,10 @@ function ws_connect(channel) {
 }
 
 function full_config(config) {
+    // only load the config once, then cache it
+    if (config_cache == null) {
+        config_cache = config;
+    }
 
 	var sa = config['trunking'] ? config['trunking']['chans'] : [];
 	site_alias = buildSiteAliases(sa);
