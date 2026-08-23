@@ -842,6 +842,8 @@ class rx_block (gr.top_block):
         if msg is None:
             return True
         s = msg.to_string()
+        if self.verbosity >= 11:
+            sys.stderr.write("%s process_qmsg: ui_cmd=%s\n" % (log_ts.get(), s))
         ui_rsp = []
         if type(s) is not str and isinstance(s, bytes):
             # should only get here if python3
