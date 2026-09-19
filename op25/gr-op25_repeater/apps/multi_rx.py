@@ -452,7 +452,6 @@ class channel(object):
                 self.sinks['fft'][0].set_relative_freq(self.device.frequency - freq)
         if self.verbosity >= 9:
             sys.stderr.write("%s [%d] Tuning to frequency %f\n" % (log_ts.get(), self.msgq_id, (freq/1e6)))
-        #self.demod.reset()          # reset gardner-costas tracking loop NOTE: tuning appears to be faster without this step
         self.decoder.control(json.dumps({'tuner': self.msgq_id, 'cmd': 'sync_reset'}))
         return True
 
@@ -530,6 +529,7 @@ class rx_block (gr.top_block):
     #
     def __init__(self, verbosity, config):
         self.config = config
+        self.config_version = float(from_dict(config, "version", 1.0))
         self.verbosity = verbosity
         self.devices = []
         self.channels = []
@@ -551,6 +551,8 @@ class rx_block (gr.top_block):
 
         gr.top_block.__init__(self)
         self.device_id_by_name = {}
+
+        sys.stderr.write("OP25 Config Version: %f\n" % self.config_version)
 
         if "audio" in config:
             self.configure_audio(config['audio'])
