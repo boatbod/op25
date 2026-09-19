@@ -1,4 +1,5 @@
 {
+    "version": 2.0,
     "channels": [
         {
             "name": "Channel 0", 

@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/python3
 # Copyright 2011, 2012, 2013, 2014, 2015, 2016, 2017 Max H. Parke KA1RBI
 # Copyright 2020-2026 Graham J. Norbury - gnorbury@bondcar.com
 # 
@@ -19,29 +19,6 @@
 # Software Foundation, Inc., 51 Franklin Street, Boston, MA
 # 02110-1301, USA.
 
-"true" '''\'
-DEFAULT_PYTHON2=/usr/bin/python
-DEFAULT_PYTHON3=/usr/bin/python3
-if [ -f op25_python ]; then
-    OP25_PYTHON=$(cat op25_python)
-else
-    OP25_PYTHON="/usr/bin/python"
-fi
-
-if [ -x $OP25_PYTHON ]; then
-    echo Using Python $OP25_PYTHON >&2
-    exec $OP25_PYTHON "$0" "$@"
-elif [ -x $DEFAULT_PYTHON2 ]; then
-    echo Using Python $DEFAULT_PYTHON2 >&2
-    exec $DEFAULT_PYTHON2 "$0" "$@"
-elif [ -x $DEFAULT_PYTHON3 ]; then
-    echo Using Python $DEFAULT_PYTHON3 >&2
-    exec $DEFAULT_PYTHON3 "$0" "$@"
-else
-    echo Unable to find Python >&2
-fi
-exit 127
-'''
 import io
 import os
 import sys
@@ -59,7 +36,7 @@ from optparse import OptionParser
 
 import gnuradio.op25 as op25
 import gnuradio.op25_repeater as op25_repeater
-import p25_demodulator_dev as p25_demodulator
+import p25_demodulator as p25_demodulator
 import op25_nbfm
 import op25_iqsrc
 import op25_wavsrc
@@ -683,7 +660,9 @@ class rx_block (gr.top_block):
             self.trunking = None
 
         if self.trunking is not None:
-            self.trunk_rx = self.trunking.rx_ctl(frequency_set = self.change_freq, nbfm_ctrl = self.nbfm_control, fa_ctrl = self.fa_control, debug = self.verbosity, chans = config['chans'])
+            cfg_systems = config['systems'] if 'systems' in config else {}
+            cfg_chans   = config['chans'] if 'chans' in config else {}
+            self.trunk_rx = self.trunking.rx_ctl(frequency_set = self.change_freq, nbfm_ctrl = self.nbfm_control, fa_ctrl = self.fa_control, debug = self.verbosity, cfg_systems = cfg_systems, cfg_chans = cfg_chans)
             self.du_watcher = du_queue_watcher(self.rx_q, self.trunk_rx.process_qmsg)
             sys.stderr.write("Enabled trunking module: %s\n" % config['module'])
 
@@ -1053,11 +1032,6 @@ class rx_main(object):
         parser.add_option("-p", "--pause", action="store_true", default=False, help="block on startup")
         parser.add_option("-d", "--dev-mode", action="store_true", default=False, help="enable developer mode")
         (options, args) = parser.parse_args()
-
-        #if options.dev_mode:
-        #    globals()["p25_demodulator"] = importlib.import_module("p25_demodulator_dev")
-        #else:
-        #    globals()["p25_demodulator"] = importlib.import_module("p25_demodulator")
 
         # wait for gdb
         sys.stderr.write("Starting OP25 (pid = %d)\n" % (os.getpid()))

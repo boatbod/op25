@@ -1,6 +1,6 @@
 # P25 trunking module
 #
-# Copyright 2020-2024 Graham J. Norbury - gnorbury@bondcar.com
+# Copyright 2020-2026 Graham J. Norbury - gnorbury@bondcar.com
 # 
 # This file is part of OP25
 # 
@@ -111,47 +111,56 @@ def get_tgid(tgid):
 #################
 # Main trunking class
 class rx_ctl(object):
-    def __init__(self, debug=0, frequency_set=None, nbfm_ctrl=None, fa_ctrl=None, chans={}):
+    def __init__(self, debug=0, frequency_set=None, nbfm_ctrl=None, fa_ctrl=None, cfg_systems={}, cfg_chans={}):
         self.frequency_set = frequency_set
         self.nbfm_ctrl = nbfm_ctrl
         self.fa_ctrl = fa_ctrl
         self.debug = debug
         self.receivers = {}
+        self.sites = {}
         self.systems = {}
-        self.chans = chans
         self.cleanup_timer = time.time()
         self.call_log = deque(maxlen=CALL_LOG_MAX_LEN)
         self.call_log_mutex = TimeoutLock(timeout=1.0)
 
-        for chan in self.chans:
+        for syst in cfg_systems:
+            syst_wacn  = ast.literal_eval(from_dict(syst, "wacn", 0))
+            syst_sysid = ast.literal_eval(from_dict(syst, "sysid", 0))
+            syst_name  = str(from_dict(syst, "name", ""))
+            if syst_wacn == 0 or syst_sysid == 0 or syst_name == "":
+                continue
+            else:
+                sys.stderr.write("System (%s): %x / %x\n" % (syst_name, syst_wacn, syst_sysid))
+
+        for chan in cfg_chans:
             sysname = chan['sysname']
-            if sysname not in self.systems:
-                self.systems[sysname] = { 'system': None, 'receivers': [] }
-                self.systems[sysname]['system'] = p25_system(debug  = self.debug,
-                                                             config = chan,
-                                                             rx_ctl = self)
+            if sysname not in self.sites:
+                self.sites[sysname] = { 'site': None, 'receivers': [] }
+                self.sites[sysname]['site'] = p25_site(debug  = self.debug,
+                                                         config = chan,
+                                                         rx_ctl = self)
 
     # add_receiver is called once per radio channel defined in cfg.json
     def add_receiver(self, msgq_id, config, meta_q = None, freq = 0):
         if msgq_id in self.receivers: # should be impossible
             return
 
-        rx_sys  = None
+        rx_site = None
         rx_rcvr = None
         rx_name = from_dict(config, 'name', str(msgq_id))
         rx_sysname = from_dict(config, 'trunking_sysname', "undefined")
 
-        if rx_sysname in self.systems:   # known trunking system
-            rx_sys  = from_dict(self.systems[rx_sysname], 'system', None)
+        if rx_sysname in self.sites:   # known trunking site
+            rx_site = from_dict(self.sites[rx_sysname], 'site', None)
             rx_rcvr = p25_receiver(debug         = self.debug,
                                    msgq_id       = msgq_id,
                                    frequency_set = self.frequency_set,
                                    fa_ctrl       = self.fa_ctrl,
-                                   system        = rx_sys,
+                                   site          = rx_site,
                                    config        = config,
                                    meta_q        = meta_q,
                                    freq          = freq)
-            self.systems[rx_sysname]['receivers'].append(rx_rcvr)
+            self.sites[rx_sysname]['receivers'].append(rx_rcvr)
         else:                            # undefined or mis-configured trunking sysname
             sys.stderr.write("Receiver '%s' configured with unknown trunking_sysname '%s'\n" % (rx_name, rx_sysname))
 
@@ -177,6 +186,13 @@ class rx_ctl(object):
             sys.stderr.write("%s [rx_ctl] post initialize check control channel assignments\n" % (log_ts.get()))
         self.check_cc_assignments()
 
+    def get_system(self, wacn, sysid):
+        system_key = "%05x%03x" % (wacn, sysid)
+        if system_key in self.systems:
+            return self.systems[system_key]
+        else:
+            return None
+
     # process_qmsg is the main message dispatch handler connecting the 'radios' to python
     def process_qmsg(self, msg):
         curr_time = time.time()
@@ -190,14 +206,14 @@ class rx_ctl(object):
 
         updated = 0
         if m_rxid in self.receivers and self.receivers[m_rxid]['rx_rcvr'] is not None:
-            if m_type in [7, 12, 18, 19]:                                                   # send signaling messages to p25_system object
-                updated += self.systems[self.receivers[m_rxid]['sysname']]['system'].process_qmsg(msg, curr_time)
+            if m_type in [7, 12, 18, 19]:                                                   # send signaling messages to p25_site object
+                updated += self.sites[self.receivers[m_rxid]['sysname']]['site'].process_qmsg(msg, curr_time)
             else:
                 updated += self.receivers[m_rxid]['rx_rcvr'].process_qmsg(msg, curr_time)   # send in-call messaging to p25_receiver objects
 
             if updated > 0:
                 # Check for voice receiver assignments
-                for rx in self.systems[self.receivers[m_rxid]['sysname']]['receivers']:
+                for rx in self.sites[self.receivers[m_rxid]['sysname']]['receivers']:
                     rx.scan_for_talkgroups(curr_time)
 
                 # Check for control channel reassignment
@@ -256,21 +272,21 @@ class rx_ctl(object):
 
     # Check for control channel assignments to idle receivers
     def check_cc_assignments(self):
-        for p25_sysname in self.systems:
-            p25_system = self.systems[p25_sysname]['system']
-            if p25_system.cc_msgq_id is None:
+        for p25_sysname in self.sites:
+            p25_site = self.sites[p25_sysname]['site']
+            if p25_site.cc_msgq_id is None:
                 if self.debug >= 10:
                     sys.stderr.write("%s [%s] needs control channel receiver\n" % (log_ts.get(), p25_sysname))
-                for rx in self.systems[p25_sysname]['receivers']:
+                for rx in self.sites[p25_sysname]['receivers']:
                     if rx.tuner_idle:
                         if self.debug >= 10:
                             sys.stderr.write("%s [%s] attempt to assign control channel receiver[%d]\n" % (log_ts.get(), p25_sysname, rx.msgq_id))
-                        rx.tune_cc(p25_system.get_cc(rx.msgq_id))
+                        rx.tune_cc(p25_site.get_cc(rx.msgq_id))
                         break
                     else:
                         if self.debug >= 10:
                             sys.stderr.write("%s [%s] receiver[%d] not idle\n" % (log_ts.get(), p25_sysname, rx.msgq_id))
-            if p25_system.cc_msgq_id is None: # no receivers assigned
+            if p25_site.cc_msgq_id is None: # no receivers assigned
                 if self.debug >= 5:
                     sys.stderr.write("%s [%s] has no idle receivers for control channel monitoring\n" % (log_ts.get(), p25_sysname))
 
@@ -285,19 +301,19 @@ class rx_ctl(object):
     def to_json(self):
         d = {'json_type': 'trunk_update'}
         syid = 0;
-        for system in self.systems:
-            d[syid] = json.loads(self.systems[system]['system'].to_json())
+        for site in self.sites:
+            d[syid] = json.loads(self.sites[site]['site'].to_json())
             syid += 1
         d['nac'] = 0
         return json.dumps(d)
 
     def dump_tgids(self):
-        for system in self.systems:
-            self.systems[system]['system'].dump_tgids()
-            self.systems[system]['system'].dump_patches()
-            self.systems[system]['system'].dump_wuids()
-            self.systems[system]['system'].dump_rids()
-            self.systems[system]['system'].sourceid_history.dump()
+        for site in self.sites:
+            self.sites[site]['site'].dump_tgids()
+            self.sites[site]['site'].dump_patches()
+            self.sites[site]['site'].dump_wuids()
+            self.sites[site]['site'].dump_rids()
+            self.sites[site]['site'].sourceid_history.dump()
 
     def get_chan_status(self):
         d = {'json_type': 'channel_update'}
@@ -335,9 +351,9 @@ class rx_ctl(object):
 
     def set_debug(self, dbglvl):
         self.debug = dbglvl
-        for rx_sys in self.systems:
-            if self.systems[rx_sys]['system'] is not None:
-                self.systems[rx_sys]['system'].set_debug(dbglvl)
+        for rx_sys in self.sites:
+            if self.sites[rx_sys]['site'] is not None:
+                self.sites[rx_sys]['site'].set_debug(dbglvl)
         for rcvr in self.receivers:
             if self.receivers[rcvr]['rx_rcvr'] is not None:
                 self.receivers[rcvr]['rx_rcvr'].set_debug(dbglvl)
@@ -366,6 +382,18 @@ class rx_ctl(object):
 #################
 # P25 system class
 class p25_system(object):
+    def __init__(self, debug, config):
+        self.debug = debug
+        self.config = config
+        self.talkgroups = {}
+        self.talkgroups_mutex = TimeoutLock(timeout=1.0)
+        self.sysname = config['sysname']
+        self.ns_syid = int(ast.literal_eval(from_dict(config, "sysid", "0")))
+        self.ns_wacn = int(ast.literal_eval(from_dict(config, "wacn", "0")))
+
+#################
+# P25 site class
+class p25_site(object):
     def __init__(self, debug, config, rx_ctl = None):
         self.config = config
         self.debug = debug
@@ -418,22 +446,22 @@ class p25_system(object):
         self.stats = {}
         self.stats['tsbk_count'] = 0
 
-        sys.stderr.write("%s [%s] Initializing P25 system\n" % (log_ts.get(), self.sysname))
+        sys.stderr.write("%s [%s] Initializing P25 site\n" % (log_ts.get(), self.sysname))
 
         if 'tgid_tags_file' in self.config and self.config['tgid_tags_file'] != "":
-            sys.stderr.write("%s [%s] reading system tgid_tags_file: %s\n" % (log_ts.get(), self.sysname, self.config['tgid_tags_file']))
+            sys.stderr.write("%s [%s] reading site tgid_tags_file: %s\n" % (log_ts.get(), self.sysname, self.config['tgid_tags_file']))
             self.read_tags_file(self.config['tgid_tags_file'])
 
         if 'rid_tags_file' in self.config and self.config['rid_tags_file'] != "":
-            sys.stderr.write("%s [%s] reading system rid_tags_file: %s\n" % (log_ts.get(), self.sysname, self.config['rid_tags_file']))
+            sys.stderr.write("%s [%s] reading site rid_tags_file: %s\n" % (log_ts.get(), self.sysname, self.config['rid_tags_file']))
             self.read_rids_file(self.config['rid_tags_file'])
 
         if 'blacklist' in self.config and self.config['blacklist'] != "":
-            sys.stderr.write("%s [%s] reading system blacklist file: %s\n" % (log_ts.get(), self.sysname, self.config['blacklist']))
+            sys.stderr.write("%s [%s] reading site blacklist file: %s\n" % (log_ts.get(), self.sysname, self.config['blacklist']))
             self.blacklist = get_int_dict(self.config['blacklist'], self.sysname)
 
         if 'whitelist' in self.config and self.config['whitelist'] != "":
-            sys.stderr.write("%s [%s] reading system whitelist file: %s\n" % (log_ts.get(), self.sysname, self.config['whitelist']))
+            sys.stderr.write("%s [%s] reading site whitelist file: %s\n" % (log_ts.get(), self.sysname, self.config['whitelist']))
             self.whitelist = get_int_dict(self.config['whitelist'], self.sysname)
 
         if 'band_plan' in self.config:
@@ -2194,22 +2222,22 @@ class mot_talker_alias(object):
 #################
 # P25 receiver class
 class p25_receiver(object):
-    def __init__(self, debug, msgq_id, frequency_set, fa_ctrl, system, config, meta_q = None, freq = 0):
+    def __init__(self, debug, msgq_id, frequency_set, fa_ctrl, site, config, meta_q = None, freq = 0):
         self.debug = debug
         self.msgq_id = msgq_id
         self.config = config
         self.frequency_set = frequency_set
         self.fa_ctrl = fa_ctrl
-        self.system = system
+        self.site = site
         self.meta_q = meta_q
         self.meta_stream = from_dict(self.config, 'meta_stream_name', "")
         self.tuned_frequency = freq
         self.tuner_idle = False
-        self.talkgroups = self.system.get_talkgroups()
+        self.talkgroups = self.site.get_talkgroups()
         self.skiplist = {}
         self.blacklist = {}
         self.whitelist = None
-        self.crypt_behavior = self.system.get_crypt_behavior()
+        self.crypt_behavior = self.site.get_crypt_behavior()
         self.current_nac = 0
         self.current_tgid = None
         self.current_slot = None
@@ -2228,7 +2256,7 @@ class p25_receiver(object):
         self.debug = dbglvl
 
     def log_call(self, freq, slot, prio, tgid, rid):
-        self.system.log_call(self.msgq_id, freq, slot, prio, tgid, rid)
+        self.site.log_call(self.msgq_id, freq, slot, prio, tgid, rid)
 
     def post_init(self):
         if self.debug >= 1:
@@ -2240,9 +2268,9 @@ class p25_receiver(object):
             
 
         self.load_bl_wl()
-        self.tgid_hold_time = float(from_dict(self.system.config, 'tgid_hold_time', TGID_HOLD_TIME))
+        self.tgid_hold_time = float(from_dict(self.site.config, 'tgid_hold_time', TGID_HOLD_TIME))
         meta_update(self.meta_q, msgq_id=self.msgq_id, debug=self.debug)
-        nac, wacn, sysid, valid = self.system.get_tdma_params() # check for xormask preload
+        nac, wacn, sysid, valid = self.site.get_tdma_params() # check for xormask preload
         if valid and self.fa_ctrl is not None:
             self.fa_ctrl({'tuner': self.msgq_id, 'cmd': 'set_xormask', 'nac': nac, 'wacn': wacn, 'sysid': sysid})
         self.idle_rx()
@@ -2252,13 +2280,13 @@ class p25_receiver(object):
             sys.stderr.write("%s [%d] reading channel blacklist file: %s\n" % (log_ts.get(), self.msgq_id, self.config['blacklist']))
             self.blacklist = get_int_dict(self.config['blacklist'], self.msgq_id)
         else:
-            self.blacklist = self.system.get_blacklist()
+            self.blacklist = self.site.get_blacklist()
 
         if 'whitelist' in self.config and self.config['whitelist'] != "":
             sys.stderr.write("%s [%d] reading channel whitelist file: %s\n" % (log_ts.get(), self.msgq_id, self.config['whitelist']))
             self.whitelist = get_int_dict(self.config['whitelist'], self.msgq_id)
         else:
-            self.whitelist = self.system.get_whitelist()
+            self.whitelist = self.site.get_whitelist()
 
     def set_nac(self, nac):
         if self.current_nac != nac:
@@ -2266,7 +2294,7 @@ class p25_receiver(object):
             self.fa_ctrl({'tuner': self.msgq_id, 'cmd': 'set_nac', 'nac': nac})
 
     def idle_rx(self):
-        if not (self.tuner_idle or self.system.has_cc(self.msgq_id)): # don't idle a control channel or an already idle receiver
+        if not (self.tuner_idle or self.site.has_cc(self.msgq_id)): # don't idle a control channel or an already idle receiver
             if self.debug >= 5:
                 sys.stderr.write("%s [%d] idling receiver\n" % (log_ts.get(), self.msgq_id))
             if self.fa_ctrl is not None:
@@ -2279,8 +2307,8 @@ class p25_receiver(object):
             self.idle_rx()
             return
 
-        if self.current_nac != self.system.get_nac():
-            self.set_nac(self.system.get_nac())
+        if self.current_nac != self.site.get_nac():
+            self.set_nac(self.site.get_nac())
 
         if self.tuner_idle:
             if self.fa_ctrl is not None:
@@ -2291,7 +2319,7 @@ class p25_receiver(object):
         tune_params = {'tuner':   self.msgq_id,
                        'sigtype': "P25",
                        'freq':    freq,
-                       'rate':    self.system.cc_rate,
+                       'rate':    self.site.cc_rate,
                        'tdma':    None}
         self.frequency_set(tune_params)
         self.tuned_frequency = freq
@@ -2310,13 +2338,13 @@ class p25_receiver(object):
         else:
             if self.debug >= 5:
                 sys.stderr.write("%s [%d] releasing control channel\n" % (log_ts.get(), self.msgq_id))
-            self.system.release_cc(self.msgq_id)                 # release control channel responsibility
+            self.site.release_cc(self.msgq_id)                 # release control channel responsibility
 
-        if self.current_nac != self.system.get_nac():
-            self.set_nac(self.system.get_nac())
+        if self.current_nac != self.site.get_nac():
+            self.set_nac(self.site.get_nac())
 
         if (freq != self.tuned_frequency) or (slot != self.current_slot):
-            nac, wacn, sysid, valid = self.system.get_tdma_params()
+            nac, wacn, sysid, valid = self.site.get_tdma_params()
             if slot is not None and not valid:                   # Can only tune tdma voice channel if nac/wacn/sysid are known
                 sys.stderr.write("%s [%d] cannot tune voice channel; wacn/sysid not yet known\n" % (log_ts.get(), self.msgq_id))
                 return
@@ -2341,7 +2369,7 @@ class p25_receiver(object):
         if not self.hold_mode:
             self.hold_tgid = None
             self.hold_until = time.time()
-        with self.system.talkgroups_mutex:
+        with self.site.talkgroups_mutex:
             self.talkgroups[tgid]['receiver'] = self
 
     def ui_command(self, cmd, data, curr_time):
@@ -2377,10 +2405,10 @@ class p25_receiver(object):
         if (m_type == -1):  # Channel Timeout
             updated += 1
             if self.current_tgid is None:
-                if self.system.has_cc(self.msgq_id):
-                    if ((self.debug > 0) and (self.system.cc_retries == 0)) or (self.debug > 10):  # only log once per timeout unless log level > 10
+                if self.site.has_cc(self.msgq_id):
+                    if ((self.debug > 0) and (self.site.cc_retries == 0)) or (self.debug > 10):  # only log once per timeout unless log level > 10
                         sys.stderr.write("%s [%d] control channel timeout, freq(%f)\n" % (log_ts.get(), self.msgq_id, (self.tuned_frequency/1e6)))
-                    self.tune_cc(self.system.timeout_cc(self.msgq_id))
+                    self.tune_cc(self.site.timeout_cc(self.msgq_id))
             else:
                 if self.debug > 1:
                     sys.stderr.write("%s [%d] voice channel timeout, freq(%f)\n" % (log_ts.get(), self.msgq_id, (self.tuned_frequency/1e6)))
@@ -2403,14 +2431,14 @@ class p25_receiver(object):
                 return updated
 
             if encrypted >= 0 and algid >= 0 and keyid >= 0: # log and save encryption information
-                with self.system.talkgroups_mutex:
+                with self.site.talkgroups_mutex:
                     if self.debug >= 5 and (algid != self.talkgroups[self.current_tgid]['algid'] or keyid != self.talkgroups[self.current_tgid]['keyid']):
                         sys.stderr.write('%s [%d] encrypt info: tg=%d, algid=0x%x, keyid=0x%x\n' % (log_ts.get(), self.msgq_id, self.current_tgid, algid, keyid))
                     self.talkgroups[self.current_tgid]['encrypted'] = encrypted
                     self.talkgroups[self.current_tgid]['algid'] = algid
                     self.talkgroups[self.current_tgid]['keyid'] = keyid
 
-            updated += self.system.update_talkgroup_srcaddr(curr_time, self.current_tgid, srcaddr)
+            updated += self.site.update_talkgroup_srcaddr(curr_time, self.current_tgid, srcaddr)
             
             #self.fa_ctrl({'tuner': self.msgq_id, 'cmd': 'crypt_behavior', 'behavior': self.crypt_behavior})
 
@@ -2428,8 +2456,8 @@ class p25_receiver(object):
                 self.tune_ts = None
 
             if self.current_tgid is None:
-                if self.system.has_cc(self.msgq_id):
-                    self.system.sync_cc()
+                if self.site.has_cc(self.msgq_id):
+                    self.site.sync_cc()
             else:
                 self.vc_retries = 0
             return updated
@@ -2438,7 +2466,7 @@ class p25_receiver(object):
             s = msg.to_string()
             nac = get_ordinals(s[:2])   # first two bytes are NAC
             s = s[2:]
-            if (nac != 0xffff) and (nac != self.system.get_nac()):
+            if (nac != 0xffff) and (nac != self.site.get_nac()):
                 return updated
 
             if   m_type ==  3: # call termination, no release
@@ -2456,9 +2484,9 @@ class p25_receiver(object):
                 ga    = get_ordinals(s[15:17])
                 if self.debug >= 10:
                     sys.stderr.write('%s [%d] mac_ptt: mi: %018x algid: %02x keyid:%04x ga: %d sa: %d\n' % (log_ts.get(), m_rxid, mi, algid, keyid, ga, sa))
-                updated += self.system.update_talkgroup_srcaddr(curr_time, ga, sa)
+                updated += self.site.update_talkgroup_srcaddr(curr_time, ga, sa)
                 if algid != 0x80: # log and save encryption information
-                    with self.system.talkgroups_mutex:
+                    with self.site.talkgroups_mutex:
                         if ga in self.talkgroups:
                             if self.debug >= 5 and (algid != self.talkgroups[ga]['algid'] or keyid != self.talkgroups[ga]['keyid']):
                                 sys.stderr.write('%s [%d] encrypt info: tg=%d, algid=0x%x, keyid=0x%x\n' % (log_ts.get(), self.msgq_id, ga, algid, keyid))
@@ -2479,7 +2507,7 @@ class p25_receiver(object):
                 ga    = get_ordinals(s[15:17])
                 if self.debug >= 10:
                     sys.stderr.write('%s [%d] mac_end_ptt: ga: %d sa: %d\n' % (log_ts.get(), m_rxid, ga, sa))
-                self.system.update_talkgroup_srcaddr(curr_time, ga, sa)
+                self.site.update_talkgroup_srcaddr(curr_time, ga, sa)
                 self.expire_talkgroup(reason="duid15")
                 updated += 1
 
@@ -2578,7 +2606,7 @@ class p25_receiver(object):
         self.skiplist_update(start_time)
         self.blacklist_update(start_time)
 
-        with self.system.talkgroups_mutex:
+        with self.site.talkgroups_mutex:
             if (tgid is not None) and (tgid in self.talkgroups) and ((self.talkgroups[tgid]['receiver'] is None) or (self.talkgroups[tgid]['receiver'] == self)):
                 tgt_tgid = tgid
 
@@ -2630,7 +2658,7 @@ class p25_receiver(object):
             self.tune_voice(freq, tgid, slot)
             self.log_call(freq, slot, self.talkgroups[tgid]['prio'], tgid, self.talkgroups[tgid]['srcaddr'])
 
-        meta_update(self.meta_q, tgid=tgid, tag=self.talkgroups[tgid]['tag'], rid=self.talkgroups[tgid]['srcaddr'], rtag=self.system.get_rid_tag(self.talkgroups[tgid]['srcaddr']), msgq_id=self.msgq_id, debug=self.debug)
+        meta_update(self.meta_q, tgid=tgid, tag=self.talkgroups[tgid]['tag'], rid=self.talkgroups[tgid]['srcaddr'], rtag=self.site.get_rid_tag(self.talkgroups[tgid]['srcaddr']), msgq_id=self.msgq_id, debug=self.debug)
 
     def check_expired_hold(self, curr_time):
         if self.debug > 10:
@@ -2647,7 +2675,7 @@ class p25_receiver(object):
         if self.current_tgid is None:
             return
             
-        with self.system.talkgroups_mutex:
+        with self.site.talkgroups_mutex:
             self.talkgroups[self.current_tgid]['receiver'] = None
             self.talkgroups[self.current_tgid]['frequency'] = None
             self.talkgroups[self.current_tgid]['tdma_slot'] = None
@@ -2684,7 +2712,7 @@ class p25_receiver(object):
     def hold_talkgroup(self, tgid, curr_time):
         update_meta = False
         if tgid > 0:
-            with self.system.talkgroups_mutex:
+            with self.site.talkgroups_mutex:
                 add_default_tgid(self.talkgroups, tgid)
             self.hold_tgid = tgid
             self.hold_until = curr_time + 86400 * 10000
@@ -2718,9 +2746,9 @@ class p25_receiver(object):
                 meta_update(self.meta_q, msgq_id=self.msgq_id, debug=self.debug)
 
     def get_status(self):
-        with self.system.talkgroups_mutex:
+        with self.site.talkgroups_mutex:
             _tgid = self.hold_tgid if self.hold_tgid is not None else self.current_tgid
-            cc_tag = "Control Channel" if self.system.has_cc(self.msgq_id) else "Idle" if self.tuner_idle else None
+            cc_tag = "Control Channel" if self.site.has_cc(self.msgq_id) else "Idle" if self.tuner_idle else None
             d = {}
             d['freq'] = self.tuned_frequency
             d['tdma'] = self.current_slot
@@ -2729,7 +2757,7 @@ class p25_receiver(object):
             d['tag'] = self.talkgroups[_tgid]['tag'] if _tgid is not None else cc_tag
             d['srcaddr'] = self.talkgroups[self.current_tgid]['srcaddr'] if self.current_tgid is not None else 0
             d['svcopts'] = self.talkgroups[self.current_tgid]['svcopts'] if self.current_tgid is not None else 0
-            d['srctag'] = self.system.get_rid_tag(self.talkgroups[self.current_tgid]['srcaddr']) if self.current_tgid is not None else ""
+            d['srctag'] = self.site.get_rid_tag(self.talkgroups[self.current_tgid]['srcaddr']) if self.current_tgid is not None else ""
             d['encrypted'] = self.talkgroups[self.current_tgid]['encrypted'] if self.current_tgid is not None else 0
             d['emergency'] = (d['svcopts'] >> 7) & 0x1
             d['hold_tgid'] = self.hold_tgid if self.hold_tgid is not None else 0

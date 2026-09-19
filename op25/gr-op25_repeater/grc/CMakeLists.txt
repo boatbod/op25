@@ -25,6 +25,5 @@ install(FILES
     op25_repeater_analog_udp.block.yml
     op25_repeater_frame_assembler.block.yml
     op25_repeater_gardner_cc.block.yml
-    op25_repeater_p25_frame_assembler.block.yml
     op25_repeater_vocoder.block.yml DESTINATION share/gnuradio/grc/blocks
 )

@@ -4,7 +4,7 @@
 # OP25 Demodulator Block
 # Copyright 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020 Max H. Parke KA1RBI
 #
-# Copyright 2020 Graham J. Norbury - gnorbury@bondcar.com
+# Copyright 2020-2024 Graham J. Norbury - gnorbury@bondcar.com
 # 
 # This file is part of GNU Radio and part of OP25
 # 
@@ -29,6 +29,7 @@ P25 C4FM/CQPSK demodulation block.
 """
 
 import sys
+from packaging.version import Version
 from gnuradio import gr, eng_notation
 from gnuradio import filter, analog, digital, blocks
 from gnuradio.eng_option import eng_option
@@ -38,9 +39,18 @@ import gnuradio.op25 as op25
 import gnuradio.op25_repeater as op25_repeater
 import rms_agc
 from math import pi, isnan, isinf
+from log_ts import log_ts
 
 sys.path.append('tx')
 import op25_c4fm_mod
+
+# Check for gnuradio digital.fll_band_edge_cc() thread safety
+# fix was committed just a few days after v3.10.9.2 was released
+if Version(gr.version()) > Version("3.10.9.2"):
+    _fll_threadsafe = True
+else:
+    _fll_threadsafe = False
+#
 
 # default values (used in __init__ and add_options)
 _def_output_sample_rate = 48000
@@ -103,6 +113,8 @@ class p25_demod_base(gr.hier_block2):
         self.bb_tuner_sink = {}
         self.spiir = filter.single_pole_iir_filter_ff(0.0001)
 
+        #self.switch = blocks.copy(gr.sizeof_gr_complex)
+        self.switch = blocks.copy(gr.sizeof_float)
         self.null_sink = blocks.null_sink(gr.sizeof_float)
         self.baseband_amp = blocks.multiply_const_ff(_def_bb_gain)
         coeffs = op25_c4fm_mod.c4fm_taps(sample_rate=self.if_rate, span=9, generator=op25_c4fm_mod.transfer_function_rx).generate()
@@ -178,6 +190,7 @@ class p25_demod_base(gr.hier_block2):
             self.slicer = op25_repeater.fsk4_slicer_fb(self.msgq_id, self.debug, levels)
 
     def set_debug(self, debug):
+        self.debug = debug
         if callable(getattr(self.slicer, 'set_debug', None)):
             self.slicer.set_debug(debug)
 
@@ -233,6 +246,12 @@ class p25_demod_base(gr.hier_block2):
     def get_freq_error(self):
         return 0
 
+    def set_tdma(self, enabled = True):
+        pass 
+
+    def control(self, enabled = True):
+        self.switch.set_enabled(enabled)
+
 class p25_demod_fb(p25_demod_base):
 
     def __init__(self,
@@ -261,7 +280,7 @@ class p25_demod_fb(p25_demod_base):
         self.input_rate = input_rate
         self.float_sink = {}
 
-        self.connect(self, self.baseband_amp, self.symbol_filter, self.fsk4_demod, self.slicer, self)
+        self.connect(self, self.switch, self.baseband_amp, self.symbol_filter, self.fsk4_demod, self.slicer, self)
 
     def disconnect_float(self, sink):
         # assumes lock held or init
@@ -299,6 +318,9 @@ class p25_demod_fb(p25_demod_base):
         except:
             pass
 
+    def set_tdma(self, enabled = True):
+        pass 
+
     def set_relative_frequency(self, freq):
         return True
 
@@ -332,6 +354,7 @@ class p25_demod_cb(p25_demod_base):
                                 gr.io_signature(1, 1, gr.sizeof_char))        # Output signature
         p25_demod_base.__init__(self, msgq_id=msgq_id, debug=debug, if_rate=if_rate, symbol_rate=symbol_rate, filter_type=filter_type, excess_bw = excess_bw)
 
+        self.switch = blocks.copy(gr.sizeof_gr_complex)
         self.usable_bw = usable_bw
         self.input_rate = input_rate
         self.if_rate = if_rate
@@ -344,71 +367,42 @@ class p25_demod_cb(p25_demod_base):
         self.lo_freq = 0
         self.float_sink = {}
         self.complex_sink = {}
-        self.if1 = 0
-        self.if2 = 0
-        self.t_cache = {}
         if filter_type == 'rrc':
             self.set_baseband_gain(0.61)
         elif filter_type == 'widepulse':
             self.set_baseband_gain(0.7)
 
-        self.mixer = blocks.multiply_cc()
-        decimator_values = get_decim(input_rate)
-        if decimator_values:
-            self.decim, self.decim2 = decimator_values
-            self.if1 = input_rate / self.decim
-            self.if2 = self.if1 / self.decim2
-            sys.stderr.write( 'Using two-stage decimator for speed=%d, decim=%d/%d if1=%d if2=%d\n' % (input_rate, self.decim, self.decim2, self.if1, self.if2))
-            bpf_coeffs = filter.firdes.complex_band_pass(1.0, input_rate, -self.if1/2, self.if1/2, self.if1/2, window.WIN_HAMMING)
-            self.t_cache[0] = bpf_coeffs
-            fa = 6250
-            fb = self.if2 / 2
-            if filter_type == 'nxdn' and self.symbol_rate == 2400:	# nxdn48 6.25 KHz
-                fa = 3125
-            lpf_coeffs = filter.firdes.low_pass(1.0, self.if1, (fb+fa)/2, fb-fa, window.WIN_HAMMING)
-            self.bpf = filter.fir_filter_ccc(self.decim,  bpf_coeffs)
-            self.lpf = filter.fir_filter_ccf(self.decim2, lpf_coeffs)
-            resampled_rate = self.if2
-            self.bfo = analog.sig_source_c (self.if1, analog.GR_SIN_WAVE, 0, 1.0, 0)
-            self.connect(self, self.bpf, (self.mixer, 0))
-            self.connect(self.bfo, (self.mixer, 1))
-        else:
-            sys.stderr.write( 'Unable to use two-stage decimator for speed=%d\n' % (input_rate))
-            # local osc
-            self.lo = analog.sig_source_c (input_rate, analog.GR_SIN_WAVE, 0, 1.0, 0)
-            f1 = 7250
-            f2 = 1450
-            if filter_type == 'nxdn' and self.symbol_rate == 2400:	# nxdn48 6.25 KHz
-                f1 = 3125
-                f2 = 625
-            lpf_coeffs = filter.firdes.low_pass(1.0, input_rate, f1, f2, window.WIN_HANN)
-            decimation = int(input_rate / if_rate)
-            self.lpf = filter.fir_filter_ccf(decimation, lpf_coeffs)
-            resampled_rate = float(input_rate) / float(decimation) # rate at output of self.lpf
-            self.connect(self, (self.mixer, 0))
-            self.connect(self.lo, (self.mixer, 1))
-        self.connect(self.mixer, self.lpf)
-
-        if self.if_rate != resampled_rate:
+        # demodulator IF filter parameters (Hz)
+        fdma_cutoff = 7000
+        tdma_cutoff = 9600
+        trans_width = 1200
+        #
+        decimation = int(input_rate / if_rate)
+        resampled_rate = float(input_rate) / float(decimation)
+        fdma_cutoff = fdma_cutoff if ((resampled_rate//2) >= fdma_cutoff) else (resampled_rate//2)          # sanity-check cutoffs to ensure they are less than the nyquist frequency
+        tdma_cutoff = tdma_cutoff if ((resampled_rate//2) >= tdma_cutoff) else (resampled_rate//2)
+        freq_xlat_coeffs = filter.firdes.low_pass(1.0, input_rate, resampled_rate/2, resampled_rate/2)      # taps can be very long for wideband SDR hardware so maximize transition width
+        self.if_coeffs_fdma = filter.firdes.low_pass(1.0, resampled_rate, fdma_cutoff, trans_width, window.WIN_HAMMING)
+        self.if_coeffs_tdma = filter.firdes.low_pass(1.0, resampled_rate, tdma_cutoff, trans_width, window.WIN_HAMMING)
+        self.freq_xlat = filter.freq_xlating_fir_filter_ccf(decimation, freq_xlat_coeffs, 0, input_rate)    # freq_xlat extracts the approximate channel, sampled at or near the if_rate
+        self.if_filter = filter.fir_filter_ccf(1, self.if_coeffs_tdma)                                      # if_filter rejects adjacent channel inteference
+        self.if_tdma = True                                                                                 # filter width dynamically selectable based on modulation type
+        self.connect(self, self.switch, self.freq_xlat, self.if_filter)
+        if self.if_rate != resampled_rate:                                                                  # resample to the specified if_rate, if necessary
             self.if_out = filter.pfb.arb_resampler_ccf(float(self.if_rate) / resampled_rate)
-            self.connect(self.lpf, self.if_out)
+            self.connect(self.if_filter, self.if_out)
         else:
-            self.if_out = self.lpf
-
-        #fa = 7250
-        #fb = fa + 1450
-        fa = 6250
-        fb = fa + 1250
-        cutoff_coeffs = filter.firdes.low_pass(1.0, self.if_rate, (fb+fa)/2, fb-fa, window.WIN_HANN)
-        self.cutoff = filter.fir_filter_ccf(1, cutoff_coeffs)
+            self.if_out = self.if_filter
 
         omega = float(self.if_rate) / float(self.symbol_rate)
         sps = self.if_rate // self.symbol_rate
         gain_omega = 0.1  * gain_mu * gain_mu
 
+        sys.stderr.write("demodulator: xlator if_rate=%d, input_rate=%d, decim=%d, if taps=[%d,%d], resampled_rate=%d, sps=%d\n" % (if_rate, input_rate, decimation, len(freq_xlat_coeffs), len(self.if_coeffs_tdma), resampled_rate, sps))
+
         self.agc = rms_agc.rms_agc(0.45, 0.85)
-        self.fll = digital.fll_band_edge_cc(sps, excess_bw, 2*sps+1, TWO_PI/sps/250) # automatic frequency correction
-        self.clock = op25_repeater.gardner_cc(omega, gain_mu, gain_omega, 0.28)            # timing recovery
+        self.fll = digital.fll_band_edge_cc(sps, excess_bw, 2*sps+1, TWO_PI/sps/350) # automatic frequency correction
+        self.clock = op25_repeater.gardner_cc(omega, gain_mu, gain_omega)            # timing recovery
         self.costas = op25_repeater.costas_loop_cc(costas_alpha, 4, TWO_PI/4)        # phase stabilization, range-limited to +/-90deg
 
         # Perform Differential decoding on the constellation
@@ -451,7 +445,8 @@ class p25_demod_cb(p25_demod_base):
             return
         self.sps = sps
         self.clock.set_omega(self.sps)
-        #self.fll.set_samples_per_symbol(sps) # gnuradio fll_band_edge_cc block is not currently thread-safe 01/8/2023
+        if _fll_threadsafe:
+            self.fll.set_samples_per_symbol(sps)
         self.costas_reset()
 
     def reset(self):
@@ -460,24 +455,12 @@ class p25_demod_cb(p25_demod_base):
             self.fsk4_demod.reset()
 
     def set_relative_frequency(self, freq):
-        if abs(freq) > (((self.input_rate * self.usable_bw) / 2) - (self.if1 / 2)):
+        if abs(freq) > (((self.input_rate * self.usable_bw) / 2) - (self.if_rate / 2)):
             return False
         if freq == self.lo_freq:
             return True
-        self.lo_freq = freq
-        if self.if1:
-            if freq not in list(self.t_cache.keys()):
-                self.t_cache[freq] = filter.firdes.complex_band_pass(1.0, self.input_rate, -freq - self.if1/2, -freq + self.if1/2, self.if1/2, window.WIN_HAMMING)
-            self.bpf.set_taps(self.t_cache[freq])
-            bfo_f = self.decim * -freq / float(self.input_rate)
-            bfo_f -= int(bfo_f)
-            if bfo_f < -0.5:
-                bfo_f += 1.0
-            if bfo_f > 0.5:
-                bfo_f -= 1.0
-            self.bfo.set_frequency(-bfo_f * self.if1)
-        else:
-            self.lo.set_frequency(self.lo_freq)
+        self.lo_freq = -freq
+        self.freq_xlat.set_center_freq(self.lo_freq)
         return True
 
     # assumes lock held or init
@@ -487,9 +470,9 @@ class p25_demod_cb(p25_demod_base):
             self.nbfm = None
         if self.connect_state == 'cqpsk':
             self.disconnect_fm_demod()
-            self.disconnect(self.if_out, self.cutoff, self.agc, self.fll, self.clock, self.diffdec, self.costas, self.to_float, self.rescale, self.slicer)
+            self.disconnect(self.if_out, self.agc, self.fll, self.clock, self.diffdec, self.costas, self.to_float, self.rescale, self.slicer)
         elif self.connect_state == 'fsk4':
-            self.disconnect(self.if_out, self.cutoff, self.fm_demod, self.baseband_amp, self.symbol_filter, self.fsk4_demod, self.slicer)
+            self.disconnect(self.if_out, self.fm_demod, self.baseband_amp, self.symbol_filter, self.fsk4_demod, self.slicer)
         self.connect_state = None
 
     # assumes lock held or init
@@ -499,9 +482,9 @@ class p25_demod_cb(p25_demod_base):
         self.disconnect_chain()
         self.connect_state = demod_type
         if demod_type == 'fsk4':
-            self.connect(self.if_out, self.cutoff, self.agc, self.fll, self.fm_demod, self.baseband_amp, self.symbol_filter, self.fsk4_demod, self.slicer)
+            self.connect(self.if_out, self.agc, self.fll, self.fm_demod, self.baseband_amp, self.symbol_filter, self.fsk4_demod, self.slicer)
         elif demod_type == 'cqpsk':
-            self.connect(self.if_out, self.cutoff, self.agc, self.fll, self.clock, self.diffdec, self.costas, self.to_float, self.rescale, self.slicer)
+            self.connect(self.if_out, self.agc, self.fll, self.clock, self.diffdec, self.costas, self.to_float, self.rescale, self.slicer)
         else:
             sys.stderr.write("connect_chain failed, type: %s\n" % demod_type)
             assert 0 == 1
@@ -512,7 +495,6 @@ class p25_demod_cb(p25_demod_base):
             return
         if self.aux_fm_connected == 0:
             self.connect(self.fll, self.fm_demod, self.baseband_amp, self.symbol_filter, self.null_sink)
-            #self.connect(self.agc, self.fm_demod, self.baseband_amp, self.symbol_filter, self.null_sink)
         self.aux_fm_connected += 1          # increment refcount
 
     # assumes lock held or init
@@ -523,7 +505,6 @@ class p25_demod_cb(p25_demod_base):
         self.aux_fm_connected -= 1          # decrement refcount
         if self.aux_fm_connected == 0:
             self.disconnect(self.fll, self.fm_demod, self.baseband_amp, self.symbol_filter, self.null_sink)
-            #self.disconnect(self.agc, self.fm_demod, self.baseband_amp, self.symbol_filter, self.null_sink)
 
     def disconnect_float(self, sink):
         # assumes lock held or init
@@ -567,9 +548,6 @@ class p25_demod_cb(p25_demod_base):
         elif src == 'mixer':
             self.connect(self.mixer, sink)
             self.complex_sink[sink] = self.mixer
-        elif src == 'cutoff':
-            self.connect(self.cutoff, sink)
-            self.complex_sink[sink] = self.cutoff
         elif src == 'fll':
             self.connect(self.fll, sink)
             self.complex_sink[sink] = self.fll
@@ -589,7 +567,7 @@ class p25_demod_cb(p25_demod_base):
     def connect_nbfm(self, nbfm_blk):
         if self.connect_state == 'fsk4':
             self.nbfm = nbfm_blk
-            self.connect(self.cutoff, nbfm_blk)
+            self.connect(self.if_out, nbfm_blk)
             return True
         else:
             return False
@@ -597,3 +575,16 @@ class p25_demod_cb(p25_demod_base):
     def costas_reset(self):
         self.costas.set_frequency(0)
         self.costas.set_phase(0)
+
+    def set_tdma(self, enabled = True):
+        if enabled and not self.if_tdma:
+            self.if_filter.set_taps(self.if_coeffs_tdma) 
+            self.if_tdma = True
+            if self.debug >= 10:
+                sys.stderr.write("%s [%d] Setting IF taps for TDMA\n" % (log_ts.get(), self.msgq_id))
+        elif not enabled and self.if_tdma:
+            self.if_filter.set_taps(self.if_coeffs_fdma)
+            self.if_tdma = False
+            if self.debug >= 10:
+                sys.stderr.write("%s [%d] Setting IF taps for FDMA\n" % (log_ts.get(), self.msgq_id))
+

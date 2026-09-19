@@ -38,7 +38,6 @@ list(APPEND op25_repeater_python_files
     fsk4_slicer_fb_python.cc
     gardner_cc_python.cc
     iqfile_source_python.cc
-    p25_frame_assembler_python.cc
     rmsagc_ff_python.cc
     vocoder_python.cc
     ysf_tx_sb_python.cc

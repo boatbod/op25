@@ -28,7 +28,6 @@ list(APPEND op25_repeater_sources
     vocoder_impl.cc
     gardner_cc_impl.cc
     costas_loop_cc_impl.cc
-    p25_frame_assembler_impl.cc
     frame_assembler_impl.cc
     analog_udp_impl.cc
     rmsagc_ff_impl.cc
