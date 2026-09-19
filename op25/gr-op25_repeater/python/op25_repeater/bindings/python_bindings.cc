@@ -30,7 +30,6 @@ namespace py = pybind11;
     void bind_fsk4_slicer_fb(py::module& m);
     void bind_gardner_cc(py::module& m);
     void bind_iqfile_source(py::module& m);
-    void bind_p25_frame_assembler(py::module& m);
     void bind_rmsagc_ff(py::module& m);
     void bind_vocoder(py::module& m);
     void bind_ysf_tx_sb(py::module& m);
@@ -71,7 +70,6 @@ PYBIND11_MODULE(op25_repeater_python, m)
         bind_fsk4_slicer_fb(m);
         bind_gardner_cc(m);
         bind_iqfile_source(m);
-        bind_p25_frame_assembler(m);
         bind_rmsagc_ff(m);
         bind_vocoder(m);
         bind_ysf_tx_sb(m);
