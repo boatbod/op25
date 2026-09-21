@@ -105,7 +105,7 @@ def get_int_dict(s, _id = 0):      # used to read blacklist/whitelist files
     return dict.fromkeys(d)
 
 def from_dict(d, key, def_val):
-    if key in d and d[key] != "":
+    if d is not None and key in d and d[key] != "":
         return d[key]
     else:
         return def_val

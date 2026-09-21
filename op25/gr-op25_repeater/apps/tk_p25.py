@@ -49,7 +49,7 @@ CLEANUP_TIMER = 0.5      # Number of seconds between cleanup intervals
 CALL_LOG_MAX_LEN = 10    # Maximum number of call_log entries to retain
 
 #################
-# Helper functions
+# Helper functions specific to tk_p25
 
 def meta_update(meta_q, tgid = None, tag = None, rid = None, rtag = None, msgq_id = 0, ts = time.time(), debug = 0):
     if meta_q is None:
@@ -85,6 +85,7 @@ def add_default_tgid(tgs, tgid):
         tgs[tgid]['algid'] = -1
         tgs[tgid]['keyid'] = -1
         tgs[tgid]['receiver'] = None
+        tgs[tgid]['sites'] = []
 
 def add_default_rid(srcids, rid):
     if srcids is None:
@@ -95,6 +96,69 @@ def add_default_rid(srcids, rid):
         srcids[rid]['tag'] = ""
         srcids[rid]['time'] = 0
         srcids[rid]['tgs'] = {}
+
+def read_tags_file(tags_file, tgs, log_header = "", debug = 0):
+    import csv
+    try:
+        with open(tags_file, 'r') as csvfile:
+            sreader = csv.reader(decomment(csvfile), delimiter='\t', quotechar='"', quoting=csv.QUOTE_ALL)
+            for row in sreader:
+                if len(row) < 2:
+                    continue
+                try:
+                    if ord(row[0][0]) == 0xfeff:
+                        row[0] = row[0][1:] # remove UTF8_BOM (Python2 version)
+                    if ord(row[0][0]) == 0xef and ord(row[0][1]) == 0xbb and ord(row[0][2]) == 0xbf:
+                        row[0] = row[0][3:] # remove UTF8_BOM (Python3 version)
+                    tgid = int(row[0])
+                    tag = utf_ascii(row[1])
+                except (IndexError, ValueError) as ex:
+                    sys.stderr.write("read_tags_file: exception %s\n" % ex)
+                    continue
+                if len(row) >= 3:
+                    try:
+                        prio = int(row[2])
+                    except ValueError as ex:
+                        prio = TGID_DEFAULT_PRIO
+                else:
+                    prio = TGID_DEFAULT_PRIO
+
+                if tgid not in tgs:
+                    add_default_tgid(tgs, tgid)
+                tgs[tgid]['tag'] = tag
+                tgs[tgid]['prio'] = prio
+                if debug > 1:
+                    sys.stderr.write("%s setting tgid(%d), prio(%d), tag(%s)\n" % (log_header, tgid, prio, tag))
+    except (IOError) as ex:
+        sys.stderr.write("read_tags_file: exception %s\n" % ex)
+
+def read_rids_file(tags_file, rids, log_header = "", debug = 0):
+    import csv
+    try:
+        with open(tags_file, 'r') as csvfile:
+            sreader = csv.reader(decomment(csvfile), delimiter='\t', quotechar='"', quoting=csv.QUOTE_ALL)
+            for row in sreader:
+                if len(row) < 2:
+                    continue
+                try:
+                    if ord(row[0][0]) == 0xfeff:
+                        row[0] = row[0][1:] # remove UTF8_BOM (Python2 version)
+                    if ord(row[0][0]) == 0xef and ord(row[0][1]) == 0xbb and ord(row[0][2]) == 0xbf:
+                        row[0] = row[0][3:] # remove UTF8_BOM (Python3 version)
+                    rid = int(row[0])
+                    tag = utf_ascii(row[1])
+                except (IndexError, ValueError) as ex:
+                    sys.stderr.write("read_rid_file: exception %s\n" % ex)
+                    sys.stderr.write("row: %s\n" % row)
+                    continue
+
+                if rid not in rids:
+                    add_default_rid(rids, rid)
+                rids[rid]['tag'] = tag
+                if debug > 1:
+                    sys.stderr.write("%s setting rid(%d), tag(%s)\n" % (log_header, rid, tag))
+    except (IOError) as ex:
+        sys.stderr.write("read_rid_file: exception %s\n" % ex)
 
 def get_slot(slot):
     if slot is not None:
@@ -111,7 +175,7 @@ def get_tgid(tgid):
 #################
 # Main trunking class
 class rx_ctl(object):
-    def __init__(self, debug=0, frequency_set=None, nbfm_ctrl=None, fa_ctrl=None, cfg_systems={}, cfg_chans={}):
+    def __init__(self, debug=0, frequency_set=None, nbfm_ctrl=None, fa_ctrl=None, config={}):
         self.frequency_set = frequency_set
         self.nbfm_ctrl = nbfm_ctrl
         self.fa_ctrl = fa_ctrl
@@ -119,26 +183,44 @@ class rx_ctl(object):
         self.receivers = {}
         self.sites = {}
         self.systems = {}
+        self.streams = {}
+        self.systems_mutex = TimeoutLock(timeout=1.0)
         self.cleanup_timer = time.time()
         self.call_log = deque(maxlen=CALL_LOG_MAX_LEN)
         self.call_log_mutex = TimeoutLock(timeout=1.0)
 
-        for syst in cfg_systems:
-            syst_wacn  = ast.literal_eval(from_dict(syst, "wacn", 0))
-            syst_sysid = ast.literal_eval(from_dict(syst, "sysid", 0))
-            syst_name  = str(from_dict(syst, "name", ""))
-            if syst_wacn == 0 or syst_sysid == 0 or syst_name == "":
-                continue
-            else:
-                sys.stderr.write("System (%s): %x / %x\n" % (syst_name, syst_wacn, syst_sysid))
+        if 'systems' in config:
+            for syst in config['systems']:
+                syst_wacn  = ast.literal_eval(from_dict(syst, "wacn", 0))
+                syst_sysid = ast.literal_eval(from_dict(syst, "sysid", 0))
+                syst_name  = str(from_dict(syst, "name", ""))
+                if syst_wacn == 0 or syst_sysid == 0 or syst_name == "":
+                    sys.stderr.write('Ignoring invalid trunking system configuration: (wacn="0x%05x", sysid="0x%03x", name="%s")\n' % (syst_wacn, syst_sysid, syst_name))
+                    continue
+                else:
+                    with self.systems_mutex:
+                        syst_key = "%05x%03x" % (syst_wacn, syst_sysid)
+                        sys.stderr.write('Adding trunked system (%s): wacn="0x%05x", sysid="0x%03x", name="%s"\n' % (syst_key, syst_wacn, syst_sysid, syst_name))
+                        self.systems[syst_key] = p25_system(self.debug, syst_wacn, syst_sysid, syst)
 
-        for chan in cfg_chans:
-            sysname = chan['sysname']
-            if sysname not in self.sites:
-                self.sites[sysname] = { 'site': None, 'receivers': [] }
-                self.sites[sysname]['site'] = p25_site(debug  = self.debug,
-                                                         config = chan,
-                                                         rx_ctl = self)
+        if 'chans' in config:
+            for rx_site in config['chans']:
+                sysname = rx_site['sysname']
+                if sysname not in self.sites:
+                    self.sites[sysname] = { 'site': None, 'receivers': [] }
+                    self.sites[sysname]['site'] = p25_site(debug  = self.debug,
+                                                           config = rx_site,
+                                                           rx_ctl = self)
+
+        if 'streams' in config:
+            str_id = 0
+            for stream in config['streams']:
+                str_name = str(from_dict(stream, 'name', str(str_id)))
+                self.streams[str_id] = p25_stream(debug = self.debug,
+                                                  str_id = str_id,
+                                                  config = stream,
+                                                  rx_ctl = self)
+                str_id += 1
 
     # add_receiver is called once per radio channel defined in cfg.json
     def add_receiver(self, msgq_id, config, meta_q = None, freq = 0):
@@ -188,10 +270,21 @@ class rx_ctl(object):
 
     def get_system(self, wacn, sysid):
         system_key = "%05x%03x" % (wacn, sysid)
-        if system_key in self.systems:
-            return self.systems[system_key]
-        else:
+        if system_key not in self.systems:
+            with self.systems_mutex:
+                self.systems[system_key] = p25_system(self.debug, wacn, sysid)
+        return self.systems[system_key]
+
+    def get_system_by_name(self, sysname):
+        if sysname is None or sysname == "":
             return None
+
+        found_system = None
+        for system in self.systems.values():
+            if system.name == sysname:
+                found_system = system
+                break
+        return found_system
 
     # process_qmsg is the main message dispatch handler connecting the 'radios' to python
     def process_qmsg(self, msg):
@@ -380,16 +473,72 @@ class rx_ctl(object):
                                    "rtag":    rtag })
 
 #################
-# P25 system class
+# P25 system class - owner of talkgroups and sourceids
 class p25_system(object):
-    def __init__(self, debug, config):
+    def __init__(self, debug, wacn, sysid, config = None):
         self.debug = debug
         self.config = config
         self.talkgroups = {}
         self.talkgroups_mutex = TimeoutLock(timeout=1.0)
-        self.sysname = config['sysname']
-        self.ns_syid = int(ast.literal_eval(from_dict(config, "sysid", "0")))
-        self.ns_wacn = int(ast.literal_eval(from_dict(config, "wacn", "0")))
+        self.sourceids = {}
+        self.sourceids_mutex = TimeoutLock(timeout=1.0)
+        self.sysid = sysid
+        self.wacn = wacn
+        self.name = str(from_dict(config, 'name', ("%05x%03x" % (wacn, sysid))))
+        self.crypt_behavior = int(from_dict(self.config, 'crypt_behavior', 2))
+
+        tags_file = str(from_dict(config, 'tgid_tags_file', ""))
+        if tags_file != "":
+            sys.stderr.write("%s [%s] reading trunked system tgid_tags_file: %s\n" % (log_ts.get(), self.name, tags_file))
+            with self.talkgroups_mutex:
+                read_tags_file(tags_file, self.talkgroups, ("%s [%s]" % (log_ts.get(), self.name)), self.debug)
+
+        rids_file = str(from_dict(config, 'rid_tags_file', ""))
+        if rids_file != "":
+            sys.stderr.write("%s [%s] reading trunked system rid_tags_file: %s\n" % (log_ts.get(), self.name, rids_file))
+            with self.sourceids_mutex:
+                read_rids_file(rids_file, self.sourceids, ("%s [%s]" % (log_ts.get(), self.name)), self.debug)
+
+    def get_talkgroups(self):
+        return self.talkgroups
+
+    def get_talkgroups_mutex(self):
+        return self.talkgroups_mutex
+
+    def get_sourceids(self):
+        return self.sourceids
+
+    def get_sourceids_mutex(self):
+        return self.sourceids_mutex
+
+    def get_crypt_behavior(self):
+        return self.crypt_behavior
+
+#################
+# P25 stream class
+class p25_stream(object):
+    def __init__(self, debug, str_id, config, rx_ctl):
+        self.debug = debug
+        self.id = str_id
+        self.config = config
+        self.rx_ctl = rx_ctl
+        self.receiver = None
+        self.name        = str(from_dict(config, 'name', str(str_id)))
+        self.system_name = str(from_dict(config, 'system', ""))
+        self.destination = str(from_dict(config, 'destination', ""))
+        self.meta_stream = str(from_dict(config, 'meta_stream_name', ""))
+        self.whitelist_file_name = str(from_dict(config, 'whitelist', ""))
+        self.blacklist_file_name = str(from_dict(config, 'blacklist', ""))
+        self.whitelist = None
+        self.blacklist = {}
+
+        self.system = self.rx_ctl.get_system_by_name(self.system_name)
+        if self.system is not None:
+            sys.stderr.write("%s [S%d] creating trunked stream (%s) attached to system (%s)\n" % (log_ts.get(), self.id, self.name, self.system.name))
+        else:
+            sys.stderr.write('%s [S%d] creating trunked stream (%s)\n' % (log_ts.get(), self.id, self.name))
+
+
 
 #################
 # P25 site class
@@ -397,12 +546,13 @@ class p25_site(object):
     def __init__(self, debug, config, rx_ctl = None):
         self.config = config
         self.debug = debug
+        self.system = None
         self.rx_ctl = rx_ctl
         self.freq_table = {}
         self.voice_frequencies = {}
-        self.talkgroups = {}
-        self.talkgroups_mutex = TimeoutLock(timeout=1.0)
-        self.sourceids = {}
+        self.talkgroups = None
+        self.talkgroups_mutex = None
+        self.sourceids = None
         self.sourceid_history = rid_history(self.sourceids, 10)
         self.registered_suids = {}
         self.registered_wuids = {}
@@ -448,14 +598,6 @@ class p25_site(object):
 
         sys.stderr.write("%s [%s] Initializing P25 site\n" % (log_ts.get(), self.sysname))
 
-        if 'tgid_tags_file' in self.config and self.config['tgid_tags_file'] != "":
-            sys.stderr.write("%s [%s] reading site tgid_tags_file: %s\n" % (log_ts.get(), self.sysname, self.config['tgid_tags_file']))
-            self.read_tags_file(self.config['tgid_tags_file'])
-
-        if 'rid_tags_file' in self.config and self.config['rid_tags_file'] != "":
-            sys.stderr.write("%s [%s] reading site rid_tags_file: %s\n" % (log_ts.get(), self.sysname, self.config['rid_tags_file']))
-            self.read_rids_file(self.config['rid_tags_file'])
-
         if 'blacklist' in self.config and self.config['blacklist'] != "":
             sys.stderr.write("%s [%s] reading site blacklist file: %s\n" % (log_ts.get(), self.sysname, self.config['blacklist']))
             self.blacklist = get_int_dict(self.config['blacklist'], self.sysname)
@@ -473,11 +615,10 @@ class p25_site(object):
         if self.tdma_cc:
             self.cc_rate = 6000
 
-        # the following only occurs if values are pre-defined in the trunking configuration file
-        if self.nac != 0 and self.ns_wacn != 0 and self.ns_syid != 0:
-            self.ns_valid = True
-
         self.crypt_behavior = int(from_dict(self.config, 'crypt_behavior', 1))
+
+        if self.nac != 0 and self.ns_wacn != 0 and self.ns_syid != 0:   # Only occurs if wacn, sysid, nac values are pre-defined in the trunking configuration file
+            self.set_ns_valid()                                         # otherwise will be initialized dynamically once network status broadcast has been received
 
         cc_list = from_dict(self.config, 'control_channel_list', "")
         if cc_list == "":
@@ -488,10 +629,35 @@ class p25_site(object):
             self.cc_list.append(get_frequency(f))
         self.next_cc()
 
+    def set_ns_valid(self):
+        if self.ns_valid == False:
+            # Find or initialize our trunked system using current values of ns_wacn, ns_syid
+            if self.debug > 1:
+                sys.stderr.write("%s [%s] retrieving trunked system information for wacn=%05x, sysid=%03x\n" % (log_ts.get(), self.sysname, self.ns_wacn, self.ns_syid))
+            self.system = self.rx_ctl.get_system(self.ns_wacn, self.ns_syid)
+            self.talkgroups = self.system.get_talkgroups()
+            self.talkgroups_mutex = self.system.get_talkgroups_mutex()
+            self.sourceids = self.system.get_sourceids()
+            self.sourceids_mutex = self.system.get_sourceids_mutex()
+
+            if 'tgid_tags_file' in self.config and self.config['tgid_tags_file'] != "":
+                sys.stderr.write("%s [%s] reading site tgid_tags_file: %s\n" % (log_ts.get(), self.sysname, self.config['tgid_tags_file']))
+                with self.talkgroups_mutex:
+                    read_tags_file(self.config['tgid_tags_file'], self.talkgroups, ("%s [%s]" % (log_ts.get(), self.sysname)), self.debug)
+
+            if 'rid_tags_file' in self.config and self.config['rid_tags_file'] != "":
+                sys.stderr.write("%s [%s] reading site rid_tags_file: %s\n" % (log_ts.get(), self.sysname, self.config['rid_tags_file']))
+                read_rids_file(self.config['rid_tags_file'], self.sourceids, ("%s [%s]" % (log_ts.get(), self.sysname)), self.debug)
+
+            self.crypt_behavior = self.system.get_crypt_behavior()
+            self.ns_valid = True
+
     def set_debug(self, dbglvl):
         self.debug = dbglvl
 
     def log_call(self, rcvr, freq, slot, prio, tgid, rid):
+        if self.talkgroups is None:
+            return
         self.rx_ctl.log_call(self.ns_syid, rcvr, freq, slot, prio, tgid, self.talkgroups[tgid]['tag'], rid, self.get_rid_tag(rid))
 
     def get_talkgroups(self):
@@ -534,70 +700,6 @@ class p25_site(object):
         if f is None:
             return "ID-0x%x" % (id)
         return "%f" % (f / 1000000.0)
-
-    def read_tags_file(self, tags_file):
-        import csv
-        try:
-            with open(tags_file, 'r') as csvfile:
-                sreader = csv.reader(decomment(csvfile), delimiter='\t', quotechar='"', quoting=csv.QUOTE_ALL)
-                for row in sreader:
-                    if len(row) < 2:
-                        continue
-                    try:
-                        if ord(row[0][0]) == 0xfeff:
-                            row[0] = row[0][1:] # remove UTF8_BOM (Python2 version)
-                        if ord(row[0][0]) == 0xef and ord(row[0][1]) == 0xbb and ord(row[0][2]) == 0xbf:
-                            row[0] = row[0][3:] # remove UTF8_BOM (Python3 version)
-                        tgid = int(row[0])
-                        tag = utf_ascii(row[1])
-                    except (IndexError, ValueError) as ex:
-                        sys.stderr.write("read_tags_file: exception %s\n" % ex)
-                        continue
-                    if len(row) >= 3:
-                        try:
-                            prio = int(row[2])
-                        except ValueError as ex:
-                            prio = TGID_DEFAULT_PRIO
-                    else:
-                        prio = TGID_DEFAULT_PRIO
-
-                    with self.talkgroups_mutex:
-                        if tgid not in self.talkgroups:
-                            add_default_tgid(self.talkgroups, tgid)
-                        self.talkgroups[tgid]['tag'] = tag
-                        self.talkgroups[tgid]['prio'] = prio
-                    if self.debug > 1:
-                        sys.stderr.write("%s [%s] setting tgid(%d), prio(%d), tag(%s)\n" % (log_ts.get(), self.sysname, tgid, prio, tag))
-        except (IOError) as ex:
-            sys.stderr.write("read_tags_file: exception %s\n" % ex)
-
-    def read_rids_file(self, tags_file):
-        import csv
-        try:
-            with open(tags_file, 'r') as csvfile:
-                sreader = csv.reader(decomment(csvfile), delimiter='\t', quotechar='"', quoting=csv.QUOTE_ALL)
-                for row in sreader:
-                    if len(row) < 2:
-                        continue
-                    try:
-                        if ord(row[0][0]) == 0xfeff:
-                            row[0] = row[0][1:] # remove UTF8_BOM (Python2 version)
-                        if ord(row[0][0]) == 0xef and ord(row[0][1]) == 0xbb and ord(row[0][2]) == 0xbf:
-                            row[0] = row[0][3:] # remove UTF8_BOM (Python3 version)
-                        rid = int(row[0])
-                        tag = utf_ascii(row[1])
-                    except (IndexError, ValueError) as ex:
-                        sys.stderr.write("read_rid_file: exception %s\n" % ex)
-                        sys.stderr.write("row: %s\n" % row)
-                        continue
-
-                    if rid not in self.sourceids:
-                        add_default_rid(self.sourceids, rid)
-                    self.sourceids[rid]['tag'] = tag
-                    if self.debug > 1:
-                        sys.stderr.write("%s [%s] setting rid(%d), tag(%s)\n" % (log_ts.get(), self.sysname, rid, tag))
-        except (IOError) as ex:
-            sys.stderr.write("read_rid_file: exception %s\n" % ex)
 
     def get_cc(self, msgq_id):
         if msgq_id is None:
@@ -773,7 +875,7 @@ class p25_site(object):
                 self.ns_syid = syid
                 self.ns_wacn = wacn
                 self.ns_chan = f1
-                self.ns_valid = True
+                self.set_ns_valid()
             if self.debug >= 10:
                 sys.stderr.write('%s [%d] mbt(0x3b) net_sts_bcst: sys: %x wacn: %x ch1: %s ch2: %s\n' %(log_ts.get(), m_rxid, syid, wacn, self.channel_id_to_string(ch1), self.channel_id_to_string(ch2)))
         elif opcode == 0x3a:  # rfss status
@@ -1100,7 +1202,7 @@ class p25_site(object):
                 self.ns_syid = syid
                 self.ns_wacn = wacn
                 self.ns_chan = f1
-                self.ns_valid = True
+                self.set_ns_valid()
                 self.rfss_lra = lra
             if self.debug >= 10:
                 sys.stderr.write('%s [%d] tsbk(0x3b) net_sts_bcst: wacn: %x syid: %x lra: %x ch1: %x(%s)\n' %(log_ts.get(), m_rxid, wacn, syid, lra, ch1, self.channel_id_to_string(ch1)))
@@ -1476,7 +1578,7 @@ class p25_site(object):
                 self.ns_syid = syid
                 self.ns_wacn = wacn
                 self.ns_chan = f
-                self.ns_valid = True
+                self.set_ns_valid()
             if self.debug >= 10:
                 sys.stderr.write('%s [%d] tdma(0xfb) net_sts_bcst: wacn: %x syid: %x ch %x(%s)\n' % (log_ts.get(), m_rxid, wacn, syid, ch_t, self.channel_id_to_string(ch_t)))
         elif op == 0xfc: # Adjacent Status Broadcast Explicit
@@ -1642,7 +1744,7 @@ class p25_site(object):
         for frequency in self.voice_frequencies:
             for slot in [0, 1]:
                 tgid = self.voice_frequencies[frequency]['tgid'][slot]
-                if tgid is not None and self.talkgroups[tgid]['receiver'] is None and curr_time >= self.voice_frequencies[frequency]['ts'][slot] + FREQ_EXPIRY_TIME:
+                if tgid is not None and self.talkgroups is not None and self.talkgroups[tgid]['receiver'] is None and curr_time >= self.voice_frequencies[frequency]['ts'][slot] + FREQ_EXPIRY_TIME:
                     if self.debug >= 10:
                         sys.stderr.write("%s [%s] VF expire: tgid: %s, freq: %f, slot: %s, ts: %s\n" % (log_ts.get(), self.sysname, tgid, frequency/1000000.0, slot, log_ts.get(self.voice_frequencies[frequency]['ts'][slot])))
                     self.voice_frequencies[frequency]['tgid'][slot] = None
@@ -1658,6 +1760,8 @@ class p25_site(object):
                     sys.stderr.write('%s [%s] update_talkgroups: sg(%d) patched tgid(%d)\n' % (log_ts.get(), self.sysname, tgid, ptgid))
 
     def update_talkgroup(self, frequency, tgid, tdma_slot, srcaddr, svcopts):
+        if self.talkgroups is None:
+            return
         ui_log_update = False
         with self.talkgroups_mutex:
             if self.debug >= 5:
@@ -1688,6 +1792,8 @@ class p25_site(object):
                 else:
                     self.talkgroups[tgid]['srcaddr'] = srcaddr
                 self.update_wuid_ts(srcaddr, tgid, ts)
+            if self not in self.talkgroups[tgid]['sites']:
+                self.talkgroups[tgid]['sites'].append(self)
 
         if ui_log_update:   # log update to UI outside of the mutex protection
             self.rx_ctl.log_call(self.ns_syid,
@@ -1701,6 +1807,8 @@ class p25_site(object):
                                  self.get_rid_tag(srcaddr))
 
     def update_talkgroup_srcaddr(self, curr_time, tgid, srcaddr, svcopts=None):
+        if self.talkgroups is None:
+            return
         ui_log_update = False
         if (tgid is None or tgid <= 0 or srcaddr is None or srcaddr <= 0 or srcaddr >= 0xffffff or
             tgid not in self.talkgroups or self.talkgroups[tgid]['receiver'] is None):
@@ -1736,7 +1844,7 @@ class p25_site(object):
         return 1
 
     def expire_talkgroups(self, curr_time):
-        if curr_time < self.last_expiry_check + EXPIRY_TIMER:
+        if self.talkgroups is None or curr_time < self.last_expiry_check + EXPIRY_TIMER:
             return
 
         self.last_expiry_check = curr_time
@@ -1747,6 +1855,8 @@ class p25_site(object):
             for tgid in self.talkgroups:
                 if (self.talkgroups[tgid]['receiver'] is not None) and (curr_time >= self.talkgroups[tgid]['time'] + TGID_EXPIRY_TIME):
                     tg_expire_list.append(tgid)
+                else:
+                    self.talkgroups[tgid]['sites'] = []
 
         # step 2 - expire the individual talkgroups with the talkgroups_mutex unlocked
         for tgid in tg_expire_list:
@@ -1898,6 +2008,8 @@ class p25_site(object):
                     sys.stderr.write("%s [%s] expire_registrations: remove expired suid(%s), wuid(%d)\n" % (log_ts.get(), self.sysname, suid, int(wuid, 16)))
 
     def dump_tgids(self):
+        if self.talkgroups is None:
+            return
         sys.stderr.write("%s [%s] Known talkgroup ids: {\n" % (log_ts.get(), self.sysname))
         for tgid in sorted(self.talkgroups.keys()):
             sys.stderr.write('%d\t"%s"\t%d\t#%d\n' % (tgid, self.talkgroups[tgid]['tag'], self.talkgroups[tgid]['prio'], self.talkgroups[tgid]['counter']));
@@ -2017,7 +2129,7 @@ class p25_site(object):
             srcaddrs = []
             srctags = []
             for tgid in tgids:
-                if tgid is None or tgid == "":
+                if self.talkgroups is None or tgid is None or tgid == "":
                     continue
                 try:
                     tgid_int = int(tgid)
@@ -2291,7 +2403,8 @@ class p25_receiver(object):
     def set_nac(self, nac):
         if self.current_nac != nac:
             self.current_nac = nac
-            self.fa_ctrl({'tuner': self.msgq_id, 'cmd': 'set_nac', 'nac': nac})
+            # Leave the receiver open (nac=0)
+            #self.fa_ctrl({'tuner': self.msgq_id, 'cmd': 'set_nac', 'nac': nac})
 
     def idle_rx(self):
         if not (self.tuner_idle or self.site.has_cc(self.msgq_id)): # don't idle a control channel or an already idle receiver
@@ -2602,6 +2715,9 @@ class p25_receiver(object):
                 sys.stderr.write("%s [%d] removing expired skiplist: tg(%d)\n" % (log_ts.get(), self.msgq_id, tg));
 
     def find_talkgroup(self, start_time, tgid=None, hold=False):
+        if self.talkgroups is None:
+            return None, None, None, None
+
         tgt_tgid = None
         self.skiplist_update(start_time)
         self.blacklist_update(start_time)
@@ -2676,6 +2792,7 @@ class p25_receiver(object):
             return
             
         with self.site.talkgroups_mutex:
+            self.talkgroups[self.current_tgid]['sites'] = []
             self.talkgroups[self.current_tgid]['receiver'] = None
             self.talkgroups[self.current_tgid]['frequency'] = None
             self.talkgroups[self.current_tgid]['tdma_slot'] = None
@@ -2746,6 +2863,25 @@ class p25_receiver(object):
                 meta_update(self.meta_q, msgq_id=self.msgq_id, debug=self.debug)
 
     def get_status(self):
+        if self.talkgroups is None:
+            _tgid = self.current_tgid
+            cc_tag = "Control Channel" if self.site.has_cc(self.msgq_id) else "Idle" if self.tuner_idle else None
+            d = {}
+            d['freq'] = self.tuned_frequency
+            d['tdma'] = self.current_slot
+            d['tgid'] = _tgid
+            d['system'] = self.config['trunking_sysname']
+            d['tag'] = cc_tag
+            d['srcaddr'] = 0
+            d['svcopts'] = 0
+            d['srctag'] =  ""
+            d['encrypted'] = 0
+            d['emergency'] = (d['svcopts'] >> 7) & 0x1
+            d['hold_tgid'] = 0
+            d['mode'] = None
+            d['stream'] = self.meta_stream
+            d['msgqid'] = self.msgq_id
+            return json.dumps(d)
         with self.site.talkgroups_mutex:
             _tgid = self.hold_tgid if self.hold_tgid is not None else self.current_tgid
             cc_tag = "Control Channel" if self.site.has_cc(self.msgq_id) else "Idle" if self.tuner_idle else None

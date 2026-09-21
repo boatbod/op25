@@ -1,7 +1,7 @@
 /* -*- c++ -*- */
 /* 
  * Copyright 2010, 2011, 2012, 2013, 2014 Max H. Parke KA1RBI 
- * Copyright 2017-2025 Graham J. Norbury
+ * Copyright 2017-2026 Graham J. Norbury
  * 
  * This is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -203,7 +203,7 @@ namespace gr {
             framer->crypt_behavior(behavior);
         }
 
-        p25p1_fdma::p25p1_fdma(op25_audio& udp, log_ts& logger, int debug, bool do_imbe, bool do_output, bool do_msgq, gr::msg_queue::sptr queue, std::deque<int16_t> &output_queue, bool do_audio_output, int msgq_id) :
+        p25p1_fdma::p25p1_fdma(op25_audio* dest, log_ts& logger, int debug, bool do_imbe, bool do_output, bool do_msgq, gr::msg_queue::sptr queue, std::deque<int16_t> &output_queue, bool do_audio_output, int msgq_id) :
             write_bufp(0),
             d_debug(debug),
             d_do_imbe(do_imbe),
@@ -217,7 +217,7 @@ namespace gr {
             output_queue(output_queue),
             framer(new p25_framer(logger, debug, msgq_id)),
             qtimer(op25_timer(TIMEOUT_THRESHOLD)),
-            op25audio(udp),
+            op25audio(dest),
             logts(logger),
             crypt_algs(logger, debug, msgq_id),
             ess_keyid(0),
@@ -383,7 +383,7 @@ namespace gr {
             reset_ess();
 
             if ((d_do_imbe || d_do_audio_output) && (framer->duid == 0x3 || framer->duid == 0xf)) {  // voice termination
-                op25audio.send_audio_flag(op25_audio::DRAIN);
+                op25audio->send_audio_flag(op25_audio::DRAIN);
             }
         }
 
@@ -644,8 +644,8 @@ namespace gr {
                                 snd[i] = 0;
                             }
                         }
-                        if (op25audio.enabled()) {      // decoded audio goes out via UDP (normal code path)
-                            op25audio.send_audio(snd, SND_FRAME * sizeof(int16_t));
+                        if (op25audio->enabled()) {      // decoded audio goes out via UDP (normal code path)
+                            op25audio->send_audio(snd, SND_FRAME * sizeof(int16_t));
                         } else {                        // decoded audio back to gnuradio (still supported?)
                             for (int i = 0; i < SND_FRAME; i++) {
                                 output_queue.push_back(snd[i]);
@@ -669,7 +669,7 @@ namespace gr {
 
         void p25p1_fdma::call_end() {
             if (d_do_audio_output)
-                op25audio.send_audio_flag(op25_audio::DRAIN);
+                op25audio->send_audio_flag(op25_audio::DRAIN);
             reset_ess();
         }
 
@@ -732,7 +732,7 @@ namespace gr {
                         (framer->frame_body[i+7]     );
                     obuf[obuf_ct++] = b;
                 }
-                op25audio.send_to(obuf, obuf_ct);
+                op25audio->send_to(obuf, obuf_ct);
 
                 if (d_do_output) {
                     for (size_t j=0; j < obuf_ct; j++) {
@@ -782,7 +782,7 @@ namespace gr {
                         fprintf(stderr, "%s p25p1_fdma::check_timeout: expired\n", logts.get(d_msgq_id));
 
                     if (d_do_audio_output) {
-                        op25audio.send_audio_flag(op25_audio::DRAIN);
+                        op25audio->send_audio_flag(op25_audio::DRAIN);
                     }
 
                     qtimer.reset();

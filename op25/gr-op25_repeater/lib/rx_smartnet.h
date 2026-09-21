@@ -69,6 +69,7 @@ namespace gr {
                 void set_nac(int nac) { };
                 void set_slot_mask(int mask) { };
                 void set_slot_key(int mask) { };
+                void set_destination(const char* dest) { };
                 void set_xormask(const char* p) { };
                 // crypt_behavior
                 void crypt_behavior(int behavior) { };

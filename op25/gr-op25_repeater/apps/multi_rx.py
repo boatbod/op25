@@ -210,7 +210,7 @@ class channel(object):
                              offset = dev.offset,
                              if_rate = config['if_rate'],
                              symbol_rate = self.symbol_rate)
-        self.decoder = op25_repeater.frame_assembler(str(config['destination']), verbosity, msgq_id, rx_q)
+        self.decoder = op25_repeater.frame_assembler(str(from_dict(config, 'destination', "")), verbosity, msgq_id, rx_q)
 
         # Load crypt keys if present
         if self.crypt_keys_file != "":
@@ -662,9 +662,7 @@ class rx_block (gr.top_block):
             self.trunking = None
 
         if self.trunking is not None:
-            cfg_systems = config['systems'] if 'systems' in config else {}
-            cfg_chans   = config['chans'] if 'chans' in config else {}
-            self.trunk_rx = self.trunking.rx_ctl(frequency_set = self.change_freq, nbfm_ctrl = self.nbfm_control, fa_ctrl = self.fa_control, debug = self.verbosity, cfg_systems = cfg_systems, cfg_chans = cfg_chans)
+            self.trunk_rx = self.trunking.rx_ctl(frequency_set = self.change_freq, nbfm_ctrl = self.nbfm_control, fa_ctrl = self.fa_control, debug = self.verbosity, config = config)
             self.du_watcher = du_queue_watcher(self.rx_q, self.trunk_rx.process_qmsg)
             sys.stderr.write("Enabled trunking module: %s\n" % config['module'])
 

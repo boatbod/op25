@@ -35,6 +35,7 @@ namespace gr {
                 virtual void reset_timer(void) = 0;
                 virtual void set_slot_mask(int mask) = 0;
                 virtual void set_slot_key(int mask) = 0;
+                virtual void set_destination(const char* dest) = 0;
                 virtual void set_nac(int nac) = 0;
                 virtual void set_debug(int debug) = 0;
                 virtual void dump_buffer() { };

@@ -64,6 +64,9 @@ namespace gr {
             } else if (cmd == "set_nac") {
                 if (d_sync)
                     d_sync->set_nac(j["nac"].get<int>());
+            } else if (cmd == "set_destination") {
+                if (d_sync)
+                    d_sync->set_destination(j["destination"].get<std::string>().c_str());
             } else if (cmd == "sync_reset") {
                 if (d_sync)
                     d_sync->sync_reset();

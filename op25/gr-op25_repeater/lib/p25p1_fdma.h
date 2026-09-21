@@ -84,7 +84,7 @@ namespace gr {
                 op25_timer qtimer;
                 software_imbe_decoder software_decoder;
                 int16_t snd[SND_FRAME];
-                op25_audio& op25audio;
+                op25_audio* op25audio;
                 log_ts& logts;
                 op25_crypt_algs crypt_algs;
 
@@ -107,13 +107,14 @@ namespace gr {
             public:
                 void set_debug(int debug);
                 void set_nac(int nac);
+                inline void set_destination(op25_audio* dest) { if (dest != NULL) { op25audio = dest; } }
                 void reset_timer();
                 void call_end();
                 void crypt_reset();
                 void crypt_behavior(int behavior);
                 void crypt_key(uint16_t keyid, uint8_t algid, const std::vector<uint8_t> &key);
                 void rx_sym (const uint8_t *syms, int nsyms);
-                p25p1_fdma(op25_audio& udp, log_ts& logger, int debug, bool do_imbe, bool do_output, bool do_msgq, gr::msg_queue::sptr queue, std::deque<int16_t> &output_queue, bool do_audio_output, int msgq_id = 0);
+                p25p1_fdma(op25_audio* dest, log_ts& logger, int debug, bool do_imbe, bool do_output, bool do_msgq, gr::msg_queue::sptr queue, std::deque<int16_t> &output_queue, bool do_audio_output, int msgq_id = 0);
                 ~p25p1_fdma();
                 uint32_t load_nid(const uint8_t *syms, int nsyms, const uint64_t fs);
                 bool load_body(const uint8_t * syms, int nsyms);

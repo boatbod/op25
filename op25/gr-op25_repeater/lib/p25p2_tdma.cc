@@ -88,7 +88,7 @@ static const uint8_t mac_msg_len[256] = {
     28,  0,  0, 14, 17, 14,  0,  0, 16,  8, 11,  0, 13, 19,  0,  0, 
     0,  0, 16, 14,  0,  0, 12,  0, 22,  0, 11, 13, 11,  0, 15,  0 };
 
-p25p2_tdma::p25p2_tdma(op25_audio& udp, log_ts& logger, int slotid, int debug, bool do_msgq, gr::msg_queue::sptr queue, std::deque<int16_t> &qptr, bool do_audio_output, int msgq_id) :	// constructor
+p25p2_tdma::p25p2_tdma(op25_audio* dest, log_ts& logger, int slotid, int debug, bool do_msgq, gr::msg_queue::sptr queue, std::deque<int16_t> &qptr, bool do_audio_output, int msgq_id) :	// constructor
     tdma_xormask(new uint8_t[SUPERFRAME_SIZE]),
     symbols_received(0),
     packets(0),
@@ -102,7 +102,7 @@ p25p2_tdma::p25p2_tdma(op25_audio& udp, log_ts& logger, int slotid, int debug, b
     d_do_msgq(do_msgq),
     d_msgq_id(msgq_id),
     d_do_audio_output(do_audio_output),
-    op25audio(udp),
+    op25audio(dest),
     logts(logger),
     d_nac(0),
     d_debug(debug),
@@ -136,7 +136,7 @@ void p25p2_tdma::set_slotid(int slotid)
 }
 
 void p25p2_tdma::call_end() {
-    op25audio.send_audio_flag(op25_audio::DRAIN);
+    op25audio->send_audio_flag(op25_audio::DRAIN);
     reset_ess();
     reset_vb();
     d_tdma_slot_first_4v = -1;
@@ -283,7 +283,7 @@ void p25p2_tdma::handle_mac_end_ptt(const uint8_t byte_buf[], const unsigned int
     if (d_debug >= 10)
         fprintf(stderr, "%s MAC_END_PTT: colorcd=0x%03x, srcaddr=%u, grpaddr=%u, rs_errs=%d\n", logts.get(d_msgq_id), colorcd, srcaddr, grpaddr, rs_errs);
 
-    op25audio.send_audio_flag(op25_audio::DRAIN);
+    op25audio->send_audio_flag(op25_audio::DRAIN);
 
     // reset crypto parameters
     reset_ess();
@@ -295,7 +295,7 @@ void p25p2_tdma::handle_mac_idle(const uint8_t byte_buf[], const unsigned int le
         fprintf(stderr, "%s MAC_IDLE: ", logts.get(d_msgq_id));
 
     decode_mac_msg(byte_buf, len);
-    op25audio.send_audio_flag(op25_audio::DRAIN);
+    op25audio->send_audio_flag(op25_audio::DRAIN);
 
     if (d_debug >= 10)
         fprintf(stderr, ", rs_errs=%d\n", rs_errs);
@@ -318,7 +318,7 @@ void p25p2_tdma::handle_mac_hangtime(const uint8_t byte_buf[], const unsigned in
         fprintf(stderr, "%s MAC_HANGTIME: ", logts.get(d_msgq_id));
 
     decode_mac_msg(byte_buf, len);
-    op25audio.send_audio_flag(op25_audio::DRAIN);
+    op25audio->send_audio_flag(op25_audio::DRAIN);
 
     if (d_debug >= 10)
         fprintf(stderr, ", rs_errs=%d\n", rs_errs);
@@ -660,7 +660,7 @@ void p25p2_tdma::handle_voice_frame(const uint8_t dibits[], int slot, int voice_
         write_buf[write_bufp++] = snd >> 8;
     }
     if (d_do_audio_output && (write_bufp >= 0)) { 
-        op25audio.send_audio(write_buf, write_bufp);
+        op25audio->send_audio(write_buf, write_bufp);
         write_bufp = 0;
     }
 

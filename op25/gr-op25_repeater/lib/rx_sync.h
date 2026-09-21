@@ -1,5 +1,5 @@
 // P25 Decoder (C) Copyright 2013, 2014, 2015, 2016, 2017 Max H. Parke KA1RBI
-//             (C) Copyright 2019, 2020, 2021, 2022 Graham J. Norbury
+//             (C) Copyright 2019-2026 Graham J. Norbury
 // 
 // This file is part of OP25
 // 
@@ -131,6 +131,7 @@ public:
 	void crypt_key(uint16_t keyid, uint8_t algid, const std::vector<uint8_t> &key);
 	void set_slot_mask(int mask);
 	void set_slot_key(int mask);
+    void set_destination(const char* dest);
 	void set_xormask(const char* p);
 	void set_nac(int nac);
 	//crypt_behavior
@@ -169,7 +170,7 @@ private:
 	int d_slot_mask;
 	int d_slot_key;
 	unsigned int d_unmute_until[2];
-	op25_audio& d_audio;
+	op25_audio* d_audio;
 	p25p1_fdma p25fdma;
 	p25p2_tdma p25tdma;
 	p25p2_vf interleaver;

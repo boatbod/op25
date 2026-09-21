@@ -67,6 +67,12 @@ void rx_sync::reset_timer(void) {
 	p25fdma.reset_timer();
 }
 
+void rx_sync::set_destination(const char* dest) {
+	d_audio = &op25_audio_wrapper::instance().get_audio(dest, logts, d_debug, d_msgq_id);
+    p25fdma.set_destination(d_audio);
+    p25tdma.set_destination(d_audio);
+}
+
 void rx_sync::sync_reset(void) {
 	if (d_debug >= 10) {
 		fprintf(stderr, "%s rx_sync::sync_reset:\n", logts.get(d_msgq_id));
@@ -88,7 +94,7 @@ void rx_sync::sync_reset(void) {
 	for (int chan = 0; chan <= 1; chan++) {
 		if (d_unmute_until[chan]) {
 			d_unmute_until[chan] = 0;
-			d_audio.send_audio_flag_channel(op25_audio::DRAIN, chan);
+			d_audio->send_audio_flag_channel(op25_audio::DRAIN, chan);
 			if (d_debug >= 10) {
 				fprintf(stderr, "%s mute channel(%d)\n", logts.get(d_msgq_id), chan);
 			}
@@ -154,7 +160,7 @@ void rx_sync::crypt_behavior(int behavior) {
 
 void rx_sync::set_debug(int debug) {
     d_debug = debug;
-	d_audio.set_debug(debug);
+	d_audio->set_debug(debug);
 	p25fdma.set_debug(debug);
 	p25tdma.set_debug(debug);
 	dmr.set_debug(debug);
@@ -262,9 +268,9 @@ rx_sync::rx_sync(const char * options, log_ts& logger, int debug, int msgq_id, g
 	d_expires(0),
 	d_slot_mask(3),
 	d_slot_key(0),
-	d_audio(op25_audio_wrapper::instance().get_audio(options, logger, debug, msgq_id)),
-	p25fdma(op25_audio_wrapper::instance().get_audio(options, logger, debug, msgq_id), logger, debug, true, false, true, queue, d_output_queue[0], true, msgq_id),
-	p25tdma(op25_audio_wrapper::instance().get_audio(options, logger, debug, msgq_id), logger, 0, debug, true, queue, d_output_queue[0], true, msgq_id),
+	d_audio(&op25_audio_wrapper::instance().get_audio(options, logger, debug, msgq_id)),
+	p25fdma(d_audio, logger, debug, true, false, true, queue, d_output_queue[0], true, msgq_id),
+	p25tdma(d_audio, logger, 0, debug, true, queue, d_output_queue[0], true, msgq_id),
 	dmr(logger, debug, msgq_id, queue),
 	d_msgq_id(msgq_id),
 	d_msg_queue(queue),
@@ -292,7 +298,7 @@ rx_sync::~rx_sync()	// destructor
 
 void rx_sync::stop() // called prior to shutdown
 {
-    d_audio.stop();
+    d_audio->stop();
 }
 
 void rx_sync::sync_timeout(rx_types proto)
@@ -488,9 +494,9 @@ void rx_sync::codeword(const uint8_t* cw, const enum codeword_types codeword_typ
 
 void rx_sync::output(int16_t * samp_buf, const ssize_t slot_id) {
 	if (d_stereo) 
-		d_audio.send_audio_channel(samp_buf, NSAMP_OUTPUT * sizeof(int16_t), slot_id);
+		d_audio->send_audio_channel(samp_buf, NSAMP_OUTPUT * sizeof(int16_t), slot_id);
 	else
-		d_audio.send_audio(samp_buf, NSAMP_OUTPUT * sizeof(int16_t));
+		d_audio->send_audio(samp_buf, NSAMP_OUTPUT * sizeof(int16_t));
 }
 
 void rx_sync::rx_sym(const uint8_t sym) {
@@ -600,7 +606,7 @@ void rx_sync::rx_sym(const uint8_t sym) {
 		if (!unmute || (d_symbol_count >= d_unmute_until[dmr.chan()])) {
 			if (d_unmute_until[dmr.chan()]) {
 				d_unmute_until[dmr.chan()] = 0;
-				d_audio.send_audio_flag_channel(op25_audio::DRAIN, dmr.chan());
+				d_audio->send_audio_flag_channel(op25_audio::DRAIN, dmr.chan());
 				if (d_debug >= 10) {
 					fprintf(stderr, "%s mute channel(%d)\n", logts.get(d_msgq_id), dmr.chan());
 				}
