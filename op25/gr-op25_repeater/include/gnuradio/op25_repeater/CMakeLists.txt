@@ -28,7 +28,5 @@ install(FILES
     analog_udp.h
     rmsagc_ff.h
     ambe_encoder_sb.h
-    ysf_tx_sb.h
-    dstar_tx_sb.h
     fsk4_slicer_fb.h DESTINATION include/gnuradio/op25_repeater
 )

@@ -24,15 +24,12 @@ namespace py = pybind11;
     void bind_ambe_encoder_sb(py::module& m);
     void bind_analog_udp(py::module& m);
     void bind_costas_loop_cc(py::module& m);
-    void bind_dmr_bs_tx_bb(py::module& m);
-    void bind_dstar_tx_sb(py::module& m);
     void bind_frame_assembler(py::module& m);
     void bind_fsk4_slicer_fb(py::module& m);
     void bind_gardner_cc(py::module& m);
     void bind_iqfile_source(py::module& m);
     void bind_rmsagc_ff(py::module& m);
     void bind_vocoder(py::module& m);
-    void bind_ysf_tx_sb(py::module& m);
 // ) END BINDING_FUNCTION_PROTOTYPES
 
 
@@ -64,14 +61,11 @@ PYBIND11_MODULE(op25_repeater_python, m)
         bind_ambe_encoder_sb(m);
         bind_analog_udp(m);
         bind_costas_loop_cc(m);
-        bind_dmr_bs_tx_bb(m);
-        bind_dstar_tx_sb(m);
         bind_frame_assembler(m);
         bind_fsk4_slicer_fb(m);
         bind_gardner_cc(m);
         bind_iqfile_source(m);
         bind_rmsagc_ff(m);
         bind_vocoder(m);
-        bind_ysf_tx_sb(m);
     // ) END BINDING_FUNCTION_CALLS
 }

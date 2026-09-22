@@ -32,15 +32,12 @@ list(APPEND op25_repeater_python_files
     ambe_encoder_sb_python.cc
     analog_udp_python.cc
     costas_loop_cc_python.cc
-    dmr_bs_tx_bb_python.cc
-    dstar_tx_sb_python.cc
     frame_assembler_python.cc
     fsk4_slicer_fb_python.cc
     gardner_cc_python.cc
     iqfile_source_python.cc
     rmsagc_ff_python.cc
     vocoder_python.cc
-    ysf_tx_sb_python.cc
     python_bindings.cc)
 
 GR_PYBIND_MAKE_OOT(op25_repeater
