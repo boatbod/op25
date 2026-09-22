@@ -1,5 +1,5 @@
 // P25 Decoder (C) Copyright 2013, 2014, 2015, 2016, 2017 Max H. Parke KA1RBI
-//             (C) Copyright 2019, 2020, 2021, 2022 Graham J. Norbury (DMR & P25 additions)
+//             (C) Copyright 2019, 2020, 2021, 2022 Graham J. Norbury
 // 
 // This file is part of OP25
 // 
@@ -44,8 +44,6 @@
 #include "rs.h"
 #include "crc16.h"
 
-#include "ysf_const.h"
-#include "dmr_const.h"
 #include "p25_frame.h"
 #include "op25_imbe_frame.h"
 #include "software_imbe_decoder.h"
@@ -163,7 +161,6 @@ void rx_sync::set_debug(int debug) {
 	d_audio->set_debug(debug);
 	p25fdma.set_debug(debug);
 	p25tdma.set_debug(debug);
-	dmr.set_debug(debug);
 }
 
 // Build the FEC stats JSON envelope. Counters are monotonic since
@@ -187,75 +184,6 @@ std::string rx_sync::get_fec_stats_json() const {
 	return envelope.dump();
 }
 
-static int ysf_decode_fich(const uint8_t src[100], uint8_t dest[32]) {   // input is 100 dibits, result is 32 bits
-// return -1 on decode error, else 0
-	static const int pc[] = {0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1};
-	uint8_t buf[100];
-	for (int i=0; i<20; i++) {
-		for (int j=0; j<5; j++) {
-			buf[j+i*5] = src[i+j*20];
-		}
-	}
-	uint8_t dr = 0;
-	uint8_t ans[100];
-	/* fake trellis decode */
-	/* TODO: make less fake */
-	for (int i=0; i<100; i++) {
-		uint8_t sym = buf[i];
-		uint8_t d0  = ((dr << 1) | 0) & 0x1f;
-		uint8_t r0 = (pc[ d0 & 0x19 ] << 1) + pc[ d0 & 0x17];
-		uint8_t d1  = ((dr << 1) | 1) & 0x1f;
-		uint8_t r1 = (pc[ d1 & 0x19 ] << 1) + pc[ d1 & 0x17];
-		if (sym == r0) {
-			ans[i] = 0;
-			dr = d0;
-		} else if (sym == r1) {
-			ans[i] = 1;
-			dr = d1;
-		} else {
-			return -1;  /* decode error */
-		}
-	}
-	uint8_t fich_bits[12*4];
-	store_i(gly24128Dec(load_i(ans+24*0, 24)), fich_bits+12*0, 12);
-	store_i(gly24128Dec(load_i(ans+24*1, 24)), fich_bits+12*1, 12);
-	store_i(gly24128Dec(load_i(ans+24*2, 24)), fich_bits+12*2, 12);
-	store_i(gly24128Dec(load_i(ans+24*3, 24)), fich_bits+12*3, 12);
-	uint16_t crc_result = crc16(fich_bits, 48);
-	if (crc_result != 0)
-		return -1;	// crc failure
-	memcpy(dest, fich_bits, 32);
-	return 0;
-}
-
-void rx_sync::ysf_sync(const uint8_t dibitbuf[], bool& ysf_fullrate, bool& unmute) {
-	uint8_t fich_buf[32];
-	int rc = ysf_decode_fich(dibitbuf+20, fich_buf);
-	if (rc == 0) {
-		uint32_t fich = load_i(fich_buf, 32);
-		uint32_t dt = (fich >> 8) & 3;
-		d_shift_reg = dt;
-	}
-	switch(d_shift_reg) {
-	case 0:		// voice/data mode 1
-		unmute = false;
-		break;
-	case 1:		// data mode
-		unmute = false;
-		break;
-	case 2:		// voice/data mode 2
-		unmute = true;
-		ysf_fullrate = false;
-		break;
-	case 3:		// voice fr mode
-		unmute = true;
-		ysf_fullrate = true;
-		break;
-	}
-	if (d_debug > 5 && !unmute)
-		fprintf(stderr, "%s ysf_sync: muting audio: dt: %d, rc: %d\n", logts.get(d_msgq_id), d_shift_reg, rc);
-}
-
 rx_sync::rx_sync(const char * options, log_ts& logger, int debug, int msgq_id, gr::msg_queue::sptr queue) :	// constructor
 	sync_timer(op25_timer(1000000)),
 	d_symbol_count(0),
@@ -271,7 +199,6 @@ rx_sync::rx_sync(const char * options, log_ts& logger, int debug, int msgq_id, g
 	d_audio(&op25_audio_wrapper::instance().get_audio(options, logger, debug, msgq_id)),
 	p25fdma(d_audio, logger, debug, true, false, true, queue, d_output_queue[0], true, msgq_id),
 	p25tdma(d_audio, logger, 0, debug, true, queue, d_output_queue[0], true, msgq_id),
-	dmr(logger, debug, msgq_id, queue),
 	d_msgq_id(msgq_id),
 	d_msg_queue(queue),
 	d_stereo(true),
@@ -317,11 +244,6 @@ void rx_sync::sync_timeout(rx_types proto)
             if (!d_msg_queue->full_p())
 				d_msg_queue->insert_tail(msg);
 			break;
-		case RX_TYPE_DMR:
-			msg = gr::message::make_from_string(m_buf, get_msg_type(PROTOCOL_DMR, M_DMR_TIMEOUT), (d_msgq_id << 1), logts.get_ts());
-            if (!d_msg_queue->full_p())
-				d_msg_queue->insert_tail(msg);
-			break;
 		default:
 			break;
 		}
@@ -346,8 +268,6 @@ void rx_sync::sync_established(rx_types proto)
             if (!d_msg_queue->full_p())
 				d_msg_queue->insert_tail(msg);
 			break;
-		case RX_TYPE_DMR:
-			break;
 		default:
 			break;
         }
@@ -355,18 +275,6 @@ void rx_sync::sync_established(rx_types proto)
 }
 
 void rx_sync::codeword(const uint8_t* cw, const enum codeword_types codeword_type, int slot_id) {
-	static const int x=4;
-	static const int y=26;
-	static const uint8_t majority[8] = {0,0,0,1,0,1,1,1};
-
-	int b[9];
-	int U[4];
-	uint8_t buf[4*26];
-	uint8_t tmp_codeword [144];
-	uint32_t E0, ET;
-	uint32_t u[8];
-	size_t errs = 0;
-    int rc = 0;
 	bool do_fullrate = false;
 	bool do_silence = false;
 	bool do_tone = false;
@@ -374,94 +282,10 @@ void rx_sync::codeword(const uint8_t* cw, const enum codeword_types codeword_typ
 	voice_codeword fullrate_cw(voice_codeword_sz);
 
 	switch(codeword_type) {
-	case CODEWORD_DMR:
-		errs = interleaver.process_vcw(&errs_mp[slot_id], cw, b, U);
-		interleaver.pack_cw(p_cw, U);
-		if (d_debug >= 9) {
-			fprintf(stderr, "%s AMBE %02x %02x %02x %02x %02x %02x %02x errs %lu err_rate %f\n", logts.get(d_msgq_id),
-			       	p_cw[0], p_cw[1], p_cw[2], p_cw[3], p_cw[4], p_cw[5], p_cw[6], errs, errs_mp[slot_id].ER);
-		}
-		if (d_slot_key) { // BP reversal if key is specified
-			uint8_t skipped_bits = p_cw[1] & 0xf0;
-			for (int i = 0; i <= 6; i++)
-				p_cw[i]   ^= (d_slot_key >> ((i + 1) % 2) * 8);
-			p_cw[1] = (p_cw[1] & 0x0f) + skipped_bits;
-			interleaver.unpack_cw(p_cw, U);
-			interleaver.unpack_b(b, U);
-			interleaver.pack_cw(p_cw, U);
-
-			if (d_debug >= 9) {
-				fprintf(stderr, "%s ambe^%02x^%02x^%02x^%02x^%02x^%02x^%02x\n", logts.get(d_msgq_id),
-			       		p_cw[0], p_cw[1], p_cw[2], p_cw[3], p_cw[4], p_cw[5], p_cw[6]);
-			}
-		}
-
-		// handle frame repeats, tones and voice
-		rc = mbe_dequantizeAmbeTone(&tone_mp[slot_id], &errs_mp[slot_id], U);
-		if (rc >= 0) {					// Tone Frame
-			if (rc == 0) {                  // Valid Tone
-				do_tone = true;
-				mbe_err_cnt[slot_id] = 0;
-			} else {                        // Tone Erasure with Frame Repeat
-				if ((++mbe_err_cnt[slot_id] < 4) && do_tone) {
-					mbe_useLastMbeParms(&cur_mp[slot_id], &prev_mp[slot_id]);
-					rc = 0;
-				} else {
-					do_tone = false;        // Mute audio output after 3 successive Frame Repeats
-					do_silence = true;
-				}
- 			}
-		} else {
-			rc = mbe_dequantizeAmbe2250Parms (&cur_mp[slot_id], &prev_mp[slot_id], &errs_mp[slot_id], b);
-			if (rc == 0) {				// Voice Frame
-				do_tone = false;
-				mbe_err_cnt[slot_id] = 0;
-			} else if ((++mbe_err_cnt[slot_id] < 4) && !do_tone) {// Erasure with Frame Repeat per TIA-102.BABA.5.6
-				mbe_useLastMbeParms(&cur_mp[slot_id], &prev_mp[slot_id]);
-				rc = 0;
-			} else {
-				do_tone = false;            // Mute audio output after 3 successive Frame Repeats
-				do_silence = true;
-			}
-		}
-		if (errs_mp[slot_id].ER > 0.096) { // Mute if error rate exceeds threshold
-			do_tone = false;
-			do_silence = true;
-		}
-		break;
-	case CODEWORD_DSTAR:
-		interleaver.decode_dstar(cw, b, false);
-		if (b[0] < 120) // TODO: frame repeats and tones
-			mbe_dequantizeAmbe2400Parms(&cur_mp[slot_id], &prev_mp[slot_id], &errs_mp[slot_id], b);
-		else
-			do_silence = true;
-		break;
-	case CODEWORD_YSF_HALFRATE:	// 104 bits
-		for (int i=0; i<x; i++) {
-			for (int j=0; j<y; j++) 
-				buf[j+i*y] = cw[i+j*x];
-		}
-		ysf_scramble(buf, 104);
-		for (int i=0; i<27; i++)
-			tmp_codeword[i] = majority[ (buf[0+i*3] << 2) | (buf[1+i*3] << 1) | buf[2+i*3] ];
-
-		memcpy(tmp_codeword+27, buf+81, 22);
-		decode_49bit(b, tmp_codeword);
-		if (b[0] < 120) // TODO: frame repeats and tones
-			mbe_dequantizeAmbe2250Parms(&cur_mp[slot_id], &prev_mp[slot_id], &errs_mp[slot_id], b);
-		else
-			do_silence = true;
-		break;
 	case CODEWORD_P25P2:
 		break; // Not used; handled by p25p2_tdma
 	case CODEWORD_P25P1:
 		break; // Not used; handled by p25p1_fdma
-	case CODEWORD_YSF_FULLRATE:	// 144 bits
-		for (int i=0; i<144; i++)
-			fullrate_cw[i] = cw[ysf_permutation[i]];
-		imbe_header_decode(fullrate_cw, u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7], E0, ET);
-		do_fullrate = true;
-		break;
 	}
 	if (do_tone) {
 		d_software_decoder[slot_id].decode_tone(tone_mp[slot_id].ID, tone_mp[slot_id].AD, &tone_mp[slot_id].n);
@@ -500,11 +324,7 @@ void rx_sync::output(int16_t * samp_buf, const ssize_t slot_id) {
 }
 
 void rx_sync::rx_sym(const uint8_t sym) {
-	uint8_t bitbuf[864*2];
 	enum rx_types sync_detected = RX_TYPE_NONE;
-	bool unmute;
-	uint8_t tmpcw[144];
-	bool ysf_fullrate;
 	int excess_count = 0;
 
     if (d_slot_mask & 0x4) { // Setting bit 3 of slot mask disables framing for idle receiver 
@@ -565,11 +385,6 @@ void rx_sync::rx_sym(const uint8_t sym) {
 	int start_idx = d_cbuf_idx + CBUF_SIZE - d_fragment_len - excess_count;
 	assert (start_idx >= 0);
 	uint8_t * symbol_ptr = d_cbuf+start_idx;
-	uint8_t * bit_ptr = symbol_ptr;
-	if ((d_current_type == RX_TYPE_DSTAR) || (d_current_type==RX_TYPE_YSF)) {
-		dibits_to_bits(bitbuf, symbol_ptr, d_fragment_len);
-		bit_ptr = bitbuf;
-	}
 	switch (d_current_type) {
 	case RX_TYPE_NONE:
 		break;
@@ -589,51 +404,6 @@ void rx_sync::rx_sym(const uint8_t sym) {
 	case RX_TYPE_P25P2:
 		p25tdma.handle_packet(symbol_ptr, d_fs); // passing 180 dibit packets is faster than bit-shuffling via p25tdma::rx_sym()
         p25fdma.reset_timer();                   // reset FDMA timer in case of long TDMA transmissions
-		break;
-	case RX_TYPE_DMR:
-		// frame with explicit sync resets expiration counter
-		if (dmr.load_frame(symbol_ptr, unmute))
-			d_expires = d_symbol_count + MODE_DATA[d_current_type].expiration;
-
-		// update audio timeout counters etc
-		if (unmute && ((dmr.chan() + 1) & d_slot_mask)) {
-			if (!d_unmute_until[dmr.chan()])
-				if (d_debug >= 10) {
-					fprintf(stderr, "%s unmute channel(%d)\n", logts.get(d_msgq_id), dmr.chan());
-				}
-			d_unmute_until[dmr.chan()] = d_symbol_count + MODE_DATA[d_current_type].expiration;
-		}
-		if (!unmute || (d_symbol_count >= d_unmute_until[dmr.chan()])) {
-			if (d_unmute_until[dmr.chan()]) {
-				d_unmute_until[dmr.chan()] = 0;
-				d_audio->send_audio_flag_channel(op25_audio::DRAIN, dmr.chan());
-				if (d_debug >= 10) {
-					fprintf(stderr, "%s mute channel(%d)\n", logts.get(d_msgq_id), dmr.chan());
-				}
-			}
-			break;
-		}
-
-		codeword(symbol_ptr+12, CODEWORD_DMR, dmr.chan());
-		memcpy(tmpcw, symbol_ptr+48, 18);
-		memcpy(tmpcw+18, symbol_ptr+90, 18);
-		codeword(tmpcw, CODEWORD_DMR, dmr.chan());
-		codeword(symbol_ptr+108, CODEWORD_DMR, dmr.chan());
-		break;
-	case RX_TYPE_DSTAR:
-		codeword(bit_ptr, CODEWORD_DSTAR, 0);   // 72 bits = 72 symbols
-		break;
-	case RX_TYPE_YSF:
-		ysf_sync(symbol_ptr, ysf_fullrate, unmute);
-		if (!unmute)
-			break;
-		for (int vcw = 0; vcw < 5; vcw++) {
-			if (ysf_fullrate) {
-				codeword(bit_ptr + 2*(vcw*72 + 120), CODEWORD_YSF_FULLRATE, 0);  // 144 bits
-			} else {	/* halfrate */
-				codeword(bit_ptr + 2*(vcw*72 + 120 + 20), CODEWORD_YSF_HALFRATE, 0);   // 104 bits
-			}
-		}
 		break;
 	case RX_N_TYPES:
 		assert(0==1);     /* should not occur */

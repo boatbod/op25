@@ -41,9 +41,6 @@
 #include "mbelib.h"
 #include "ambe.h"
 
-#include "ysf_const.h"
-#include "dmr_const.h"
-#include "dmr_cai.h"
 #include "p25_frame.h"
 #include "op25_timer.h"
 #include "op25_imbe_frame.h"
@@ -60,9 +57,6 @@ enum rx_types {
 	RX_TYPE_NONE=0,
 	RX_TYPE_P25P1,
 	RX_TYPE_P25P2,
-	RX_TYPE_DMR,
-	RX_TYPE_DSTAR,
-	RX_TYPE_YSF,
 	RX_N_TYPES
 };   // also used as array index
 
@@ -75,13 +69,10 @@ static const struct _mode_data {
 } MODE_DATA[RX_N_TYPES] = {
 	{"NONE",   0,0,0,0},
 	{"P25P1",  48,0,57,1728},
-	{"P25P2",  40,0,180,2160},
-	{"DMR",    48,66,144,1728},
-	{"DSTAR",  48,72,96,2016*2},
-	{"YSF",    40,0,480,480*2}
+	{"P25P2",  40,0,180,2160}
 };   // index order must match rx_types enum
 
-#ifdef P25_FRAME_TYPES_ONLY
+// P25_FRAME_TYPES_ONLY
 static const int KNOWN_MAGICS = 2;
 static const struct _sync_magic {
 	int type;
@@ -90,35 +81,10 @@ static const struct _sync_magic {
 	{RX_TYPE_P25P1, P25_FRAME_SYNC_MAGIC},
 	{RX_TYPE_P25P2, P25P2_FRAME_SYNC_MAGIC}
 }; // maps sync patterns to protocols
-#else
-static const int KNOWN_MAGICS = 13;
-static const struct _sync_magic {
-	int type;
-	uint64_t magic;
-} SYNC_MAGIC[KNOWN_MAGICS] = {
-	{RX_TYPE_P25P1, P25_FRAME_SYNC_MAGIC},
-	{RX_TYPE_P25P2, P25P2_FRAME_SYNC_MAGIC},
-	{RX_TYPE_DMR, DMR_BS_VOICE_SYNC_MAGIC},
-	{RX_TYPE_DMR, DMR_BS_DATA_SYNC_MAGIC},
-	{RX_TYPE_DMR, DMR_MS_VOICE_SYNC_MAGIC},
-	{RX_TYPE_DMR, DMR_MS_DATA_SYNC_MAGIC},
-	{RX_TYPE_DMR, DMR_MS_RC_SYNC_MAGIC},
-	{RX_TYPE_DMR, DMR_T1_VOICE_SYNC_MAGIC},
-	{RX_TYPE_DMR, DMR_T1_DATA_SYNC_MAGIC},
-	{RX_TYPE_DMR, DMR_T2_VOICE_SYNC_MAGIC},
-	{RX_TYPE_DMR, DMR_T2_DATA_SYNC_MAGIC},
-	{RX_TYPE_DSTAR, DSTAR_FRAME_SYNC_MAGIC},
-	{RX_TYPE_YSF, YSF_FRAME_SYNC_MAGIC}
-}; // maps sync patterns to protocols
-#endif
 
 enum codeword_types {
 	CODEWORD_P25P1,
-	CODEWORD_P25P2,
-	CODEWORD_DMR,
-	CODEWORD_DSTAR,
-	CODEWORD_YSF_FULLRATE,
-	CODEWORD_YSF_HALFRATE
+	CODEWORD_P25P2
 };
 
 class rx_sync : public rx_base {
@@ -147,7 +113,6 @@ private:
 	void sync_timeout(rx_types proto);
 	void sync_established(rx_types proto);
 	void cbuf_insert(const uint8_t c);
-	void ysf_sync(const uint8_t dibitbuf[], bool& ysf_fullrate, bool& unmute);
 	void codeword(const uint8_t* cw, const enum codeword_types codeword_type, int slot_id);
 	void output(int16_t * samp_buf, const ssize_t slot_id);
 	//static const int CBUF_SIZE=864;
@@ -182,7 +147,6 @@ private:
 	int mbe_err_cnt[2];
 	software_imbe_decoder d_software_decoder[2];
 	std::deque<int16_t> d_output_queue[2];
-	dmr_cai dmr;
 	int d_msgq_id;
 	gr::msg_queue::sptr d_msg_queue;
 	bool d_stereo;

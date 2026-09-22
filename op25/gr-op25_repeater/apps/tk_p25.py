@@ -1794,6 +1794,11 @@ class p25_site(object):
                 self.update_wuid_ts(srcaddr, tgid, ts)
             if self not in self.talkgroups[tgid]['sites']:
                 self.talkgroups[tgid]['sites'].append(self)
+                if self.debug > 10:
+                    site_list = []
+                    for site in self.talkgroups[tgid]['sites']:
+                        site_list.append(site.rfss_stid)
+                    sys.stderr.write('%s [%s] tgids append site: tg=%d, sites=%s\n' % (log_ts.get(), self.sysname, tgid, site_list))
 
         if ui_log_update:   # log update to UI outside of the mutex protection
             self.rx_ctl.log_call(self.ns_syid,
@@ -2156,8 +2161,8 @@ class p25_site(object):
             for ga in sorted(self.patches[sg]['ga']):
                 sg_dec = "%5d" % (sg)
                 ga_dec = "%5d" % (ga)
-                sg_tag = self.talkgroups.get(sg, {}).get('tag', None)
-                ga_tag = self.talkgroups.get(ga, {}).get('tag', None)
+                sg_tag = self.talkgroups.get(sg, {}).get('tag', None) if self.talkgroups is not None else sg_dec
+                ga_tag = self.talkgroups.get(ga, {}).get('tag', None) if self.talkgroups is not None else ga_dec
                 d['patch_data'][sg][ga] = {'sg': sg_dec, 'sgtag': sg_tag, 'ga': ga_dec, 'gatag': ga_tag}
 
         # Subscriber Registrations
