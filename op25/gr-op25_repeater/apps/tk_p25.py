@@ -399,6 +399,8 @@ class rx_ctl(object):
 
     def to_json(self):
         d = {'json_type': 'trunk_update'}
+        for stream in self.streams.values():
+            stream.to_json()
         syid = 0;
         for site in self.sites:
             d[syid] = json.loads(self.sites[site]['site'].to_json())
@@ -672,7 +674,8 @@ class p25_stream(object):
                 sys.stderr.write("%s [S%d] expire hold: tg(%d)\n" % (log_ts.get(), self.id, self.hold_tgid))
             self.hold_tgid = None
             self.hold_mode = False
-            meta_update(self.meta_q, msgq_id=self.msgq_id, debug=self.debug)
+            self.receiver.release_stream()
+            #meta_update(self.meta_q, msgq_id=self.msgq_id, debug=self.debug)
 
     def find_talkgroup(self, start_time, tgid=None, hold=False):
         if self.system is None or self.system.talkgroups is None:
@@ -738,12 +741,14 @@ class p25_stream(object):
             if self.debug > 0:
                 sys.stderr.write("%s [S%d] voice update:  tg(%d), rid(%d), freq(%f), slot(%s), prio(%d)\n" % (log_ts.get(), self.id, tgid, self.system.talkgroups[tgid]['srcaddr'], (freq/1e6), get_slot(slot), self.system.talkgroups[tgid]['prio']))
             self.receiver.tune_voice(freq, tgid, slot, self.destination)
+            self.current_tgid = tgid
             self.receiver.log_call(freq, slot, self.system.talkgroups[tgid]['prio'], tgid, self.system.talkgroups[tgid]['srcaddr'])
         else:
             if self.debug > 0:
                 sys.stderr.write("%s [S%d] voice preempt: tg(%d), rid(%d), freq(%f), slot(%s), prio(%d)\n" % (log_ts.get(), self.id, tgid, self.system.talkgroups[tgid]['srcaddr'], (freq/1e6), get_slot(slot), self.system.talkgroups[tgid]['prio']))
             self.receiver.expire_talkgroup(update_meta=False, reason="preempt")
             self.receiver.tune_voice(freq, tgid, slot, self.destination)
+            self.current_tgid = tgid
             self.receiver.log_call(freq, slot, self.system.talkgroups[tgid]['prio'], tgid, self.talkgroups[tgid]['srcaddr'])
 
         #meta_update(self.meta_q, tgid=tgid, tag=self.system.talkgroups[tgid]['tag'], rid=self.system.talkgroups[tgid]['srcaddr'], rtag=self.site.get_rid_tag(self.system.talkgroups[tgid]['srcaddr']), msgq_id=self.id, debug=self.debug)
@@ -826,6 +831,9 @@ class p25_stream(object):
             elif self.hold_tgid is None:
                 pass
                 #meta_update(self.meta_q, msgq_id=self.msgq_id, debug=self.debug)
+
+    def to_json(self):
+        sys.stderr.write("%s [S%d] to_json: stream status current_tgid=%s, receiver=%s, hold_tgid=%s\n" % (log_ts.get(), self.id, self.current_tgid, (self.receiver.msgq_id if self.receiver is not None else "None"), self.hold_tgid))
 
 
 #################
@@ -2945,6 +2953,8 @@ class p25_receiver(object):
             self.current_stream.check_expired_hold(curr_time)
 
     def get_status(self):
+        sys.stderr.write("%s [%d] get_status: receiver status current_tgid=%s, current_slot=%s, current_stream=%s\n" % (log_ts.get(), self.msgq_id, self.current_tgid, self.current_slot, (self.current_stream.id if self.current_stream is not None else "None")))
+
         if self.talkgroups is None:
             _tgid = self.current_tgid
             cc_tag = "Control Channel" if self.site.has_cc(self.msgq_id) else "Idle" if self.tuner_idle else None
@@ -2965,7 +2975,7 @@ class p25_receiver(object):
             d['msgqid'] = self.msgq_id
         else:
             with self.site.talkgroups_mutex:
-                _tgid = self.hold_tgid if self.current_stream is not None and self.current_stream.hold_tgid is not None else self.current_tgid
+                _tgid = self.current_stream.hold_tgid if self.current_stream is not None and self.current_stream.hold_tgid is not None else self.current_tgid
                 cc_tag = "Control Channel" if self.site.has_cc(self.msgq_id) else "Idle" if self.tuner_idle else None
                 d = {}
                 d['freq'] = self.tuned_frequency
@@ -2978,7 +2988,7 @@ class p25_receiver(object):
                 d['srctag'] = self.site.get_rid_tag(self.talkgroups[self.current_tgid]['srcaddr']) if self.current_tgid is not None else ""
                 d['encrypted'] = self.talkgroups[self.current_tgid]['encrypted'] if self.current_tgid is not None else 0
                 d['emergency'] = (d['svcopts'] >> 7) & 0x1
-                d['hold_tgid'] = self.hold_tgid if self.current_stream is not None and self.current_stream.hold_tgid is not None else 0
+                d['hold_tgid'] = self.current_stream.hold_tgid if self.current_stream is not None and self.current_stream.hold_tgid is not None else 0
                 d['mode'] = None
                 d['stream'] = self.meta_stream
                 d['msgqid'] = self.msgq_id
