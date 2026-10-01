@@ -749,7 +749,7 @@ class p25_stream(object):
             self.receiver.expire_talkgroup(update_meta=False, reason="preempt")
             self.receiver.tune_voice(freq, tgid, slot, self.destination)
             self.current_tgid = tgid
-            self.receiver.log_call(freq, slot, self.system.talkgroups[tgid]['prio'], tgid, self.talkgroups[tgid]['srcaddr'])
+            self.receiver.log_call(freq, slot, self.system.talkgroups[tgid]['prio'], tgid, self.system.talkgroups[tgid]['srcaddr'])
 
         #meta_update(self.meta_q, tgid=tgid, tag=self.system.talkgroups[tgid]['tag'], rid=self.system.talkgroups[tgid]['srcaddr'], rtag=self.site.get_rid_tag(self.system.talkgroups[tgid]['srcaddr']), msgq_id=self.id, debug=self.debug)
 
