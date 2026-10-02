@@ -59,12 +59,12 @@ public:
         std::lock_guard<std::mutex> lock(mutex_);
 
         // map.emplace() will either return iterator to an existing object, or create a new object
-        auto const [it, created] = audioMap.try_emplace(msgq_id, options, logger, debug, msgq_id);
+        auto const [it, created] = audioMap.try_emplace(options, options, logger, debug, msgq_id);
         if (debug >= 10) {
             if (created) {
-                fprintf(stderr, "%s op25_audio_wrapper::get_op25_audio: created new op25_audio object\n", logger.get(msgq_id));
+                fprintf(stderr, "%s op25_audio_wrapper::get_op25_audio: created new op25_audio object (%s)\n", logger.get(msgq_id), options);
             } else {
-                fprintf(stderr, "%s op25_audio_wrapper::get_op25_audio: using existing op25_audio object\n", logger.get(msgq_id));
+                fprintf(stderr, "%s op25_audio_wrapper::get_op25_audio: using existing op25_audio object (%s)\n", logger.get(msgq_id), options);
             }
         }
 
@@ -72,7 +72,7 @@ public:
     }
 
 private:
-    std::map<int, op25_audio> audioMap;
+    std::map<std::string, op25_audio> audioMap;
     std::mutex mutex_;
 
 }; // class op25_audio_wrapper

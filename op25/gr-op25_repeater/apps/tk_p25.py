@@ -263,6 +263,10 @@ class rx_ctl(object):
 
     # post_init is called once after all receivers have been created
     def post_init(self):
+        for stream in self.streams.values():
+            if self.debug >= 10:
+                sys.stderr.write("%s [rx_ctl] post initialize stream [S%d] destination (%s)\n" % (log_ts.get(), stream.id, stream.destination))
+            stream.init_destination()
         for rx in self.receivers:
             if self.receivers[rx]['rx_rcvr'] is not None:
                 if self.debug >= 10:
@@ -452,6 +456,8 @@ class rx_ctl(object):
 
     def set_debug(self, dbglvl):
         self.debug = dbglvl
+        for stream in self.streams.values():
+            stream.set_debug(dbglvl)
         for rx_sys in self.sites:
             if self.sites[rx_sys]['site'] is not None:
                 self.sites[rx_sys]['site'].set_debug(dbglvl)
@@ -578,6 +584,9 @@ class p25_stream(object):
 
         self.load_bl_wl()
 
+    def set_debug(self, dbglvl):
+        self.debug = dbglvl
+
     def load_bl_wl(self):
         if self.blacklist_file_name != "":
             sys.stderr.write("%s [S%d] reading stream blacklist file: %s\n" % (log_ts.get(), self.id, self.blacklist_file_name))
@@ -586,6 +595,10 @@ class p25_stream(object):
         if self.whitelist_file_name != "":
             sys.stderr.write("%s [S%d] reading stream whitelist file: %s\n" % (log_ts.get(), self.id, self.whitelist_file_name))
             self.whitelist = get_int_dict(self.whitelist_file_name, self.id)
+
+    def init_destination(self):
+        if self.destination is not None and self.destination != "" and self.rx_ctl.fa_ctrl is not None:
+            self.rx_ctl.fa_ctrl({'tuner': 0, 'cmd': 'init_destination', 'destination': self.destination})
 
     def add_skiplist(self, tgid, end_time=None):
         if not tgid or (tgid <= 0) or (tgid > 65534):
@@ -833,7 +846,8 @@ class p25_stream(object):
                 #meta_update(self.meta_q, msgq_id=self.msgq_id, debug=self.debug)
 
     def to_json(self):
-        sys.stderr.write("%s [S%d] to_json: stream status current_tgid=%s, receiver=%s, hold_tgid=%s\n" % (log_ts.get(), self.id, self.current_tgid, (self.receiver.msgq_id if self.receiver is not None else "None"), self.hold_tgid))
+        if self.debug > 10 and (self.current_tgid is not None or self.receiver is not None or self.hold_tgid is not None):
+            sys.stderr.write("%s [S%d] to_json: stream status current_tgid=%s, receiver=%s, hold_tgid=%s\n" % (log_ts.get(), self.id, self.current_tgid, (self.receiver.msgq_id if self.receiver is not None else "None"), self.hold_tgid))
 
 
 #################
@@ -2675,7 +2689,7 @@ class p25_receiver(object):
                 sys.stderr.write("%s [%d] metadata updates not enabled\n" % (log_ts.get(), self.msgq_id))
             else:
                 sys.stderr.write("%s [%d] metadata stream: %s\n" % (log_ts.get(), self.msgq_id, self.meta_stream))
-        meta_update(self.meta_q, msgq_id=self.msgq_id, debug=self.debug)
+        #meta_update(self.meta_q, msgq_id=self.msgq_id, debug=self.debug)
         nac, wacn, sysid, valid = self.site.get_tdma_params() # check for xormask preload
         if valid and self.fa_ctrl is not None:
             self.fa_ctrl({'tuner': self.msgq_id, 'cmd': 'set_xormask', 'nac': nac, 'wacn': wacn, 'sysid': sysid})
@@ -2804,7 +2818,7 @@ class p25_receiver(object):
             updated += 1
             if self.current_tgid is None:
                 if self.site.has_cc(self.msgq_id):
-                    if ((self.debug > 0) and (self.site.cc_retries == 0)) or (self.debug > 10):  # only log once per timeout unless log level > 10
+                    if ((self.debug > 1) and (self.site.cc_retries == 0)) or (self.debug > 10):  # only log once per timeout unless log level > 10
                         sys.stderr.write("%s [%d] control channel timeout, freq(%f)\n" % (log_ts.get(), self.msgq_id, (self.tuned_frequency/1e6)))
                     self.tune_cc(self.site.timeout_cc(self.msgq_id))
             else:
@@ -2953,7 +2967,8 @@ class p25_receiver(object):
             self.current_stream.check_expired_hold(curr_time)
 
     def get_status(self):
-        sys.stderr.write("%s [%d] get_status: receiver status current_tgid=%s, current_slot=%s, current_stream=%s\n" % (log_ts.get(), self.msgq_id, self.current_tgid, self.current_slot, (self.current_stream.id if self.current_stream is not None else "None")))
+        if self.debug > 10 and (self.current_tgid is not None or self.current_stream is not None):
+            sys.stderr.write("%s [%d] get_status: receiver status current_tgid=%s, current_slot=%s, current_stream=%s\n" % (log_ts.get(), self.msgq_id, self.current_tgid, self.current_slot, (self.current_stream.id if self.current_stream is not None else "None")))
 
         if self.talkgroups is None:
             _tgid = self.current_tgid
@@ -2996,12 +3011,8 @@ class p25_receiver(object):
 
     def set_stream(self, stream = None):
         if stream is None:
-            if self.destination != "" and self.fa_ctrl is not None:
-                self.fa_ctrl({'tuner': self.msgq_id, 'cmd': 'set_destination', 'destination': ""})                      # unset audio destination
-                self.destination = ""
-            self.current_stream = None
+            self.release_stream()
             return
-
         self.current_stream = stream
         self.talkgroups = self.site.get_talkgroups()
         if self.current_stream.destination != "" and self.fa_ctrl is not None:
@@ -3010,7 +3021,7 @@ class p25_receiver(object):
 
     def release_stream(self):
         if self.destination != "" and self.fa_ctrl is not None:
-            self.fa_ctrl({'tuner': self.msgq_id, 'cmd': 'set_destination', 'destination': ""})                          # unset audio destination
+            self.fa_ctrl({'tuner': self.msgq_id, 'cmd': 'set_destination', 'destination': ""})                                  # unset audio destination
             self.destination = ""
         if self.current_stream is not None:
             self.current_stream.receiver = None

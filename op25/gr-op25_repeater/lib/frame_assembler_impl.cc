@@ -27,6 +27,7 @@
 #include "rx_sync.h"
 #include "rx_smartnet.h"
 #include "rx_subchannel.h"
+#include "op25_audio_wrapper.h"
 
 #include <errno.h>
 #include <stdio.h>
@@ -67,6 +68,8 @@ namespace gr {
             } else if (cmd == "set_destination") {
                 if (d_sync)
                     d_sync->set_destination(j["destination"].get<std::string>().c_str());
+            } else if (cmd == "init_destination") {
+                init_destination(j["destination"].get<std::string>().c_str());
             } else if (cmd == "sync_reset") {
                 if (d_sync)
                     d_sync->sync_reset();
@@ -147,24 +150,33 @@ namespace gr {
                 d_sync = new rx_sync(options, logts, debug, msgq_id, queue);
         }
 
-        int 
-            frame_assembler_impl::general_work (int noutput_items,
-                    gr_vector_int &ninput_items,
-                    gr_vector_const_void_star &input_items,
-                    gr_vector_void_star &output_items)
-            {
+        int frame_assembler_impl::general_work (int noutput_items,
+                gr_vector_int &ninput_items,
+                gr_vector_const_void_star &input_items,
+                gr_vector_void_star &output_items)
+        {
 
-                const uint8_t *in = (const uint8_t *) input_items[0];
+            const uint8_t *in = (const uint8_t *) input_items[0];
 
-                if (d_sync) {
-                    for (int i=0; i<ninput_items[0]; i++) {
-                        d_sync->rx_sym(in[i]);
-                    }
+            if (d_sync) {
+                for (int i=0; i<ninput_items[0]; i++) {
+                    d_sync->rx_sym(in[i]);
                 }
-                consume_each(ninput_items[0]);
-                // Tell runtime system how many output items we produced.
-                return 0;
             }
+            consume_each(ninput_items[0]);
+
+            // Tell runtime system how many output items we produced.
+            return 0;
+        }
+
+        /*
+         *  Initializer for voice streams (e.g. "ws://0.0.0.0:9000")
+         */ 
+        void frame_assembler_impl::init_destination(const char* dest)
+        {
+            // No need to save the handle, just initialize a web socket server for each stream
+            op25_audio_wrapper::instance().get_audio(dest, logts, d_debug, d_msgq_id);
+        }
 
     } /* namespace op25_repeater */
 } /* namespace gr */

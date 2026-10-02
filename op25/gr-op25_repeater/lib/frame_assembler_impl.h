@@ -51,6 +51,7 @@ namespace gr {
                 void queue_msg(int duid);
                 void set_debug(int debug);
                 std::string control(const std::string& args);
+                void init_destination(const char* dest);
 
             public:
                 log_ts logts;
