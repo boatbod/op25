@@ -25,6 +25,7 @@
 import sys
 import os
 import math
+import json
 from gnuradio import gr, audio, eng_notation
 from gnuradio import filter, blocks, analog, digital
 from gnuradio.eng_option import eng_option
@@ -101,7 +102,33 @@ class my_top_block(gr.top_block):
         parser.add_option("-S", "--alsa-rate", type="int", default=48000, help="sound source/sink sample rate")
         parser.add_option("-t", "--test", type="string", default=None, help="test pattern symbol file")
         parser.add_option("-v", "--verbose", type="int", default=0, help="additional output")
+        parser.add_option("--nac", type="string", default=None, help="P25 Network Access Code, accepts decimal or 0x-prefixed hexadecimal")
+        parser.add_option("--mi", type="string", default=None, help="P25 Message Indicator, accepts decimal or 0x-prefixed hexadecimal")
+        parser.add_option("--algid", type="string", default=None, help="P25 Algorithm ID, accepts decimal or 0x-prefixed hexadecimal")
+        parser.add_option("--kid", type="string", default=None, help="P25 Key ID, accepts decimal or 0x-prefixed hexadecimal")
+        parser.add_option("--tgid",type="string", default=None, help="P25 Talkgroup ID, accepts decimal or 0x-prefixed hexadecimal")
+        parser.add_option("--src", type="string", default=None, help="P25 Source ID, accepts decimal or 0x-prefixed hexadecimal")
         (options, args) = parser.parse_args()
+        
+        def parse_hex_int(option_name, value, minimum, maximum):
+            if value is None:
+                return None
+            try:
+                result = int(value, 0)
+            except ValueError:
+                parser.error("%s must be a decimal or 0x-prefixed hexadecimal integer" % option_name)
+
+            if result < minimum or result > maximum:
+                parser.error("%s must be between 0x%x and 0x%x" % (option_name, minimum, maximum))
+
+            return result
+		
+        p25_nac = parse_hex_int("--nac", options.nac, 0x000, 0xfff)
+        p25_mi = parse_hex_int("--mi", options.mi, 0x0000000000000000, 0xffffffffffffffff)
+        p25_algid = parse_hex_int("--algid", options.algid, 0x00, 0xff)
+        p25_kid = parse_hex_int("--kid", options.kid, 0x0000, 0xffff)
+        p25_tgid = parse_hex_int("--tgid", options.tgid, 0x0000, 0xffff)
+        p25_src = parse_hex_int("--src", options.src, 0x000000, 0xffffff)
 
         max_inputs = 1
 
@@ -133,6 +160,31 @@ class my_top_block(gr.top_block):
                                   "",             # udp ip address
                                   0,              # udp port
                                   False)          # dump raw u vectors
+            p25_params = {
+                'cmd': 'set_p25_params'
+            }
+
+            if p25_nac is not None:
+                p25_params['nac'] = p25_nac
+            if p25_mi is not None:
+                p25_params['mi'] = p25_mi
+            if p25_algid is not None:
+                p25_params['algid'] = p25_algid
+            if p25_kid is not None:
+                p25_params['kid'] = p25_kid
+            if p25_tgid is not None:
+                p25_params['tgid'] = p25_tgid
+            if p25_src is not None:
+                p25_params['src'] = p25_src
+
+            if len(p25_params) > 1:
+                response = ENCODER.control(
+                    json.dumps(p25_params))
+
+        if options.verbose >= 5:
+            sys.stderr.write(
+                "P25 encoder control: %s -> %s\n"
+                % (p25_params, response))
         elif options.protocol == 'ysf':
             ENCODER = op25_repeater.ysf_tx_sb(options.verbose, options.config_file, options.fullrate_mode)
             if options.fullrate_mode:
