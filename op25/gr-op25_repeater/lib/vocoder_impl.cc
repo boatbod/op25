@@ -178,5 +178,102 @@ vocoder_impl::set_gain_adjust(float gain_adjust) {
 	p1voice_encode.set_gain_adjust(gain_adjust);
 }
 
+std::string
+vocoder_impl::control(const std::string& args)
+{
+    json j = json::parse(args);
+
+    const std::string cmd =
+        j.at("cmd").get<std::string>();
+
+    if (cmd == "set_p25_params") {
+        if (!opt_encode_flag) {
+            return json({
+                {"cmd", cmd},
+                {"status", "ignored"},
+                {"reason", "vocoder is not in encode mode"}
+            }).dump();
+        }
+
+        /*
+         * Only update fields present in the JSON command.
+         * This preserves existing C++ defaults for omitted fields.
+         */
+        if (j.contains("nac")) {
+            p1voice_encode.set_nac(
+                j.at("nac").get<uint16_t>());
+        }
+
+        if (j.contains("mi")) {
+            p1voice_encode.set_mi(
+                j.at("mi").get<uint64_t>());
+        }
+
+        if (j.contains("algid")) {
+            p1voice_encode.set_algid(
+                j.at("algid").get<uint8_t>());
+        }
+
+        if (j.contains("kid")) {
+            p1voice_encode.set_kid(
+                j.at("kid").get<uint16_t>());
+        }
+
+        if (j.contains("tgid")) {
+            p1voice_encode.set_tgid(
+                j.at("tgid").get<uint16_t>());
+        }
+
+        if (j.contains("src")) {
+            p1voice_encode.set_source(
+                j.at("src").get<uint32_t>());
+        }
+
+        /*
+         * Optional fields supported by p25_voice_params.
+         */
+        if (j.contains("mfid")) {
+            p1voice_encode.set_mfid(
+                j.at("mfid").get<uint8_t>());
+        }
+
+        if (j.contains("lco")) {
+            p1voice_encode.set_lco(
+                j.at("lco").get<uint8_t>());
+        }
+
+        if (j.contains("svcopt")) {
+            p1voice_encode.set_svcopt(
+                j.at("svcopt").get<uint8_t>());
+        }
+
+        if (j.contains("dst")) {
+            p1voice_encode.set_destination(
+                j.at("dst").get<uint32_t>());
+        }
+
+        if (j.contains("lsd")) {
+            p1voice_encode.set_lsd(
+                j.at("lsd").get<uint32_t>());
+        }
+
+        if (j.contains("status_symbol")) {
+            p1voice_encode.set_status_symbol(
+                j.at("status_symbol").get<uint8_t>());
+        }
+
+        return json({
+            {"cmd", cmd},
+            {"status", "ok"}
+        }).dump();
+    }
+
+    return json({
+        {"cmd", cmd},
+        {"status", "error"},
+        {"reason", "unknown command"}
+    }).dump();
+}
+
   } /* namespace op25_repeater */
 } /* namespace gr */
