@@ -16,7 +16,7 @@
 /* BINDTOOL_GEN_AUTOMATIC(0) */
 /* BINDTOOL_USE_PYGCCXML(0) */
 /* BINDTOOL_HEADER_FILE(vocoder.h)                                        */
-/* BINDTOOL_HEADER_FILE_HASH(6f5e665b6482d7f4d3874d01016ca78f) */
+/* BINDTOOL_HEADER_FILE_HASH(2a785e96b65306f86a3d56816f806a59) */
 /***********************************************************************************/
 
 #include <pybind11/complex.h>
@@ -42,6 +42,8 @@ void bind_vocoder(py::module &m) {
 
       .def("set_gain_adjust", &vocoder::set_gain_adjust, py::arg("gain_adjust"),
            D(vocoder, set_gain_adjust))
+
+      .def("control", &vocoder::control, py::arg("args"))
 
       ;
 }
