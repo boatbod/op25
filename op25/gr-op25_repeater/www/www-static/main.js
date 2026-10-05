@@ -1,6 +1,6 @@
 
 // Copyright 2017, 2018 Max H. Parke KA1RBI
-// Copyright 2018, 2019, 2020, 2021 gnorbury@bondcar.com
+// Copyright 2018, 2019, 2020, 2021, 2026 gnorbury@bondcar.com
 // JavaScript UI Updates, Michael Rose, 2025, 2026
 //
 // This file is part of OP25
@@ -20,7 +20,7 @@
 // Software Foundation, Inc., 51 Franklin Street, Boston, MA
 // 02110-1301, USA.
 
-const lastUpdate = "12-Feb-2026 16:40";
+const lastUpdate = "04-Oct-2026 00:00";
 
 var d_debug = 1;
 // default smartColors - will be overwritten by smartColors contained in json, if present
@@ -41,7 +41,7 @@ var request_count = 0;
 var SEND_QLIMIT = 5;
 var c_freq = 0;
 var c_ppm = null;
-var c_system = null;
+var c_site = null;
 var c_tag = null;
 var c_stream_url = null;
 var c_srctag = "";
@@ -51,11 +51,14 @@ var c_encrypted = 0;
 var c_emergency = 0;
 var c_nac = 0;
 var c_name = "";
+var stream_list = [];
+var stream_index = 0;
 var channel_list = [];
 var channel_index = 0;
 var auto_focus = true;       // when true, channel view follows the active call automatically
 var lastChannelData = null;
 var default_channel = null;
+var default_stream = null;
 var ws_endpoints = {};
 var ws_connections = {};
 var audioCtx = null;
@@ -64,7 +67,6 @@ var muteAudioAtStartup = false;
 const WS_AUDIO_SAMPLE_RATE = 8000;
 var enc_sym = "&#216;";
 var config_cache = null;
-// var presets = [];
 var site_alias = [];
 var newPresets = [];
 var noPresetsCounter = 0;
@@ -354,30 +356,78 @@ function rx_update(d) {
 
 // frequency, system, and talkgroup display
 
-function change_freq(d) {
-
-    c_freq = d['freq'];
-    c_system = d['system'];
-    current_tgid = d['tgid'];
-    c_tag = d['tag'];
-    displayTalkgroup.innerText = c_tag;
-    c_stream_url = d['stream_url'];
-    channel_status();
-}
-
 function channel_update(d) {
 
 	lastChannelData = d;
+    stream_table(d);    // update the streams table
 	channel_table(d);   // updates the channels table
 
+    if (d['streams'] != undefined) {
+        stream_list = [];
+        for (str_id = 0; str_id < d['streams'].length; str_id++) {
+            stream_list.push(String(d['streams'][str_id]['strid']));
+        }
+
+        if (stream_list.length > 0) {
+            // if this is the first update, find the default_stream if specified
+            if (default_stream != null && default_stream != "") {
+                for (str_id = 0; str_id < channel_list.length; str_id++) {
+                    if (d['streams'][str_id]['name'] == default_stream) {
+                        stream_index = str_id;
+                        break;
+                    }
+                }
+                default_stream = null;
+            }
+
+            // Auto-focus: prefer slot with an active call, fall back to hold
+            // Voice pool channels occupy indices 1+ in channel_list (CC is always index 0).
+            // Pass 1: slot with current_tgid set — radio is actively transmitting right now.
+            // Pass 2: slot with merged tgid set — call just ended but still in hold period.
+            // Pass 3: all idle — show CC (slot 0).
+            // Skipped entirely when auto_focus=false (toggled off via the AUTO button).
+            if (auto_focus) {
+                var _auto_voice = false;
+                for (var _vi = 1; _vi < stream_list.length; _vi++) {
+                    var _vid = stream_list[_vi];
+                    if (d['streams'][_vid] && d['streams'][_vid]['current_tgid'] !== null && d['streams'][_vid]['current_tgid'] !== undefined) {
+                        stream_index = _vi;
+                        _auto_voice = true;
+                        break;
+                    }
+                }
+                if (!_auto_voice) {
+                    for (var _vi = 1; _vi < stream_list.length; _vi++) {
+                        var _vid = stream_list[_vi];
+                        if (d['streams'][_vid] && d['streams'][_vid]['tgid'] !== null && d['streams'][_vid]['tgid'] !== undefined) {
+                            stream_index = _vi;
+                            _auto_voice = true;
+                            break;
+                        }
+                    }
+                }
+                if (!_auto_voice) {
+                    stream_index = 0;
+                }
+            }
+        }
+
+        //channel_status();
+		//loadPresets(c_site);
+        ws_connect(stream_list[stream_index])
+    }
+
     if (d['channels'] != undefined) {
-        channel_list = d['channels'];
+        channel_list = [];
+        for (ch_id = 0; ch_id < d['channels'].length; ch_id++) {
+            channel_list.push(String(d['channels'][ch_id]['msgqid']));
+        }
 
         if (channel_list.length > 0) {
             // if this is the first update, find the default_channel if specified
             if (default_channel != null && default_channel != "") {
                 for (ch_id = 0; ch_id < channel_list.length; ch_id++) {
-                    if (d[ch_id]['name'] == default_channel) {
+                    if (d['channels'][ch_id]['name'] == default_channel) {
                         channel_index = ch_id;
                         break;
                     }
@@ -395,7 +445,7 @@ function channel_update(d) {
                 var _auto_voice = false;
                 for (var _vi = 1; _vi < channel_list.length; _vi++) {
                     var _vid = channel_list[_vi];
-                    if (d[_vid] && d[_vid]['current_tgid'] !== null && d[_vid]['current_tgid'] !== undefined) {
+                    if (d['channels'][_vid] && d['channels'][_vid]['current_tgid'] !== null && d['channels'][_vid]['current_tgid'] !== undefined) {
                         channel_index = _vi;
                         _auto_voice = true;
                         break;
@@ -404,7 +454,7 @@ function channel_update(d) {
                 if (!_auto_voice) {
                     for (var _vi = 1; _vi < channel_list.length; _vi++) {
                         var _vid = channel_list[_vi];
-                        if (d[_vid] && d[_vid]['tgid'] !== null && d[_vid]['tgid'] !== undefined) {
+                        if (d['channels'][_vid] && d['channels'][_vid]['tgid'] !== null && d['channels'][_vid]['tgid'] !== undefined) {
                             channel_index = _vi;
                             _auto_voice = true;
                             break;
@@ -418,44 +468,37 @@ function channel_update(d) {
 
             // display channel information
             var c_id = channel_list[channel_index];
-            c_system = d[c_id]['system'];
-            
-            c_svcopts = d[c_id]['svcopts'];
-            
+            c_site = d['channels'][c_id]['site'];
+            c_svcopts = d['channels'][c_id]['svcopts'];
             c_name = "" + c_id + ": ";
-            if ((d[c_id]['name'] != undefined) && (d[c_id]['name'] != "")) {
-                c_name += " " + d[c_id]['name'];
+            if ((d['channels'][c_id]['name'] != undefined) && (d['channels'][c_id]['name'] != "")) {
+                c_name += " " + d['channels'][c_id]['name'];
             
             }
             else {
-                c_name += " " + c_system;
+                c_name += " " + c_site;
             }
 
-            c_freq = d[c_id]['freq'];
-			            
-            c_ppm = d[c_id]['ppm'];
-            if (d[c_id]['error'] != undefined) {
-                error_val = d[c_id]['error'];
+            c_freq = d['channels'][c_id]['freq'];
+            c_ppm = d['channels'][c_id]['ppm'];
+            if (d['channels'][c_id]['error'] != undefined) {
+                error_val = d['channels'][c_id]['error'];
                 document.getElementById('errorVal').innerText = error_val + " Hz";
             } else {
                 document.getElementById('errorVal').innerText = " - ";
                 error_val = null;
             }
             
-//             if (d[c_id]['auto_tracking'] != undefined)
-//                 auto_tracking = d[c_id]['auto_tracking'];
-                
-            current_tgid = d[c_id]['tgid'];
-            c_tag = d[c_id]['tag'];
+            current_tgid = d['channels'][c_id]['tgid'];
+            c_tag = d['channels'][c_id]['tag'];
             
-            c_srcaddr = d[c_id]['srcaddr'];
-            c_srctag = d[c_id]['srctag'];
-            
-            c_stream_url = d[c_id]['stream_url'];
-            capture_active = d[c_id]['capture'];
-            hold_tgid = d[c_id]['hold_tgid'];
+            c_srcaddr = d['channels'][c_id]['srcaddr'];
+            c_srctag = d['channels'][c_id]['srctag'];
+            c_stream_url = d['channels'][c_id]['stream_url'];
+            capture_active = d['channels'][c_id]['capture'];
+            hold_tgid = d['channels'][c_id]['hold_tgid'];
 
-            if (d[c_id]['conventional'] === true) {
+            if (d['channels'][c_id]['conventional'] === true) {
                 document.getElementById('frequenciesTable').innerHTML = '';
                 document.getElementById('adjacentSitesContainer').style.display = 'none';
                 document.getElementById('patchesContainer').style.display = 'none';
@@ -468,16 +511,14 @@ function channel_update(d) {
 			document.getElementById("btn-hold").textContent = "HOLD";
 		}
                 
-            c_encrypted 					= d[c_id]['encrypted'];
-            c_emergency 					= d[c_id]['emergency'];
-            
-            c_tdma 							= d[c_id]['tdma'];
+            c_encrypted 					= d['channels'][c_id]['encrypted'];
+            c_emergency 					= d['channels'][c_id]['emergency'];
+            c_tdma 							= d['channels'][c_id]['tdma'];
             
             displayChannel.innerText		= c_name;
             plotChannelDisplay.innerText	= c_name;
             
-            displaySystem.innerText 		= c_system ? c_system : "-";
-            
+            displaySystem.innerText 		= c_site ? c_site : "-";
    			displayFreq.innerText 			= (parseInt(c_freq) / 1000000.0).toFixed(6);
             if (current_tgid === null || current_tgid === undefined) {
               displayTalkgroup.innerText = "";
@@ -527,13 +568,13 @@ function channel_update(d) {
 			
 			// send voice display to call history table				
 			if (current_tgid)      
-				appendCallHistory(c_system.substring(0, 5), current_tgid, 0, displayTalkgroup.innerText, 0, displayFreq.innerText, displaySource.innerText, "", "display");
+				appendCallHistory(c_site.substring(0, 5), current_tgid, 0, displayTalkgroup.innerText, 0, displayFreq.innerText, displaySource.innerText, "", "display");
         }
         else {
 
             c_name = "";
             c_freq = 0.0;
-            c_system = "";
+            c_site = "";
             current_tgid = 0;
             c_tag = "";
             c_srcaddr = 0;
@@ -543,10 +584,65 @@ function channel_update(d) {
             c_emergency = 0;
         }
         channel_status();
-		loadPresets(c_system);
-
-        ws_connect(channel_list[channel_index])
+		loadPresets(c_site);
     }
+}
+
+function stream_table(d) {
+
+	const streamInfo = document.getElementById("streamInfo");
+	
+	let html = "<table class='compact-table' style='border-collapse: collapse;'>";
+	html += "<tr><th>Str</th><th>Name</th><th>Audio</th><th>System</th><th colspan='2' style='width: 140px;'>Talkgroup</th><th>Hold</th><th>Sites</th><th>Rcvr</th></tr>";
+	
+	for (const entry of d.streams) {
+        strm_id = String(entry['strid']);
+        let dispEnc = "";
+		let tdh = "";
+		let tdc = "";
+		const valueColor = document.getElementById('valueColorPicker').value;
+		const tgid = entry.tgid ?? "&nbsp;&nbsp;-&nbsp;&nbsp;";
+		let tag = entry.tag || "Talkgroup " + tgid;
+        siteslist = entry.sites.toString() || "-";
+		const name = entry.name || "-";
+		const system = entry.system || "-";
+		let hold = entry.hold_tgid || "-";
+        let rx_ch = entry.receiver || "-";
+
+		// highlight the selected stream in the streams table
+		if (Number(strm_id) == Number(stream_list[stream_index])) {
+			tdc = " style='background-color: #333; font-weight: normal; color: " + valueColor + "'" ;
+		}
+		
+		if (hold != "-")
+			tdh = " style='background-color: #500;'";
+	
+		const hasAudio = (strm_id in ws_endpoints) && ws_endpoints[strm_id] != null;
+		const isMuted = !(strm_id in audioChannels) || audioChannels[strm_id].muted;
+		const audioIcon = hasAudio
+			? (isMuted
+				? `<span title='Play audio' style='cursor:pointer;' onclick='event.stopPropagation(); audio_toggle(${strm_id})'>&#9654;</span>`
+				: `<span title='Stop audio' style='cursor:pointer;' onclick='event.stopPropagation(); audio_toggle(${strm_id})'>&#9646;&#9646;</span>`)
+			: "";
+
+		html += `<tr style='cursor:pointer;' onclick='select_stream_by_id(${strm_id})'>
+			<td${tdc}>${strm_id}</td>
+			<td>${name}</td>
+			<td style='text-align:center;'>${audioIcon}</td>
+			<td>${system}</td>
+			<td>${tgid}</td>
+			<td style="text-align: left;">${tag}</td>
+			<td${tdh}>${hold}</td>
+			<td>${siteslist}</td>			
+			<td>${rx_ch}</td>
+		</tr>`;
+	}
+	
+	html += "</table>";
+	streamInfo.innerHTML = html;
+	//applySmartColorsToChannels();
+	
+	return;
 }
 
 function channel_table(d) {
@@ -554,12 +650,10 @@ function channel_table(d) {
 	const channelInfo = document.getElementById("channelInfo");
 	
 	let html = "<table class='compact-table' style='border-collapse: collapse;'>";
-	html += "<tr><th>Ch</th><th>Name</th><th>Audio</th><th>System</th><th>Frequency</th><th colspan='2' style='width: 140px;'>Talkgroup</th><th>Mode</th><th>Hold</th><th>Capture</th><th>Error</th></tr>";
+	html += "<tr><th>Ch</th><th>Name</th><th>Site</th><th>System</th><th>Frequency</th><th colspan='2' style='width: 140px;'>Talkgroup</th><th>Mode</th><th>Capture</th><th>Error</th></tr>";
 	
-	for (const ch of d.channels) {
-		const entry = d[ch];
-		if (!entry) continue;
-
+	for (const entry of d.channels) {
+        ch = String(entry['msgqid']);
 		  let dispEnc = "";
 		  let tdh = "";
 		  let tdc = "";
@@ -568,8 +662,8 @@ function channel_table(d) {
 		const tgid = entry.tgid ?? "&nbsp;&nbsp;-&nbsp;&nbsp;";
 		  let tag = entry.tag || "Talkgroup " + tgid;
 		const name = entry.name || "-";
+		const site = entry.site || "-";
 		const system = entry.system || "-";
-		  let hold = entry.hold_tgid || "-";
 		const error = entry.error || "-";
 		  let mode = entry.tdma;
 		const enc = entry.encrypted;
@@ -586,40 +680,25 @@ function channel_table(d) {
 		if (enc)
 			dispEnc = " " + "<span style='color: " + valueColor + "'>" + enc_sym + "</span>";
 		
-		if (hold != "-")
-			tdh = " style='background-color: #500;'";
-	
-		const hasAudio = (ch in ws_endpoints) && ws_endpoints[ch] != null;
-		const isMuted = !(ch in audioChannels) || audioChannels[ch].muted;
-		const audioIcon = hasAudio
-			? (isMuted
-				? `<span title='Play audio' style='cursor:pointer;' onclick='event.stopPropagation(); audio_toggle(${ch})'>&#9654;</span>`
-				: `<span title='Stop audio' style='cursor:pointer;' onclick='event.stopPropagation(); audio_toggle(${ch})'>&#9646;&#9646;</span>`)
-			: "";
-
 		html += `<tr style='cursor:pointer;' onclick='select_channel_by_id(${ch})'>
 			<td${tdc}>${ch}</td>
 			<td>${name}</td>
-			<td style='text-align:center;'>${audioIcon}</td>
+			<td>${site}</td>
 			<td>${system}</td>
 			<td>${freq}</td>
 			<td>${tgid}</td>
 			<td style="text-align: left;">${tag}</td>
 			<td>${mode}${dispEnc}</td>			
-			<td${tdh}>${hold}</td>
 			<td>${cap}</td>
 			<td>${error}</td>
 		</tr>`;
 	}
 	
 	html += "</table>";
-		
 	channelInfo.innerHTML = html;
-	
 	applySmartColorsToChannels();
 	
 	return;
-	
 }
 
 function channel_status() {
@@ -634,25 +713,25 @@ function channel_status() {
     html = "";
 
 	// displays the speaker icon when a stream url is present
-    if (c_stream_url != undefined) {
-        var streamHTML = "<a a href='" + c_stream_url + "' target='_blank'>&#128264;</a>";
-        streamButton.innerHTML = streamHTML;
-        streamURL.innerHTML = streamHTML + " " + c_stream_url
-    }
+    //if (c_stream_url != undefined) {
+    //    var streamHTML = "<a href='" + c_stream_url + "' target='_blank'>&#128264;</a>";
+    //    streamButton.innerHTML = streamHTML;
+    //    streamURL.innerHTML = streamHTML + " " + c_stream_url
+    //}
 
     // displays the headphone icon when a websocket audio endpoint is available
-    var wsAudioButton = document.getElementById("wsAudioButton");
-    var viewed_ch = channel_list[channel_index];
-    if (viewed_ch in ws_endpoints && ws_endpoints[viewed_ch] != null) {
-        var isMuted = !(viewed_ch in audioChannels) || audioChannels[viewed_ch].muted;
-        if (isMuted) {
-            wsAudioButton.innerHTML = "<span title='Play audio' style='cursor:pointer;' onclick='audio_toggle(" + viewed_ch + ")'>&#127911;</span>";
-        } else {
-            wsAudioButton.innerHTML = "<span title='Stop audio' style='cursor:pointer;' onclick='audio_toggle(" + viewed_ch + ")'>&#127911;&#9646;&#9646;</span>";
-        }
-    } else {
-        wsAudioButton.innerHTML = "";
-    }
+    //var wsAudioButton = document.getElementById("wsAudioButton");
+    //var viewed_ch = channel_list[channel_index];
+    //if (viewed_ch in ws_endpoints && ws_endpoints[viewed_ch] != null) {
+    //    var isMuted = !(viewed_ch in audioChannels) || audioChannels[viewed_ch].muted;
+    //    if (isMuted) {
+    //        wsAudioButton.innerHTML = "<span title='Play audio' style='cursor:pointer;' onclick='audio_toggle(" + viewed_ch + ")'>&#127911;</span>";
+    //    } else {
+    //        wsAudioButton.innerHTML = "<span title='Stop audio' style='cursor:pointer;' onclick='audio_toggle(" + viewed_ch + ")'>&#127911;&#9646;&#9646;</span>";
+    //    }
+    //} else {
+    //    wsAudioButton.innerHTML = "";
+    //}
 
 	// TODO: c_ppm is not displayed anywhere in the new UI. What is it?
 	if (c_ppm != null) {
@@ -791,7 +870,6 @@ function adjacent_sites(d) {
                     color = "";
                 ct += 1;
 
-//                 displaySiteName = getSiteAlias(hex(d['sysid']), rfss, site);
   				displaySiteName = getSiteAlias(d['system'], rfss, site);
                 html += "<tr style=\"background-color: " + color + ";\"><td>" + d['sysid'].toString(16).toUpperCase() + "<td style=text-align:left;>" + displaySiteName + "</td><td>" + rfss + "</td><td>" + site + "</td><td>" + adjacent_by_rfss[rfss][site]["cc_rx_freq"] + "</td><td>" + adjacent_by_rfss[rfss][site]["cc_tx_freq"] + "</td></tr>";
             }
@@ -1169,10 +1247,10 @@ function trunk_update(d) {
         if (!is_digit(nac.charAt(0)))
             continue;
 
-        // If 'system' name is defined, use it to correlate system info with channel currently selected
+        // If 'site' name is defined, use it to correlate site info with channel currently selected
         // used by multi_rx.py trunking
-        if (d[nac]['system'] != undefined) {
-            if (d[nac]['system'] != c_system) {
+        if (d[nac]['site'] != undefined) {
+            if (d[nac]['site'] != c_site) {
                 continue;
             }
             else {
@@ -1192,8 +1270,7 @@ function trunk_update(d) {
         var is_p25 = (d[nac]['type'] == 'p25');
         var is_smartnet = (d[nac]['type'] == 'smartnet');
         
-// system information and frequencies table
-
+        // system information and frequencies table
 		const band_plan = d[nac]?.band_plan || {};
 
 		var displaySystemName = d[nac]['system'] !== undefined ? d[nac]['system'] : "-";
@@ -1208,7 +1285,6 @@ function trunk_update(d) {
 		var displayRfss = d[nac]['rfid'] !== undefined ? d[nac]['rfid'] : "-";
 		var displaySiteId = d[nac]['stid'] !== undefined ? d[nac]['stid'] : "-";		
 		var displaySiteName = getSiteAlias(displaySystemName, displayRfss, displaySiteId);		
-// 		var displaySiteName = getSiteAlias(hex(displaySystemId), displayRfss, displaySiteId);
 
 		
 		if (!displaySiteName.startsWith("Site ")) {
@@ -1605,7 +1681,6 @@ function handle_response(dl) {
     const dispatch = {
         call_log: call_log,
         trunk_update: trunk_update,
-        change_freq: change_freq,
         channel_update: channel_update,
         rx_update: rx_update,
         terminal_config: term_config,
@@ -1714,6 +1789,13 @@ function select_channel_by_id(ch_id) {
     var idx = channel_list.indexOf(String(ch_id));
     if (idx >= 0) {
         channel_index = idx;
+    }
+}
+
+function select_stream_by_id(str_id) {
+    var idx = stream_list.indexOf(String(str_id));
+    if (idx >= 0) {
+        stream_index = idx;
     }
 }
 
@@ -2612,7 +2694,7 @@ function full_config(config) {
         config_cache = config;
     }
 
-	var sa = config['trunking'] ? config['trunking']['chans'] : [];
+	var sa = config['trunking'] ? config['trunking']['systems'] : [];
 	site_alias = buildSiteAliases(sa);
 
     // some payloads are sending over full_config when it's not requested (plots) and not needed.
@@ -2721,7 +2803,6 @@ function togglePopup(id, open) {
   }
 }
 
-
 function buildSiteAliases(sa) {
     const siteAliases = {};
 
@@ -2733,12 +2814,12 @@ function buildSiteAliases(sa) {
 
     sa.forEach(system => {
         // Verify each system object
-        if (!system || typeof system !== 'object' || !system.sysname || !system.site_alias) {
+        if (!system || typeof system !== 'object' || !system.name || !system.site_alias) {
             console.warn("buildSiteAliases: Skipping invalid system entry:", system);
             return;
         }
 
-        const sysname = String(system.sysname).trim().toUpperCase();  // Normalize sysname (added .trim() just in case)
+        const sysname = String(system.name).trim().toUpperCase();  // Normalize sysname (added .trim() just in case)
         const aliases = system.site_alias;
 
         if (!sysname || typeof aliases !== 'object') {

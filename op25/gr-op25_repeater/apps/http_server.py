@@ -84,8 +84,12 @@ def post_req(environ, start_response, postdata):
         for d in data:
             num_req += 1
             d['uuid'] = post_uuid
-            msg = gr.message().make_from_string(json.dumps(d), -2, d['arg1'], d['arg2'])
             #sys.stderr.write("post_req: req=%s\n" % json.dumps(d))
+            if d['arg1'] is None:
+                d['arg1'] = 0
+            if d['arg2'] is None:
+                d['arg2'] = 0
+            msg = gr.message().make_from_string(json.dumps(d), -2, d['arg1'], d['arg2'])
             if not my_output_q.full_p():
                 my_output_q.insert_tail(msg)
         valid_req = True

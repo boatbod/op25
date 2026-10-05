@@ -35,17 +35,41 @@
     ],
     "trunking": {
         "module": "tk_p25.py",
-        "chans": [
+        "systems":[
             {
-                "sysname": "Trunking System 0",
-                "nac": "0x0",
-                "#sysid": "0x4a2",
+                "name": "Trunking System 0",
                 "#wacn": "0xbee00",
+                "#sysid": "0x4a2",
+                "#tgid_tags_file": "talkgroups.tsv",
+                "#rid_tags_file": "rids.tsv",
+                "site_alias": {
+                    "3": {
+                        "2": { "alias": "Site alias for RFSS# 3, Site# 2" },
+                        "3": { "alias": "Site alias f0r RFSS# 3, Site# 3" }
+                    },
+                    "5": {
+                        "3": { "alias": "Site alias for RFSS# 5, Site# 3" },
+                        "6": { "alias": "Site alias for RFSS# 5, Site# 6" }
+                    }
+                }
+            }
+        ],
+        "streams": [
+            {
+                "name": "Voice Stream 0",
+                "system": "Trunking System 0",
+                "destination": "ws://0.0.0.0:9000",
+                "meta_stream_name": "",
+                "#whitelist": "stream_whitelist.wlist",
+                "#blacklist": "stream_blacklist.blist"
+            }
+        ],
+        "sites": [
+            {
+                "sysname": "Trunking Site 0",
+                "#nac": "0x0",
+                "#sysid": "0x4a2",
                 "control_channel_list": "773.84375",
-                "#tgid_tags_file": "tgid-tags.tsv",
-                "#rid_tags_file": "rid-tags.tsv",
-                "whitelist": "",
-                "blacklist": "",
                 "tdma_cc": false,
                 "crypt_behavior": 2,
                 "#band_plan": {
@@ -59,17 +83,7 @@
                     { "id": 4, "tgid": 11503, "label": "TGID 11503" },
                     { "id": 5, "tgid": 12001, "label": "TGID 12001" },
                     { "id": 6, "tgid": 12401, "label": "TGID 12401" }
-                ],
-                "site_alias": {
-                    "3": {
-                        "2": { "alias": "Site alias for RFSS# 3, Site# 2" },
-                        "3": { "alias": "Site alias f0r RFSS# 3, Site# 3" }
-                    },
-                    "5": {
-                        "3": { "alias": "Site alias for RFSS# 5, Site# 3" },
-                        "6": { "alias": "Site alias for RFSS# 5, Site# 6" }
-                    }
-                }
+                ]
             }
         ]
     },
@@ -93,7 +107,7 @@
         "module": "sockaudio.py",
         "instances": [
             {
-                "instance_name": "audio0",
+                "#instance_name": "audio0",
                 "device_name": "pulse",
                 "#device_name": "default",
                 "udp_port": 23456,
@@ -104,7 +118,6 @@
     },
     "terminal": {
         "module": "terminal.py",
-        "#terminal_type": "curses",
         "terminal_type": "http:0.0.0.0:8080",
         "curses_plot_interval": 0.1,
         "http_plot_interval": 1.0,

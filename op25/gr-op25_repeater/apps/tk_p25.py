@@ -207,14 +207,16 @@ class rx_ctl(object):
                                                             config = syst,
                                                             rx_ctl = self)
 
-        if 'chans' in config:
-            for rx_site in config['chans']:
+        if 'sites' in config:
+            for rx_site in config['sites']:
                 sysname = rx_site['sysname']
                 if sysname not in self.sites:
                     self.sites[sysname] = { 'site': None, 'receivers': [] }
                     self.sites[sysname]['site'] = p25_site(debug  = self.debug,
                                                            config = rx_site,
                                                            rx_ctl = self)
+        else:
+            sys.stderr.write('Warning: No trunked "sites" configuration entry found!\n')
 
         if 'streams' in config:
             str_id = 0
@@ -422,17 +424,19 @@ class rx_ctl(object):
 
     def get_chan_status(self):
         d = {'json_type': 'channel_update'}
+        strm_ids = []
+        for stream in self.streams.values():
+            strm_ids.append(stream.get_status())
+
         rcvr_ids = []
         for rcvr in self.receivers:
             rcvr_name = from_dict(self.receivers[rcvr]['config'], 'name', "")
             if self.receivers[rcvr]['rx_rcvr'] is not None:
-                d[str(rcvr)] = json.loads(self.receivers[rcvr]['rx_rcvr'].get_status())
-                d[str(rcvr)]['name'] = rcvr_name
-                rcvr_ids.append(str(rcvr))
+                rcvr_ids.append(self.receivers[rcvr]['rx_rcvr'].get_status())
             elif self.receivers[rcvr]['conv_state'] is not None:
                 cs = self.receivers[rcvr]['conv_state']
                 sysname = from_dict(self.receivers[rcvr]['config'], 'trunking_sysname', '') or rcvr_name
-                d[str(rcvr)] = {
+                rcvr_ids.append({
                     'freq':         cs['freq'],
                     'tdma':         0,
                     'tgid':         cs['tgid'],
@@ -449,8 +453,8 @@ class rx_ctl(object):
                     'msgqid':       rcvr,
                     'name':         rcvr_name,
                     'conventional': True,
-                }
-                rcvr_ids.append(str(rcvr))
+                })
+        d['streams'] = strm_ids
         d['channels'] = rcvr_ids
         return json.dumps(d)
 
@@ -522,7 +526,6 @@ class p25_system(object):
         site_listing = []
         for site in site_list:
             site_listing.append(("%d/%d" % (site.rfss_rfid, site.rfss_stid)))
-        sys.stderr.write("%s [%s] find_receiver: tg(%d) is active on sites: %s\n" % (log_ts.get(), self.name, tgid, site_listing))
 
         receiver_list = []
         for rcvr in self.rx_ctl.receivers.values():
@@ -531,11 +534,15 @@ class p25_system(object):
             receiver_list.append(rcvr['rx_rcvr'])
 
         if len(receiver_list) == 0:
+            if self.debug >= 5:
+                sys.stderr.write("%s [%s] find_receiver: tg(%d) is active on sites: %s no receivers are available\n" % (log_ts.get(), self.name, tgid, site_listing))
             return None
+
+        if self.debug >= 5:
+            sys.stderr.write("%s [%s] find_receiver: tg(%d) is active on sites: %s using receiver %d\n" % (log_ts.get(), self.name, tgid, site_listing, receiver_list[0].msgq_id))
 
         #TODO prioritize selected receiver based on BER
         return receiver_list[0]
-            
 
     def get_talkgroups(self):
         return self.talkgroups
@@ -551,6 +558,12 @@ class p25_system(object):
 
     def get_crypt_behavior(self):
         return self.crypt_behavior
+
+    def get_rid_tag(self, srcaddr):
+        if srcaddr is None or srcaddr not in self.sourceids:
+            return ""
+        else:
+            return self.sourceids[srcaddr]['tag']
 
 #################
 # P25 stream class
@@ -598,7 +611,7 @@ class p25_stream(object):
 
     def init_destination(self):
         if self.destination is not None and self.destination != "" and self.rx_ctl.fa_ctrl is not None:
-            self.rx_ctl.fa_ctrl({'tuner': 0, 'cmd': 'init_destination', 'destination': self.destination})
+            self.rx_ctl.fa_ctrl({'tuner': self.id, 'cmd': 'init_destination', 'destination': self.destination})
 
     def add_skiplist(self, tgid, end_time=None):
         if not tgid or (tgid <= 0) or (tgid > 65534):
@@ -738,28 +751,28 @@ class p25_stream(object):
         if tgid is None or freq is None:                                                        # no call
             return
 
-        if self.receiver is None:
-            if self.debug >= 5:
-                sys.stderr.write("%s [S%d] scan_for_talkgroups: find_receiver for tg(%d)\n" % (log_ts.get(), self.id, tgid))
-            self.receiver = self.system.find_receiver(tgid)
-
-        if self.receiver is None:
-            if self.debug >= 5:
-                sys.stderr.write("%s [S%d] no receivers available for tg(%d)\n" % (log_ts.get(), self.id, tgid))
-            return
-
-        self.receiver.set_stream(self)
-
         if self.current_tgid is None:
             if self.debug > 0:
                 sys.stderr.write("%s [S%d] voice update:  tg(%d), rid(%d), freq(%f), slot(%s), prio(%d)\n" % (log_ts.get(), self.id, tgid, self.system.talkgroups[tgid]['srcaddr'], (freq/1e6), get_slot(slot), self.system.talkgroups[tgid]['prio']))
+            self.receiver = self.system.find_receiver(tgid)
+            if self.receiver is None:   # no receivers available
+                if self.debug >= 5:
+                    sys.stderr.write("%s [S%d] no receivers available for tg(%d)\n" % (log_ts.get(), self.id, tgid))
+                return
+            self.receiver.set_stream(self)
             self.receiver.tune_voice(freq, tgid, slot, self.destination)
             self.current_tgid = tgid
             self.receiver.log_call(freq, slot, self.system.talkgroups[tgid]['prio'], tgid, self.system.talkgroups[tgid]['srcaddr'])
         else:
             if self.debug > 0:
                 sys.stderr.write("%s [S%d] voice preempt: tg(%d), rid(%d), freq(%f), slot(%s), prio(%d)\n" % (log_ts.get(), self.id, tgid, self.system.talkgroups[tgid]['srcaddr'], (freq/1e6), get_slot(slot), self.system.talkgroups[tgid]['prio']))
-            self.receiver.expire_talkgroup(update_meta=False, reason="preempt")
+            self.receiver.expire_talkgroup(update_meta=False, reason="preempt") # release the previous call before looking for a receiver
+            self.receiver = self.system.find_receiver(tgid)
+            if self.receiver is None:   # no receivers available
+                if self.debug >= 5:
+                    sys.stderr.write("%s [S%d] no receivers available for tg(%d)\n" % (log_ts.get(), self.id, tgid))
+                return
+            self.receiver.set_stream(self)
             self.receiver.tune_voice(freq, tgid, slot, self.destination)
             self.current_tgid = tgid
             self.receiver.log_call(freq, slot, self.system.talkgroups[tgid]['prio'], tgid, self.system.talkgroups[tgid]['srcaddr'])
@@ -849,6 +862,33 @@ class p25_stream(object):
         if self.debug > 10 and (self.current_tgid is not None or self.receiver is not None or self.hold_tgid is not None):
             sys.stderr.write("%s [S%d] to_json: stream status current_tgid=%s, receiver=%s, hold_tgid=%s\n" % (log_ts.get(), self.id, self.current_tgid, (self.receiver.msgq_id if self.receiver is not None else "None"), self.hold_tgid))
 
+    def get_status(self):
+        if self.debug > 10:
+            sys.stderr.write("%s [S%d] get_status: stream current_tgid=%s, receiver=%s\n" % (log_ts.get(), self.id, self.current_tgid, (self.receiver.msgq_id if self.receiver is not None else "None")))
+
+        stream_status = {}
+        with self.system.talkgroups_mutex:
+            _tgid = self.hold_tgid if self.hold_tgid is not None else self.current_tgid
+            _siteslist = []
+            if _tgid is not None:
+                for site in self.system.talkgroups[_tgid]['sites']:
+                    _siteslist.append(("%d/%d" % (site.rfss_rfid, site.rfss_stid)))
+            stream_status['name'] = self.name
+            stream_status['destination'] = self.destination
+            stream_status['system'] = self.system_name
+            stream_status['receiver'] = self.receiver.msgq_id if self.receiver is not None else None
+            stream_status['tgid'] = _tgid
+            stream_status['tag'] = self.system.talkgroups[_tgid]['tag'] if _tgid is not None else "Idle"
+            stream_status['srcaddr'] = self.system.talkgroups[self.current_tgid]['srcaddr'] if self.current_tgid is not None else 0
+            stream_status['srctag'] = self.system.get_rid_tag(self.system.talkgroups[self.current_tgid]['srcaddr']) if self.current_tgid is not None else ""
+            stream_status['sites'] = _siteslist
+            stream_status['svcopts'] = self.system.talkgroups[self.current_tgid]['svcopts'] if self.current_tgid is not None else 0
+            stream_status['hold_tgid'] = self.hold_tgid if self.hold_tgid is not None else 0
+            stream_status['encrypted'] = self.system.talkgroups[self.current_tgid]['encrypted'] if self.current_tgid is not None else 0
+            stream_status['emergency'] = (stream_status['svcopts'] >> 7) & 0x1
+            stream_status['stream'] = self.meta_stream
+            stream_status['strid'] = self.id
+        return stream_status
 
 #################
 # P25 site class
@@ -2358,7 +2398,8 @@ class p25_site(object):
 
         d = {}
         d['type']           = 'p25'
-        d['system']         = self.sysname
+        d['site']           = self.sysname
+        d['system']         = self.system.name if self.ns_valid else None
         d['top_line']       = 'P25'
         d['top_line']      += ' %s' % self.callsign if self.callsign != "" else ''
         d['top_line']      += '  System %s' % (wacn_system_id_str)
@@ -2655,12 +2696,13 @@ class p25_receiver(object):
         self.debug = debug
         self.msgq_id = msgq_id
         self.config = config
+        self.name = str(from_dict(config, 'name', str(msgq_id)))
         self.frequency_set = frequency_set
         self.fa_ctrl = fa_ctrl
         self.site = site
         self.meta_q = meta_q
-        self.meta_stream = from_dict(self.config, 'meta_stream_name', "")
-        self.destination = from_dict(self.config, 'destination', "")
+        self.meta_stream = from_dict(config, 'meta_stream_name', "")
+        self.destination = from_dict(config, 'destination', "")
         self.tuned_frequency = freq
         self.tuner_idle = False
         self.talkgroups = self.site.get_talkgroups()
@@ -2974,10 +3016,12 @@ class p25_receiver(object):
             _tgid = self.current_tgid
             cc_tag = "Control Channel" if self.site.has_cc(self.msgq_id) else "Idle" if self.tuner_idle else None
             d = {}
+            d['name'] = self.name
             d['freq'] = self.tuned_frequency
             d['tdma'] = self.current_slot
             d['tgid'] = _tgid
-            d['system'] = self.config['trunking_sysname']
+            d['site'] = self.site.sysname
+            d['system'] = self.site.system.name if self.site.ns_valid else None
             d['tag'] = cc_tag
             d['srcaddr'] = 0
             d['svcopts'] = 0
@@ -2993,10 +3037,12 @@ class p25_receiver(object):
                 _tgid = self.current_stream.hold_tgid if self.current_stream is not None and self.current_stream.hold_tgid is not None else self.current_tgid
                 cc_tag = "Control Channel" if self.site.has_cc(self.msgq_id) else "Idle" if self.tuner_idle else None
                 d = {}
+                d['name'] = self.name
                 d['freq'] = self.tuned_frequency
                 d['tdma'] = self.current_slot
                 d['tgid'] = _tgid
-                d['system'] = self.config['trunking_sysname']
+                d['site'] = self.site.sysname
+                d['system'] = self.site.system.name if self.site.ns_valid else None
                 d['tag'] = self.talkgroups[_tgid]['tag'] if _tgid is not None else cc_tag
                 d['srcaddr'] = self.talkgroups[self.current_tgid]['srcaddr'] if self.current_tgid is not None else 0
                 d['svcopts'] = self.talkgroups[self.current_tgid]['svcopts'] if self.current_tgid is not None else 0
@@ -3007,12 +3053,9 @@ class p25_receiver(object):
                 d['mode'] = None
                 d['stream'] = self.meta_stream
                 d['msgqid'] = self.msgq_id
-        return json.dumps(d)
+        return d
 
     def set_stream(self, stream = None):
-        if stream is None:
-            self.release_stream()
-            return
         self.current_stream = stream
         self.talkgroups = self.site.get_talkgroups()
         if self.current_stream.destination != "" and self.fa_ctrl is not None:
@@ -3026,5 +3069,4 @@ class p25_receiver(object):
         if self.current_stream is not None:
             self.current_stream.receiver = None
             self.current_stream = None
-
 

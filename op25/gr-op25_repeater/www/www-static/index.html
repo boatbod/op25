@@ -159,7 +159,7 @@
                     </div>
                     <div style="margin-bottom: 15px;">
                       <label for="channelsTableToggle" style="color: #ccc;">
-                        <input type="checkbox" id="channelsTableToggle" checked> Show Channels Table </label>
+                        <input type="checkbox" id="channelsTableToggle" checked> Show Receivers Table </label>
                     </div>
                     <div style="margin-bottom: 15px;">
                       <label for="callHistoryToggle" style="color: #ccc;">
@@ -312,11 +312,27 @@
             </td>
           </tr>
         </table>
+        <table class="outer-table" id="streams-container" style="text-align:left;">
+          <tr>
+            <th class="th-section" colspan="2" style="padding: 0;">
+              <div style="display: flex; justify-content: space-between; align-items: center; padding: 4px 8px;">
+                <span id="streams-container-title" style="flex: 1; text-align: center;">Streams</span>
+              </div>
+            </th>
+          </tr>
+          <tr>
+            <td>
+              <div id="streamInfo">
+                <!-- Stream Info Table				 -->
+              </div>
+            </td>
+          </tr>
+        </table>
         <table class="outer-table" id="channels-container" style="text-align:left;">
           <tr>
             <th class="th-section" colspan="2" style="padding: 0;">
               <div style="display: flex; justify-content: space-between; align-items: center; padding: 4px 8px;">
-                <span id="channes-container-title" style="flex: 1; text-align: center;">Channels</span>
+                <span id="channes-container-title" style="flex: 1; text-align: center;">Receivers</span>
               </div>
             </th>
           </tr>
@@ -328,7 +344,7 @@
             </td>
           </tr>
         </table>
-        </table>
+        </table> <!-- this appears to be a spurious /table tag -->
         <table class="outer-table">
           <tr>
             <td>

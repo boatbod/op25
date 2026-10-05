@@ -539,6 +539,7 @@ class rx_block (gr.top_block):
         self.interactive = True
         self.audio = None
         self.audio_instances = {}
+        self.ws_instances = {}
         self.metadata = None
         self.meta_streams = {}
         self.trunking = None
@@ -563,7 +564,7 @@ class rx_block (gr.top_block):
         if "trunking" in config:
             self.configure_trunking(config['trunking'])
         else:
-            self.config['trunking'] = {"module": "tk_p25.py", "chans": []}
+            self.config['trunking'] = {"module": "tk_p25.py", "sites": []}
             self.configure_trunking(self.config['trunking']) # add default module for P25 Conventional terminal support
 
         self.configure_devices(config['devices'])
@@ -807,8 +808,13 @@ class rx_block (gr.top_block):
         return True
 
     def fa_control(self, params):
-        tuner = params['tuner']
-        chan = self.channels[tuner]
+        chan = None
+        if params['cmd'] == "init_destination" and params['destination'] is not None and params['destination'] != "":
+            self.ws_instances[params['tuner']] = params['destination']
+            chan = self.channels[0] # intercept init_destination command and build a map of configured destinations
+        else:
+            tuner = params['tuner']
+            chan = self.channels[tuner]
         if chan is not None:
             chan.control(params)
 
@@ -883,8 +889,8 @@ class rx_block (gr.top_block):
             js = {}
             js['json_type'] = "ws_instances"
             js['uuid'] = m_uuid
-            for chan in self.channels:
-                js[chan.msgq_id] = chan.ws_instance
+            for str_id in self.ws_instances:
+                js[str_id] = self.ws_instances[str_id]
             ui_rsp.append(js)
         elif s == 'dump_tgids':
             self.trunk_rx.dump_tgids()
@@ -933,15 +939,16 @@ class rx_block (gr.top_block):
         if self.trunking is None or self.trunk_rx is None:
             return { }
         params = json.loads(self.trunk_rx.get_chan_status())   # extract data from all channels
-        for rx_id in params['channels']:                       # iterate and convert stream name to url
-            params[rx_id]['ppm'] = self.find_channel(int(rx_id)).device.get_ppm()
-            params[rx_id]['capture'] = False if self.find_channel(int(rx_id)).raw_sink is None else True
-            params[rx_id]['error'] = self.find_channel(int(rx_id)).get_error()
-            s_name = params[rx_id]['stream']
+        for rx in params['channels']:                       # iterate and convert stream name to url
+            rx_id = rx['msgqid']
+            params['channels'][rx_id]['ppm'] = self.find_channel(int(rx_id)).device.get_ppm()
+            params['channels'][rx_id]['capture'] = False if self.find_channel(int(rx_id)).raw_sink is None else True
+            params['channels'][rx_id]['error'] = self.find_channel(int(rx_id)).get_error()
+            s_name = params['channels'][rx_id]['stream']
             if s_name not in self.meta_streams:
                 continue
             meta_s, meta_q = self.meta_streams[s_name]
-            params[rx_id]['stream_url'] = meta_s.get_url()
+            params['channels'][rx_id]['stream_url'] = meta_s.get_url()
         return params
 
     def ui_plot_update(self):
