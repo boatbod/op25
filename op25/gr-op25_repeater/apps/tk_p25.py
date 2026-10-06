@@ -392,7 +392,7 @@ class rx_ctl(object):
                         if self.debug >= 10:
                             sys.stderr.write("%s [%s] receiver[%d] not idle\n" % (log_ts.get(), p25_sysname, rx.msgq_id))
             if p25_site.cc_msgq_id is None: # no receivers assigned
-                if self.debug >= 5:
+                if self.debug >= 10:
                     sys.stderr.write("%s [%s] has no idle receivers for control channel monitoring\n" % (log_ts.get(), p25_sysname))
 
     # ui_command handles all requests from user interface
@@ -700,7 +700,7 @@ class p25_stream(object):
                 sys.stderr.write("%s [S%d] expire hold: tg(%d)\n" % (log_ts.get(), self.id, self.hold_tgid))
             self.hold_tgid = None
             self.hold_mode = False
-            self.receiver.release_stream()
+            #self.receiver.release_stream()
             #meta_update(self.meta_q, msgq_id=self.msgq_id, debug=self.debug)
 
     def find_talkgroup(self, start_time, tgid=None, hold=False):
@@ -766,7 +766,8 @@ class p25_stream(object):
         else:
             if self.debug > 0:
                 sys.stderr.write("%s [S%d] voice preempt: tg(%d), rid(%d), freq(%f), slot(%s), prio(%d)\n" % (log_ts.get(), self.id, tgid, self.system.talkgroups[tgid]['srcaddr'], (freq/1e6), get_slot(slot), self.system.talkgroups[tgid]['prio']))
-            self.receiver.expire_talkgroup(update_meta=False, reason="preempt") # release the previous call before looking for a receiver
+            if self.receiver is not None:
+                self.receiver.expire_talkgroup(update_meta=False, reason="preempt") # release the previous call before looking for a receiver
             self.receiver = self.system.find_receiver(tgid)
             if self.receiver is None:   # no receivers available
                 if self.debug >= 5:
@@ -888,6 +889,9 @@ class p25_stream(object):
             stream_status['emergency'] = (stream_status['svcopts'] >> 7) & 0x1
             stream_status['stream'] = self.meta_stream
             stream_status['strid'] = self.id
+
+        #if (stream_status['receiver'] is None and len(_siteslist) > 0) or (stream_status['receiver'] is not None and len(_siteslist) == 0):
+        #    sys.stderr.write("%s [S%d] get_status: data inconsistency: current_tgid=%s, hold_tgid=%s, stream_receiver=%s, tgid_receiver=%s, sites=%s\n" % (log_ts.get(), self.id, self.current_tgid, self.hold_tgid, (self.receiver.msgq_id if self.receiver is not None else None), (self.system.talkgroups[_tgid]['receiver'].msgq_id if _tgid is not None and self.system.talkgroups[_tgid]['receiver'] is not None else None), _siteslist))
         return stream_status
 
 #################
@@ -2803,6 +2807,8 @@ class p25_receiver(object):
                 sys.stderr.write("%s [%d] cannot tune voice channel; wacn/sysid not yet known\n" % (log_ts.get(), self.msgq_id))
                 return
 
+            sys.stderr.write("%s [%d] tune_voice: freq=%f, slot=%s, tgid=%d, destination=%s\n" % (log_ts.get(), self.msgq_id, (freq/1e6), slot, tgid, destination)) 
+
             tune_params = {'tuner':   self.msgq_id,
                            'sigtype': "P25",
                            'freq':    get_frequency(freq),
@@ -2992,6 +2998,7 @@ class p25_receiver(object):
     def expire_talkgroup(self, tgid=None, update_meta = True, reason="unk", auto_hold = True):
         if self.current_stream is not None:
             self.current_stream.expire_talkgroup(tgid, update_meta, reason, auto_hold)
+            self.release_stream()
 
         self.current_tgid = None
         self.current_slot = None

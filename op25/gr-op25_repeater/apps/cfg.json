@@ -7,7 +7,7 @@
             "trunking_sysname": "Trunking System 0",
             "meta_stream_name": "",
             "demod_type": "cqpsk", 
-            "destination": "udp://0.0.0.0:2345, ws://0.0.0.0:9000",
+            "destination": "",
             "excess_bw": 0.2,
             "filter_type": "rc",
             "if_rate": 24000,
