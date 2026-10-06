@@ -466,6 +466,8 @@ class rx_ctl(object):
 
     def set_debug(self, dbglvl):
         self.debug = dbglvl
+        for systm in self.systems.values():
+            systm.set_debug(dbglvl)
         for stream in self.streams.values():
             stream.set_debug(dbglvl)
         for rx_sys in self.sites:
@@ -570,6 +572,9 @@ class p25_system(object):
             return ""
         else:
             return self.sourceids[srcaddr]['tag']
+
+    def set_debug(self, debug):
+        self.debug = debug
 
 #################
 # P25 stream class
