@@ -287,7 +287,7 @@ class rx_ctl(object):
                 _system = self.systems['00000000']  # replace default key for first system with received wacn/sysid
                 self.systems.pop("00000000", None)
                 self.systems[system_key] = _system
-            else:
+            elif system_key not in self.systems:
                 self.systems[system_key] = p25_system(self.debug, wacn, sysid, None, self)
         return self.systems[system_key]
 
