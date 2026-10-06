@@ -4,7 +4,7 @@
         {
             "name": "Channel 0", 
             "device": "sdr0",
-            "trunking_sysname": "Trunking System 0",
+            "trunking_sitename": "Trunking Site 0",
             "meta_stream_name": "",
             "demod_type": "cqpsk", 
             "destination": "",

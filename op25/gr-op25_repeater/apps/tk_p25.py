@@ -191,10 +191,10 @@ class rx_ctl(object):
 
         if 'systems' in config:
             for syst in config['systems']:
-                syst_wacn  = ast.literal_eval(from_dict(syst, "wacn", 0))
-                syst_sysid = ast.literal_eval(from_dict(syst, "sysid", 0))
+                syst_wacn  = ast.literal_eval(from_dict(syst, "wacn", "0"))
+                syst_sysid = ast.literal_eval(from_dict(syst, "sysid", "0"))
                 syst_name  = str(from_dict(syst, "name", ""))
-                if syst_wacn == 0 or syst_sysid == 0 or syst_name == "":
+                if syst_name == "":
                     sys.stderr.write('Ignoring invalid trunking system configuration: (wacn="0x%05x", sysid="0x%03x", name="%s")\n' % (syst_wacn, syst_sysid, syst_name))
                     continue
                 else:
@@ -236,7 +236,7 @@ class rx_ctl(object):
         rx_site = None
         rx_rcvr = None
         rx_name = from_dict(config, 'name', str(msgq_id))
-        rx_sysname = from_dict(config, 'trunking_sysname', "undefined")
+        rx_sysname = from_dict(config, 'trunking_sitename', "undefined")
 
         if rx_sysname in self.sites:   # known trunking site
             rx_site = from_dict(self.sites[rx_sysname], 'site', None)
@@ -250,7 +250,7 @@ class rx_ctl(object):
                                    freq          = freq)
             self.sites[rx_sysname]['receivers'].append(rx_rcvr)
         else:                            # undefined or mis-configured trunking sysname
-            sys.stderr.write("Receiver '%s' configured with unknown trunking_sysname '%s'\n" % (rx_name, rx_sysname))
+            sys.stderr.write("Receiver '%s' configured with unknown trunking_sitename '%s'\n" % (rx_name, rx_sysname))
 
         conv_state = None
         if rx_rcvr is None:
@@ -281,8 +281,11 @@ class rx_ctl(object):
     def get_system(self, wacn, sysid):
         system_key = "%05x%03x" % (wacn, sysid)
         if system_key not in self.systems:
+            config = {}
+            if len(self.systems) > 0:   # use first system entry as model config for subsequent entries
+                config = next(iter(self.systems))
             with self.systems_mutex:
-                self.systems[system_key] = p25_system(self.debug, wacn, sysid)
+                self.systems[system_key] = p25_system(self.debug, wacn, sysid, config, self)
         return self.systems[system_key]
 
     def get_system_by_name(self, sysname, allow_default = False):
@@ -435,7 +438,7 @@ class rx_ctl(object):
                 rcvr_ids.append(self.receivers[rcvr]['rx_rcvr'].get_status())
             elif self.receivers[rcvr]['conv_state'] is not None:
                 cs = self.receivers[rcvr]['conv_state']
-                sysname = from_dict(self.receivers[rcvr]['config'], 'trunking_sysname', '') or rcvr_name
+                sysname = from_dict(self.receivers[rcvr]['config'], 'trunking_sitename', '') or rcvr_name
                 rcvr_ids.append({
                     'freq':         cs['freq'],
                     'tdma':         0,
@@ -2816,7 +2819,7 @@ class p25_receiver(object):
                            'rate':    4800 if slot is None else 6000,
                            'tdma':    slot,
                            'tag':     self.talkgroups[tgid]['tag'],
-                           'system':  self.config['trunking_sysname'],
+                           'system':  self.config['trunking_sitename'],
                            'nac':     nac,
                            'wacn':    wacn,
                            'sysid':   sysid}
