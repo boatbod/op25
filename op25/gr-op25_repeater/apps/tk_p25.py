@@ -287,10 +287,8 @@ class rx_ctl(object):
                 _system = self.systems['00000000']  # replace default key for first system with received wacn/sysid
                 self.systems.pop("00000000", None)
                 self.systems[system_key] = _system
-                sys.stderr.write("REPLACED! %s\n" % self.systems)
             else:
                 self.systems[system_key] = p25_system(self.debug, wacn, sysid, None, self)
-                sys.stderr.write("NEW! %s\n" % self.systems)
         return self.systems[system_key]
 
     def get_system_by_name(self, sysname, allow_default = False):
