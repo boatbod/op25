@@ -209,7 +209,9 @@ class rx_ctl(object):
 
         if 'sites' in config:
             for rx_site in config['sites']:
-                sysname = rx_site['sysname']
+                sysname = from_dict(rx_site, "sitename", None)
+                if sysname is None:
+                    continue
                 if sysname not in self.sites:
                     self.sites[sysname] = { 'site': None, 'receivers': [] }
                     self.sites[sysname]['site'] = p25_site(debug  = self.debug,
@@ -301,7 +303,7 @@ class rx_ctl(object):
                 found_system = system
                 break
         if not found_system and allow_default:
-            found_system = self.systems.values()[0]
+            found_system = next(iter(self.systems.values()))
         return found_system
 
     # process_qmsg is the main message dispatch handler connecting the 'radios' to python
@@ -954,7 +956,7 @@ class p25_site(object):
         self.ns_valid = False
         self.rx_cc_freq = None
         self.rx_sys_id = None
-        self.sysname = config['sysname']
+        self.sysname = from_dict(config, "sitename", "P25 Site")
         self.callsign = ""
         self.nac = int(ast.literal_eval(from_dict(config, "nac", "0")))
         self.last_expiry_check = 0.0
