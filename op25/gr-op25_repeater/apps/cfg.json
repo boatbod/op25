@@ -14,8 +14,6 @@
             "plot": "",
             "symbol_rate": 4800,
             "enable_analog": "off",
-            "blacklist": "",
-            "whitelist": "",
             "crypt_behavior": 2,
             "crypt_keys": ""
         }
@@ -66,7 +64,7 @@
         ],
         "sites": [
             {
-                "sysname": "Trunking Site 0",
+                "sitename": "Trunking Site 0",
                 "#nac": "0x0",
                 "#sysid": "0x4a2",
                 "control_channel_list": "773.84375",

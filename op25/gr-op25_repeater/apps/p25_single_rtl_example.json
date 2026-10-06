@@ -1,50 +1,87 @@
 {
+    "version": 2.0,
     "channels": [
         {
-            "name": "Voice Channel", 
+            "name": "Channel 0", 
             "device": "sdr0",
-            "trunking_sysname": "Trunked System",
-            "demod_type": "cqpsk", 
-            "#destination": "udp://0.0.0.0:23456", 
-            "destination": "ws://0.0.0.0:9000", 
+            "trunking_sitename": "Trunking Site 0",
             "meta_stream_name": "",
-            "excess_bw": 0.2, 
-            "filter_type": "rc", 
-            "if_rate": 24000, 
+            "demod_type": "cqpsk", 
+            "destination": "",
+            "excess_bw": 0.2,
+            "filter_type": "rc",
+            "if_rate": 24000,
             "plot": "",
             "symbol_rate": 4800,
             "enable_analog": "off",
-            "whitelist": "",
-            "blacklist": "",
+            "crypt_behavior": 2,
             "crypt_keys": ""
         }
     ], 
     "devices": [
         {
-            "args": "rtl", 
-            "gains": "LNA:39", 
-            "name": "sdr0", 
-            "offset": 0, 
-            "ppm": 0.0, 
+            "args": "rtl",
+            "gains": "LNA:39",
+            "gain_mode": false,
+            "name": "sdr0",
+            "offset": 0,
+            "ppm": 0.0,
+            "rate": 1000000,
             "usable_bw_pct": 0.85,
-            "rate": 1000000, 
             "tunable": true
         }
     ],
     "trunking": {
         "module": "tk_p25.py",
-        "chans": [
+        "systems":[
             {
-                "#nac": "0x4a6",
+                "name": "Trunking System 0",
                 "#wacn": "0xbee00",
                 "#sysid": "0x4a2",
-                "sysname": "Trunked System",
+                "#tgid_tags_file": "talkgroups.tsv",
+                "#rid_tags_file": "rids.tsv",
+                "site_alias": {
+                    "3": {
+                        "2": { "alias": "Site alias for RFSS# 3, Site# 2" },
+                        "3": { "alias": "Site alias f0r RFSS# 3, Site# 3" }
+                    },
+                    "5": {
+                        "3": { "alias": "Site alias for RFSS# 5, Site# 3" },
+                        "6": { "alias": "Site alias for RFSS# 5, Site# 6" }
+                    }
+                }
+            }
+        ],
+        "streams": [
+            {
+                "name": "Voice Stream 0",
+                "system": "Trunking System 0",
+                "destination": "ws://0.0.0.0:9000",
+                "meta_stream_name": "",
+                "#whitelist": "stream_whitelist.wlist",
+                "#blacklist": "stream_blacklist.blist"
+            }
+        ],
+        "sites": [
+            {
+                "sitename": "Trunking Site 0",
+                "#nac": "0x0",
+                "#sysid": "0x4a2",
                 "control_channel_list": "773.84375",
-                "whitelist": "",
-                "tgid_tags_file": "",
-                "rid_tags_file": "",
                 "tdma_cc": false,
-                "crypt_behavior": 2
+                "crypt_behavior": 2,
+                "#band_plan": {
+                    "0": { "offset": -45000000, "step":  6250, "frequency": 851006250 },
+                    "1": { "offset": -45000000, "step": 12500, "frequency": 851012500, "tdma": 2 }
+                },
+                "presets": [
+                    { "id": 1, "tgid": 7616, "label": "TGID 7616" },
+                    { "id": 2, "tgid": 7617, "label": "TGID 7617" },
+                    { "id": 3, "tgid": 11501, "label": "TGID 11501" },
+                    { "id": 4, "tgid": 11503, "label": "TGID 11503" },
+                    { "id": 5, "tgid": 12001, "label": "TGID 12001" },
+                    { "id": 6, "tgid": 12401, "label": "TGID 12401" }
+                ]
             }
         ]
     },
@@ -52,16 +89,14 @@
         "module": "icemeta.py",
         "streams": [
             {
-                "stream_name": "stream0",
+                "stream_name": "",
                 "meta_format_idle": "[idle]",
                 "meta_format_tgid": "[%TGID%]",
                 "meta_format_tag":  "[%TGID%] %TAG%",
-                "meta_format_rid":  "@ [%RID%]",
-                "meta_format_rtag": "@ [%RID%] %RTAG%",
-                "icecastServerAddress": "192.168.3.24:8000",
-                "icecastMountpoint": "op25",
+                "icecastServerAddress": "192.168.1.24:8000",
+                "icecastMountpoint": "op25_stream_0",
                 "icecastMountExt": ".xspf",
-                "icecastPass": "hackme",
+                "icecastPass": "hackme1",
                 "delay": 0.0
             }
         ]
@@ -70,8 +105,9 @@
         "module": "sockaudio.py",
         "instances": [
             {
-                "instance_name": "audio0",
+                "#instance_name": "audio0",
                 "device_name": "pulse",
+                "#device_name": "default",
                 "udp_port": 23456,
                 "audio_gain": 1.0,
                 "number_channels": 1
@@ -80,12 +116,16 @@
     },
     "terminal": {
         "module": "terminal.py",
-        "#terminal_type": "curses",
         "terminal_type": "http:0.0.0.0:8080",
         "curses_plot_interval": 0.1,
         "http_plot_interval": 1.0,
         "http_plot_directory": "../www/images",
         "tuning_step_large": 1200,
-        "tuning_step_small": 100
+        "tuning_step_small": 100,
+        "smart_colors": [
+            { "keywords": [ "fire", "fd" ], "color":"#ff5c5c" },
+            { "keywords": [ "pd", "police", "sheriff", "so", "law" ], "color": "#66aaff" },
+            { "keywords": [ "ems", "med", "ambulance" ], "color": "#ffb84d" }
+        ]
     }
 }

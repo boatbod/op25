@@ -941,7 +941,6 @@ class rx_block (gr.top_block):
         params = json.loads(self.trunk_rx.get_chan_status())   # extract data from all channels
         for rx in params['channels']:                       # iterate and convert stream name to url
             rx_id = rx['msgqid']
-            params['channels'][rx_id]['ppm'] = self.find_channel(int(rx_id)).device.get_ppm()
             params['channels'][rx_id]['capture'] = False if self.find_channel(int(rx_id)).raw_sink is None else True
             params['channels'][rx_id]['error'] = self.find_channel(int(rx_id)).get_error()
             s_name = params['channels'][rx_id]['stream']

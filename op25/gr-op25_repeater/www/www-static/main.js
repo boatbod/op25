@@ -40,7 +40,6 @@ var send_queue = [];
 var request_count = 0;
 var SEND_QLIMIT = 5;
 var c_freq = 0;
-var c_ppm = null;
 var c_site = null;
 var c_tag = null;
 var c_stream_url = null;
@@ -480,7 +479,6 @@ function channel_update(d) {
             }
 
             c_freq = d['channels'][c_id]['freq'];
-            c_ppm = d['channels'][c_id]['ppm'];
             if (d['channels'][c_id]['error'] != undefined) {
                 error_val = d['channels'][c_id]['error'];
                 document.getElementById('errorVal').innerText = error_val + " Hz";
@@ -733,10 +731,9 @@ function channel_status() {
     //    wsAudioButton.innerHTML = "";
     //}
 
-	// TODO: c_ppm is not displayed anywhere in the new UI. What is it?
-	if (c_ppm != null) {
-        html += "<span class=\"value\"> (" + c_ppm.toFixed(3) + ")</span>";
-    }
+	//if (c_ppm != null) {
+    //    html += "<span class=\"value\"> (" + c_ppm.toFixed(3) + ")</span>";
+    //}
 
     html = "";
 	

@@ -2818,7 +2818,8 @@ class p25_receiver(object):
                 sys.stderr.write("%s [%d] cannot tune voice channel; wacn/sysid not yet known\n" % (log_ts.get(), self.msgq_id))
                 return
 
-            sys.stderr.write("%s [%d] tune_voice: freq=%f, slot=%s, tgid=%d, destination=%s\n" % (log_ts.get(), self.msgq_id, (freq/1e6), slot, tgid, destination)) 
+            if self.debug >= 5:
+                sys.stderr.write("%s [%d] tune_voice: freq=%f, slot=%s, tgid=%d, destination=%s\n" % (log_ts.get(), self.msgq_id, (freq/1e6), slot, tgid, destination)) 
 
             tune_params = {'tuner':   self.msgq_id,
                            'sigtype': "P25",

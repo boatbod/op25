@@ -1,0 +1,245 @@
+{
+    "version": 2.0,
+    "channels": [
+        {
+            "name": "TAL-1 (south)", 
+            "device": "sdr-south",
+            "trunking_sitename": "FiRST Talbot",
+            "demod_type": "cqpsk", 
+            "excess_bw": 0.2, 
+            "filter_type": "rc", 
+            "if_rate": 24000, 
+            "plot": "",
+            "symbol_rate": 4800,
+            "enable_analog": "off"
+        },
+        {
+            "name": "TAL-2 (north)",
+            "device": "sdr-north",
+            "trunking_sitename": "FiRST Talbot",
+            "demod_type": "cqpsk",
+            "excess_bw": 0.2,
+            "filter_type": "rc",
+            "if_rate": 24000,
+            "plot": "",
+            "symbol_rate": 4800,
+            "enable_analog": "off"
+        },
+        {
+            "name": "DOR-1 (south)", 
+            "device": "sdr-south",
+            "trunking_sitename": "FiRST Dorchester",
+            "demod_type": "cqpsk", 
+            "excess_bw": 0.2, 
+            "filter_type": "rc", 
+            "if_rate": 24000, 
+            "plot": "",
+            "symbol_rate": 4800,
+            "enable_analog": "off"
+        },
+        {
+            "name": "CAR-1 (north)", 
+            "device": "sdr-north",
+            "trunking_sitename": "FiRST Caroline",
+            "demod_type": "cqpsk", 
+            "excess_bw": 0.2, 
+            "filter_type": "rc", 
+            "if_rate": 24000, 
+            "plot": "",
+            "symbol_rate": 4800,
+            "enable_analog": "off"
+        },
+        {
+            "name": "QAC-1 (north)",
+            "device": "sdr-north",
+            "trunking_sitename": "FiRST Queen Anne",
+            "demod_type": "cqpsk",
+            "excess_bw": 0.2,
+            "filter_type": "rc",
+            "if_rate": 24000,
+            "plot": "",
+            "symbol_rate": 4800,
+            "enable_analog": "off"
+        }
+    ], 
+    "devices": [
+        {
+            "args": "hydrasdr=0x36B463DC35683AC7", 
+            "frequency": 772025000, 
+            "gains": "LNA:15,MIX:8,IF:8", 
+            "name": "sdr-south", 
+            "offset": 0, 
+            "ppm": 0.0, 
+            "rate": 10000000, 
+            "usable_bw_pct": 0.80,
+            "tunable": false
+        },
+        {
+            "args": "hydrasdr=0x36B463DC359834C7", 
+            "frequency": 774025000, 
+            "gains": "LNA:15,MIX:8,IF:8", 
+            "name": "sdr-north", 
+            "offset": 0, 
+            "ppm": 0.0, 
+            "rate": 10000000, 
+            "usable_bw_pct": 0.80,
+            "tunable": false
+        }
+    ],
+    "trunking": {
+        "module": "tk_p25.py",
+        "systems":[
+            {
+                "name": "Maryland FiRST",
+                "wacn": "0xbee00",
+                "sysid": "0x4a2",
+                "tgid_tags_file": "first_talkgroups.tsv",
+                "rid_tags_file": "first-rids.tsv",
+                "site_alias": {
+                    "3": {
+                        "2": { "alias": "Worcester Simulcast" },
+                        "3": { "alias": "Wicomico Simulcast" },
+                        "4": { "alias": "Smithville ASR" },
+                        "5": { "alias": "Dorchester Simulcast" },
+                        "6": { "alias": "Talbot Simulcast" },
+                        "8": { "alias": "Caroline Simulcast" },
+                        "9": { "alias": "Queen Anne Simulcast" },
+                        "10": { "alias": "Federalsburg ASR" },
+                        "11": { "alias": "Matapeake ASR" },
+                        "12": { "alias": "Bozman ASR" },
+                        "15": { "alias": "Crisfield ASR" }
+                    },
+                    "5": {
+                        "3": { "alias": "Calvert Simulcast" },
+                        "6": { "alias": "St Marys Simulcast" }
+                    }
+                }
+            }
+        ],
+        "streams": [
+            {
+                "name": "Talbot Fire",
+                "system": "Maryland FiRST",
+                "destination": "ws://192.168.3.7:9000",
+                "meta_stream_name": "",
+                "whitelist": "talbot-fire.wlist",
+                "blacklist": ""
+            },
+            {
+                "name": "Dorchester Fire",
+                "system": "Maryland FiRST",
+                "destination": "ws://192.168.3.7:9001",
+                "meta_stream_name": "",
+                "whitelist": "dorc-fire.wlist",
+                "blacklist": ""
+            },
+            {
+                "name": "Caroline Fire",
+                "system": "Maryland FiRST",
+                "destination": "ws://192.168.3.7:9002",
+                "meta_stream_name": "",
+                "whitelist": "caroline-fire.wlist",
+                "blacklist": ""
+            },
+            {
+                "name": "Marine TAC2 & TAC5",
+                "system": "Maryland FiRST",
+                "destination": "ws://192.168.3.7:9003",
+                "meta_stream_name": "",
+                "whitelist": "md-marine.wlist",
+                "blacklist": ""
+            },
+            {
+                "name": "Region IV Medical",
+                "system": "Maryland FiRST",
+                "destination": "ws://192.168.3.7:9004",
+                "meta_stream_name": "",
+                "whitelist": "region_iv.wlist",
+                "blacklist": ""
+            }
+        ],
+        "sites": [
+            {
+                "nac": "0x4a6",
+                "sitename": "FiRST Talbot",
+                "control_channel_list": "773.84375",
+                "tdma_cc": false,
+                "crypt_behavior": 2,
+                "presets": [
+                    { "id": 1, "tgid": 11501, "label": "TB FDISP" },
+                    { "id": 2, "tgid": 11503, "label": "TB FTAC3" },
+                    { "id": 3, "tgid": 11504, "label": "TB FTAC4" }
+                ]
+            },
+            {
+                "nac": "0x4a5",
+                "sitename": "FiRST Dorchester",
+                "control_channel_list": "774.19375",
+                "crypt_behavior": 2,
+                "presets": [
+                    { "id": 1, "tgid": 12401, "label": "DC FDISP" }
+                ]		
+            },
+            {
+                "nac": "0x4a9",
+                "sitename": "FiRST Queen Anne",
+                "control_channel_list": "774.54375",
+                "crypt_behavior": 2,
+                "presets": [
+                    { "id": 1, "tgid": 12401, "label": "DC FDISP" }
+                ]
+            },
+            {
+                "nac": "0x4a8",
+                "sitename": "FiRST Caroline",
+                "control_channel_list": "773.318750",
+                "crypt_behavior": 2,
+                "presets": [
+                    { "id": 1, "tgid": 12401, "label": "DC FDISP" }
+                ]
+            }
+        ]
+    },
+    "metadata": {
+        "module": "icemeta.py",
+        "streams": [
+            {
+                "#stream_name": "stream 0",
+                "meta_format_idle": "[idle]",
+                "meta_format_tgid": "[%TGID%]",
+                "meta_format_tag":  "[%TGID%] %TAG%",
+                "meta_format_rid":  "@ [%RID%]",
+                "meta_format_rtag": "@ [%RID%] %RTAG%",
+                "icecastServerAddress": "",
+                "icecastMountpoint": "",
+                "icecastMountExt": ".xspf",
+                "icecastPass": "",
+                "delay": 0.0
+            }
+        ]
+    },
+    "audio": {
+        "module": "sockaudio.py",
+        "instances": [
+            {
+                "#instance_name": "audio0",
+                "device_name": "pulse",
+                "udp_port": 23456,
+                "audio_gain": 1.0,
+                "number_channels": 1
+            }
+        ]
+    },
+    "terminal": {
+        "module": "terminal.py",
+        "terminal_type": "http:192.168.3.7:8080",
+        "curses_plot_interval": 0.1,
+        "http_plot_interval": 1.0,
+        "http_plot_directory": "../www/images",
+        "smart_colors": [
+            { "keywords": [ "fire" ], "color":"#ff5c5c" },
+            { "keywords": [ "pd", "police", "sheriff", "so", "law", "msp" ], "color": "#66aaff" },
+            { "keywords": [ "ems", "med", "ambulance", "miemss" ], "color": "#ffb84d" }
+        ]
+    }
+}
