@@ -280,12 +280,15 @@ class rx_ctl(object):
 
     def get_system(self, wacn, sysid):
         system_key = "%05x%03x" % (wacn, sysid)
-        if system_key not in self.systems:
-            config = {}
-            if len(self.systems) > 0:   # use first system entry as model config for subsequent entries
-                config = next(iter(self.systems))
-            with self.systems_mutex:
-                self.systems[system_key] = p25_system(self.debug, wacn, sysid, config, self)
+        with self.systems_mutex:
+            if system_key not in self.systems and "00000000" in self.systems:
+                _system = self.systems['00000000']  # replace default key for first system with received wacn/sysid
+                self.systems.pop("00000000", None)
+                self.systems[system_key] = _system
+                sys.stderr.write("REPLACED! %s\n" % self.systems)
+            else:
+                self.systems[system_key] = p25_system(self.debug, wacn, sysid, None, self)
+                sys.stderr.write("NEW! %s\n" % self.systems)
         return self.systems[system_key]
 
     def get_system_by_name(self, sysname, allow_default = False):
