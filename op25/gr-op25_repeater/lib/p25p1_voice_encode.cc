@@ -9,7 +9,7 @@
  * P25 LDU metadata generation adapted from p25craft.py.
  */
 
-//#define DEBUG_TX
+#define DEBUG_TX
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"
@@ -43,8 +43,7 @@ static const int SAMP_INTERVAL = 8192;
 /*
  * Clear a bit vector.
  */
-void
-p25p1_voice_encode::clear_bits(bit_vector& v)
+void p25p1_voice_encode::clear_bits(bit_vector& v)
 {
     for (size_t i = 0; i < v.size(); ++i)
         v[i] = false;
@@ -81,6 +80,7 @@ p25p1_voice_encode::p25p1_voice_encode(
     memset(write_buf, 0, sizeof(write_buf));
     memset(rxbuf, 0, sizeof(rxbuf));
     memset(sampbuf, 0, sizeof(sampbuf));
+    memset(keystream, 0, sizeof(keystream));
 
     memset(&tv, 0, sizeof(tv));
     memset(&oldtv, 0, sizeof(oldtv));
@@ -107,9 +107,7 @@ p25p1_voice_encode::~p25p1_voice_encode()
 /*
  * Configure all P25 metadata parameters.
  */
-void
-p25p1_voice_encode::set_voice_params(
-    const p25_voice_params& params)
+void p25p1_voice_encode::set_voice_params(const p25_voice_params& params)
 {
     voice_params = params;
 
@@ -118,79 +116,75 @@ p25p1_voice_encode::set_voice_params(
     voice_params.mfid &= 0xff;
     voice_params.algid &= 0xff;
     voice_params.kid &= 0xffff;
+    voice_params.key &= 0xffffffffffffffff;
     voice_params.lco &= 0x3f;
     voice_params.svcopt &= 0xff;
     voice_params.explicit_source &= 0x01;
     voice_params.tgid &= 0xffff;
     voice_params.dst &= 0x00ffffff;
     voice_params.src &= 0x00ffffff;
+    voice_params.verbosity &= 0xFF;
 }
 
 /*
  * Individual parameter setters.
  */
-void
-p25p1_voice_encode::set_nac(uint16_t nac)
+void p25p1_voice_encode::set_nac(uint16_t nac)
 {
     voice_params.nac = nac & 0x0fff;
 }
 
-void
-p25p1_voice_encode::set_status_symbol(uint8_t status_symbol)
+void p25p1_voice_encode::set_status_symbol(uint8_t status_symbol)
 {
     voice_params.status_symbol = status_symbol & 0x03;
 }
 
-void
-p25p1_voice_encode::set_mi(uint64_t mi)
+void p25p1_voice_encode::set_mi(uint64_t mi)
 {
     voice_params.mi = mi & 0xffffffffffffffffULL;
 }
 
-void
-p25p1_voice_encode::set_mfid(uint8_t mfid)
+void p25p1_voice_encode::set_mfid(uint8_t mfid)
 {
     voice_params.mfid = mfid;
 }
 
-void
-p25p1_voice_encode::set_algid(uint8_t algid)
+void p25p1_voice_encode::set_algid(uint8_t algid)
 {
     voice_params.algid = algid;
 }
 
-void
-p25p1_voice_encode::set_kid(uint16_t kid)
+void p25p1_voice_encode::set_kid(uint16_t kid)
 {
     voice_params.kid = kid;
 }
 
-void
-p25p1_voice_encode::set_lco(uint8_t lco)
+void p25p1_voice_encode::set_key(uint64_t key)
+{
+    voice_params.key = key;
+}
+
+void p25p1_voice_encode::set_lco(uint8_t lco)
 {
     voice_params.lco = lco & 0x3f;
 }
 
-void
-p25p1_voice_encode::set_svcopt(uint8_t svcopt)
+void p25p1_voice_encode::set_svcopt(uint8_t svcopt)
 {
     voice_params.svcopt = svcopt;
 }
 
-void
-p25p1_voice_encode::set_explicit_source(uint8_t explicit_source)
+void p25p1_voice_encode::set_explicit_source(uint8_t explicit_source)
 {
     voice_params.explicit_source = explicit_source & 0x01;
 }
 
-void
-p25p1_voice_encode::set_tgid(uint16_t tgid)
+void p25p1_voice_encode::set_tgid(uint16_t tgid)
 {
     voice_params.tgid = tgid;
 }
 
-void
-p25p1_voice_encode::set_destination(uint32_t dst)
+void p25p1_voice_encode::set_destination(uint32_t dst)
 {
     if (dst > 0x00ffffff) {
         voice_params.dst = 0;
@@ -200,8 +194,7 @@ p25p1_voice_encode::set_destination(uint32_t dst)
     voice_params.dst = dst;
 }
 
-void
-p25p1_voice_encode::set_source(uint32_t src)
+void p25p1_voice_encode::set_source(uint32_t src)
 {
     if (src > 0x00ffffff) {
         voice_params.src = 0;
@@ -211,17 +204,69 @@ p25p1_voice_encode::set_source(uint32_t src)
     voice_params.src = src;
 }
 
-void
-p25p1_voice_encode::set_lsd(uint32_t lsd)
+void p25p1_voice_encode::set_lsd(uint32_t lsd)
 {
     voice_params.lsd = lsd;
+}
+
+void p25p1_voice_encode::set_verbosity(uint8_t verb)
+{
+    voice_params.verbosity = verb;
+}
+
+/*
+ * Equivalent of p25craft.py's print_spec().
+ *
+ * frame_body holds individual bits; p25craft.py's "data" list holds
+ * dibits (0-3), so each dibit here is reconstructed from a pair of bits.
+ */
+void p25p1_voice_encode::print_spec(const bit_vector& frame_body, uint16_t flip)
+{
+    std::vector<uint8_t> dibits;
+    dibits.reserve(frame_body.size() / 2);
+
+    for (size_t i = 0; i + 1 < frame_body.size(); i += 2) {
+        dibits.push_back(static_cast<uint8_t>((frame_body[i] << 1) | frame_body[i + 1]));
+    }
+
+    // we only support full microslots
+    if (dibits.size() % 36 != 0) {
+        fprintf(stderr, "print_spec: dibit count %zu is not a multiple of 36\n", dibits.size());
+        return;
+    }
+
+    int microslot = 0;
+
+    fprintf(stderr, "Microslot:  ___________0___________  ___________1___________");
+
+    for (size_t i = 0; i < dibits.size(); i += 36) {
+        if ((microslot % 2) == 0) {
+            fprintf(stderr, "\n");
+            fprintf(stderr, "%9d: ", microslot);
+        }
+
+        fprintf(stderr, " ");
+
+        for (int j = 0; j < 36; j += 6) {
+            uint16_t dodectet = 0;
+
+            for (int k = 0; k < 6; ++k) {
+                dodectet |= static_cast<uint16_t>(dibits[i + j + k]) << (10 - k * 2);
+            }
+
+            fprintf(stderr, "%03x ", static_cast<unsigned>(dodectet ^ flip));
+        }
+
+        ++microslot;
+    }
+
+    fprintf(stderr, "\n\n");
 }
 
 /*
  * Translate p25craft.py's bch_64_16_23_encode().
  */
-uint64_t
-p25p1_voice_encode::bch_64_16_23_encode(uint16_t data)
+uint64_t p25p1_voice_encode::bch_64_16_23_encode(uint16_t data)
 {
     static const uint64_t matrix[16] = {
         0x8000cd930bdd3b2aULL,
@@ -257,8 +302,7 @@ p25p1_voice_encode::bch_64_16_23_encode(uint16_t data)
  *
  *     nid = bch_64_16_23_encode((nac << 4) | duid)
  */
-uint64_t
-p25p1_voice_encode::construct_nid(uint16_t nac, uint8_t duid)
+uint64_t p25p1_voice_encode::construct_nid(uint16_t nac, uint8_t duid)
 {
     return bch_64_16_23_encode(
         static_cast<uint16_t>(((nac & 0x0fff) << 4) | (duid & 0x0f)));
@@ -267,8 +311,7 @@ p25p1_voice_encode::construct_nid(uint16_t nac, uint8_t duid)
 /*
  * Equivalent of p25craft.py's construct_lcf().
  */
-uint8_t
-p25p1_voice_encode::construct_lcf(
+uint8_t p25p1_voice_encode::construct_lcf(
     uint8_t p,
     uint8_t sf,
     uint8_t lco)
@@ -279,8 +322,7 @@ p25p1_voice_encode::construct_lcf(
         (lco & 0x3f));
 }
 
-void
-p25p1_voice_encode::insert_hdu_golay(
+void p25p1_voice_encode::insert_hdu_golay(
     bit_vector& frame_body,
     int logical_dibit_start,
     const std::vector<uint8_t>& rs_symbols)
@@ -296,25 +338,18 @@ p25p1_voice_encode::insert_hdu_golay(
      * 36 * 18 = 648 bits = 324 dibits.
      */
     for (size_t i = 0; i < rs_symbols.size(); ++i) {
-        const uint32_t codeword =
-            golay_24_encode(rs_symbols[i] & 0x3f) & 0x3ffff;
+        const uint32_t codeword = golay_24_encode(rs_symbols[i] & 0x3f) & 0x3ffff;
 
         for (int j = 0; j < 9; ++j) {
             const int shift = (8 - j) * 2;
+            const uint8_t dibit = static_cast<uint8_t>((codeword >> shift) & 0x03);
 
-            const uint8_t dibit =
-                static_cast<uint8_t>((codeword >> shift) & 0x03);
-
-            insert_dibit(
-                frame_body,
-                logical_dibit++,
-                dibit);
+            insert_dibit(frame_body, logical_dibit++, dibit);
         }
     }
 }
 
-void
-p25p1_voice_encode::emit_hdu()
+void p25p1_voice_encode::emit_hdu()
 {
     /*
      * p25craft.py's construct_hdu() creates:
@@ -360,64 +395,47 @@ p25p1_voice_encode::emit_hdu()
      *   hdu_payload[9]    = low eight, 0
      */
     for (int i = 0; i < 8; ++i) {
-        hdu_payload[i] =
-            static_cast<uint8_t>(
-                (voice_params.mi >> ((7 - i) * 8)) & 0xff);
+        hdu_payload[i] = static_cast<uint8_t>((voice_params.mi >> ((7 - i) * 8)) & 0xff);
     }
 
-    hdu_payload[9] =
-        voice_params.mfid;
+    hdu_payload[9] = voice_params.mfid;
+    hdu_payload[10] = voice_params.algid;
+    hdu_payload[11] = static_cast<uint8_t>((voice_params.kid >> 8) & 0xff);
+    hdu_payload[12] = static_cast<uint8_t>(voice_params.kid & 0xff);
+    hdu_payload[13] = static_cast<uint8_t>((voice_params.tgid >> 8) & 0xff);
+    hdu_payload[14] = static_cast<uint8_t>(voice_params.tgid & 0xff);
 
-    hdu_payload[10] =
-        voice_params.algid;
-
-    hdu_payload[11] =
-        static_cast<uint8_t>((voice_params.kid >> 8) & 0xff);
-
-    hdu_payload[12] =
-        static_cast<uint8_t>(voice_params.kid & 0xff);
-
-    hdu_payload[13] =
-        static_cast<uint8_t>((voice_params.tgid >> 8) & 0xff);
-
-    hdu_payload[14] =
-        static_cast<uint8_t>(voice_params.tgid & 0xff);
-
-#ifdef DEBUG_TX
-    fprintf(
-        stderr,
-        "HDU: "
-        "%02x %02x %02x %02x %02x %02x %02x %02x "
-        "%02x %02x %02x %02x %02x %02x %02x "
-        "| MI=%016llx MFID=%02x ALGID=%02x KID=%04x TGID=%u\n",
-        hdu_payload[0], hdu_payload[1], hdu_payload[2],
-        hdu_payload[3], hdu_payload[4], hdu_payload[5],
-        hdu_payload[6], hdu_payload[7], hdu_payload[8],
-        hdu_payload[9], hdu_payload[10],hdu_payload[11],
-        hdu_payload[12], hdu_payload[13], hdu_payload[14],
-        static_cast<unsigned long long>(voice_params.mi),
-        static_cast<unsigned int>(voice_params.mfid),
-        static_cast<unsigned int>(voice_params.algid),
-        static_cast<unsigned int>(voice_params.kid),
-        static_cast<unsigned int>(voice_params.tgid));
-#endif
+    if(voice_params.verbosity >= 1) {
+		fprintf(stderr, "HDU: ");
+		
+		if(voice_params.verbosity >= 2) {
+        fprintf(stderr, "%02x %02x %02x %02x %02x %02x %02x "
+			"%02x %02x %02x %02x %02x %02x %02x %02x | ",
+			hdu_payload[0], hdu_payload[1], hdu_payload[2],
+			hdu_payload[3], hdu_payload[4], hdu_payload[5],
+			hdu_payload[6], hdu_payload[7], hdu_payload[8],
+			hdu_payload[9], hdu_payload[10],hdu_payload[11],
+			hdu_payload[12], hdu_payload[13], hdu_payload[14]);
+		}
+		
+		fprintf(stderr, "MI=%016llx MFID=%02x ALGID=%02X KID=%04x TGID=%u\n",
+			static_cast<unsigned long long>(voice_params.mi),
+			static_cast<unsigned int>(voice_params.mfid),
+			static_cast<unsigned int>(voice_params.algid),
+			static_cast<unsigned int>(voice_params.kid),
+			static_cast<unsigned int>(voice_params.tgid));
+    }
 
     /*
      * Convert 120 payload bits into twenty six-bit symbols.
      */
     std::vector<uint8_t> rs_symbols;
 
-    bytes_to_6bit_symbols(
-        hdu_payload,
-        sizeof(hdu_payload),
-        rs_symbols);
+    bytes_to_6bit_symbols(hdu_payload, sizeof(hdu_payload), rs_symbols);
 
     if (rs_symbols.size() != 20) {
 #ifdef DEBUG_TX
-        fprintf(
-            stderr,
-            "HDU error: expected 20 payload symbols, got %zu\n",
-            rs_symbols.size());
+        fprintf(stderr, "HDU error: expected 20 payload symbols, got %zu\n", rs_symbols.size());
 #endif
         return;
     }
@@ -435,34 +453,15 @@ p25p1_voice_encode::emit_hdu()
 
     if (rs_symbols.size() != 36) {
 #ifdef DEBUG_TX
-        fprintf(
-            stderr,
-            "HDU error: expected 36 RS symbols, got %zu\n",
-            rs_symbols.size());
+        fprintf(stderr, "HDU error: expected 36 RS symbols, got %zu\n", rs_symbols.size());
 #endif
         return;
     }
 
-/*
-#ifdef DEBUG_TX
-    fprintf(stderr, "HDU RS symbols:");
-
-    for (size_t i = 0; i < rs_symbols.size(); ++i) {
-        fprintf(
-            stderr,
-            " %02x",
-            static_cast<unsigned int>(rs_symbols[i] & 0x3f));
-    }
-
-    fprintf(stderr, "\n");
-#endif
-*/
-
     /*
      * p25craft.py's start_packet() uses DUID 0x0 for HDU.
      */
-    const uint64_t nid =
-        construct_nid(voice_params.nac, 0x00);
+    const uint64_t nid = construct_nid(voice_params.nac, 0x00);
 
     /*
      * Insert frame sync and NID into physical positions.
@@ -484,12 +483,13 @@ p25p1_voice_encode::emit_hdu()
      * The remaining unused data positions are already zero-filled,
      * matching p25craft.py's padding behavior.
      */
-    insert_status_symbols(
-        hdu,
-        voice_params.status_symbol,
-        HDU_STATUS_COUNT);
+    insert_status_symbols(hdu, voice_params.status_symbol, HDU_STATUS_COUNT);
 
     output_frame(hdu, HDU_BITS);
+    
+    if (voice_params.verbosity >= 5) {
+		print_spec(hdu);
+	}
 }
 
 /*
@@ -506,8 +506,7 @@ p25p1_voice_encode::emit_hdu()
  *
  * For individual calls, dst replaces the TGID field.
  */
-void
-p25p1_voice_encode::construct_lc(
+void p25p1_voice_encode::construct_lc(
     uint8_t lco,
     uint8_t mfid,
     uint8_t svcopt,
@@ -555,12 +554,8 @@ p25p1_voice_encode::construct_lc(
          *
          * TGID occupies exactly lc[4] and lc[5].
          */
-        lc[4] = static_cast<uint8_t>(
-            ((tgid >> 8) & 0xff) |
-            ((s & 0x01) << 0));
-
-        lc[5] = static_cast<uint8_t>(
-            tgid & 0xff);
+        lc[4] = static_cast<uint8_t>(((tgid >> 8) & 0xff) | ((s & 0x01) << 0));
+        lc[5] = static_cast<uint8_t>(tgid & 0xff);
     } else if (lco == 3) {
         /*
          * Individual Voice Channel User:
@@ -605,8 +600,7 @@ p25p1_voice_encode::construct_lc(
  *
  * The resulting value is 12 bytes / 96 bits.
  */
-void
-p25p1_voice_encode::construct_es(
+void p25p1_voice_encode::construct_es(
     uint64_t mi,
     uint8_t algid,
     uint16_t kid,
@@ -620,8 +614,7 @@ p25p1_voice_encode::construct_es(
      * eight bytes of the MI field.
      */
     for (int i = 0; i < 8; ++i) {
-        es[i] = static_cast<uint8_t>(
-            (mi >> ((7 - i) * 8)) & 0xff);
+        es[i] = static_cast<uint8_t>((mi >> ((7 - i) * 8)) & 0xff);
     }
 
     es[8]  = 0;
@@ -633,8 +626,7 @@ p25p1_voice_encode::construct_es(
 /*
  * Equivalent of p25craft.py's cyclic_16_8_5_encode().
  */
-uint16_t
-p25p1_voice_encode::cyclic_16_8_5_encode(uint8_t data)
+uint16_t p25p1_voice_encode::cyclic_16_8_5_encode(uint8_t data)
 {
     static const uint16_t matrix[8] = {
         0x804e,
@@ -660,18 +652,12 @@ p25p1_voice_encode::cyclic_16_8_5_encode(uint8_t data)
 /*
  * Equivalent of p25craft.py's ldu1_cyclic().
  */
-uint32_t
-p25p1_voice_encode::ldu1_cyclic(uint32_t lsd)
+uint32_t p25p1_voice_encode::ldu1_cyclic(uint32_t lsd)
 {
     uint32_t word = 0;
 
-    word |= static_cast<uint32_t>(
-        cyclic_16_8_5_encode(
-            static_cast<uint8_t>((lsd >> 24) & 0xff))) << 16;
-
-    word |= static_cast<uint32_t>(
-        cyclic_16_8_5_encode(
-            static_cast<uint8_t>((lsd >> 16) & 0xff)));
+    word |= static_cast<uint32_t>(cyclic_16_8_5_encode(static_cast<uint8_t>((lsd >> 24) & 0xff))) << 16;
+    word |= static_cast<uint32_t>(cyclic_16_8_5_encode(static_cast<uint8_t>((lsd >> 16) & 0xff)));
 
     return word;
 }
@@ -679,18 +665,12 @@ p25p1_voice_encode::ldu1_cyclic(uint32_t lsd)
 /*
  * Equivalent of p25craft.py's ldu2_cyclic().
  */
-uint32_t
-p25p1_voice_encode::ldu2_cyclic(uint32_t lsd)
+uint32_t p25p1_voice_encode::ldu2_cyclic(uint32_t lsd)
 {
     uint32_t word = 0;
 
-    word |= static_cast<uint32_t>(
-        cyclic_16_8_5_encode(
-            static_cast<uint8_t>((lsd >> 8) & 0xff))) << 16;
-
-    word |= static_cast<uint32_t>(
-        cyclic_16_8_5_encode(
-            static_cast<uint8_t>(lsd & 0xff)));
+    word |= static_cast<uint32_t>(cyclic_16_8_5_encode(static_cast<uint8_t>((lsd >> 8) & 0xff))) << 16;
+    word |= static_cast<uint32_t>(cyclic_16_8_5_encode(static_cast<uint8_t>(lsd & 0xff)));
 
     return word;
 }
@@ -698,8 +678,7 @@ p25p1_voice_encode::ldu2_cyclic(uint32_t lsd)
 /*
  * Equivalent of p25craft.py's hamming_10_6_3_encode().
  */
-uint16_t
-p25p1_voice_encode::hamming_10_6_3_encode(uint8_t data)
+uint16_t p25p1_voice_encode::hamming_10_6_3_encode(uint8_t data)
 {
     static const uint16_t matrix[6] = {
         0x20e,
@@ -725,8 +704,7 @@ p25p1_voice_encode::hamming_10_6_3_encode(uint8_t data)
  *
  * p25craft.py's Reed-Solomon routines operate on six-bit symbols.
  */
-void
-p25p1_voice_encode::bytes_to_6bit_symbols(
+void p25p1_voice_encode::bytes_to_6bit_symbols(
     const uint8_t* bytes,
     size_t byte_count,
     std::vector<uint8_t>& symbols)
@@ -743,22 +721,19 @@ p25p1_voice_encode::bytes_to_6bit_symbols(
 
         while (bits >= 6) {
             bits -= 6;
-            symbols.push_back(
-                static_cast<uint8_t>((accumulator >> bits) & 0x3f));
+            symbols.push_back(static_cast<uint8_t>((accumulator >> bits) & 0x3f));
         }
     }
 
     if (bits > 0) {
-        symbols.push_back(
-            static_cast<uint8_t>((accumulator << (6 - bits)) & 0x3f));
+        symbols.push_back(static_cast<uint8_t>((accumulator << (6 - bits)) & 0x3f));
     }
 }
 
 /*
  * Hamming encode every six-bit Reed-Solomon symbol.
  */
-void
-p25p1_voice_encode::hamming_encode_rs_symbols(
+void p25p1_voice_encode::hamming_encode_rs_symbols(
     const std::vector<uint8_t>& rs_symbols,
     std::vector<uint16_t>& codewords)
 {
@@ -766,8 +741,7 @@ p25p1_voice_encode::hamming_encode_rs_symbols(
     codewords.reserve(rs_symbols.size());
 
     for (size_t i = 0; i < rs_symbols.size(); ++i) {
-        codewords.push_back(
-            hamming_10_6_3_encode(rs_symbols[i] & 0x3f));
+        codewords.push_back(hamming_10_6_3_encode(rs_symbols[i] & 0x3f));
     }
 }
 
@@ -777,18 +751,15 @@ p25p1_voice_encode::hamming_encode_rs_symbols(
  *
  * p25craft.py inserts one status dibit after every 35 data dibits.
  */
-int
-p25p1_voice_encode::frame_bit_index(int logical_dibit)
+int p25p1_voice_encode::frame_bit_index(int logical_dibit)
 {
-    return (logical_dibit * 2) +
-           ((logical_dibit / 35) * 2);
+    return (logical_dibit * 2) + ((logical_dibit / 35) * 2);
 }
 
 /*
  * Insert one logical dibit into the physical frame.
  */
-void
-p25p1_voice_encode::insert_dibit(
+void p25p1_voice_encode::insert_dibit(
     bit_vector& frame_body,
     int logical_dibit,
     uint8_t dibit)
@@ -805,8 +776,7 @@ p25p1_voice_encode::insert_dibit(
 /*
  * Insert 24 ten-bit Hamming codewords as 120 dibits.
  */
-void
-p25p1_voice_encode::insert_codeword_bits(
+void p25p1_voice_encode::insert_codeword_bits(
     bit_vector& frame_body,
     int logical_dibit_start,
     const std::vector<uint16_t>& codewords)
@@ -822,8 +792,7 @@ p25p1_voice_encode::insert_codeword_bits(
          */
         for (int j = 0; j < 5; ++j) {
             const int shift = (4 - j) * 2;
-            const uint8_t dibit =
-                static_cast<uint8_t>((codeword >> shift) & 0x03);
+            const uint8_t dibit = static_cast<uint8_t>((codeword >> shift) & 0x03);
 
             insert_dibit(frame_body, logical_dibit++, dibit);
         }
@@ -833,8 +802,7 @@ p25p1_voice_encode::insert_codeword_bits(
 /*
  * Insert status dibits at all P25 status-symbol positions.
  */
-void
-p25p1_voice_encode::insert_status_symbols(
+void p25p1_voice_encode::insert_status_symbols(
     bit_vector& frame_body,
     uint8_t status_symbol,
     size_t status_count)
@@ -891,8 +859,7 @@ p25p1_voice_encode::insert_status_symbols(
  *   LSD
  *   IMBE
  */
-void
-p25p1_voice_encode::build_ldu1_metadata(
+void p25p1_voice_encode::build_ldu1_metadata(
     bit_vector& frame_body)
 {
     uint8_t lc[9];
@@ -907,17 +874,18 @@ p25p1_voice_encode::build_ldu1_metadata(
         voice_params.src,
         lc);
 
-#ifdef DEBUG_TX
-    fprintf(stderr,"LDU 1: %02x %02x %02x %02x %02x %02x %02x %02x %02x "
-    "| TGID=%u SRC=%u\n",
-    lc[0], lc[1], lc[2], lc[3], lc[4], lc[5], lc[6], lc[7], lc[8],
-    static_cast<unsigned>(
-        (static_cast<uint16_t>(lc[4]) << 8) | lc[5]),
-    static_cast<unsigned>(
-        (static_cast<uint32_t>(lc[6]) << 16) |
-        (static_cast<uint32_t>(lc[7]) << 8) |
-        lc[8]));
-#endif
+    if(voice_params.verbosity >= 1) {
+		fprintf(stderr, "LDU 1: ");
+		
+		if(voice_params.verbosity >= 2){
+			fprintf(stderr,"%02x %02x %02x %02x %02x %02x %02x %02x %02x | ",
+			lc[0], lc[1], lc[2], lc[3], lc[4], lc[5], lc[6], lc[7], lc[8]);
+		}
+		
+		fprintf(stderr, "LCO=%u MFID=%u SVCOPT=%u TGID=%u DST=%u SRC=%u\n",
+		voice_params.lco, voice_params.mfid, voice_params.svcopt,
+		voice_params.tgid, voice_params.dst, voice_params.src);
+    }
 
     /*
      * LCW is 9 bytes = 12 six-bit symbols.
@@ -953,10 +921,7 @@ p25p1_voice_encode::build_ldu1_metadata(
         for (int i = 0; i < 4; ++i)
             section_words.push_back(hamming_words[first_word + i]);
 
-        insert_codeword_bits(
-            frame_body,
-            lc_starts[section],
-            section_words);
+        insert_codeword_bits(frame_body, lc_starts[section], section_words);
     }
 
     /*
@@ -982,26 +947,25 @@ p25p1_voice_encode::build_ldu1_metadata(
  *   ALGID << 16
  *   KID
  */
-void
-p25p1_voice_encode::build_ldu2_metadata(
+void p25p1_voice_encode::build_ldu2_metadata(
     bit_vector& frame_body)
 {
     uint8_t es[12];
 
-    construct_es(
-        voice_params.mi,
-        voice_params.algid,
-        voice_params.kid,
-        es);
+    construct_es(voice_params.mi, voice_params.algid, voice_params.kid, es);
         
-#ifdef DEBUG_TX
-	fprintf(stderr, "LDU 2: %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x "
-	"| MI=%016llx ALGID=%02x KID=%04x\n",
-	es[0], es[1], es[2], es[3], es[4], es[5], es[6], es[7], es[8], es[9], es[10], es[11],
-    static_cast<unsigned long long>(voice_params.mi),
-    static_cast<unsigned int>(voice_params.algid),
-    static_cast<unsigned int>(voice_params.kid));
-#endif
+    if(voice_params.verbosity >= 1) {
+		fprintf(stderr, "LDU 2: ");
+		if(voice_params.verbosity >= 2) {
+			fprintf(stderr, "%02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x | ",
+					es[0], es[1], es[2], es[3], es[4], es[5], es[6], es[7], es[8], es[9], es[10], es[11]);
+		}
+		
+		fprintf(stderr, "MI=%016llx ALGID=%02X KID=%04x\n",
+		static_cast<unsigned long long>(voice_params.mi),
+		static_cast<unsigned int>(voice_params.algid),
+		static_cast<unsigned int>(voice_params.kid));	
+    }
 	
     std::vector<uint8_t> es_symbols;
     bytes_to_6bit_symbols(es, 12, es_symbols);
@@ -1034,10 +998,7 @@ p25p1_voice_encode::build_ldu2_metadata(
         for (int i = 0; i < 4; ++i)
             section_words.push_back(hamming_words[first_word + i]);
 
-        insert_codeword_bits(
-            frame_body,
-            es_starts[section],
-            section_words);
+        insert_codeword_bits(frame_body, es_starts[section], section_words);
     }
 
     /*
@@ -1047,8 +1008,7 @@ p25p1_voice_encode::build_ldu2_metadata(
 
     for (int i = 0; i < 16; ++i) {
         const int shift = (15 - i) * 2;
-        const uint8_t dibit =
-            static_cast<uint8_t>((lsd >> shift) & 0x03);
+        const uint8_t dibit = static_cast<uint8_t>((lsd >> shift) & 0x03);
 
         insert_dibit(frame_body, 752 + i, dibit);
     }
@@ -1057,14 +1017,12 @@ p25p1_voice_encode::build_ldu2_metadata(
 /*
  * Output one complete 1728-bit frame.
  */
-void
-p25p1_voice_encode::output_frame(
+void p25p1_voice_encode::output_frame(
     const bit_vector& frame_body,
     size_t frame_bits)
 {
     if (frame_bits == 0 ||
-        frame_bits > frame_body.size() ||
-        (frame_bits % 2) != 0) {
+        frame_bits > frame_body.size() || (frame_bits % 2) != 0) {
         return;
     }
 
@@ -1099,8 +1057,7 @@ p25p1_voice_encode::output_frame(
         op25audio.send_to(obuf, obuf_ct);
     } else {
         for (size_t i = 0; i < frame_bits; i += 2) {
-            const uint8_t dibit =
-                static_cast<uint8_t>(
+            const uint8_t dibit = static_cast<uint8_t>(
                     (frame_body[i + 0] << 1) |
                     frame_body[i + 1]);
 
@@ -1109,16 +1066,122 @@ p25p1_voice_encode::output_frame(
     }
 }
 
+uint64_t p25p1_voice_encode::lfsr(uint64_t mi) {
+	uint8_t cnt = 0;
+	
+    for(cnt=0;cnt<64;cnt++)
+    {
+        // Polynomial is C(x) = x^64 + x^62 + x^46 + x^38 + x^27 + x^15 + 1
+        uint64_t bit  = ((mi >> 63) ^ (mi >> 61) ^ (mi >> 45) ^ (mi >> 37) ^ (mi >> 26) ^ (mi >> 14)) & 0x1;
+        mi =  (mi << 1) | (bit);
+    }
+    
+    return mi;
+}
+
+void p25p1_voice_encode::adp_swap(uint8_t *S, uint32_t i, uint32_t j) {
+    uint8_t temp = S[i];
+    S[i] = S[j];
+    S[j] = temp;
+}
+
+void p25p1_voice_encode::adp(uint64_t mi, uint64_t key){
+    int i = 0;
+    int j = 0;
+    int k = 0;
+    uint8_t K[256]{0}, S[256]{0}, mi_bytes[8]{0};
+    uint8_t adp_key[13];
+        
+    for (int i = 0; i < 8; ++i)
+        mi_bytes[i] = (mi >> (56 - 8 * i)) & 0xFF;
+        
+    for (int i = 0; i < 8; ++i)
+        adp_key[i] = (key >> (32 - 8 * i)) & 0xFF;
+
+    for (i = 5; i < 13; ++i) {
+        adp_key[i] = mi_bytes[i - 5];
+    }
+
+    for (i = 0; i < 256; ++i) {
+        K[i] = adp_key[i % 13];
+    }
+
+    for (i = 0; i < 256; ++i) {
+        S[i] = i;
+    }
+
+    for (i = 0; i < 256; ++i) {
+        j = (j + S[i] + K[i]) & 0xFF;
+        adp_swap(S, i, j);
+    }
+
+    i = j = 0;
+
+    for (k = 0; k < 469; ++k) {
+        i = (i + 1) & 0xFF;
+        j = (j + S[i]) & 0xFF;
+        adp_swap(S, i, j);
+        keystream[k] = S[(S[i] + S[j]) & 0xFF];
+    }
+}
+
 /*
  * Add one IMBE voice codeword to the LDU.
  */
-void
-p25p1_voice_encode::append_imbe_codeword(
+void p25p1_voice_encode::append_imbe_codeword(
     bit_vector& frame_body,
     int16_t frame_vector[],
     unsigned int& codeword_ct)
 {
     voice_codeword cw(voice_codeword_sz);
+    
+    packed_codeword pcw;
+    imbe_pack(pcw, frame_vector[0], frame_vector[1], frame_vector[2], frame_vector[3],
+              frame_vector[4], frame_vector[5], frame_vector[6], frame_vector[7]);
+     
+     if((voice_params.verbosity >= 3) || ((voice_params.algid == 0x80) && (voice_params.verbosity >= 2))) {
+		fprintf(stderr,"(PT) IMBE: %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x\n",
+				pcw[0], pcw[1], pcw[2], pcw[3], pcw[4], pcw[5],
+				pcw[6], pcw[7], pcw[8], pcw[9], pcw[10]);
+     }
+    
+/* CRYPTO START */
+if(voice_params.algid == 0xAA) {
+    uint32_t u[8];
+    const bool ldu2_now = ((frame_cnt & 1) != 0);
+    
+    if (!ldu2_now && codeword_ct == 0) { 
+        adp(voice_params.mi, voice_params.key); // generate keystream
+        voice_params.mi = lfsr(voice_params.mi); // compute next MI
+    }
+    
+    const int base = ldu2_now ? 101 : 0;
+    const int off  = base + 267 + (codeword_ct * 11) + ((codeword_ct < 8) ? 0 : 2);
+	
+	if(voice_params.verbosity >= 4)
+		fprintf(stderr, "(KS)\t   ");
+			
+    for (int j = 0; j < 11; ++j) {
+        pcw[j] ^= keystream[off + j];
+        
+        if(voice_params.verbosity >= 4)
+			fprintf(stderr, "%02x ", keystream[off + j]);
+    }
+    
+    if(voice_params.verbosity >= 4)
+		fprintf(stderr, "\n");
+    
+    if(voice_params.verbosity >= 2) {
+		fprintf(stderr,"(CT) IMBE: %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x\n",
+				pcw[0], pcw[1], pcw[2], pcw[3], pcw[4], pcw[5],
+				pcw[6], pcw[7], pcw[8], pcw[9], pcw[10]);
+     }
+    
+    imbe_unpack(pcw, u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7]);
+    
+    for (int i = 0; i < 8; i++)
+        frame_vector[i] = static_cast<int16_t>(u[i]);
+}
 
     /*
      * Construct the 144-bit IMBE codeword from the eight
@@ -1134,12 +1197,6 @@ p25p1_voice_encode::append_imbe_codeword(
         frame_vector[5],
         frame_vector[6],
         frame_vector[7]);
-        
-#ifdef DEBUG_TX
-    fprintf(stderr, " IMBE: %03x %03x %03x %03x %03x %03x %03x %03x\n",
-    frame_vector[0], frame_vector[1], frame_vector[2], frame_vector[3],
-    frame_vector[4], frame_vector[5], frame_vector[6], frame_vector[7]);
-#endif
 
     /*
      * Place the codeword in the P25 LDU interleave.
@@ -1175,14 +1232,14 @@ p25p1_voice_encode::append_imbe_codeword(
      * Insert sync and NID.
      */
     p25_setup_frame_header(frame_body, nid);
+    
+    if (voice_params.verbosity >= 5)
+		print_spec(frame_body);
 
     /*
      * Override all status symbols with the configured value.
      */
-    insert_status_symbols(
-        frame_body,
-        voice_params.status_symbol,
-        24);
+    insert_status_symbols(frame_body, voice_params.status_symbol, 24);
 
     output_frame(frame_body, P25_VOICE_FRAME_SIZE);
     
@@ -1203,11 +1260,8 @@ p25p1_voice_encode::append_imbe_codeword(
         float elapsed = static_cast<float>(useconds) / 1000000.0f;
         elapsed += static_cast<float>(seconds);
 
-        fprintf(
-            stderr,
-            "time %f peak %5d\n",
-            elapsed / STATS_INTERVAL,
-            peak_amplitude);
+        fprintf(stderr,"time %f peak %5d\n",
+        elapsed / STATS_INTERVAL, peak_amplitude);
 
         oldtv = tv;
     }
@@ -1218,8 +1272,7 @@ p25p1_voice_encode::append_imbe_codeword(
 /*
  * Encode one 160-sample audio frame.
  */
-void
-p25p1_voice_encode::compress_frame(int16_t snd[])
+void p25p1_voice_encode::compress_frame(int16_t snd[])
 {
     if (!hdu_sent) {
 		emit_hdu();
@@ -1233,10 +1286,7 @@ p25p1_voice_encode::compress_frame(int16_t snd[])
     if (opt_dump_raw_vectors) {
         char s[128];
 
-        snprintf(
-            s,
-            sizeof(s),
-            "%03x %03x %03x %03x %03x %03x %03x %03x\n",
+        snprintf(s, sizeof(s), "%03x %03x %03x %03x %03x %03x %03x %03x\n",
             frame_vector[0],
             frame_vector[1],
             frame_vector[2],
@@ -1248,9 +1298,7 @@ p25p1_voice_encode::compress_frame(int16_t snd[])
 
         const size_t len = strlen(s);
 
-        if (write_bufp + static_cast<int>(len) <
-            static_cast<int>(sizeof(write_buf))) {
-
+        if (write_bufp + static_cast<int>(len) < static_cast<int>(sizeof(write_buf))) {
             memcpy(&write_buf[write_bufp], s, len);
             write_bufp += static_cast<int>(len);
         }
@@ -1263,17 +1311,13 @@ p25p1_voice_encode::compress_frame(int16_t snd[])
         return;
     }
 
-    append_imbe_codeword(
-        f_body,
-        frame_vector,
-        codeword_ct);
+    append_imbe_codeword(f_body, frame_vector, codeword_ct);
 }
 
 /*
  * Add one audio sample.
  */
-void
-p25p1_voice_encode::add_sample(int16_t samp)
+void p25p1_voice_encode::add_sample(int16_t samp)
 {
     sampbuf[sampbuf_ct++] = samp;
 
@@ -1300,8 +1344,7 @@ p25p1_voice_encode::add_sample(int16_t samp)
 /*
  * Apply sample-rate stretch or compression.
  */
-void
-p25p1_voice_encode::compress_samp(
+void p25p1_voice_encode::compress_samp(
     const int16_t* samp,
     int len)
 {
@@ -1333,8 +1376,7 @@ p25p1_voice_encode::compress_samp(
 /*
  * Set vocoder gain adjustment.
  */
-void
-p25p1_voice_encode::set_gain_adjust(float gain_adjust)
+void p25p1_voice_encode::set_gain_adjust(float gain_adjust)
 {
     vocoder.set_gain_adjust(gain_adjust);
 }
