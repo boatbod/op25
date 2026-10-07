@@ -795,10 +795,13 @@ class p25_stream(object):
         if self.current_tgid is None:
             return
 
-        tuned_frequency = self.system.talkgroups[self.current_tgid]['frequency']
-        current_slot    = self.system.talkgroups[self.current_tgid]['tdma_slot']
-            
         with self.system.talkgroups_mutex:
+            if self.current_tgid not in self.system.talkgroups: # This shouldn't be possible, but check anyway
+                add_default_tgid(self.system.talkgroups, tgid)  # to prevent a traceback
+
+            tuned_frequency = self.system.talkgroups[self.current_tgid]['frequency']
+            current_slot    = self.system.talkgroups[self.current_tgid]['tdma_slot']
+            
             self.system.talkgroups[self.current_tgid]['sites'] = []
             self.system.talkgroups[self.current_tgid]['receiver'] = None
             self.system.talkgroups[self.current_tgid]['frequency'] = None
