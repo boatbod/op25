@@ -111,7 +111,7 @@ def post_req(environ, start_response, postdata):
                         valid_resp = True
                     elif m_uuid not in my_uuids:
                         my_recv_q.popleft()             # orphaned message can be discarded
-                        sys.stderr.write("post_req: discard m_uuid=%s [%s]\n" % (m_uuid, msg))
+                        #sys.stderr.write("post_req: discard m_uuid=%s [%s]\n" % (m_uuid, msg))
                     else:
                         pass                            # message for someone else
         time.sleep(0)                                   # yield to other threads

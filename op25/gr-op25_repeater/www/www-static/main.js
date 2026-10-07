@@ -27,7 +27,6 @@ var d_debug = 1;
 var smartColors = [{keywords:["fire","fd"],color:"#ff5c5c"},{keywords:["pd","police","sheriff","so"],color:"#66aaff"},{keywords:["ems","med","amr","ambulance"],color:"#ffb84d"}];
 var counter1 = 0;
 var error_val = null;
-var auto_tracking = null;
 var fine_tune = null;
 var current_tgid = null;
 var capture_active = false;
