@@ -26,6 +26,7 @@ import sys
 import os
 import math
 import json
+import random
 from gnuradio import gr, audio, eng_notation
 from gnuradio import filter, blocks, analog, digital
 from gnuradio.eng_option import eng_option
@@ -103,11 +104,14 @@ class my_top_block(gr.top_block):
         parser.add_option("-t", "--test", type="string", default=None, help="test pattern symbol file")
         parser.add_option("-v", "--verbose", type="int", default=0, help="additional output")
         parser.add_option("--nac", type="string", default=None, help="P25 Network Access Code, accepts decimal or 0x-prefixed hexadecimal")
-        parser.add_option("--mi", type="string", default=None, help="P25 Message Indicator, accepts decimal or 0x-prefixed hexadecimal")
+        parser.add_option("--mi", type="string", default=None, help="P25 Message Indicator, accepts decimal, 0x-prefixed hexadecimal, or 'auto' to generate a random value")
         parser.add_option("--algid", type="string", default=None, help="P25 Algorithm ID, accepts decimal or 0x-prefixed hexadecimal")
         parser.add_option("--kid", type="string", default=None, help="P25 Key ID, accepts decimal or 0x-prefixed hexadecimal")
+        parser.add_option("--key", type="string", default=None, help="P25 Key, accepts decimal or 0x-prefixed hexadecimal")
         parser.add_option("--tgid",type="string", default=None, help="P25 Talkgroup ID, accepts decimal or 0x-prefixed hexadecimal")
         parser.add_option("--src", type="string", default=None, help="P25 Source ID, accepts decimal or 0x-prefixed hexadecimal")
+        parser.add_option("--dst", type="string", default=None, help="P25 Destination ID for Direct Call, accepts decimal or 0x-prefixed hexadecimal")
+        parser.add_option("--emrg", action="store_const", const=1, default=0, help="P25 Emergency flag, activates emergency on voice call")
         (options, args) = parser.parse_args()
         
         def parse_hex_int(option_name, value, minimum, maximum):
@@ -124,11 +128,19 @@ class my_top_block(gr.top_block):
             return result
 		
         p25_nac = parse_hex_int("--nac", options.nac, 0x000, 0xfff)
-        p25_mi = parse_hex_int("--mi", options.mi, 0x0000000000000000, 0xffffffffffffffff)
         p25_algid = parse_hex_int("--algid", options.algid, 0x00, 0xff)
         p25_kid = parse_hex_int("--kid", options.kid, 0x0000, 0xffff)
+        p25_key = parse_hex_int("--key", options.key, 0x0000000000000000, 0xffffffffffffffff)
         p25_tgid = parse_hex_int("--tgid", options.tgid, 0x0000, 0xffff)
         p25_src = parse_hex_int("--src", options.src, 0x000000, 0xffffff)
+        p25_dst = parse_hex_int("--dst", options.dst, 0x000000, 0xffffff)
+        
+        if options.mi is not None and options.mi.lower() == "auto":
+            p25_mi = random.getrandbits(64)
+            if options.verbose >= 1:
+                sys.stderr.write("P25 MI (auto-generated): 0x%016x\n" % p25_mi)
+        else:
+            p25_mi = parse_hex_int("--mi", options.mi, 0x0000000000000000, 0xffffffffffffffff)
 
         max_inputs = 1
 
@@ -172,10 +184,17 @@ class my_top_block(gr.top_block):
                 p25_params['algid'] = p25_algid
             if p25_kid is not None:
                 p25_params['kid'] = p25_kid
+            if p25_key is not None:
+                p25_params['key'] = p25_key
             if p25_tgid is not None:
                 p25_params['tgid'] = p25_tgid
             if p25_src is not None:
-                p25_params['src'] = p25_src
+                p25_params['src'] = p25_src    
+            if p25_dst is not None:
+                p25_params['dst'] = p25_dst
+                p25_params['lco'] = 3
+            p25_params['verbosity'] = options.verbose
+            p25_params['svcopt'] = (options.emrg << 7) | 0b000100 # Emergency (1 bit), Protected (1 bit), Duplex (1 bit), Mode (1 bit), Reserved (1 bit), Prio (3 bits, default 4)
 
             if len(p25_params) > 1:
                 response = ENCODER.control(
