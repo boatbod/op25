@@ -763,31 +763,31 @@ class p25_stream(object):
             return
 
         if self.current_tgid is None:
-            if self.debug > 0:
-                sys.stderr.write("%s [S%d] voice update:  tg(%d), rid(%d), freq(%f), slot(%s), prio(%d)\n" % (log_ts.get(), self.id, tgid, self.system.talkgroups[tgid]['srcaddr'], (freq/1e6), get_slot(slot), self.system.talkgroups[tgid]['prio']))
             self.receiver = self.system.find_receiver(tgid)
             if self.receiver is None:   # no receivers available
-                if self.debug >= 5:
-                    sys.stderr.write("%s [S%d] no receivers available for tg(%d)\n" % (log_ts.get(), self.id, tgid))
+                if self.debug > 0:
+                    sys.stderr.write("%s [S%d] voice update: no receivers available for tg(%d)\n" % (log_ts.get(), self.id, tgid))
                 return
             self.receiver.set_stream(self)
             self.receiver.tune_voice(freq, tgid, slot, self.destination)
             self.current_tgid = tgid
             self.receiver.log_call(freq, slot, self.system.talkgroups[tgid]['prio'], tgid, self.system.talkgroups[tgid]['srcaddr'])
-        else:
             if self.debug > 0:
-                sys.stderr.write("%s [S%d] voice preempt: tg(%d), rid(%d), freq(%f), slot(%s), prio(%d)\n" % (log_ts.get(), self.id, tgid, self.system.talkgroups[tgid]['srcaddr'], (freq/1e6), get_slot(slot), self.system.talkgroups[tgid]['prio']))
+                sys.stderr.write("%s [S%d] voice update:  tg(%d), rid(%d), freq(%f), slot(%s), prio(%d), rcvr(%d)\n" % (log_ts.get(), self.id, tgid, self.system.talkgroups[tgid]['srcaddr'], (freq/1e6), get_slot(slot), self.system.talkgroups[tgid]['prio'], self.receiver.msgq_id))
+        else:
             if self.receiver is not None:
                 self.receiver.expire_talkgroup(update_meta=False, reason="preempt") # release the previous call before looking for a receiver
             self.receiver = self.system.find_receiver(tgid)
             if self.receiver is None:   # no receivers available
-                if self.debug >= 5:
-                    sys.stderr.write("%s [S%d] no receivers available for tg(%d)\n" % (log_ts.get(), self.id, tgid))
+                if self.debug > 0:
+                    sys.stderr.write("%s [S%d] voice preempt: no receivers available for tg(%d)\n" % (log_ts.get(), self.id, tgid))
                 return
             self.receiver.set_stream(self)
             self.receiver.tune_voice(freq, tgid, slot, self.destination)
             self.current_tgid = tgid
             self.receiver.log_call(freq, slot, self.system.talkgroups[tgid]['prio'], tgid, self.system.talkgroups[tgid]['srcaddr'])
+            if self.debug > 0:
+                sys.stderr.write("%s [S%d] voice preempt: tg(%d), rid(%d), freq(%f), slot(%s), prio(%d), rcvr(%d)\n" % (log_ts.get(), self.id, tgid, self.system.talkgroups[tgid]['srcaddr'], (freq/1e6), get_slot(slot), self.system.talkgroups[tgid]['prio'], self.receiver.msgq_id))
 
         #meta_update(self.meta_q, tgid=tgid, tag=self.system.talkgroups[tgid]['tag'], rid=self.system.talkgroups[tgid]['srcaddr'], rtag=self.site.get_rid_tag(self.system.talkgroups[tgid]['srcaddr']), msgq_id=self.id, debug=self.debug)
 
