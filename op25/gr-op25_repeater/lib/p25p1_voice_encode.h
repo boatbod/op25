@@ -41,6 +41,7 @@ struct p25_voice_params {
     uint8_t  mfid;
     uint8_t  algid;
     uint16_t kid;
+    uint64_t key;
 
     uint8_t  lco;
     uint8_t  svcopt;
@@ -51,6 +52,7 @@ struct p25_voice_params {
     uint32_t src;
 
     uint32_t lsd;
+    uint8_t verbosity;
 
     p25_voice_params() :
         nac(0x293),
@@ -59,13 +61,15 @@ struct p25_voice_params {
         mfid(0),
         algid(0x80),
         kid(0),
+        key(0),
         lco(0),
         svcopt(0),
         explicit_source(0),
         tgid(1),
         dst(1),
         src(1),
-        lsd(0)
+        lsd(0),
+        verbosity(0)
     {
     }
 };
@@ -101,6 +105,7 @@ public:
     void set_mfid(uint8_t mfid);
     void set_algid(uint8_t algid);
     void set_kid(uint16_t kid);
+    void set_key(uint64_t key);
     void set_lco(uint8_t lco);
     void set_svcopt(uint8_t svcopt);
     void set_explicit_source(uint8_t explicit_source);
@@ -108,6 +113,7 @@ public:
     void set_destination(uint32_t dst);
     void set_source(uint32_t src);
     void set_lsd(uint32_t lsd);
+    void set_verbosity(uint8_t verb);
 
 private:
     static const int RXBUF_MAX = 80;
@@ -146,6 +152,8 @@ private:
     bool hdu_sent;
 
     p25_voice_params voice_params;
+    
+    uint8_t keystream[469];
 
 private:
     static uint64_t bch_64_16_23_encode(uint16_t data);
@@ -227,6 +235,12 @@ private:
 	static void insert_hdu_golay(bit_vector& frame_body,
 		int logical_dibit_start,
 		const std::vector<uint8_t>& rs_symbols);
+	
+	uint64_t lfsr(uint64_t mi);
+	void adp_swap(uint8_t *S, uint32_t i, uint32_t j);
+	void adp(uint64_t mi, uint64_t key);
+	
+	static void print_spec(const bit_vector& frame_body, uint16_t flip = 0);
 };
 
 } // namespace op25_repeater
