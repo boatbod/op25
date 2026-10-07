@@ -37,6 +37,12 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
+// Python CPP API
+#include <string>
+#include <nlohmann/json.hpp>
+
+using json = nlohmann::json;
+
 namespace gr {
   namespace op25_repeater {
 
@@ -218,6 +224,11 @@ vocoder_impl::control(const std::string& args)
             p1voice_encode.set_kid(
                 j.at("kid").get<uint16_t>());
         }
+        
+        if (j.contains("key")) {
+            p1voice_encode.set_key(
+                j.at("key").get<uint64_t>());
+        }
 
         if (j.contains("tgid")) {
             p1voice_encode.set_tgid(
@@ -261,12 +272,17 @@ vocoder_impl::control(const std::string& args)
             p1voice_encode.set_status_symbol(
                 j.at("status_symbol").get<uint8_t>());
         }
+        
+        if (j.contains("verbosity")) {
+            p1voice_encode.set_verbosity(
+                j.at("verbosity").get<uint8_t>());
+        }
 
-        return json({
-            {"cmd", cmd},
-            {"status", "ok"}
-        }).dump();
-    }
+		return json({
+			{"cmd", cmd},
+			{"status", "ok"}
+			}).dump();
+	}
 
     return json({
         {"cmd", cmd},
