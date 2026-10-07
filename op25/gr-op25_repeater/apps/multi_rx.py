@@ -28,6 +28,7 @@ import json
 import traceback
 import osmosdr
 import importlib
+import re
 
 from gnuradio import audio, eng_notation, gr, filter, blocks, fft, analog, digital
 from gnuradio.eng_option import eng_option
@@ -810,8 +811,10 @@ class rx_block (gr.top_block):
     def fa_control(self, params):
         chan = None
         if params['cmd'] == "init_destination" and params['destination'] is not None and params['destination'] != "":
-            self.ws_instances[params['tuner']] = params['destination']
             chan = self.channels[0] # intercept init_destination command and build a map of configured destinations
+            pattern = r'^wss?:\/\/[^\s/$.?#].[^\s]*$'
+            if re.match(pattern, params['destination']):
+                self.ws_instances[params['tuner']] = params['destination']
         else:
             tuner = params['tuner']
             chan = self.channels[tuner]
