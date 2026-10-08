@@ -79,7 +79,8 @@ namespace gr {
     opt_udp_port(udp_port),
     opt_encode_flag(encode_flag),
     op25audio(udp_host, udp_port, logts, 0, 0),
-    p1voice_encode(verbose_flag, stretch_amt, op25audio, raw_vectors_flag, output_queue),
+    //p1voice_encode(verbose_flag, stretch_amt, op25audio, raw_vectors_flag, output_queue),
+    p1voice_encode(verbose_flag, stretch_amt, op25audio, raw_vectors_flag, output_queue, logts, verbose_flag ? 10 : 0, 0),
     p1voice_decode(verbose_flag, op25audio, output_queue_decode)
     {
 	if (opt_encode_flag)
@@ -206,38 +207,39 @@ vocoder_impl::control(const std::string& args)
          * This preserves existing C++ defaults for omitted fields.
          */
         if (j.contains("nac")) {
-            p1voice_encode.set_nac(
-                j.at("nac").get<uint16_t>());
+            p1voice_encode.set_nac(j.at("nac").get<uint16_t>());
         }
 
         if (j.contains("mi")) {
-            p1voice_encode.set_mi(
-                j.at("mi").get<uint64_t>());
+            p1voice_encode.set_mi(j.at("mi").get<uint64_t>());
         }
 
         if (j.contains("algid")) {
-            p1voice_encode.set_algid(
-                j.at("algid").get<uint8_t>());
+            p1voice_encode.set_algid(j.at("algid").get<uint8_t>());
         }
 
         if (j.contains("kid")) {
-            p1voice_encode.set_kid(
-                j.at("kid").get<uint16_t>());
+            p1voice_encode.set_kid(j.at("kid").get<uint16_t>());
         }
         
         if (j.contains("key")) {
-            p1voice_encode.set_key(
-                j.at("key").get<uint64_t>());
+            p1voice_encode.set_key(j.at("key").get<std::vector<uint8_t>>());
         }
+        
+        if (j.contains("autokey")) {
+            p1voice_encode.set_crypt_key(
+            j.at("kid").get<uint16_t>(),
+            j.at("algid").get<uint8_t>(),
+            j.at("key").get<std::vector<uint8_t>>());
+        }
+        
 
         if (j.contains("tgid")) {
-            p1voice_encode.set_tgid(
-                j.at("tgid").get<uint16_t>());
+            p1voice_encode.set_tgid(j.at("tgid").get<uint16_t>());
         }
 
         if (j.contains("src")) {
-            p1voice_encode.set_source(
-                j.at("src").get<uint32_t>());
+            p1voice_encode.set_source(j.at("src").get<uint32_t>());
         }
 
         /*
