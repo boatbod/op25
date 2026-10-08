@@ -57,7 +57,10 @@ p25p1_voice_encode::p25p1_voice_encode(
     int stretch_amt,
     op25_audio& udp,
     bool raw_vectors_flag,
-    std::deque<uint8_t>& _output_queue) :
+    std::deque<uint8_t>& _output_queue,
+    log_ts& logger,
+    int debug,
+    int msgq_id) :
 
     frame_cnt(0),
     write_bufp(0),
@@ -75,12 +78,12 @@ p25p1_voice_encode::p25p1_voice_encode(
     opt_stretch_amt(0),
     opt_stretch_sign(1),
     hdu_sent(false),
-    voice_params()
+    voice_params(),
+    d_crypt_algs(logger, debug, msgq_id)
 {
     memset(write_buf, 0, sizeof(write_buf));
     memset(rxbuf, 0, sizeof(rxbuf));
     memset(sampbuf, 0, sizeof(sampbuf));
-    memset(keystream, 0, sizeof(keystream));
 
     memset(&tv, 0, sizeof(tv));
     memset(&oldtv, 0, sizeof(oldtv));
@@ -159,9 +162,16 @@ void p25p1_voice_encode::set_kid(uint16_t kid)
     voice_params.kid = kid;
 }
 
-void p25p1_voice_encode::set_key(uint64_t key)
+void p25p1_voice_encode::set_key(const std::vector<uint8_t>& key)
 {
-    voice_params.key = key;
+    d_crypt_algs.key(voice_params.kid, voice_params.algid, key);
+}
+
+void p25p1_voice_encode::set_crypt_key(uint16_t kid, uint8_t algid, const std::vector<uint8_t>& key)
+{
+    d_crypt_algs.key(kid, algid, key);
+    voice_params.kid = kid;
+    voice_params.algid = algid;
 }
 
 void p25p1_voice_encode::set_lco(uint8_t lco)
@@ -1066,65 +1076,6 @@ void p25p1_voice_encode::output_frame(
     }
 }
 
-uint64_t p25p1_voice_encode::lfsr(uint64_t mi) {
-	uint8_t cnt = 0;
-	
-    for(cnt=0;cnt<64;cnt++)
-    {
-        // Polynomial is C(x) = x^64 + x^62 + x^46 + x^38 + x^27 + x^15 + 1
-        uint64_t bit  = ((mi >> 63) ^ (mi >> 61) ^ (mi >> 45) ^ (mi >> 37) ^ (mi >> 26) ^ (mi >> 14)) & 0x1;
-        mi =  (mi << 1) | (bit);
-    }
-    
-    return mi;
-}
-
-void p25p1_voice_encode::adp_swap(uint8_t *S, uint32_t i, uint32_t j) {
-    uint8_t temp = S[i];
-    S[i] = S[j];
-    S[j] = temp;
-}
-
-void p25p1_voice_encode::adp(uint64_t mi, uint64_t key){
-    int i = 0;
-    int j = 0;
-    int k = 0;
-    uint8_t K[256]{0}, S[256]{0}, mi_bytes[8]{0};
-    uint8_t adp_key[13];
-        
-    for (int i = 0; i < 8; ++i)
-        mi_bytes[i] = (mi >> (56 - 8 * i)) & 0xFF;
-        
-    for (int i = 0; i < 8; ++i)
-        adp_key[i] = (key >> (32 - 8 * i)) & 0xFF;
-
-    for (i = 5; i < 13; ++i) {
-        adp_key[i] = mi_bytes[i - 5];
-    }
-
-    for (i = 0; i < 256; ++i) {
-        K[i] = adp_key[i % 13];
-    }
-
-    for (i = 0; i < 256; ++i) {
-        S[i] = i;
-    }
-
-    for (i = 0; i < 256; ++i) {
-        j = (j + S[i] + K[i]) & 0xFF;
-        adp_swap(S, i, j);
-    }
-
-    i = j = 0;
-
-    for (k = 0; k < 469; ++k) {
-        i = (i + 1) & 0xFF;
-        j = (j + S[i]) & 0xFF;
-        adp_swap(S, i, j);
-        keystream[k] = S[(S[i] + S[j]) & 0xFF];
-    }
-}
-
 /*
  * Add one IMBE voice codeword to the LDU.
  */
@@ -1146,42 +1097,37 @@ void p25p1_voice_encode::append_imbe_codeword(
      }
     
 /* CRYPTO START */
-if(voice_params.algid == 0xAA) {
-    uint32_t u[8];
-    const bool ldu2_now = ((frame_cnt & 1) != 0);
-    
-    if (!ldu2_now && codeword_ct == 0) { 
-        adp(voice_params.mi, voice_params.key); // generate keystream
-        voice_params.mi = lfsr(voice_params.mi); // compute next MI
-    }
-    
-    const int base = ldu2_now ? 101 : 0;
-    const int off  = base + 267 + (codeword_ct * 11) + ((codeword_ct < 8) ? 0 : 2);
-	
-	if(voice_params.verbosity >= 4)
-		fprintf(stderr, "(KS)\t   ");
-			
-    for (int j = 0; j < 11; ++j) {
-        pcw[j] ^= keystream[off + j];
+    if (voice_params.algid != ALG_UNENCRYPTED) {
+        uint32_t u[8];
+        const bool ldu2_now = ((frame_cnt & 1) != 0);
+
+        if (!ldu2_now && codeword_ct == 0) {
+            uint8_t mi[9] = {0};
+            for (int i = 0; i < 8; ++i)
+                mi[i] = (voice_params.mi >> (56 - 8 * i)) & 0xFF;
+
+            d_crypt_algs.prepare(voice_params.algid, voice_params.kid, PT_P25_PHASE1, mi);
+
+            op25_crypt_algs::cycle_p25_mi(mi);     // advance MI for next pair
+
+            voice_params.mi = 0;
+            for (int i = 0; i < 8; ++i)
+                voice_params.mi |= static_cast<uint64_t>(mi[i]) << (56 - 8 * i);
+        }
+		
+		d_crypt_algs.process(pcw, ldu2_now ? FT_LDU2 : FT_LDU1, 0);
+
         
-        if(voice_params.verbosity >= 4)
-			fprintf(stderr, "%02x ", keystream[off + j]);
-    }
-    
-    if(voice_params.verbosity >= 4)
-		fprintf(stderr, "\n");
-    
-    if(voice_params.verbosity >= 2) {
-		fprintf(stderr,"(CT) IMBE: %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x\n",
+        if(voice_params.verbosity >= 2) {
+		    fprintf(stderr,"(CT) IMBE: %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x\n",
 				pcw[0], pcw[1], pcw[2], pcw[3], pcw[4], pcw[5],
 				pcw[6], pcw[7], pcw[8], pcw[9], pcw[10]);
-     }
-    
-    imbe_unpack(pcw, u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7]);
-    
-    for (int i = 0; i < 8; i++)
-        frame_vector[i] = static_cast<int16_t>(u[i]);
-}
+        }
+
+        imbe_unpack(pcw, u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7]);
+        for (int i = 0; i < 8; i++)
+            frame_vector[i] = static_cast<int16_t>(u[i]);
+    }
 
     /*
      * Construct the 144-bit IMBE codeword from the eight
