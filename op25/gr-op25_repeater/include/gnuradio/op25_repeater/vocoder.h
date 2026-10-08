@@ -24,7 +24,6 @@
 
 #include <gnuradio/op25_repeater/api.h>
 #include <gnuradio/block.h>
-#include <string>
 
 namespace gr {
   namespace op25_repeater {
@@ -49,7 +48,6 @@ namespace gr {
        */
       static sptr make(bool encode_flag, bool verbose_flag, int stretch_amt, char* udp_host, int udp_port, bool raw_vectors_flag);
       virtual void set_gain_adjust(float gain_adjust) {}
-      virtual std::string control(const std::string& args) { return {}; }
     };
 
   } // namespace op25_repeater
