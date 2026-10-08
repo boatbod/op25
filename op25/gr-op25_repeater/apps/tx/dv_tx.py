@@ -64,6 +64,63 @@ mod_adjust = {  # rough values
     'ysf': 0.42
 }
 
+def load_key_entry(keyfile_path, kid):
+    try:
+        with open(keyfile_path, 'r') as f:
+            keys = json.load(f)
+    except (IOError, OSError) as e:
+        parser.error("cannot read --keyfile '%s': %s" % (keyfile_path, e))
+    except ValueError as e:
+        parser.error("--keyfile '%s' is not valid JSON: %s" % (keyfile_path, e))
+
+    kid_str = "0x%04x" % kid
+
+    entry = keys.get(kid_str)
+    if entry is None:
+        parser.error("key id %s not found in --keyfile '%s'" % (kid_str, keyfile_path))
+
+    try:
+        algid = int(entry['algid'], 0)
+        key_bytes = [int(b, 0) for b in entry['key']]
+    except (KeyError, ValueError) as e:
+        parser.error("malformed entry for %s in --keyfile: %s" % (kid_str, e))
+
+    return algid, key_bytes
+
+def parse_key_bytes(option_name, value):
+    if value is None:
+        return None
+
+    try:
+        if value.lower().startswith("0x"):
+            hex_str = value[2:]
+
+            if len(hex_str) == 0:
+                parser.error("%s must contain at least one hex digit after 0x" % option_name)
+
+            if len(hex_str) % 2 != 0:
+                hex_str = "0" + hex_str  # pad odd-length input, e.g. "0x123" -> "0x0123"
+
+            key_bytes = [int(hex_str[i:i+2], 16) for i in range(0, len(hex_str), 2)]
+        else:
+            # decimal input: convert to the minimal big-endian byte sequence
+            val = int(value, 10)
+
+            if val < 0:
+                parser.error("%s must be non-negative" % option_name)
+
+            key_bytes = []
+            while val > 0:
+                key_bytes.insert(0, val & 0xFF)
+                val >>= 8
+
+            if not key_bytes:
+                key_bytes = [0]
+    except ValueError:
+        parser.error("%s must be a decimal or 0x-prefixed hexadecimal integer" % option_name)
+
+    return key_bytes
+
 class my_top_block(gr.top_block):
 
     """
@@ -108,6 +165,7 @@ class my_top_block(gr.top_block):
         parser.add_option("--algid", type="string", default=None, help="P25 Algorithm ID, accepts decimal or 0x-prefixed hexadecimal")
         parser.add_option("--kid", type="string", default=None, help="P25 Key ID, accepts decimal or 0x-prefixed hexadecimal")
         parser.add_option("--key", type="string", default=None, help="P25 Key, accepts decimal or 0x-prefixed hexadecimal")
+        parser.add_option("--keyfile", type="string", default=None, help="Set key file, --kid shall also be specified")
         parser.add_option("--tgid",type="string", default=None, help="P25 Talkgroup ID, accepts decimal or 0x-prefixed hexadecimal")
         parser.add_option("--src", type="string", default=None, help="P25 Source ID, accepts decimal or 0x-prefixed hexadecimal")
         parser.add_option("--dst", type="string", default=None, help="P25 Destination ID for Direct Call, accepts decimal or 0x-prefixed hexadecimal")
@@ -130,7 +188,7 @@ class my_top_block(gr.top_block):
         p25_nac = parse_hex_int("--nac", options.nac, 0x000, 0xfff)
         p25_algid = parse_hex_int("--algid", options.algid, 0x00, 0xff)
         p25_kid = parse_hex_int("--kid", options.kid, 0x0000, 0xffff)
-        p25_key = parse_hex_int("--key", options.key, 0x0000000000000000, 0xffffffffffffffff)
+        p25_key = None
         p25_tgid = parse_hex_int("--tgid", options.tgid, 0x0000, 0xffff)
         p25_src = parse_hex_int("--src", options.src, 0x000000, 0xffffff)
         p25_dst = parse_hex_int("--dst", options.dst, 0x000000, 0xffffff)
@@ -141,6 +199,15 @@ class my_top_block(gr.top_block):
                 sys.stderr.write("P25 MI (auto-generated): 0x%016x\n" % p25_mi)
         else:
             p25_mi = parse_hex_int("--mi", options.mi, 0x0000000000000000, 0xffffffffffffffff)
+        
+        if options.keyfile:
+            if p25_kid is None:
+                parser.error("--keyfile requires --kid to select which key to load")
+
+            p25_algid, p25_key = load_key_entry(options.keyfile, p25_kid)
+        
+        if options.key is not None:
+            p25_key = parse_key_bytes("--key", options.key)
 
         max_inputs = 1
 
@@ -186,6 +253,8 @@ class my_top_block(gr.top_block):
                 p25_params['kid'] = p25_kid
             if p25_key is not None:
                 p25_params['key'] = p25_key
+            if options.keyfile is not None:
+                p25_params['autokey'] = p25_kid, p25_algid, p25_key
             if p25_tgid is not None:
                 p25_params['tgid'] = p25_tgid
             if p25_src is not None:
@@ -197,8 +266,7 @@ class my_top_block(gr.top_block):
             p25_params['svcopt'] = (options.emrg << 7) | 0b000100 # Emergency (1 bit), Protected (1 bit), Duplex (1 bit), Mode (1 bit), Reserved (1 bit), Prio (3 bits, default 4)
 
             if len(p25_params) > 1:
-                response = ENCODER.control(
-                    json.dumps(p25_params))
+                response = ENCODER.control(json.dumps(p25_params))
 
         if options.verbose >= 5:
             sys.stderr.write(
