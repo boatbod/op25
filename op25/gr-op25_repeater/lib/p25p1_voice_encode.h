@@ -13,7 +13,7 @@
 
 #include <sys/time.h>
 #include <stdint.h>
-
+#include <stddef.h>
 #include <deque>
 #include <vector>
 
@@ -23,7 +23,9 @@
 #include "imbe_decoder.h"
 #include "software_imbe_decoder.h"
 
-#include <stddef.h>
+#include "op25_crypt.h"
+#include "op25_crypt_algs.h"
+#include "log_ts.h"
 
 namespace gr {
 namespace op25_repeater {
@@ -82,7 +84,12 @@ public:
         int stretch_amt,
         op25_audio& udp,
         bool raw_vectors_flag,
-        std::deque<uint8_t>& output_queue);
+        std::deque<uint8_t>& output_queue,
+        log_ts& logger,
+        int debug,
+        int msgq_id);
+        
+     void set_crypt_key(uint16_t keyid, uint8_t algid, const std::vector<uint8_t>& key);
 
     ~p25p1_voice_encode();
 
@@ -105,7 +112,7 @@ public:
     void set_mfid(uint8_t mfid);
     void set_algid(uint8_t algid);
     void set_kid(uint16_t kid);
-    void set_key(uint64_t key);
+    void set_key(const std::vector<uint8_t>& key);
     void set_lco(uint8_t lco);
     void set_svcopt(uint8_t svcopt);
     void set_explicit_source(uint8_t explicit_source);
@@ -153,7 +160,7 @@ private:
 
     p25_voice_params voice_params;
     
-    uint8_t keystream[469];
+    op25_crypt_algs d_crypt_algs;
 
 private:
     static uint64_t bch_64_16_23_encode(uint16_t data);
@@ -235,10 +242,6 @@ private:
 	static void insert_hdu_golay(bit_vector& frame_body,
 		int logical_dibit_start,
 		const std::vector<uint8_t>& rs_symbols);
-	
-	uint64_t lfsr(uint64_t mi);
-	void adp_swap(uint8_t *S, uint32_t i, uint32_t j);
-	void adp(uint64_t mi, uint64_t key);
 	
 	static void print_spec(const bit_vector& frame_body, uint16_t flip = 0);
 };
