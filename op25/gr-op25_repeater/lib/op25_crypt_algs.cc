@@ -44,11 +44,12 @@ op25_crypt_algs::op25_crypt_algs(log_ts& logger, int debug, int msgq_id) :
 // destructor
 op25_crypt_algs::~op25_crypt_algs() {
     // clean up dynamically allocated decryption algorithm objects
-    d_alg_iter = d_algs.begin();
-    while (d_alg_iter != d_algs.end()) {
-        delete d_alg_iter->second;
-        d_algs.erase(d_alg_iter);
+    auto it = d_algs.begin();
+    while (it != d_algs.end()) {
+        delete it->second;
+        it = d_algs.erase(it);
     }
+    d_alg_iter = d_algs.end();
 }
 
 // update logging level for all algs
