@@ -281,11 +281,6 @@ function term_config(d) {  // json_type: "terminal_config"
 	
     var updated = 0;
 	
-	// Determine UI version required (rx.py => force to legacy terminal for compatibility reasons)
-    if ((d["terminal_interface"] != undefined) && (d["terminal_interface"] == "legacy")) {
-        window.location.replace("legacy-index.html");
-    }
-
 	// Update tuning step values if present	
     if ((d["tuning_step_large"] != undefined) && (d["tuning_step_large"] != lg_step)) {
         lg_step = d["tuning_step_large"];
@@ -1252,11 +1247,6 @@ function trunk_update(d) {
             else {
                 c_nac = d['nac'];
             }
-        }
-        // Otherwise use c_nac which is derived from "current_nac" parameter in 'change_freq' message
-        // used by legacy rx.py trunking
-        else if (nac != c_nac) {
-            continue;
         }
         
 		if (subMode === "selected")
