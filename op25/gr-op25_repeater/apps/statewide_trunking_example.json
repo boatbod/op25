@@ -123,7 +123,12 @@
                 "destination": "ws://192.168.3.7:9000",
                 "meta_stream_name": "",
                 "whitelist": "talbot-fire.wlist",
-                "blacklist": ""
+                "blacklist": "",
+                "presets": [
+                    { "id": 1, "tgid": 11501, "label": "TB FDISP" },
+                    { "id": 2, "tgid": 11503, "label": "TB FTAC3" },
+                    { "id": 3, "tgid": 11504, "label": "TB FTAC4" }
+                ]
             },
             {
                 "name": "Dorchester Fire",
@@ -131,7 +136,10 @@
                 "destination": "ws://192.168.3.7:9001",
                 "meta_stream_name": "",
                 "whitelist": "dorc-fire.wlist",
-                "blacklist": ""
+                "blacklist": "",
+                "presets": [
+                    { "id": 1, "tgid": 12401, "label": "DC FDISP" }
+                ]
             },
             {
                 "name": "Caroline Fire",
@@ -139,7 +147,9 @@
                 "destination": "ws://192.168.3.7:9002",
                 "meta_stream_name": "",
                 "whitelist": "caroline-fire.wlist",
-                "blacklist": ""
+                "blacklist": "",
+                "presets": [
+                ]
             },
             {
                 "name": "Marine TAC2 & TAC5",
@@ -147,7 +157,9 @@
                 "destination": "ws://192.168.3.7:9003",
                 "meta_stream_name": "",
                 "whitelist": "md-marine.wlist",
-                "blacklist": ""
+                "blacklist": "",
+                "presets": [
+                ]
             },
             {
                 "name": "Region IV Medical",
@@ -155,7 +167,9 @@
                 "destination": "ws://192.168.3.7:9004",
                 "meta_stream_name": "",
                 "whitelist": "region_iv.wlist",
-                "blacklist": ""
+                "blacklist": "",
+                "presets": [
+                ]
             }
         ],
         "sites": [
@@ -163,6 +177,7 @@
                 "nac": "0x4a6",
                 "sitename": "FiRST Talbot",
                 "control_channel_list": "773.84375",
+                "priority": 2,
                 "tdma_cc": false,
                 "crypt_behavior": 2,
                 "presets": [
@@ -175,6 +190,7 @@
                 "nac": "0x4a5",
                 "sitename": "FiRST Dorchester",
                 "control_channel_list": "774.19375",
+                "priority": 2,
                 "crypt_behavior": 2,
                 "presets": [
                     { "id": 1, "tgid": 12401, "label": "DC FDISP" }
@@ -184,6 +200,7 @@
                 "nac": "0x4a9",
                 "sitename": "FiRST Queen Anne",
                 "control_channel_list": "774.54375",
+                "priority": 3,
                 "crypt_behavior": 2,
                 "presets": [
                     { "id": 1, "tgid": 12401, "label": "DC FDISP" }
@@ -193,6 +210,7 @@
                 "nac": "0x4a8",
                 "sitename": "FiRST Caroline",
                 "control_channel_list": "773.318750",
+                "priority": 3,
                 "crypt_behavior": 2,
                 "presets": [
                     { "id": 1, "tgid": 12401, "label": "DC FDISP" }

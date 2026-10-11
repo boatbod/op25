@@ -418,7 +418,7 @@ function channel_update(d) {
             }
         }
 
-		//loadPresets(c_site);
+        loadPresets(d['streams'][stream_list[stream_index]]['name']);
         ws_connect(stream_list[stream_index])
     }
 
@@ -557,7 +557,6 @@ function channel_update(d) {
             c_emergency = 0;
         }
         channel_status();
-		//loadPresets(c_site);
     }
 }
 
@@ -2487,10 +2486,10 @@ async function get_presets_from_config(sysname, retries = 3, delay = 500) {
     return null;
 }
 
-async function findPresetsForSysname(targetSysname) {
+async function findPresetsForSysname(targetStrmName) {
     var configData;
     if (config_cache == null) {
-        configData = await get_presets_from_config(targetSysname);
+        configData = await get_presets_from_config(targetStrmName);
     } else {
         configData = [ config_cache ];
     }
@@ -2500,15 +2499,15 @@ async function findPresetsForSysname(targetSysname) {
         return null;
     }
 
-    const trunkingChans = configData[0]?.trunking?.chans || [];
+    const trunkingStreams = configData[0]?.trunking?.streams || [];
 
-    for (const chan of trunkingChans) {
-        if (chan.sysname === targetSysname) {
-            return chan.presets || [];
+    for (const strm of trunkingStreams) {
+        if (strm.name === targetStrmName) {
+            return strm.presets || [];
         }
     }
 
-//     console.warn("Sysname not found:", targetSysname);
+//     console.warn("StrmName not found:", targetStrmName);
     return [];
 }
 

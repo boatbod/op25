@@ -541,16 +541,16 @@ class p25_system(object):
                 receiver_list.append(rcvr['rx_rcvr'])
 
         if len(receiver_list) == 0:
-            if self.debug >= 5:
+            if self.debug > 10:
                 sys.stderr.write("%s [%s] find_receiver: tg(%d) is active on sites: (%s) no receivers available\n" % (log_ts.get(), self.name, tgid, site_listing))
             return None
 
         if current_receiver is not None and current_receiver.site.priority <= receiver_list[0].site.priority:
-            if self.debug >= 5:
+            if self.debug > 10:
                 sys.stderr.write("%s [%s] find_receiver: tg(%d) is active on sites: (%s) receiver: (%d) retained\n" % (log_ts.get(), self.name, tgid, site_listing, current_receiver.msgq_id))
             return current_receiver
         
-        if self.debug >= 5:
+        if self.debug > 10:
             sys.stderr.write("%s [%s] find_receiver: tg(%d) is active on sites: (%s) receiver: (%d) available\n" % (log_ts.get(), self.name, tgid, site_listing, receiver_list[0].msgq_id))
 
         return receiver_list[0]
