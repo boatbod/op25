@@ -68,6 +68,7 @@
                 "#nac": "0x0",
                 "#sysid": "0x4a2",
                 "control_channel_list": "773.84375",
+                "priority": 3,
                 "tdma_cc": false,
                 "crypt_behavior": 2,
                 "#band_plan": {

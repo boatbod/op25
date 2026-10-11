@@ -85,11 +85,9 @@ def post_req(environ, start_response, postdata):
             num_req += 1
             d['uuid'] = post_uuid
             #sys.stderr.write("post_req: req=%s\n" % json.dumps(d))
-            if d['arg1'] is None:
-                d['arg1'] = 0
-            if d['arg2'] is None:
-                d['arg2'] = 0
-            msg = gr.message().make_from_string(json.dumps(d), -2, d['arg1'], d['arg2'])
+            arg1 = d['arg1'] if 'arg1' in d and d['arg1'] is not None and isinstance(d['arg1'], int) else 0
+            arg2 = d['arg2'] if 'arg2' in d and d['arg2'] is not None and isinstance(d['arg2'], int) else 0
+            msg = gr.message().make_from_string(json.dumps(d), -2, arg1, arg2)
             if not my_output_q.full_p():
                 my_output_q.insert_tail(msg)
         valid_req = True

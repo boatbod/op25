@@ -376,9 +376,8 @@ class rx_ctl(object):
                             updated += 1
 
         if curr_time > (self.cleanup_timer + CLEANUP_TIMER):
-            for rcvr in self.receivers:
-                if self.receivers[rcvr]['rx_rcvr'] is not None:
-                    self.receivers[rcvr]['rx_rcvr'].check_expired_hold(time.time())
+            for stream in self.streams.values():
+                stream.check_expired_hold(time.time())
             self.cleanup_timer = curr_time
 
     # Check for control channel assignments to idle receivers
@@ -402,10 +401,10 @@ class rx_ctl(object):
                     sys.stderr.write("%s [%s] has no idle receivers for control channel monitoring\n" % (log_ts.get(), p25_sysname))
 
     # ui_command handles all requests from user interface
-    def ui_command(self, cmd, data, msgq_id):
+    def ui_command(self, cmd, data, str_id):
         curr_time = time.time()
-        if msgq_id in self.receivers and self.receivers[msgq_id]['rx_rcvr'] is not None:
-            self.receivers[msgq_id]['rx_rcvr'].ui_command(cmd = cmd, data = data, curr_time = curr_time)    # Dispatch message to the intended receiver
+        if str_id in self.streams and self.streams[str_id] is not None:
+            self.streams[str_id].ui_command(cmd = cmd, data = data, curr_time = curr_time)    # Dispatch message to the intended receiver
         # Check for control channel reassignment
         self.check_cc_assignments()
 
@@ -530,16 +529,16 @@ class p25_system(object):
         if tgid is None or tgid not in self.talkgroups or len(self.talkgroups[tgid]['sites']) == 0:
             return None
 
-        site_list =  self.talkgroups[tgid]['sites']
-        site_listing = []
-        for site in site_list:
-            site_listing.append(("%d/%d" % (site.rfss_rfid, site.rfss_stid)))
-
-        receiver_list = []
-        for rcvr in self.rx_ctl.receivers.values():
-            if rcvr['rx_rcvr'].site not in site_list or (rcvr['rx_rcvr'].current_tgid is not None and rcvr['rx_rcvr'].current_tgid != tgid):
-                continue
-            receiver_list.append(rcvr['rx_rcvr'])
+        with self.talkgroups_mutex:
+            site_list = self.talkgroups[tgid]['sites']
+            site_listing = []
+            for site in site_list:
+                site_listing.append(("%d/%d" % (site.rfss_rfid, site.rfss_stid)))
+            receiver_list = []
+            for rcvr in self.rx_ctl.receivers.values():
+                if rcvr['rx_rcvr'].site not in site_list or (rcvr['rx_rcvr'].current_tgid is not None and rcvr['rx_rcvr'].current_tgid != tgid):
+                    continue
+                receiver_list.append(rcvr['rx_rcvr'])
 
         if len(receiver_list) == 0:
             if self.debug >= 5:
@@ -549,7 +548,6 @@ class p25_system(object):
         if self.debug >= 5:
             sys.stderr.write("%s [%s] find_receiver: tg(%d) is active on sites: %s using receiver %d\n" % (log_ts.get(), self.name, tgid, site_listing, receiver_list[0].msgq_id))
 
-        #TODO prioritize selected receiver based on BER
         return receiver_list[0]
 
     def get_talkgroups(self):
@@ -711,7 +709,6 @@ class p25_stream(object):
                 sys.stderr.write("%s [S%d] expire hold: tg(%d)\n" % (log_ts.get(), self.id, self.hold_tgid))
             self.hold_tgid = None
             self.hold_mode = False
-            #self.receiver.release_stream()
             #meta_update(self.meta_q, msgq_id=self.msgq_id, debug=self.debug)
 
     def find_talkgroup(self, start_time, tgid=None, hold=False):
@@ -757,6 +754,16 @@ class p25_stream(object):
         freq, tgid, slot, src = self.find_talkgroup(curr_time, tgid=tgid_target, hold=hold_active)
 
         if self.current_tgid is not None and self.current_tgid == tgid:                         # active call unchanged, nothing to do
+            preferred_receiver = self.system.find_receiver(tgid)
+            if self.receiver == preferred_receiver:
+                return
+            #TODO find out why this borks the audio
+            #sys.stderr.write("%s [S%d] recvr change: tg(%d), rcvr(%d)\n" % (log_ts.get(), self.id, tgid, preferred_receiver.msgq_id))
+            #current_receiver = self.receiver
+            #current_receiver.release_stream()
+            #current_receiver.idle_rx()
+            #preferred_receiver.set_stream(self)
+            #preferred_receiver.tune_voice(freq, tgid, slot, self.destination)
             return
 
         if tgid is None or freq is None:                                                        # no call
@@ -834,7 +841,6 @@ class p25_stream(object):
             pass
             #meta_update(self.meta_q, msgq_id=self.msgq_id, debug=self.debug)
 
-
     def hold_talkgroup(self, tgid, curr_time):
         update_meta = False
         if tgid > 0:
@@ -904,9 +910,27 @@ class p25_stream(object):
             stream_status['stream'] = self.meta_stream
             stream_status['strid'] = self.id
 
-        #if (stream_status['receiver'] is None and len(_siteslist) > 0) or (stream_status['receiver'] is not None and len(_siteslist) == 0):
-        #    sys.stderr.write("%s [S%d] get_status: data inconsistency: current_tgid=%s, hold_tgid=%s, stream_receiver=%s, tgid_receiver=%s, sites=%s\n" % (log_ts.get(), self.id, self.current_tgid, self.hold_tgid, (self.receiver.msgq_id if self.receiver is not None else None), (self.system.talkgroups[_tgid]['receiver'].msgq_id if _tgid is not None and self.system.talkgroups[_tgid]['receiver'] is not None else None), _siteslist))
         return stream_status
+
+    def ui_command(self, cmd, data, curr_time):
+        if self.debug > 10:
+            sys.stderr.write("%s [S%d] ui_command: cmd(%s), data(%d), time(%f)\n" % (log_ts.get(), self.id, cmd, data, curr_time))
+        if cmd == 'hold':
+            self.hold_talkgroup(int(data), curr_time)
+        elif cmd == 'whitelist':
+            self.add_whitelist(int(data))
+        elif cmd == 'skip':
+            if self.current_tgid is not None:
+                self.add_skiplist(self.current_tgid, curr_time + TGID_SKIP_TIME)
+        elif cmd == 'lockout':
+            if (data == 0) and self.current_tgid is not None:
+                self.add_blacklist(self.current_tgid)
+            elif data > 0:
+                self.add_blacklist(int(data))
+        elif cmd == 'reload':
+            self.blacklist = {}
+            self.whitelist = None
+            self.load_bl_wl()
 
 #################
 # P25 site class
@@ -918,6 +942,7 @@ class p25_site(object):
         self.rx_ctl = rx_ctl
         self.freq_table = {}
         self.voice_frequencies = {}
+        self.priority = from_dict(config, "priority", 3)    # relative priority vs other sites
         self.talkgroups = None
         self.talkgroups_mutex = None
         self.sourceids = None
@@ -2164,6 +2189,7 @@ class p25_site(object):
                 self.update_wuid_ts(srcaddr, tgid, ts)
             if self not in self.talkgroups[tgid]['sites']:
                 self.talkgroups[tgid]['sites'].append(self)
+                self.talkgroups[tgid]['sites'].sort(key=lambda p25_site: p25_site.priority)
                 if self.debug > 10:
                     site_list = []
                     for site in self.talkgroups[tgid]['sites']:
@@ -2769,6 +2795,7 @@ class p25_receiver(object):
                 self.fa_ctrl({'tuner': self.msgq_id, 'cmd': 'set_slotid', 'slotid': 4})      # disable receiver (idle)
             self.tuner_idle = True
             self.current_slot = None
+            self.current_tgid = None
 
     def tune_cc(self, freq):
         if freq is None or int(freq) == 0:  # freq will be None when there is already another receiver listening to the control channel
@@ -2846,26 +2873,6 @@ class p25_receiver(object):
             self.current_stream.hold_until = time.time()
         with self.site.talkgroups_mutex:
             self.talkgroups[tgid]['receiver'] = self
-
-    def ui_command(self, cmd, data, curr_time):
-        if self.debug > 10:
-            sys.stderr.write("%s [%d] ui_command: cmd(%s), data(%d), time(%f)\n" % (log_ts.get(), self.msgq_id, cmd, data, curr_time))
-        if cmd == 'hold':
-            self.hold_talkgroup(int(data), curr_time)
-        elif cmd == 'whitelist':
-            self.add_whitelist(int(data))
-        elif cmd == 'skip':
-            if self.current_tgid is not None:
-                self.add_skiplist(self.current_tgid, curr_time + TGID_SKIP_TIME)
-        elif cmd == 'lockout':
-            if (data == 0) and self.current_tgid is not None:
-                self.add_blacklist(self.current_tgid)
-            elif data > 0:
-                self.add_blacklist(int(data))
-        elif cmd == 'reload':
-            self.blacklist = {}
-            self.whitelist = None
-            self.load_bl_wl()
 
     def process_qmsg(self, msg, curr_time):
         updated = 0
@@ -3002,14 +3009,6 @@ class p25_receiver(object):
         if self.current_stream is not None:
             self.current_stream.add_skiplist(tgid, end_time)
 
-    def add_blacklist(self, tgid, end_time=None):
-        if self.current_stream is not None:
-            self.current_stream.add_blacklist(tgid, end_time)
-
-    def add_whitelist(self, tgid):
-        if self.current_stream is not None:
-            self.current_stream.add_whitelist(tgid)
-
     def expire_talkgroup(self, tgid=None, update_meta = True, reason="unk", auto_hold = True):
         if self.current_stream is not None:
             self.current_stream.expire_talkgroup(tgid, update_meta, reason, auto_hold)
@@ -3021,14 +3020,6 @@ class p25_receiver(object):
 
         if reason != "preempt":                                     # Do not idle receiver if in middle of tuning to a different tgid
             self.idle_rx()
-
-    def hold_talkgroup(self, tgid, curr_time):
-        if self.current_stream is not None:
-            self.current_stream.hold_talkgroup(tgid, curr_time)
-
-    def check_expired_hold(self, curr_time):
-        if self.current_stream is not None:
-            self.current_stream.check_expired_hold(curr_time)
 
     def get_status(self):
         if self.debug > 10 and (self.current_tgid is not None or self.current_stream is not None):
@@ -3054,6 +3045,7 @@ class p25_receiver(object):
             d['mode'] = None
             d['stream'] = self.meta_stream
             d['msgqid'] = self.msgq_id
+            d['strid'] = None
         else:
             with self.site.talkgroups_mutex:
                 _tgid = self.current_stream.hold_tgid if self.current_stream is not None and self.current_stream.hold_tgid is not None else self.current_tgid
@@ -3075,6 +3067,7 @@ class p25_receiver(object):
                 d['mode'] = None
                 d['stream'] = self.meta_stream
                 d['msgqid'] = self.msgq_id
+                d['strid'] = self.current_stream.id if self.current_stream is not None else None
         return d
 
     def set_stream(self, stream = None):

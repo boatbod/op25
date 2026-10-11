@@ -53,7 +53,7 @@ var stream_list = [];
 var stream_index = 0;
 var channel_list = [];
 var channel_index = 0;
-var auto_focus = true;       // when true, channel view follows the active call automatically
+var auto_focus = true;              // when true, channel view follows the active call automatically
 var lastChannelData = null;
 var default_channel = null;
 var default_stream = null;
@@ -375,37 +375,49 @@ function channel_update(d) {
 
             // Auto-focus: prefer slot with an active call, fall back to hold
             // Voice pool channels occupy indices 1+ in channel_list (CC is always index 0).
-            // Pass 1: slot with current_tgid set — radio is actively transmitting right now.
-            // Pass 2: slot with merged tgid set — call just ended but still in hold period.
-            // Pass 3: all idle — show CC (slot 0).
+            // Pass 1: slot with tgid set and hold_tgid unset — radio is actively transmitting right now.
+            // Pass 2: slot with tgid set — call just ended but still in hold period.
             // Skipped entirely when auto_focus=false (toggled off via the AUTO button).
             if (auto_focus) {
-                var _auto_voice = false;
-                for (var _vi = 1; _vi < stream_list.length; _vi++) {
+                var _auto_voice = false;    // check for ACTIVE tgids
+                for (var _vi = 0; _vi < stream_list.length; _vi++) {
                     var _vid = stream_list[_vi];
-                    if (d['streams'][_vid] && d['streams'][_vid]['current_tgid'] !== null && d['streams'][_vid]['current_tgid'] !== undefined) {
+                    if (d['streams'][_vid] && 
+                        d['streams'][_vid]['tgid'] !== null && d['streams'][_vid]['tgid'] !== undefined &&
+                        d['streams'][_vid]['hold_tgid'] !== null && d['streams'][_vid]['hold_tgid'] !== undefined && d['streams'][_vid]['hold_tgid'] == 0 ) {
                         stream_index = _vi;
                         _auto_voice = true;
+                        if (d['streams'][_vid]['receiver'] !== null && d['streams'][_vid]['receiver'] !== undefined) {
+                            // update channel_index to stream receiver if possible
+                            var _idx = channel_list.indexOf(String(d['streams'][_vid]['receiver']));
+                            if ((_idx >= 0) && (_idx < channel_list.length)) {
+                                channel_index = _idx;
+                            }
+                        }
                         break;
                     }
                 }
-                if (!_auto_voice) {
-                    for (var _vi = 1; _vi < stream_list.length; _vi++) {
+                if (!_auto_voice) {         // check for HOLD tgids
+                    for (var _vi = 0; _vi < stream_list.length; _vi++) {
                         var _vid = stream_list[_vi];
-                        if (d['streams'][_vid] && d['streams'][_vid]['tgid'] !== null && d['streams'][_vid]['tgid'] !== undefined) {
+                        if (d['streams'][_vid] &&
+                            d['streams'][_vid]['tgid'] !== null && d['streams'][_vid]['tgid'] !== undefined) {
                             stream_index = _vi;
                             _auto_voice = true;
+                            if (d['streams'][_vid]['receiver'] !== null && d['streams'][_vid]['receiver'] !== undefined) {
+                                // update channel_index to stream receiver if possible
+                                var _idx = channel_list.indexOf(String(d['streams'][_vid]['receiver']));
+                                if ((_idx >= 0) && (_idx < channel_list.length)) {
+                                    channel_index = _idx;
+                                }
+                            }
                             break;
                         }
                     }
                 }
-                if (!_auto_voice) {
-                    stream_index = 0;
-                }
             }
         }
 
-        //channel_status();
 		//loadPresets(c_site);
         ws_connect(stream_list[stream_index])
     }
@@ -426,37 +438,6 @@ function channel_update(d) {
                     }
                 }
                 default_channel = null;
-            }
-
-            // Auto-focus: prefer slot with an active call, fall back to hold, then CC.
-            // Voice pool channels occupy indices 1+ in channel_list (CC is always index 0).
-            // Pass 1: slot with current_tgid set — radio is actively transmitting right now.
-            // Pass 2: slot with merged tgid set — call just ended but still in hold period.
-            // Pass 3: all idle — show CC (slot 0).
-            // Skipped entirely when auto_focus=false (toggled off via the AUTO button).
-            if (auto_focus) {
-                var _auto_voice = false;
-                for (var _vi = 1; _vi < channel_list.length; _vi++) {
-                    var _vid = channel_list[_vi];
-                    if (d['channels'][_vid] && d['channels'][_vid]['current_tgid'] !== null && d['channels'][_vid]['current_tgid'] !== undefined) {
-                        channel_index = _vi;
-                        _auto_voice = true;
-                        break;
-                    }
-                }
-                if (!_auto_voice) {
-                    for (var _vi = 1; _vi < channel_list.length; _vi++) {
-                        var _vid = channel_list[_vi];
-                        if (d['channels'][_vid] && d['channels'][_vid]['tgid'] !== null && d['channels'][_vid]['tgid'] !== undefined) {
-                            channel_index = _vi;
-                            _auto_voice = true;
-                            break;
-                        }
-                    }
-                }
-                if (!_auto_voice) {
-                    channel_index = 0;
-                }
             }
 
             // display channel information
@@ -576,7 +557,7 @@ function channel_update(d) {
             c_emergency = 0;
         }
         channel_status();
-		loadPresets(c_site);
+		//loadPresets(c_site);
     }
 }
 
@@ -599,7 +580,7 @@ function stream_table(d) {
 		const name = entry.name || "-";
 		const system = entry.system || "-";
 		let hold = entry.hold_tgid || "-";
-        let rx_ch = entry.receiver || "-";
+        let rx_ch = entry.receiver == null ? "-" : entry.receiver;
 
 		// highlight the selected stream in the streams table
 		if (Number(strm_id) == Number(stream_list[stream_index])) {
@@ -739,7 +720,6 @@ function channel_status() {
 }
 
 // patches table
-
 function patches(d) {
     if (d['patch_data'] == undefined || Object.keys(d['patch_data']).length < 1) {
     	document.getElementById('patchesContainer').style.display = "none";
@@ -809,7 +789,6 @@ function patches(d) {
 } // end patch table
 
 // adjacent sites table
-
 function adjacent_sites(d) {
 	
 	let adjacentSitesToggle = document.getElementById("adjacentSitesToggle").checked;
@@ -1371,19 +1350,7 @@ function trunk_update(d) {
             last_activity = d[nac]['frequency_data'][freq]['last_activity'];
             tg1 = d[nac]['frequency_data'][freq]['tgids'][0];
             tg2 = d[nac]['frequency_data'][freq]['tgids'][1];
-            
-            
         
-// 			
-// 			let tag1 = (tg1 != null && tg1 !== "")
-// 			  ? (d[nac]?.frequency_data?.[freq]?.tags?.[0] || `Talkgroup[0] ${tg1}`)
-// 			  : " ";
-// 			
-// 			let tag2 = (tg2 != null && tg2 !== "")
-// 			  ? (d[nac]?.frequency_data?.[freq]?.tags?.[1] || `Talkgroup[1] ${tg2}`)
-// 			  : " ";
-
-
 			// new method remembers previously seen TG tags and uses those if a tgid shows up without its tag
 			var sysidHex = sysHex3(d[nac]?.sysid);
 			
@@ -1719,6 +1686,7 @@ function send_command(command, arg1 = 0, arg2 = 0) {
 
 async function send_process() {
     const cmd = JSON.stringify(send_queue);
+    //console.log("send_process: cmd=" + cmd);
     send_queue = [];  // Clear the queue immediately
 
     const wbox = document.getElementById('warning-box');
@@ -1876,7 +1844,7 @@ function f_preset(i) {
     if (channel_list.length == 0) {
         send_command(command, _tgid);
     } else {
-        send_command(command, _tgid, Number(channel_list[channel_index]));
+        send_command(command, _tgid, Number(channel_list[channel_index])); //TODO: stream_list?
     }
 }
 
@@ -1921,9 +1889,9 @@ function f_scan_button(command) {
     else {
     
     	if (command == "hold" && _tgid != 0)
-    		send_command("whitelist", _tgid, Number(channel_list[channel_index]));
+    		send_command("whitelist", _tgid, Number(stream_list[stream_index]));
 
-        send_command(command, _tgid, Number(channel_list[channel_index]));
+        send_command(command, _tgid, Number(stream_list[stream_index]));
     }
 }
 
