@@ -79,8 +79,8 @@ private:
     void        ws_stop();
 
 public:
-    op25_audio(const char* udp_host, int port, log_ts& logger, int debug, int msgq_id);
-    op25_audio(const char* destination, log_ts& logger, int debug, int msgq_id);
+    op25_audio(const char* udp_host, int port, log_ts& logger, int debug);
+    op25_audio(const char* destination, log_ts& logger, int debug);
     void stop();
     ~op25_audio();
 

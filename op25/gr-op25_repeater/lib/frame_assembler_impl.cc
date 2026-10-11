@@ -175,7 +175,7 @@ namespace gr {
         void frame_assembler_impl::init_destination(const char* dest)
         {
             // No need to save the handle, just initialize a web socket server for each stream
-            op25_audio_wrapper::instance().get_audio(dest, logts, d_debug, d_msgq_id);
+            op25_audio_wrapper::instance().get_audio(dest, logts, d_debug);
         }
 
     } /* namespace op25_repeater */

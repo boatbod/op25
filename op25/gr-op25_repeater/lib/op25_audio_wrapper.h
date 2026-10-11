@@ -54,17 +54,19 @@ public:
         return instance;
     }
 
-    op25_audio& get_audio(const char* options, log_ts& logger, int debug, int msgq_id) {
+    //op25_audio& get_audio(const char* options, log_ts& logger, int debug, int msgq_id) {
+    op25_audio& get_audio(const char* options, log_ts& logger, int debug) {
         // threadsafety guard
         std::lock_guard<std::mutex> lock(mutex_);
 
         // map.emplace() will either return iterator to an existing object, or create a new object
-        auto const [it, created] = audioMap.try_emplace(options, options, logger, debug, msgq_id);
+        //auto const [it, created] = audioMap.try_emplace(options, options, logger, debug, msgq_id);
+        auto const [it, created] = audioMap.try_emplace(options, options, logger, debug);
         if (debug >= 10) {
             if (created) {
-                fprintf(stderr, "%s op25_audio_wrapper::get_op25_audio: created new op25_audio object (%s)\n", logger.get(msgq_id), options);
+                fprintf(stderr, "%s op25_audio_wrapper::get_op25_audio: created new op25_audio object (%s)\n", logger.get(), options);
             } else {
-                fprintf(stderr, "%s op25_audio_wrapper::get_op25_audio: using existing op25_audio object (%s)\n", logger.get(msgq_id), options);
+                fprintf(stderr, "%s op25_audio_wrapper::get_op25_audio: using existing op25_audio object (%s)\n", logger.get(), options);
             }
         }
 

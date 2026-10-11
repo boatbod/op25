@@ -66,9 +66,12 @@ void rx_sync::reset_timer(void) {
 }
 
 void rx_sync::set_destination(const char* dest) {
-	d_audio = &op25_audio_wrapper::instance().get_audio(dest, logts, d_debug, d_msgq_id);
+	d_audio = &op25_audio_wrapper::instance().get_audio(dest, logts, d_debug);
     p25fdma.set_destination(d_audio);
     p25tdma.set_destination(d_audio);
+	if (d_debug >= 10) {
+		fprintf(stderr, "%s rx_sync::set_destination: %s (%s)\n", logts.get(d_msgq_id), dest, (d_audio->enabled() ? "enabled" : "disabled"));
+    }
 }
 
 void rx_sync::sync_reset(void) {
@@ -196,7 +199,7 @@ rx_sync::rx_sync(const char * options, log_ts& logger, int debug, int msgq_id, g
 	d_expires(0),
 	d_slot_mask(3),
 	d_slot_key(0),
-	d_audio(&op25_audio_wrapper::instance().get_audio(options, logger, debug, msgq_id)),
+	d_audio(&op25_audio_wrapper::instance().get_audio(options, logger, debug)),
 	p25fdma(d_audio, logger, debug, true, false, true, queue, d_output_queue[0], true, msgq_id),
 	p25tdma(d_audio, logger, 0, debug, true, queue, d_output_queue[0], true, msgq_id),
 	d_msgq_id(msgq_id),

@@ -86,10 +86,9 @@ void tokenize(std::string str, std::vector<std::string> &token_v, std::string de
 }
 
 // constructor (legacy p25_frame_assembler entry point)
-op25_audio::op25_audio(const char* udp_host, int port, log_ts& logger, int debug, int msgq_id) :
+op25_audio::op25_audio(const char* udp_host, int port, log_ts& logger, int debug) :
     d_udp_enabled(false),
     d_debug(debug),
-    d_msgq_id(msgq_id),
     d_write_port(port),
     d_audio_port(port),
     d_write_sock(0),
@@ -119,10 +118,9 @@ op25_audio::~op25_audio()
 }
 
 // constructor
-op25_audio::op25_audio(const char* destination, log_ts& logger, int debug, int msgq_id) :
+op25_audio::op25_audio(const char* destination, log_ts& logger, int debug) :
     d_udp_enabled(false),
     d_debug(debug),
-    d_msgq_id(msgq_id),
     d_write_port(0),
     d_audio_port(23456),
     d_write_sock(0),
@@ -146,7 +144,7 @@ op25_audio::op25_audio(const char* destination, log_ts& logger, int debug, int m
     for (auto & dest : destinations) {
         URLParser::HTTP_URL dest_url = URLParser::Parse(dest);
         fprintf(stderr, "%s op25_audio::op25_audio: destination: %s [schema: %s, host: %s, port: %s]\n",
-                logts.get(d_msgq_id), dest.c_str(), dest_url.scheme.c_str(), dest_url.host.c_str(), dest_url.port.c_str());
+                logts.get(), dest.c_str(), dest_url.scheme.c_str(), dest_url.host.c_str(), dest_url.port.c_str());
         if (dest_url.scheme == P_UDP) {
             char ip[20];
             if (hostname_to_ip(dest_url.host.c_str(), ip) == 0) {
@@ -186,7 +184,7 @@ op25_audio::op25_audio(const char* destination, log_ts& logger, int debug, int m
             d_ws_port = std::stoi(dest_url.port);
             d_ws_endpt.listen(dest_url.host, dest_url.port, ec);
             if (ec) {
-                fprintf(stderr, "%s op25_audio::op25_audio: port [%d], websocket listen error: %s\n", logts.get(d_msgq_id), d_ws_port, ec.message().c_str());
+                fprintf(stderr, "%s op25_audio::op25_audio: port [%d], websocket listen error: %s\n", logts.get(), d_ws_port, ec.message().c_str());
             } else
             {
                 d_ws_endpt.start_accept();
@@ -215,7 +213,7 @@ void op25_audio::open_socket()
     d_write_sock = socket(PF_INET, SOCK_DGRAM, 17);   // UDP socket
     if ( d_write_sock < 0 )
     {
-        fprintf(stderr, "%s op25_audio::open_socket: error: %d\n", logts.get(d_msgq_id), errno);
+        fprintf(stderr, "%s op25_audio::open_socket: error: %d\n", logts.get(), errno);
         d_write_sock = 0;
         return;
     }
@@ -223,14 +221,14 @@ void op25_audio::open_socket()
     // set up data structure for generic udp host/port
     if ( !inet_aton(d_udp_host, &d_sock_addr.sin_addr) )
     {
-        fprintf(stderr, "%s op25_audio::open_socket: inet_aton: bad IP address\n", logts.get(d_msgq_id));
+        fprintf(stderr, "%s op25_audio::open_socket: inet_aton: bad IP address\n", logts.get());
         close(d_write_sock);
 	d_write_sock = 0;
 	return;
     }
     d_sock_addr.sin_family = AF_INET;
 
-    fprintf(stderr, "%s op25_audio::open_socket: enabled udp host(%s), wireshark(%d), audio(%d)\n", logts.get(d_msgq_id), d_udp_host, d_write_port, d_audio_port);
+    fprintf(stderr, "%s op25_audio::open_socket: enabled udp host(%s), wireshark(%d), audio(%d)\n", logts.get(), d_udp_host, d_write_port, d_audio_port);
     d_udp_enabled = true;
 }
 
@@ -256,7 +254,7 @@ ssize_t op25_audio::do_send(const void * buf, size_t len, int port, bool is_ctrl
             rc = sendto(d_write_sock, buf, len, 0, (struct sockaddr *)&tmp_sockaddr, sizeof(struct sockaddr_in));
             if (rc == -1)
             {
-                fprintf(stderr, "%s op25_audio::do_send: length:(%lu): error:(%d): %s\n", logts.get(d_msgq_id), len, errno, strerror(errno));
+                fprintf(stderr, "%s op25_audio::do_send: length:(%lu): error:(%d): %s\n", logts.get(), len, errno, strerror(errno));
                 rc = 0;
             }
         } else if (d_file_enabled && !is_ctrl) {
@@ -264,10 +262,10 @@ ssize_t op25_audio::do_send(const void * buf, size_t len, int port, bool is_ctrl
             for (;;) {
                 rc = write(d_write_sock, amt_written + (char*)buf, len - amt_written);
                 if (rc < 0) {
-                    fprintf(stderr, "%s op25_audio::write(length %lu): error(%d): %s\n", logts.get(d_msgq_id), len, errno, strerror(errno));
+                    fprintf(stderr, "%s op25_audio::write(length %lu): error(%d): %s\n", logts.get(), len, errno, strerror(errno));
                     rc = 0;
                 } else if (rc == 0) {
-                    fprintf(stderr, "%s op25_audio::write(length %lu): error, write rc zero\n", logts.get(d_msgq_id), len);
+                    fprintf(stderr, "%s op25_audio::write(length %lu): error, write rc zero\n", logts.get(), len);
                 } else {
                     amt_written += rc;
                 }
@@ -327,7 +325,7 @@ void op25_audio::ws_open_handler(websocketpp::connection_hdl hdl)
     websocketpp::lib::error_code ec;
     websocketpp::server<websocketpp::config::asio>::connection_ptr con = d_ws_endpt.get_con_from_hdl(hdl, ec);
     if (!ec && (d_debug >= 5)) {
-        fprintf(stderr, "%s op25_audio::op25_audio: websocket connection from [%s] opened on port [%d]\n", logts.get(d_msgq_id), con->get_host().c_str(), con->get_port());
+        fprintf(stderr, "%s op25_audio::op25_audio: websocket connection from [%s] opened on port [%d]\n", logts.get(), con->get_host().c_str(), con->get_port());
     }
     std::lock_guard<std::mutex> lock(d_ws_mutex);
     d_ws_connections.push_back(hdl);
@@ -339,7 +337,7 @@ void op25_audio::ws_close_handler(websocketpp::connection_hdl hdl)
     websocketpp::lib::error_code ec;
     websocketpp::server<websocketpp::config::asio>::connection_ptr con = d_ws_endpt.get_con_from_hdl(hdl, ec);
     if (!ec && (d_debug >= 5)) {
-        fprintf(stderr, "%s op25_audio::ws_close_handler: websocket connection from [%s] closed on port [%d]\n", logts.get(d_msgq_id), con->get_host().c_str(), con->get_port());
+        fprintf(stderr, "%s op25_audio::ws_close_handler: websocket connection from [%s] closed on port [%d]\n", logts.get(), con->get_host().c_str(), con->get_port());
     }
     std::lock_guard<std::mutex> lock(d_ws_mutex);
     auto it = std::find_if(d_ws_connections.begin(), d_ws_connections.end(), [&hdl](const websocketpp::connection_hdl& ptr1) {
@@ -357,7 +355,7 @@ void op25_audio::ws_fail_handler(websocketpp::connection_hdl hdl)
     websocketpp::lib::error_code ec;
     websocketpp::server<websocketpp::config::asio>::connection_ptr con = d_ws_endpt.get_con_from_hdl(hdl, ec);
     if (!ec) {
-        fprintf(stderr, "%s op25_audio::op25_audio: websocket connection from [%s] failed on port [%d]\n", logts.get(d_msgq_id), con->get_host().c_str(), con->get_port());
+        fprintf(stderr, "%s op25_audio::op25_audio: websocket connection from [%s] failed on port [%d]\n", logts.get(), con->get_host().c_str(), con->get_port());
     }
     std::lock_guard<std::mutex> lock(d_ws_mutex);
     auto it = std::find_if(d_ws_connections.begin(), d_ws_connections.end(), [&hdl](const websocketpp::connection_hdl& ptr1) {
@@ -372,6 +370,9 @@ void op25_audio::ws_fail_handler(websocketpp::connection_hdl hdl)
 // websocket send audio message to clients
 void op25_audio::ws_send_audio(const void *buf, size_t len)
 {
+    if (!d_ws_enabled)
+        return;
+
     std::lock_guard<std::mutex> lock(d_ws_mutex);
     websocketpp::lib::error_code ec;
     for (auto & hdl : d_ws_connections) {
@@ -379,7 +380,7 @@ void op25_audio::ws_send_audio(const void *buf, size_t len)
             continue;
         d_ws_endpt.send(hdl, buf, len, websocketpp::frame::opcode::binary, ec);
         if (ec) {
-            fprintf(stderr, "%s op25_audio::ws_send_audio: port [%d], websocket error: %s\n", logts.get(d_msgq_id), d_ws_port, ec.message().c_str());
+            fprintf(stderr, "%s op25_audio::ws_send_audio: port [%d], websocket error: %s\n", logts.get(), d_ws_port, ec.message().c_str());
         }
     }
 }
@@ -387,6 +388,9 @@ void op25_audio::ws_send_audio(const void *buf, size_t len)
 // websocket send audio flag to clients
 void op25_audio::ws_send_audio_flag(const udpFlagEnumType udp_flag)
 {
+    if (!d_ws_enabled)
+        return;
+
     json j;
 
     switch(udp_flag) {
@@ -409,7 +413,7 @@ void op25_audio::ws_send_audio_flag(const udpFlagEnumType udp_flag)
             continue;
         d_ws_endpt.send(hdl, j.dump(), websocketpp::frame::opcode::text, ec);
         if (ec) {
-            fprintf(stderr, "%s op25_audio::ws_send_audio_flag: port [%d], websocket error: %s\n", logts.get(d_msgq_id), d_ws_port, ec.message().c_str());
+            fprintf(stderr, "%s op25_audio::ws_send_audio_flag: port [%d], websocket error: %s\n", logts.get(), d_ws_port, ec.message().c_str());
         }
     }
 }
@@ -419,7 +423,7 @@ void op25_audio::ws_start()
 {
     ws_thread = std::thread([this]() { this->d_ws_endpt.run(); });
     d_ws_enabled = true;
-    fprintf(stderr, "%s op25_audio::op25_audio: Started websocket server on port %d\n", logts.get(d_msgq_id), d_ws_port);
+    fprintf(stderr, "%s op25_audio::op25_audio: Started websocket server on port %d\n", logts.get(), d_ws_port);
 }
 
 // websocket graceful shutdown
@@ -428,7 +432,7 @@ void op25_audio::ws_stop()
     if (!d_ws_enabled)
         return;
     d_ws_enabled = false;
-    fprintf(stderr, "%s op25_audio::op25_audio: Shutting down websocket server on port %d\n", logts.get(d_msgq_id), d_ws_port);
+    fprintf(stderr, "%s op25_audio::op25_audio: Shutting down websocket server on port %d\n", logts.get(), d_ws_port);
     //d_ws_endpt.stop_listening();  // if this is called it causes a delayed SIGSEGV
     {
         std::lock_guard<std::mutex> lock(d_ws_mutex);

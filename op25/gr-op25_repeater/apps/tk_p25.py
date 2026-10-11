@@ -525,7 +525,7 @@ class p25_system(object):
             with self.sourceids_mutex:
                 read_rids_file(rids_file, self.sourceids, ("%s [%s]" % (log_ts.get(), self.name)), self.debug)
 
-    def find_receiver(self, tgid):
+    def find_receiver(self, tgid, current_receiver = None):
         if tgid is None or tgid not in self.talkgroups or len(self.talkgroups[tgid]['sites']) == 0:
             return None
 
@@ -542,11 +542,16 @@ class p25_system(object):
 
         if len(receiver_list) == 0:
             if self.debug >= 5:
-                sys.stderr.write("%s [%s] find_receiver: tg(%d) is active on sites: %s no receivers are available\n" % (log_ts.get(), self.name, tgid, site_listing))
+                sys.stderr.write("%s [%s] find_receiver: tg(%d) is active on sites: (%s) no receivers available\n" % (log_ts.get(), self.name, tgid, site_listing))
             return None
 
+        if current_receiver is not None and current_receiver.site.priority <= receiver_list[0].site.priority:
+            if self.debug >= 5:
+                sys.stderr.write("%s [%s] find_receiver: tg(%d) is active on sites: (%s) receiver: (%d) retained\n" % (log_ts.get(), self.name, tgid, site_listing, current_receiver.msgq_id))
+            return current_receiver
+        
         if self.debug >= 5:
-            sys.stderr.write("%s [%s] find_receiver: tg(%d) is active on sites: %s using receiver %d\n" % (log_ts.get(), self.name, tgid, site_listing, receiver_list[0].msgq_id))
+            sys.stderr.write("%s [%s] find_receiver: tg(%d) is active on sites: (%s) receiver: (%d) available\n" % (log_ts.get(), self.name, tgid, site_listing, receiver_list[0].msgq_id))
 
         return receiver_list[0]
 
@@ -753,22 +758,26 @@ class p25_stream(object):
         tgid_target = self.hold_tgid if self.hold_tgid is not None else self.current_tgid       # auto hold vs call in progress
         freq, tgid, slot, src = self.find_talkgroup(curr_time, tgid=tgid_target, hold=hold_active)
 
-        if self.current_tgid is not None and self.current_tgid == tgid:                         # active call unchanged, nothing to do
-            preferred_receiver = self.system.find_receiver(tgid)
-            if self.receiver == preferred_receiver:
+        # Check active calls for receiver changes based on site priority
+        if self.current_tgid is not None and self.current_tgid == tgid:
+            preferred_receiver = self.system.find_receiver(tgid, self.receiver)
+            if self.receiver == preferred_receiver:                                             # receiver unchanged, nothing to do
                 return
-            #TODO find out why this borks the audio
-            #sys.stderr.write("%s [S%d] recvr change: tg(%d), rcvr(%d)\n" % (log_ts.get(), self.id, tgid, preferred_receiver.msgq_id))
-            #current_receiver = self.receiver
-            #current_receiver.release_stream()
-            #current_receiver.idle_rx()
-            #preferred_receiver.set_stream(self)
-            #preferred_receiver.tune_voice(freq, tgid, slot, self.destination)
+            current_receiver = self.receiver
+            current_receiver.release_stream()                                                   # release audio stream
+            current_receiver.idle_rx()                                                          # idle old receiver
+            self.receiver = preferred_receiver
+            self.receiver.set_stream(self)                                                      # claim the audio stream
+            self.receiver.tune_voice(freq, tgid, slot, self.destination)                        # tune the new receiver
+            if self.debug > 0:
+                sys.stderr.write("%s [S%d] recvr change:  tg(%d), rid(%d), freq(%f), slot(%s), prio(%d), rcvr(%d)\n" % (log_ts.get(), self.id, tgid, self.system.talkgroups[tgid]['srcaddr'], (freq/1e6), get_slot(slot), self.system.talkgroups[tgid]['prio'], preferred_receiver.msgq_id))
             return
 
-        if tgid is None or freq is None:                                                        # no call
+        # No calls
+        if tgid is None or freq is None:
             return
 
+        # Set up for new call, either from idle or after preempting an existing call
         if self.current_tgid is None:
             self.receiver = self.system.find_receiver(tgid)
             if self.receiver is None:   # no receivers available
