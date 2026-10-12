@@ -38,7 +38,7 @@
 #include <arpa/inet.h>
 
 // Python CPP API
-#include <string>
+//#include <string>
 #include <nlohmann/json.hpp>
 
 using json = nlohmann::json;
@@ -284,6 +284,20 @@ vocoder_impl::control(const std::string& args)
 			{"cmd", cmd},
 			{"status", "ok"}
 			}).dump();
+	}
+	
+	if (cmd == "end_transmission") {
+		if (!opt_encode_flag) {
+			return json({
+				{"cmd", cmd},
+				{"status", "ignored"},
+				{"reason", "vocoder is not in encode mode"}
+			}).dump();
+		}
+
+		p1voice_encode.end_transmission();
+
+		return json({{"cmd", cmd}, {"status", "ok"}}).dump();
 	}
 
     return json({

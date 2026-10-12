@@ -1,6 +1,6 @@
 /* -*- c++ -*- */
 /* 
- * Copyright 2025 Graham J. Norbury
+ * Copyright 2026 Graham J. Norbury
  * Developed from code originally written by Ali Elmasry
  * and adapted for op25 by Joey Absi
  * 
@@ -62,17 +62,15 @@ op25_crypt_des::prepare(uint16_t keyid, protocol_type pr_type, uint8_t *MI) {
     d_position = 0;
 
 	std::string key, mi, ct;
-	uint8_t des_key[8];
-	uint32_t i;
+	uint8_t des_key[8] = {0};
 	
 	// Find key value from keyid and set up to create keystream
-	std::vector<uint8_t>::const_iterator kval_iter = d_key_iter->second.key.begin();
-	for (i = 0; i < (uint32_t)std::max(8 - (int)(d_key_iter->second.key.size()), 0); i++) {
-		des_key[i] = 0;             // pad with leading 0 if supplied key too short 
-	}
-	for (; i < 8; i++) {
-		des_key[i] = *kval_iter++;  // copy up to 8 bytes into key array
-	}
+	const std::vector<uint8_t>& kv = d_key_iter->second.key;
+	size_t n = std::min<size_t>(kv.size(), 8);
+	
+    for (size_t j = 0; j < n; j++) {
+        des_key[8 - n + j] = kv[j];
+    }
 	
 	// Append supplied key array to string
 	key = byteArray2string(des_key);

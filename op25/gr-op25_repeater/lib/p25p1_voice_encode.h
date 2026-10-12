@@ -121,10 +121,9 @@ public:
     void set_source(uint32_t src);
     void set_lsd(uint32_t lsd);
     void set_verbosity(uint8_t verb);
+    void end_transmission();
 
 private:
-    static const int RXBUF_MAX = 80;
-
     int frame_cnt;
     int write_bufp;
     char write_buf[512];
@@ -136,8 +135,6 @@ private:
     int peak_amplitude;
     int peak;
     int samp_ct;
-
-    char rxbuf[RXBUF_MAX];
 
     unsigned int codeword_ct;
     int16_t sampbuf[FRAME];
@@ -161,6 +158,8 @@ private:
     p25_voice_params voice_params;
     
     op25_crypt_algs d_crypt_algs;
+    
+    unsigned int imbe_frame_counter;
 
 private:
     static uint64_t bch_64_16_23_encode(uint16_t data);
@@ -192,6 +191,12 @@ private:
     static uint32_t ldu2_cyclic(uint32_t lsd);
 
     static uint16_t hamming_10_6_3_encode(uint8_t data);
+    static uint8_t gf6mult(uint8_t a, uint8_t b);
+
+	static void rs_36_20_17_encode(std::vector<uint8_t>& symbols);
+	static void rs_24_12_13_encode(std::vector<uint8_t>& symbols);
+	static void rs_24_16_9_encode(std::vector<uint8_t>& symbols);
+	static std::vector<uint8_t> start_packet(uint16_t nac, uint8_t duid);
 
     static void bytes_to_6bit_symbols(
         const uint8_t* bytes,
@@ -230,11 +235,10 @@ private:
     void compress_frame(int16_t snd[]);
     void add_sample(int16_t samp);
 
-    void output_frame(const bit_vector& frame_body);
-
     static void clear_bits(bit_vector& v);
     
-    void emit_hdu();
+    void construct_hdu();
+    void construct_stdu();
 
 	void output_frame(const bit_vector& frame_body,
 		size_t frame_bits);

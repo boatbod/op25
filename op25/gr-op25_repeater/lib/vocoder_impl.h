@@ -67,7 +67,6 @@ namespace gr {
       log_ts logts;
 
   private:
-
 	std::deque<uint8_t> output_queue;
 	std::deque<int16_t> output_queue_decode;
 	int opt_udp_port;

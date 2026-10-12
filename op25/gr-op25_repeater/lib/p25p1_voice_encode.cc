@@ -4,12 +4,13 @@
  *
  * Copyright 2009 Pavel Yazev
  * Copyright 2009-2014 KA1RBI
+ * Copyright 2026 Joey Absi VE2KJZ
  *
  * This file is based on the original OP25 voice encoder, with the
  * P25 LDU metadata generation adapted from p25craft.py.
  */
 
-#define DEBUG_TX
+//#define DEBUG_TX
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"
@@ -27,7 +28,6 @@
 #include <algorithm>
 #include <vector>
 
-#include "ezpwd/rs"
 #include "imbe_vocoder/imbe_vocoder.h"
 #include "op25_imbe_frame.h"
 #include "p25_frame.h"
@@ -79,10 +79,10 @@ p25p1_voice_encode::p25p1_voice_encode(
     opt_stretch_sign(1),
     hdu_sent(false),
     voice_params(),
-    d_crypt_algs(logger, debug, msgq_id)
+    d_crypt_algs(logger, debug, msgq_id),
+    imbe_frame_counter(0)
 {
     memset(write_buf, 0, sizeof(write_buf));
-    memset(rxbuf, 0, sizeof(rxbuf));
     memset(sampbuf, 0, sizeof(sampbuf));
 
     memset(&tv, 0, sizeof(tv));
@@ -274,27 +274,38 @@ void p25p1_voice_encode::print_spec(const bit_vector& frame_body, uint16_t flip)
 }
 
 /*
+ * GF(2^6) multiply, primitive polynomial x^6 + x + 1 (0x43).
+ * Direct port of p25craft.py's gf6mult().
+ */
+uint8_t p25p1_voice_encode::gf6mult(uint8_t a, uint8_t b) {
+    uint8_t p = 0;
+    for (int i = 0; i < 6; ++i) {
+        if (b & 1) {
+            p ^= a;
+        }
+        a <<= 1;
+        if (a & 0x40) {
+            a ^= 0x43;
+        }
+        b >>= 1;
+    }
+    return p;
+}
+
+/*
  * Translate p25craft.py's bch_64_16_23_encode().
  */
 uint64_t p25p1_voice_encode::bch_64_16_23_encode(uint16_t data)
 {
     static const uint64_t matrix[16] = {
-        0x8000cd930bdd3b2aULL,
-        0x4000ab5a8e33a6beULL,
-        0x2000983e4cc4e874ULL,
-        0x10004c1f2662743aULL,
-        0x0800eb9c98ec0136ULL,
-        0x0400b85d47ab3bb0ULL,
-        0x02005c2ea3d59dd8ULL,
-        0x01002e1751eaceecULL,
-        0x0080170ba8f56776ULL,
-        0x0040c616dfa78890ULL,
-        0x0020630b6fd3c448ULL,
-        0x00103185b7e9e224ULL,
-        0x000818c2dbf4f112ULL,
-        0x0004c1f2662743a2ULL,
-        0x0002ad6a38ce9afbULL,
-        0x00019b2617ba7657ULL
+        0x8000cd930bdd3b2aULL, 0x4000ab5a8e33a6beULL,
+        0x2000983e4cc4e874ULL, 0x10004c1f2662743aULL,
+        0x0800eb9c98ec0136ULL, 0x0400b85d47ab3bb0ULL,
+        0x02005c2ea3d59dd8ULL, 0x01002e1751eaceecULL,
+        0x0080170ba8f56776ULL, 0x0040c616dfa78890ULL,
+        0x0020630b6fd3c448ULL, 0x00103185b7e9e224ULL,
+        0x000818c2dbf4f112ULL, 0x0004c1f2662743a2ULL,
+        0x0002ad6a38ce9afbULL, 0x00019b2617ba7657ULL
     };
 
     uint64_t codeword = 0;
@@ -305,6 +316,164 @@ uint64_t p25p1_voice_encode::bch_64_16_23_encode(uint16_t data)
     }
 
     return codeword;
+}
+
+/*
+ * (36,20,17) shortened Reed-Solomon encoder, direct port of
+ * p25craft.py's rs_36_20_17_encode(). Used for the HDU payload.
+ *
+ * symbols must hold exactly 20 six-bit payload symbols on entry;
+ * 16 parity symbols are appended.
+ */
+void p25p1_voice_encode::rs_36_20_17_encode(std::vector<uint8_t>& symbols)
+{
+    static const uint8_t matrix[20][36] = {
+        {1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,074,037,034,006,002,007,044,064,026,014,026,044,054,013,077,005},
+        {0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,004,017,050,024,011,005,030,057,033,003,002,002,015,016,025,026},
+        {0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,007,023,037,046,056,075,043,045,055,021,050,031,045,027,071,062},
+        {0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,026,005,007,063,063,027,063,040,006,004,040,045,047,030,075,007},
+        {0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,023,073,073,041,072,034,021,051,067,016,031,074,011,021,012,021},
+        {0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,024,051,025,023,022,041,074,066,074,065,070,036,067,045,064,001},
+        {0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,052,033,014,002,020,006,014,025,052,023,035,074,075,075,043,027},
+        {0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,055,062,056,025,073,060,015,030,013,017,020,002,070,055,014,047},
+        {0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,054,051,032,065,077,012,054,013,035,032,056,012,075,001,072,063},
+        {0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,074,041,030,041,043,022,051,006,064,033,003,047,027,012,055,047},
+        {0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,054,070,011,003,013,022,016,057,003,045,072,031,030,056,035,022},
+        {0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,051,007,072,030,065,054,006,021,036,063,050,061,064,052,001,060},
+        {0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,001,065,032,070,013,044,073,024,012,052,021,055,012,035,014,072},
+        {0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,011,070,005,010,065,024,015,077,022,024,024,074,007,044,007,046},
+        {0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,006,002,065,011,041,020,045,042,046,054,035,012,040,064,065,033},
+        {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,034,031,001,015,044,064,016,024,052,016,006,062,020,013,055,057},
+        {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,063,043,025,044,077,063,017,017,064,014,040,074,031,072,054,006},
+        {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,071,021,070,044,056,004,030,074,004,023,071,070,063,045,056,043},
+        {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,002,001,053,074,002,014,052,074,012,057,024,063,015,042,052,033},
+        {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,034,035,002,023,021,027,022,033,064,042,005,073,051,046,073,060}
+    };
+
+    if (symbols.size() != 20)
+        return;
+
+    uint8_t msg[20];
+    for (int j = 0; j < 20; ++j)
+        msg[j] = symbols[j] & 0x3f;
+
+    for (int i = 20; i < 36; ++i) {
+        uint8_t parity = 0;
+        for (int j = 0; j < 20; ++j)
+            parity ^= gf6mult(msg[j], matrix[j][i]);
+        symbols.push_back(parity);
+    }
+}
+
+/*
+ * (24,12,13) shortened Reed-Solomon encoder, direct port of
+ * p25craft.py's rs_24_12_13_encode(). Used for the LDU1 Link
+ * Control Word.
+ *
+ * symbols must hold exactly 12 six-bit payload symbols on entry;
+ * 12 parity symbols are appended.
+ */
+void p25p1_voice_encode::rs_24_12_13_encode(std::vector<uint8_t>& symbols)
+{
+    static const uint8_t matrix[12][24] = {
+        {1,0,0,0,0,0,0,0,0,0,0,0,062,044,003,025,014,016,027,003,053,004,036,047},
+        {0,1,0,0,0,0,0,0,0,0,0,0,011,012,011,011,016,064,067,055,001,076,026,073},
+        {0,0,1,0,0,0,0,0,0,0,0,0,003,001,005,075,014,006,020,044,066,006,070,066},
+        {0,0,0,1,0,0,0,0,0,0,0,0,021,070,027,045,016,067,023,064,073,033,044,021},
+        {0,0,0,0,1,0,0,0,0,0,0,0,030,022,003,075,015,015,033,015,051,003,053,050},
+        {0,0,0,0,0,1,0,0,0,0,0,0,001,041,027,056,076,064,021,053,004,025,001,012},
+        {0,0,0,0,0,0,1,0,0,0,0,0,061,076,021,055,076,001,063,035,030,013,064,070},
+        {0,0,0,0,0,0,0,1,0,0,0,0,024,022,071,056,021,035,073,042,057,074,043,076},
+        {0,0,0,0,0,0,0,0,1,0,0,0,072,042,005,020,043,047,033,056,001,016,013,076},
+        {0,0,0,0,0,0,0,0,0,1,0,0,072,014,065,054,035,025,041,016,015,040,071,026},
+        {0,0,0,0,0,0,0,0,0,0,1,0,073,065,036,061,042,022,017,004,044,020,025,005},
+        {0,0,0,0,0,0,0,0,0,0,0,1,071,005,055,003,071,034,060,011,074,002,041,050}
+    };
+
+    if (symbols.size() != 12)
+        return;
+
+    uint8_t msg[12];
+    for (int j = 0; j < 12; ++j)
+        msg[j] = symbols[j] & 0x3f;
+
+    for (int i = 12; i < 24; ++i) {
+        uint8_t parity = 0;
+        for (int j = 0; j < 12; ++j)
+            parity ^= gf6mult(msg[j], matrix[j][i]);
+        symbols.push_back(parity);
+    }
+}
+
+/*
+ * (24,16,9) shortened Reed-Solomon encoder, direct port of
+ * p25craft.py's rs_24_16_9_encode(). Used for the LDU2
+ * Encryption Sync Word.
+ *
+ * symbols must hold exactly 16 six-bit payload symbols on entry;
+ * 8 parity symbols are appended.
+ */
+void p25p1_voice_encode::rs_24_16_9_encode(std::vector<uint8_t>& symbols)
+{
+    static const uint8_t matrix[16][24] = {
+        {1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,051,045,067,015,064,067,052,012},
+        {0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,057,025,063,073,071,022,040,015},
+        {0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,005,001,031,004,016,054,025,076},
+        {0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,073,007,047,014,041,077,047,011},
+        {0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,075,015,051,051,017,067,017,057},
+        {0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,020,032,014,042,075,042,070,054},
+        {0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,002,075,043,005,001,040,012,064},
+        {0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,024,074,015,072,024,026,074,061},
+        {0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,042,064,007,022,061,020,040,065},
+        {0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,032,032,055,041,057,066,021,077},
+        {0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,065,036,025,007,050,016,040,051},
+        {0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,064,006,054,032,076,046,014,036},
+        {0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,062,063,074,070,005,027,037,046},
+        {0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,055,043,034,071,057,076,050,064},
+        {0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,024,023,023,005,050,070,042,023},
+        {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,067,075,045,060,057,024,006,026}
+    };
+
+    if (symbols.size() != 16)
+        return;
+
+    uint8_t msg[16];
+    for (int j = 0; j < 16; ++j)
+        msg[j] = symbols[j] & 0x3f;
+
+    for (int i = 16; i < 24; ++i) {
+        uint8_t parity = 0;
+        for (int j = 0; j < 16; ++j)
+            parity ^= gf6mult(msg[j], matrix[j][i]);
+        symbols.push_back(parity);
+    }
+}
+
+/*
+ * Equivalent of p25craft.py's start_packet().
+ *
+ * Returns 56 dibits: 24 for frame sync, 32 for the NID. These are
+ * logical dibits 0-55, meant to be placed with insert_dibit(), which
+ * already accounts for the status-symbol gap every 35 dibits.
+ */
+std::vector<uint8_t> p25p1_voice_encode::start_packet(uint16_t nac, uint8_t duid)
+{
+    std::vector<uint8_t> symbols;
+    symbols.reserve(56);
+
+    const uint64_t fs = 0x5575f5ff77ffULL;
+    for (int i = 46; i >= 0; i -= 2) {
+        symbols.push_back(static_cast<uint8_t>((fs >> i) & 0x03));
+    }
+
+    const uint64_t nid = bch_64_16_23_encode(
+        static_cast<uint16_t>(((nac & 0x0fff) << 4) | (duid & 0x0f)));
+
+    for (int i = 62; i >= 0; i -= 2) {
+        symbols.push_back(static_cast<uint8_t>((nid >> i) & 0x03));
+    }
+
+    return symbols;
 }
 
 /*
@@ -359,7 +528,8 @@ void p25p1_voice_encode::insert_hdu_golay(
     }
 }
 
-void p25p1_voice_encode::emit_hdu()
+
+void p25p1_voice_encode::construct_hdu()
 {
     /*
      * p25craft.py's construct_hdu() creates:
@@ -386,7 +556,7 @@ void p25p1_voice_encode::emit_hdu()
     /*
      * p25craft.py builds the 120-bit HDU payload:
      *
-     *   MI     : 72 bits
+     *   MI     72 bits
      *   MFID    8 bits
      *   ALGID   8 bits
      *   KID    16 bits
@@ -401,9 +571,10 @@ void p25p1_voice_encode::emit_hdu()
     /*
      * Nine-byte MI field:
      *
-     *   hdu_payload[0:8]  = uint64_t MI, big endian
-     *   hdu_payload[9]    = low eight, 0
+     *   hdu_payload[0:7]  = uint64_t MI, big endian
+     *   hdu_payload[8]    = low eight, 0
      */
+     
     for (int i = 0; i < 8; ++i) {
         hdu_payload[i] = static_cast<uint8_t>((voice_params.mi >> ((7 - i) * 8)) & 0xff);
     }
@@ -444,39 +615,24 @@ void p25p1_voice_encode::emit_hdu()
     bytes_to_6bit_symbols(hdu_payload, sizeof(hdu_payload), rs_symbols);
 
     if (rs_symbols.size() != 20) {
-#ifdef DEBUG_TX
-        fprintf(stderr, "HDU error: expected 20 payload symbols, got %zu\n", rs_symbols.size());
-#endif
         return;
     }
 
-    /*
-     * RS(36,20,17) in p25craft.py corresponds to the repository's
-     * shortened GF(64) codec:
-     *
-     *   ezpwd::RS<63,47>
-     *
-     * It appends sixteen parity symbols to the twenty payload symbols.
-     */
-    ezpwd::RS<63, 47> rs_hdu;
-    rs_hdu.encode(rs_symbols);
+    rs_36_20_17_encode(rs_symbols);
 
     if (rs_symbols.size() != 36) {
-#ifdef DEBUG_TX
-        fprintf(stderr, "HDU error: expected 36 RS symbols, got %zu\n", rs_symbols.size());
-#endif
         return;
     }
-
-    /*
-     * p25craft.py's start_packet() uses DUID 0x0 for HDU.
-     */
-    const uint64_t nid = construct_nid(voice_params.nac, 0x00);
 
     /*
      * Insert frame sync and NID into physical positions.
      */
-    p25_setup_frame_header(hdu, nid);
+    //const uint64_t nid = construct_nid(voice_params.nac, 0x00);
+    //p25_setup_frame_header(hdu, nid);
+    std::vector<uint8_t> prefix = start_packet(voice_params.nac, 0x00);
+	for (size_t i = 0; i < prefix.size(); ++i)
+		insert_dibit(hdu, static_cast<int>(i), prefix[i]);
+    
 
     /*
      * The frame's first 56 logical data dibits are:
@@ -497,9 +653,45 @@ void p25p1_voice_encode::emit_hdu()
 
     output_frame(hdu, HDU_BITS);
     
-    if (voice_params.verbosity >= 5) {
+    if (voice_params.verbosity >= 4) {
 		print_spec(hdu);
 	}
+}
+
+void p25p1_voice_encode::construct_stdu()
+{
+    static const size_t STDU_BITS = 144;
+    static const size_t STDU_STATUS_COUNT = 2;
+
+    bit_vector stdu(STDU_BITS);
+    clear_bits(stdu);
+
+    /*
+     * p25craft.py's construct_stdu() uses DUID 0x3 and carries no
+     * payload at all: frame sync + NID + 2 status symbols.
+     */
+    const uint64_t nid = construct_nid(voice_params.nac, 0x03);
+
+    p25_setup_frame_header(stdu, nid);
+
+    insert_status_symbols(stdu, voice_params.status_symbol, STDU_STATUS_COUNT);
+
+    output_frame(stdu, STDU_BITS);
+
+    if (voice_params.verbosity >= 1) {
+        fprintf(stderr, "TDU: NAC=%03x\n", voice_params.nac);
+    }
+
+    if (voice_params.verbosity >= 4) {
+        print_spec(stdu);
+    }
+}
+
+void p25p1_voice_encode::end_transmission()
+{
+    if (hdu_sent) {
+        construct_stdu();
+    }
 }
 
 /*
@@ -520,7 +712,7 @@ void p25p1_voice_encode::construct_lc(
     uint8_t lco,
     uint8_t mfid,
     uint8_t svcopt,
-    uint8_t s,
+    uint8_t explicit_source,
     uint16_t tgid,
     uint32_t dst,
     uint32_t src,
@@ -532,7 +724,7 @@ void p25p1_voice_encode::construct_lc(
      *     lc = lcf << 64
      *     lc |= mfid << 56
      *     lc |= svcopt << 48
-     *     lc |= s << 32
+     *     lc |= explicit_source << 32
      *     lc |= tgid << 24
      *     lc |= src
      *
@@ -564,7 +756,7 @@ void p25p1_voice_encode::construct_lc(
          *
          * TGID occupies exactly lc[4] and lc[5].
          */
-        lc[4] = static_cast<uint8_t>(((tgid >> 8) & 0xff) | ((s & 0x01) << 0));
+        lc[4] = static_cast<uint8_t>(((tgid >> 8) & 0xff) | (explicit_source & 0x01));
         lc[5] = static_cast<uint8_t>(tgid & 0xff);
     } else if (lco == 3) {
         /*
@@ -907,8 +1099,7 @@ void p25p1_voice_encode::build_ldu1_metadata(
     if (lc_symbols.size() != 12)
         return;
 
-    ezpwd::RS<63, 51> rs_lcw;
-    rs_lcw.encode(lc_symbols);
+    rs_24_12_13_encode(lc_symbols);
 
     std::vector<uint16_t> hamming_words;
     hamming_encode_rs_symbols(lc_symbols, hamming_words);
@@ -987,8 +1178,7 @@ void p25p1_voice_encode::build_ldu2_metadata(
      * ES is 16 payload symbols with eight parity symbols,
      * producing 24 six-bit symbols.
      */
-    ezpwd::RS<63, 55> rs_es;
-    rs_es.encode(es_symbols);
+    rs_24_16_9_encode(es_symbols);
 
     std::vector<uint16_t> hamming_words;
     hamming_encode_rs_symbols(es_symbols, hamming_words);
@@ -1085,8 +1275,24 @@ void p25p1_voice_encode::append_imbe_codeword(
     unsigned int& codeword_ct)
 {
     voice_codeword cw(voice_codeword_sz);
-    
     packed_codeword pcw;
+    
+    const bool ldu2 = ((frame_cnt & 1) != 0);
+    
+    /* TEST VECTORS */
+#ifdef DEBUG_TX
+		frame_vector[0] = 0x09b;
+		frame_vector[1] = 0x088;
+		frame_vector[2] = 0x0cc;
+		frame_vector[3] = 0x621;
+		frame_vector[4] = 0x7b4;
+		frame_vector[5] = 0x02a;
+		frame_vector[6] = 0x04c;
+		frame_vector[7] = static_cast<int16_t>(imbe_frame_counter & 1);
+		++imbe_frame_counter;
+#endif
+
+    
     imbe_pack(pcw, frame_vector[0], frame_vector[1], frame_vector[2], frame_vector[3],
               frame_vector[4], frame_vector[5], frame_vector[6], frame_vector[7]);
      
@@ -1096,26 +1302,24 @@ void p25p1_voice_encode::append_imbe_codeword(
 				pcw[6], pcw[7], pcw[8], pcw[9], pcw[10]);
      }
     
-/* CRYPTO START */
+	/* CRYPTO START */
     if (voice_params.algid != ALG_UNENCRYPTED) {
         uint32_t u[8];
-        const bool ldu2_now = ((frame_cnt & 1) != 0);
 
-        if (!ldu2_now && codeword_ct == 0) {
+        if (!ldu2 && codeword_ct == 0) {
             uint8_t mi[9] = {0};
             for (int i = 0; i < 8; ++i)
                 mi[i] = (voice_params.mi >> (56 - 8 * i)) & 0xFF;
 
             d_crypt_algs.prepare(voice_params.algid, voice_params.kid, PT_P25_PHASE1, mi);
-
             op25_crypt_algs::cycle_p25_mi(mi);     // advance MI for next pair
-
             voice_params.mi = 0;
+            
             for (int i = 0; i < 8; ++i)
                 voice_params.mi |= static_cast<uint64_t>(mi[i]) << (56 - 8 * i);
         }
 		
-		d_crypt_algs.process(pcw, ldu2_now ? FT_LDU2 : FT_LDU1, 0);
+		d_crypt_algs.process(pcw, ldu2 ? FT_LDU2 : FT_LDU1, 0);
 
         
         if(voice_params.verbosity >= 2) {
@@ -1133,6 +1337,7 @@ void p25p1_voice_encode::append_imbe_codeword(
      * Construct the 144-bit IMBE codeword from the eight
      * 16-bit/11-bit IMBE parameter values.
      */
+     
     imbe_header_encode(
         cw,
         frame_vector[0],
@@ -1157,7 +1362,7 @@ void p25p1_voice_encode::append_imbe_codeword(
     /*
      * The original encoder alternates LDU1 and LDU2.
      */
-    const bool ldu2 = ((frame_cnt & 1) != 0);
+    //const bool ldu2 = ((frame_cnt & 1) != 0);
     const uint8_t duid = ldu2 ? 0x0a : 0x05;
 
     /*
@@ -1178,9 +1383,6 @@ void p25p1_voice_encode::append_imbe_codeword(
      * Insert sync and NID.
      */
     p25_setup_frame_header(frame_body, nid);
-    
-    if (voice_params.verbosity >= 5)
-		print_spec(frame_body);
 
     /*
      * Override all status symbols with the configured value.
@@ -1188,6 +1390,9 @@ void p25p1_voice_encode::append_imbe_codeword(
     insert_status_symbols(frame_body, voice_params.status_symbol, 24);
 
     output_frame(frame_body, P25_VOICE_FRAME_SIZE);
+    
+    if (voice_params.verbosity >= 4)
+		print_spec(frame_body);
     
     codeword_ct = 0;
     ++frame_cnt;
@@ -1221,7 +1426,7 @@ void p25p1_voice_encode::append_imbe_codeword(
 void p25p1_voice_encode::compress_frame(int16_t snd[])
 {
     if (!hdu_sent) {
-		emit_hdu();
+		construct_hdu();
 		hdu_sent = true;
 	}
     

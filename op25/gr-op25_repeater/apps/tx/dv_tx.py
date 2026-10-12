@@ -2,7 +2,7 @@
 
 #################################################################################
 # 
-# Multiprotocol Digital Voice TX (C) Copyright 2017 Max H. Parke KA1RBI
+# Multiprotocol Digital Voice TX (C) Copyright 2017 Max H. Parke KA1RBI & Joey Absi VE2KJZ
 # 
 # This file is part of OP25
 # 
@@ -63,6 +63,19 @@ mod_adjust = {  # rough values
     'p25': 0.33,
     'ysf': 0.42
 }
+
+def parse_hex_int(option_name, value, minimum, maximum):
+    if value is None:
+        return None
+    try:
+        result = int(value, 0)
+    except ValueError:
+        parser.error("%s must be a decimal or 0x-prefixed hexadecimal integer" % option_name)
+
+    if result < minimum or result > maximum:
+        parser.error("%s must be between 0x%x and 0x%x" % (option_name, minimum, maximum))
+
+    return result
 
 def load_key_entry(keyfile_path, kid):
     try:
@@ -171,19 +184,9 @@ class my_top_block(gr.top_block):
         parser.add_option("--dst", type="string", default=None, help="P25 Destination ID for Direct Call, accepts decimal or 0x-prefixed hexadecimal")
         parser.add_option("--emrg", action="store_const", const=1, default=0, help="P25 Emergency flag, activates emergency on voice call")
         (options, args) = parser.parse_args()
+        self.options = options
         
-        def parse_hex_int(option_name, value, minimum, maximum):
-            if value is None:
-                return None
-            try:
-                result = int(value, 0)
-            except ValueError:
-                parser.error("%s must be a decimal or 0x-prefixed hexadecimal integer" % option_name)
 
-            if result < minimum or result > maximum:
-                parser.error("%s must be between 0x%x and 0x%x" % (option_name, minimum, maximum))
-
-            return result
 		
         p25_nac = parse_hex_int("--nac", options.nac, 0x000, 0xfff)
         p25_algid = parse_hex_int("--algid", options.algid, 0x00, 0xff)
@@ -353,6 +356,8 @@ class my_top_block(gr.top_block):
                 self.connect(MOD, AMP, interp, self.fm_modulator, self.u)
         else:
             self.connect(MOD, AMP, OUT)
+        
+        self.ENCODER = ENCODER
 
     def setup_sdr_output(self, options, adjustment):
         import osmosdr
@@ -376,11 +381,18 @@ class my_top_block(gr.top_block):
         self.u.set_sample_rate(options.if_rate)
         self.u.set_center_freq(options.frequency)
         self.u.set_freq_corr(options.frequency_correction)
-        #self.u.set_bandwidth(options.if_rate)
 
 if __name__ == "__main__":
-    print('Multiprotocol Digital Voice TX (C) Copyright 2017 Max H. Parke KA1RBI')
+    print('Multiprotocol Digital Voice TX (C) Copyright 2026 Max H. Parke KA1RBI & Joey Absi VE2KJZ')
+    tb = my_top_block()
     try:
-        my_top_block().run()
+        tb.run()
     except KeyboardInterrupt:
         tb.stop()
+        tb.wait()
+    
+    # Only append an sTDU when the transmission came from a file
+    if tb.options.protocol == 'p25' and tb.options.file1 and not tb.options.test:
+        response = tb.ENCODER.control(json.dumps({'cmd': 'end_transmission'}))
+        if tb.options.verbose >= 5:
+            sys.stderr.write("sTDU control: %s\n" % response)
