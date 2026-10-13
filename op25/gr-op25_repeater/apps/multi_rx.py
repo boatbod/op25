@@ -920,10 +920,18 @@ class rx_block (gr.top_block):
             # TODO: find a better way to invoke
             for chan in self.channels:
                 chan.error_tracking()
-        elif s in RX_COMMANDS:
+        elif s == 'get_sub_reg':
+            js = {'json_type': "ok"}
             if self.trunking is not None and self.trunk_rx is not None:
-                self.trunk_rx.ui_command(s, msg.arg1(), msg.arg2())
-            ui_rsp.append({'json_type': "ok", 'uuid': m_uuid})
+                js = json.loads(self.trunk_rx.ui_command(s, msg.arg1(), msg.arg2()))
+            js['uuid'] = m_uuid
+            ui_rsp.append(js)
+        elif s in RX_COMMANDS:
+            js = {'json_type': "ok"}
+            if self.trunking is not None and self.trunk_rx is not None:
+                js = json.loads(self.trunk_rx.ui_command(s, msg.arg1(), msg.arg2()))
+            js['uuid'] = m_uuid
+            ui_rsp.append(js)
 
         if len(ui_rsp) > 0:
             msg = gr.message().make_from_string(json.dumps(ui_rsp), -4, 0, 0)

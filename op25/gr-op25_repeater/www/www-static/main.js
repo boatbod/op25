@@ -20,7 +20,7 @@
 // Software Foundation, Inc., 51 Franklin Street, Boston, MA
 // 02110-1301, USA.
 
-const lastUpdate = "04-Oct-2026 00:00";
+const lastUpdate = "13-Oct-2026 00:00";
 
 var d_debug = 1;
 // default smartColors - will be overwritten by smartColors contained in json, if present
@@ -51,6 +51,7 @@ var c_nac = 0;
 var c_name = "";
 var stream_list = [];
 var stream_index = 0;
+var site_list = [];
 var channel_list = [];
 var channel_index = 0;
 var auto_focus = true;              // when true, channel view follows the active call automatically
@@ -262,9 +263,10 @@ document.addEventListener("DOMContentLoaded", function() {
 
 function do_onload() {
     send_command("get_terminal_config", 0, 0);
-    setInterval(do_update, 1000);
     send_command("get_full_config", 0, 0);
     send_command("get_ws_instances", 0, 0);
+    setInterval(do_update, 1000);   // request call data every 1 second
+    setInterval(do_sub_reg, 10000); // request subscriber registration updates every 10 seconds
 }
 
 function is_digit(s) {
@@ -612,7 +614,7 @@ function stream_table(d) {
 	
 	html += "</table>";
 	streamInfo.innerHTML = html;
-	//applySmartColorsToChannels();
+	applySmartColorsToStreams();
 	
 	return;
 }
@@ -640,6 +642,11 @@ function channel_table(d) {
 		  let mode = entry.tdma;
 		const enc = entry.encrypted;
 		const cap = entry.capture === true ? "<span style='color: #0f0;'>On</span>" : "<span style='color: #aaa;'>Off</span>";
+
+        // update the site_list array
+        if (!site_list.includes(site)) {
+            site_list.push(site);
+        }
 		
 		// highlight the selected channel in the channels table
 		if (Number(ch) == Number(channel_list[channel_index])) {
@@ -870,143 +877,16 @@ function adjacent_sites(d) {
     return html;
 }
 
-function update_sub_reg(r, systemId) {
-
-  // update subscriber registrations table for the selected channel only
-
-  var cb = document.getElementById('trackSubsToggle');
-  var enabled = cb && cb.checked;
-
-  var container = document.getElementById('subContainer');
-  if (!enabled) {
-    if (container) container.style.display = "none";
-    return;
-  }
-  if (container) container.style.display = "";
-
-  var systemIdHex = Number(systemId).toString(16).padStart(3, "0"); // lower hex, we'll compare consistently
-
-  var table = document.getElementById("subscribers");
-  if (!table) return;
-
-  // Clear table (keep header row)
-  while (table.rows.length > 1) table.deleteRow(1);
-
-  // If r includes non-objects, ignore them safely
-  var rows = [];
-  var totalReg = 0;
-
-  var rfss = "";
-  var site = "";
-
-  Object.values(r || {}).forEach(function (obj) {
-
-    if (!obj || typeof obj !== "object") return;
-
-    var suid = String(obj.suid || "");
-    if (!suid || suid.length < 8) return;
-
-    var wacn = suid.substring(0, 5).toUpperCase();
-    var sysid = suid.substring(5, 8).toUpperCase();
-
-    // filter to selected system only
-    if (sysid !== systemIdHex.toUpperCase()) return;
-
-    // capture rfss/site for header
-    rfss = (obj.rfss != null ? obj.rfss : rfss);
-    site = (obj.site != null ? obj.site : site);
-
-    var srcaddr = obj.srcaddr;
-    if (srcaddr === 0 || srcaddr === "0") return;
-
-    var aff_ga = obj.aff_ga;
-    if (aff_ga === 0 || aff_ga === "0") return;
-
-    var t = Number(obj.time || 0);
-
-    // time string
-    var dt = new Date(t * 1000);
-    var timeStr = dt.toLocaleTimeString([], {
-      hour12: false,
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit'
-    });
-
-    // display fields
-    var srctag = (obj.tag != null && obj.tag !== "") ? obj.tag : ('ID: ' + srcaddr);
-    var srctg = (obj.aff_ga_tag != null && obj.aff_ga_tag !== "") ? obj.aff_ga_tag : ('Talkgroup ' + aff_ga);
-
-    var affAgaRaw = obj.aff_aga;
-    var affAgaTag = (obj.aff_aga_tag != null && obj.aff_aga_tag !== "") ? obj.aff_aga_tag : "";
-    var affAgaDisp = (Number(affAgaRaw) === 0) ? "-" : (String(affAgaRaw) + (affAgaTag ? (" " + affAgaTag) : ""));
-
-    totalReg++;
-
-    rows.push({
-      // sort keys
-      time: t,
-      system: wacn + "-" + sysid + "-" + String(rfss) + "-" + String(site),
-      tgid: aff_ga,
-      tgtag: srctg,
-      id: srcaddr,
-      ag: (affAgaRaw == null ? 0 : affAgaRaw),
-
-      // display strings
-      timeStr: timeStr,
-      systemStr: wacn + ' . ' + sysid + ' . ' + rfss + ' . ' + site,
-      tgidStr: String(aff_ga),
-      tgtagStr: srctg,
-      idStr: srctag,
-      agStr: affAgaDisp
-    });
-  });
-
-  // counts
-  var subCountEl = document.getElementById('subCount');
-  if (subCountEl) subCountEl.innerText = totalReg;
-
-  var sysCountEl = document.getElementById('sysCount');
-  if (sysCountEl) {
-    var sysLine = ' on System ' + systemIdHex.toUpperCase();
-    if (rfss !== "" && site !== "") sysLine += ' . ' + rfss + ' . ' + site;
-    sysCountEl.innerText = sysLine;
-  }
-
-  // optional sort (only if user clicked a header)
-  if (subSortKey) {
-    rows.sort(function (a, b) {
-      return subSortDir * cmp(a[subSortKey], b[subSortKey]);
-    });
-  }
-
-  // render
-  rows.forEach(function (r) {
-    var row = table.insertRow(-1);
-
-    row.insertCell(0).textContent = r.timeStr;
-    row.insertCell(1).textContent = r.systemStr;
-    row.insertCell(2).textContent = r.tgidStr;
-
-    var c3 = row.insertCell(3);
-    c3.textContent = r.tgtagStr;
-    c3.style.textAlign = "left";
-
-    row.insertCell(4).textContent = r.idStr;
-
-    var c5 = row.insertCell(5);
-    c5.textContent = r.agStr;
-    c5.style.textAlign = "left";
-  });
-
-  // update ▲▼ indicators after rebuild
-  updateSubSortHeaderIndicators();
-
-  applySmartColorsSubReg();
-  filterSubscribers();
+function do_sub_reg() {
+	var subMode = document.getElementById("subMode").value;
+	if (subMode === "all") {
+        send_command("get_sub_reg", 0, 0);
+    } else {
+        send_command("get_sub_reg", 1, Number(channel_list[channel_index]));
+    }
 }
 
-function update_sub_reg_all(d) {
+function update_sub_reg(d) {
 
   // update subscriber registrations table for all channels
 
@@ -1129,7 +1009,7 @@ function update_sub_reg_all(d) {
 
   var sysCount = document.getElementById('sysCount');
   if (sysCount) {
-    var label = totalSys === 1 ? 'System' : 'Systems';
+    var label = totalSys === 1 ? 'Site' : 'Sites';
     sysCount.innerText = ' on ' + totalSys + ' ' + label;
   }
 
@@ -1206,12 +1086,6 @@ function trunk_update(d) {
     if (d['nac'] != undefined)
         c_nac = d['nac']
 
-	var subMode = document.getElementById("subMode").value;
-	// "all" or "selected"
-
-	if (subMode === "all")
-		update_sub_reg_all(d);
-
     for (var nac in d) {
         if (!is_digit(nac.charAt(0)))
             continue;
@@ -1227,10 +1101,6 @@ function trunk_update(d) {
             }
         }
         
-		if (subMode === "selected")
-			update_sub_reg(d[nac]['wuid_data'],d[nac]['sysid']);      
-
-
         var is_p25 = (d[nac]['type'] == 'p25');
         var is_smartnet = (d[nac]['type'] == 'smartnet');
         
@@ -1635,6 +1505,7 @@ function handle_response(dl) {
         trunk_update: trunk_update,
         channel_update: channel_update,
         rx_update: rx_update,
+        sub_reg: update_sub_reg,
         terminal_config: term_config,
         plot: plot,
         full_config: full_config,
@@ -1660,14 +1531,14 @@ function do_update() {
     if (channel_list.length == 0) {
         send_command("update", 0, 0);
 
-        if (smartColors.length == 0)
-        	send_command("get_terminal_config", 0, 0);
+        //if (smartColors.length == 0)
+        //	send_command("get_terminal_config", 0, 0);
         
     }
     else {
         send_command("update", 0, Number(channel_list[channel_index]));
-        if (smartColors.length == 0)
-        	send_command("get_terminal_config", 0, 0);
+        //if (smartColors.length == 0)
+        //  send_command("get_terminal_config", 0, 0);
     }
     f_debug();
 }
@@ -2085,6 +1956,35 @@ function processLeg(tg, tag, src, method) {
   }
 }
 
+function applySmartColorsToStreams() {
+  if (!document.getElementById("smartColorToggle").checked) return;
+  if (smartColors.length == 0) return;
+
+  const rows = document.querySelectorAll("#streams-container tbody tr");
+
+  rows.forEach(row => {
+    const cells = row.querySelectorAll("td");
+    if (cells.length < 7) return; // make sure column 4 exists
+
+    const talkgroupCell = cells[6];
+    const cellText = talkgroupCell.textContent.toLowerCase();
+
+    let matched = false;
+
+    for (const colorGroup of smartColors) {
+      if (colorGroup.keywords.some(keyword => cellText.includes(keyword.toLowerCase()))) {
+        talkgroupCell.style.color = colorGroup.color;
+        matched = true;
+        break;
+      }
+    }
+
+    if (!matched) {
+      talkgroupCell.style.color = "";
+    }
+  });
+} // end applySmartColorsToStreams
+
 function applySmartColorsToChannels() {
   if (!document.getElementById("smartColorToggle").checked) return;
   if (smartColors.length == 0) return;
@@ -2093,9 +1993,9 @@ function applySmartColorsToChannels() {
 
   rows.forEach(row => {
     const cells = row.querySelectorAll("td");
-    if (cells.length < 6) return; // make sure column 5 exists
+    if (cells.length < 8) return; // make sure column 5 exists
 
-    const talkgroupCell = cells[5];
+    const talkgroupCell = cells[7];
     const cellText = talkgroupCell.textContent.toLowerCase();
 
     let matched = false;
@@ -3202,8 +3102,8 @@ function setSubSort(th) {
 
     updateSubSortHeaderIndicators();
 
-    // Rebuild with whatever data source you already call update_sub_reg_all() from.
-    // If you have the last payload cached, call update_sub_reg_all(lastSubRegData).
+    // Rebuild with whatever data source you already call update_sub_reg() from.
+    // If you have the last payload cached, call update_sub_reg(lastSubRegData).
   } catch (e) {
     console.log("setSubSort error:", e);
   }

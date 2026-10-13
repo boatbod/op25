@@ -402,17 +402,29 @@ class rx_ctl(object):
 
     # ui_command handles all requests from user interface
     def ui_command(self, cmd, data, str_id):
+        d = {}
         curr_time = time.time()
-        if str_id in self.streams and self.streams[str_id] is not None:
-            self.streams[str_id].ui_command(cmd = cmd, data = data, curr_time = curr_time)    # Dispatch message to the intended receiver
+        if cmd in 'skip lockout hold whitelist reload'.split():
+            d['json_type'] = 'ok'
+            if str_id in self.streams and self.streams[str_id] is not None:
+                self.streams[str_id].ui_command(cmd = cmd, data = data, curr_time = curr_time)    # Dispatch command to the intended stream
+        elif cmd == 'get_sub_reg':
+            d['json_type'] = 'sub_reg'
+            if data == 1:   # querying for a single site based on supplied numeric id of receiver
+                if str_id in self.receivers:
+                    site = self.receivers[str_id]['rx_rcvr'].site
+                    d[site.sysname] = json.loads(site.get_sub_reg())
+            else:           # querying all sites
+                for site in self.sites:
+                    d[self.sites[site]['site'].sysname] = json.loads(self.sites[site]['site'].get_sub_reg())
+
         # Check for control channel reassignment
         self.check_cc_assignments()
+        return json.dumps(d)
 
     def to_json(self):
         d = {'json_type': 'trunk_update'}
-        for stream in self.streams.values():
-            stream.to_json()
-        syid = 0;
+        syid = 0
         for site in self.sites:
             d[syid] = json.loads(self.sites[site]['site'].to_json())
             syid += 1
@@ -887,10 +899,6 @@ class p25_stream(object):
             elif self.hold_tgid is None:
                 pass
                 #meta_update(self.meta_q, msgq_id=self.msgq_id, debug=self.debug)
-
-    def to_json(self):
-        if self.debug > 10 and (self.current_tgid is not None or self.receiver is not None or self.hold_tgid is not None):
-            sys.stderr.write("%s [S%d] to_json: stream status current_tgid=%s, receiver=%s, hold_tgid=%s\n" % (log_ts.get(), self.id, self.current_tgid, (self.receiver.msgq_id if self.receiver is not None else "None"), self.hold_tgid))
 
     def get_status(self):
         if self.debug > 10:
@@ -2572,8 +2580,34 @@ class p25_site(object):
                 d['patch_data'][sg][ga] = {'sg': sg_dec, 'sgtag': sg_tag, 'ga': ga_dec, 'gatag': ga_tag}
 
         # Subscriber Registrations
+        #self.expire_registrations()
+        #with self.suids_mutex:
+        #    for wuid in sorted(self.registered_wuids.keys()):
+        #        d['wuid_data'][wuid] = {'rfss'        : self.registered_wuids[wuid]['rfid'],
+        #                                'site'        : self.registered_wuids[wuid]['stid'],
+        #                                'suid'        : self.registered_wuids[wuid]['suid'],
+        #                                'srcaddr'     : int(wuid, 16),
+        #                                'tag'         : self.registered_wuids[wuid]['tag'],
+        #                                'aff_ga'      : self.registered_wuids[wuid]['aff_ga'],
+        #                                'aff_ga_tag'  : self.talkgroups.get(self.registered_wuids[wuid]['aff_ga'], {}).get('tag', None),
+        #                                'aff_aga'     : self.registered_wuids[wuid]['aff_aga'],
+        #                                'aff_aga_tag' : self.talkgroups.get(self.registered_wuids[wuid]['aff_aga'], {}).get('tag', None),
+        #                                'time'        : self.registered_wuids[wuid]['ts']}
+
+        # Adjacent sites
+        d['adjacent_data'] = self.adjacent_data
+
+        # Band Plan (from iden_up)
+        d['band_plan'] = self.freq_table
+
+        return json.dumps(d)
+
+    def get_sub_reg(self):
+        # Subscriber Registrations
+        d = {}
         self.expire_registrations()
         with self.suids_mutex:
+            d['wuid_data'] = {}
             for wuid in sorted(self.registered_wuids.keys()):
                 d['wuid_data'][wuid] = {'rfss'        : self.registered_wuids[wuid]['rfid'],
                                         'site'        : self.registered_wuids[wuid]['stid'],
@@ -2585,12 +2619,6 @@ class p25_site(object):
                                         'aff_aga'     : self.registered_wuids[wuid]['aff_aga'],
                                         'aff_aga_tag' : self.talkgroups.get(self.registered_wuids[wuid]['aff_aga'], {}).get('tag', None),
                                         'time'        : self.registered_wuids[wuid]['ts']}
-
-        # Adjacent sites
-        d['adjacent_data'] = self.adjacent_data
-
-        # Band Plan (from iden_up)
-        d['band_plan'] = self.freq_table
 
         return json.dumps(d)
 
