@@ -266,7 +266,7 @@ function do_onload() {
     send_command("get_full_config", 0, 0);
     send_command("get_ws_instances", 0, 0);
     setInterval(do_update, 1000);   // request call data every 1 second
-    setInterval(do_sub_reg, 10000); // request subscriber registration updates every 10 seconds
+    setInterval(do_sub_reg, 5000); // request subscriber registration updates every 5 seconds
 }
 
 function is_digit(s) {
@@ -878,11 +878,19 @@ function adjacent_sites(d) {
 }
 
 function do_sub_reg() {
-	var subMode = document.getElementById("subMode").value;
-	if (subMode === "all") {
-        send_command("get_sub_reg", 0, 0);
+    var cb = document.getElementById('trackSubsToggle');
+    var el = document.getElementById('subContainer');
+    var enabled = cb && cb.checked;
+
+    if (enabled) {
+        if (el) el.style.display = "";
+	    if (document.getElementById("subMode").value === "all") {
+            send_command("get_sub_reg", 0, 0);
+        } else {
+            send_command("get_sub_reg", 1, Number(channel_list[channel_index]));
+        }
     } else {
-        send_command("get_sub_reg", 1, Number(channel_list[channel_index]));
+        if (el) el.style.display = "none";
     }
 }
 
