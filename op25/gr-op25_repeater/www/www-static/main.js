@@ -1972,7 +1972,7 @@ function applySmartColorsToStreams() {
 
   rows.forEach(row => {
     const cells = row.querySelectorAll("td");
-    if (cells.length < 7) return; // make sure column 4 exists
+    if (cells.length < 7) return; // make sure column 6 exists
 
     const talkgroupCell = cells[6];
     const cellText = talkgroupCell.textContent.toLowerCase();
@@ -2001,7 +2001,7 @@ function applySmartColorsToChannels() {
 
   rows.forEach(row => {
     const cells = row.querySelectorAll("td");
-    if (cells.length < 8) return; // make sure column 5 exists
+    if (cells.length < 8) return; // make sure column 7 exists
 
     const talkgroupCell = cells[7];
     const cellText = talkgroupCell.textContent.toLowerCase();

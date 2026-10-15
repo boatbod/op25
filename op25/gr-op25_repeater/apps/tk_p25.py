@@ -51,7 +51,7 @@ CALL_LOG_MAX_LEN = 10    # Maximum number of call_log entries to retain
 #################
 # Helper functions specific to tk_p25
 
-def meta_update(meta_q, tgid = None, tag = None, rid = None, rtag = None, msgq_id = 0, ts = time.time(), debug = 0):
+def meta_update(meta_q, tgid = None, tag = None, rid = None, rtag = None, str_id = 0, ts = time.time(), debug = 0):
     if meta_q is None:
         return
     d = {'json_type': 'meta_update'}
@@ -63,10 +63,10 @@ def meta_update(meta_q, tgid = None, tag = None, rid = None, rtag = None, msgq_i
     if not meta_q.full_p():
         meta_q.insert_tail(msg)
         if debug > 10:
-            sys.stderr.write("%s [%d] meta_update: queued[%d] msg: %s\n" % (log_ts.get(), msgq_id, meta_q.count(), json.dumps(d)))
+            sys.stderr.write("%s [S%d] meta_update: queued[%d] msg: %s\n" % (log_ts.get(), str_id, meta_q.count(), json.dumps(d)))
     else:
         if debug > 10:
-            sys.stderr.write("%s [%d] meta_update: dropped[%d] msg: %s\n" % (log_ts.get(), msgq_id, meta_q.count(), json.dumps(d)))
+            sys.stderr.write("%s [S%d] meta_update: dropped[%d] msg: %s\n" % (log_ts.get(), str_id, meta_q.count(), json.dumps(d)))
 
 def add_default_tgid(tgs, tgid):
     if tgs is None:
@@ -175,7 +175,7 @@ def get_tgid(tgid):
 #################
 # Main trunking class
 class rx_ctl(object):
-    def __init__(self, debug=0, frequency_set=None, nbfm_ctrl=None, fa_ctrl=None, config={}):
+    def __init__(self, debug=0, frequency_set=None, nbfm_ctrl=None, fa_ctrl=None, config={}, meta_streams = {}):
         self.frequency_set = frequency_set
         self.nbfm_ctrl = nbfm_ctrl
         self.fa_ctrl = fa_ctrl
@@ -227,11 +227,12 @@ class rx_ctl(object):
                 self.streams[str_id] = p25_stream(debug = self.debug,
                                                   str_id = str_id,
                                                   config = stream,
-                                                  rx_ctl = self)
+                                                  rx_ctl = self,
+                                                  meta_streams = meta_streams)
                 str_id += 1
 
     # add_receiver is called once per radio channel defined in cfg.json
-    def add_receiver(self, msgq_id, config, meta_q = None, freq = 0):
+    def add_receiver(self, msgq_id, config, freq = 0):
         if msgq_id in self.receivers: # should be impossible
             return
 
@@ -248,7 +249,6 @@ class rx_ctl(object):
                                    fa_ctrl       = self.fa_ctrl,
                                    site          = rx_site,
                                    config        = config,
-                                   meta_q        = meta_q,
                                    freq          = freq)
             self.sites[rx_sysname]['receivers'].append(rx_rcvr)
         else:                            # undefined or mis-configured trunking sysname
@@ -466,7 +466,6 @@ class rx_ctl(object):
                     'emergency':    0,
                     'hold_tgid':    0,
                     'mode':         None,
-                    'stream':       from_dict(self.receivers[rcvr]['config'], 'meta_stream_name', ''),
                     'msgqid':       rcvr,
                     'name':         rcvr_name,
                     'conventional': True,
@@ -594,11 +593,12 @@ class p25_system(object):
 #################
 # P25 stream class
 class p25_stream(object):
-    def __init__(self, debug, str_id, config, rx_ctl):
+    def __init__(self, debug, str_id, config, rx_ctl, meta_streams = {}):
         self.debug = debug
         self.id = str_id
         self.config = config
         self.rx_ctl = rx_ctl
+        self.meta_q = None
         self.receiver = None
         self.name        = str(from_dict(config, 'name', str(str_id)))
         self.system_name = str(from_dict(config, 'system', ""))
@@ -622,6 +622,15 @@ class p25_stream(object):
             sys.stderr.write('%s [S%d] creating trunked stream (%s)\n' % (log_ts.get(), self.id, self.name))
 
         self.load_bl_wl()
+
+        if self.meta_stream in meta_streams:
+            self.meta_q = meta_streams[self.meta_stream][1] # self.meta_streams is a dictionary of tuples
+
+        if self.meta_q is None or self.meta_stream == "":
+            sys.stderr.write("%s [S%d] metadata updates not enabled\n" % (log_ts.get(), self.id))
+        else:
+            sys.stderr.write("%s [S%d] metadata stream: %s\n" % (log_ts.get(), self.id, self.meta_stream))
+        meta_update(self.meta_q, str_id=self.id, debug=self.debug)
 
     def set_debug(self, dbglvl):
         self.debug = dbglvl
@@ -726,7 +735,7 @@ class p25_stream(object):
                 sys.stderr.write("%s [S%d] expire hold: tg(%d)\n" % (log_ts.get(), self.id, self.hold_tgid))
             self.hold_tgid = None
             self.hold_mode = False
-            #meta_update(self.meta_q, msgq_id=self.msgq_id, debug=self.debug)
+            meta_update(self.meta_q,str_id=self.id, debug=self.debug)
 
     def find_talkgroup(self, start_time, tgid=None, hold=False):
         if self.system is None or self.system.talkgroups is None:
@@ -817,7 +826,7 @@ class p25_stream(object):
             if self.debug > 0:
                 sys.stderr.write("%s [S%d] voice preempt: tg(%d), rid(%d), freq(%f), slot(%s), prio(%d), rcvr(%d)\n" % (log_ts.get(), self.id, tgid, self.system.talkgroups[tgid]['srcaddr'], (freq/1e6), get_slot(slot), self.system.talkgroups[tgid]['prio'], self.receiver.msgq_id))
 
-        #meta_update(self.meta_q, tgid=tgid, tag=self.system.talkgroups[tgid]['tag'], rid=self.system.talkgroups[tgid]['srcaddr'], rtag=self.site.get_rid_tag(self.system.talkgroups[tgid]['srcaddr']), msgq_id=self.id, debug=self.debug)
+        meta_update(self.meta_q, tgid=tgid, tag=self.system.talkgroups[tgid]['tag'], rid=self.system.talkgroups[tgid]['srcaddr'], rtag=self.system.get_rid_tag(self.system.talkgroups[tgid]['srcaddr']), str_id=self.id, debug=self.debug)
 
     def expire_talkgroup(self, tgid=None, update_meta = True, reason="unk", auto_hold = True):
         if self.current_tgid is None:
@@ -856,11 +865,9 @@ class p25_stream(object):
             return
 
         if self.hold_tgid is not None:
-            pass
-            #meta_update(self.meta_q, tgid=self.hold_tgid, tag=self.system.talkgroups[self.hold_tgid]['tag'], msgq_id=self.msgq_id, debug=self.debug)
+            meta_update(self.meta_q, tgid=self.hold_tgid, tag=self.system.talkgroups[self.hold_tgid]['tag'], str_id=self.id, debug=self.debug)
         else:
-            pass
-            #meta_update(self.meta_q, msgq_id=self.msgq_id, debug=self.debug)
+            meta_update(self.meta_q, str_id=self.id, debug=self.debug)
 
     def hold_talkgroup(self, tgid, curr_time):
         update_meta = False
@@ -894,11 +901,9 @@ class p25_stream(object):
 
         if update_meta:
             if self.hold_tgid is not None and self.current_tgid != self.hold_tgid:
-                pass
-                #meta_update(self.meta_q, tgid=self.hold_tgid, tag=self.system.talkgroups[self.hold_tgid]['tag'], msgq_id=self.msgq_id, debug=self.debug)
+                meta_update(self.meta_q, tgid=self.hold_tgid, tag=self.system.talkgroups[self.hold_tgid]['tag'], str_id=self.id, debug=self.debug)
             elif self.hold_tgid is None:
-                pass
-                #meta_update(self.meta_q, msgq_id=self.msgq_id, debug=self.debug)
+                meta_update(self.meta_q, str_id=self.id, debug=self.debug)
 
     def get_status(self):
         if self.debug > 10:
@@ -970,8 +975,6 @@ class p25_site(object):
         self.suids_mutex = TimeoutLock(timeout=1.0)
         self.patches = {}
         self.patches_mutex = TimeoutLock(timeout=1.0)
-        self.blacklist = {}     #TODO remove
-        self.whitelist = None   #TODO remove
         self.crypt_behavior = 1
         self.crypt_keys = {}
         self.cc_rate = 4800
@@ -1007,16 +1010,6 @@ class p25_site(object):
         self.stats['tsbk_count'] = 0
 
         sys.stderr.write("%s [%s] Initializing P25 site\n" % (log_ts.get(), self.sysname))
-
-        #TODO remove
-        if 'blacklist' in self.config and self.config['blacklist'] != "":
-            sys.stderr.write("%s [%s] reading site blacklist file: %s\n" % (log_ts.get(), self.sysname, self.config['blacklist']))
-            self.blacklist = get_int_dict(self.config['blacklist'], self.sysname)
-
-        #TODO remove
-        if 'whitelist' in self.config and self.config['whitelist'] != "":
-            sys.stderr.write("%s [%s] reading site whitelist file: %s\n" % (log_ts.get(), self.sysname, self.config['whitelist']))
-            self.whitelist = get_int_dict(self.config['whitelist'], self.sysname)
 
         if 'band_plan' in self.config:
             band_plan = self.config['band_plan']
@@ -1075,12 +1068,6 @@ class p25_site(object):
     def get_talkgroups(self):
         return self.talkgroups
 
-    def get_blacklist(self):
-        return self.blacklist
-
-    def get_whitelist(self):
-        return self.whitelist
-    
     def get_crypt_behavior(self):
         return self.crypt_behavior
     
@@ -2579,21 +2566,6 @@ class p25_site(object):
                 ga_tag = self.talkgroups.get(ga, {}).get('tag', None) if self.talkgroups is not None else ga_dec
                 d['patch_data'][sg][ga] = {'sg': sg_dec, 'sgtag': sg_tag, 'ga': ga_dec, 'gatag': ga_tag}
 
-        # Subscriber Registrations
-        #self.expire_registrations()
-        #with self.suids_mutex:
-        #    for wuid in sorted(self.registered_wuids.keys()):
-        #        d['wuid_data'][wuid] = {'rfss'        : self.registered_wuids[wuid]['rfid'],
-        #                                'site'        : self.registered_wuids[wuid]['stid'],
-        #                                'suid'        : self.registered_wuids[wuid]['suid'],
-        #                                'srcaddr'     : int(wuid, 16),
-        #                                'tag'         : self.registered_wuids[wuid]['tag'],
-        #                                'aff_ga'      : self.registered_wuids[wuid]['aff_ga'],
-        #                                'aff_ga_tag'  : self.talkgroups.get(self.registered_wuids[wuid]['aff_ga'], {}).get('tag', None),
-        #                                'aff_aga'     : self.registered_wuids[wuid]['aff_aga'],
-        #                                'aff_aga_tag' : self.talkgroups.get(self.registered_wuids[wuid]['aff_aga'], {}).get('tag', None),
-        #                                'time'        : self.registered_wuids[wuid]['ts']}
-
         # Adjacent sites
         d['adjacent_data'] = self.adjacent_data
 
@@ -2602,8 +2574,8 @@ class p25_site(object):
 
         return json.dumps(d)
 
+    # Subscriber Registrations
     def get_sub_reg(self):
-        # Subscriber Registrations
         d = {}
         self.expire_registrations()
         with self.suids_mutex:
@@ -2773,7 +2745,7 @@ class mot_talker_alias(object):
 #################
 # P25 receiver class
 class p25_receiver(object):
-    def __init__(self, debug, msgq_id, frequency_set, fa_ctrl, site, config, meta_q = None, freq = 0):
+    def __init__(self, debug, msgq_id, frequency_set, fa_ctrl, site, config, freq = 0):
         self.debug = debug
         self.msgq_id = msgq_id
         self.config = config
@@ -2781,8 +2753,6 @@ class p25_receiver(object):
         self.frequency_set = frequency_set
         self.fa_ctrl = fa_ctrl
         self.site = site
-        self.meta_q = meta_q
-        self.meta_stream = from_dict(config, 'meta_stream_name', "")
         self.destination = from_dict(config, 'destination', "")
         self.tuned_frequency = freq
         self.tuner_idle = False
@@ -2808,11 +2778,6 @@ class p25_receiver(object):
     def post_init(self):
         if self.debug >= 1:
             sys.stderr.write("%s [%d] Initializing P25 receiver: %s\n" % (log_ts.get(), self.msgq_id, from_dict(self.config, 'name', str(self.msgq_id))))
-            if self.meta_q is None or self.meta_stream == "":
-                sys.stderr.write("%s [%d] metadata updates not enabled\n" % (log_ts.get(), self.msgq_id))
-            else:
-                sys.stderr.write("%s [%d] metadata stream: %s\n" % (log_ts.get(), self.msgq_id, self.meta_stream))
-        #meta_update(self.meta_q, msgq_id=self.msgq_id, debug=self.debug)
         nac, wacn, sysid, valid = self.site.get_tdma_params() # check for xormask preload
         if valid and self.fa_ctrl is not None:
             self.fa_ctrl({'tuner': self.msgq_id, 'cmd': 'set_xormask', 'nac': nac, 'wacn': wacn, 'sysid': sysid})
@@ -3080,7 +3045,6 @@ class p25_receiver(object):
             d['emergency'] = (d['svcopts'] >> 7) & 0x1
             d['hold_tgid'] = 0
             d['mode'] = None
-            d['stream'] = self.meta_stream
             d['msgqid'] = self.msgq_id
             d['strid'] = None
         else:
@@ -3102,7 +3066,6 @@ class p25_receiver(object):
                 d['emergency'] = (d['svcopts'] >> 7) & 0x1
                 d['hold_tgid'] = self.current_stream.hold_tgid if self.current_stream is not None and self.current_stream.hold_tgid is not None else 0
                 d['mode'] = None
-                d['stream'] = self.meta_stream
                 d['msgqid'] = self.msgq_id
                 d['strid'] = self.current_stream.id if self.current_stream is not None else None
         return d

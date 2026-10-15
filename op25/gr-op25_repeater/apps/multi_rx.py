@@ -664,7 +664,7 @@ class rx_block (gr.top_block):
             self.trunking = None
 
         if self.trunking is not None:
-            self.trunk_rx = self.trunking.rx_ctl(frequency_set = self.change_freq, nbfm_ctrl = self.nbfm_control, fa_ctrl = self.fa_control, debug = self.verbosity, config = config)
+            self.trunk_rx = self.trunking.rx_ctl(frequency_set = self.change_freq, nbfm_ctrl = self.nbfm_control, fa_ctrl = self.fa_control, debug = self.verbosity, config = config, meta_streams = self.meta_streams)
             self.du_watcher = du_queue_watcher(self.rx_q, self.trunk_rx.process_qmsg)
             sys.stderr.write("Enabled trunking module: %s\n" % config['module'])
 
@@ -747,7 +747,7 @@ class rx_block (gr.top_block):
                 msgq_id = len(self.channels)
                 chan = channel(cfg, dev, self.verbosity, msgq_id, self.rx_q, self)
                 self.channels.append(chan)
-                self.trunk_rx.add_receiver(msgq_id, config=cfg, meta_q=meta_q, freq=chan.frequency)
+                self.trunk_rx.add_receiver(msgq_id, config=cfg, freq=chan.frequency)
             else:
                 msgq_id = -1 - len(self.channels)
                 chan = channel(cfg, dev, self.verbosity, msgq_id, self.rx_q, self)
@@ -954,11 +954,11 @@ class rx_block (gr.top_block):
             rx_id = rx['msgqid']
             params['channels'][rx_id]['capture'] = False if self.find_channel(int(rx_id)).raw_sink is None else True
             params['channels'][rx_id]['error'] = self.find_channel(int(rx_id)).get_error()
-            s_name = params['channels'][rx_id]['stream']
-            if s_name not in self.meta_streams:
-                continue
-            meta_s, meta_q = self.meta_streams[s_name]
-            params['channels'][rx_id]['stream_url'] = meta_s.get_url()
+            #s_name = params['channels'][rx_id]['stream']
+            #if s_name not in self.meta_streams:
+            #    continue
+            #meta_s, meta_q = self.meta_streams[s_name]
+            #params['channels'][rx_id]['stream_url'] = meta_s.get_url()
         return params
 
     def ui_plot_update(self):
