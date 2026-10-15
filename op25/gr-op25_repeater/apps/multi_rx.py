@@ -813,8 +813,10 @@ class rx_block (gr.top_block):
         if params['cmd'] == "init_destination" and params['destination'] is not None and params['destination'] != "":
             chan = self.channels[0] # intercept init_destination command and build a map of configured destinations
             pattern = r'^wss?:\/\/[^\s/$.?#].[^\s]*$'
-            if re.match(pattern, params['destination']):
-                self.ws_instances[params['tuner']] = params['destination']
+            dest_list = [x.strip() for x in params['destination'].split(',')]
+            for dest in dest_list:
+                if re.match(pattern, dest):
+                    self.ws_instances[params['tuner']] = dest
         else:
             tuner = params['tuner']
             chan = self.channels[tuner]
