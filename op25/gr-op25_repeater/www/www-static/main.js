@@ -1965,61 +1965,63 @@ function processLeg(tg, tag, src, method) {
 }
 
 function applySmartColorsToStreams() {
-  if (!document.getElementById("smartColorToggle").checked) return;
-  if (smartColors.length == 0) return;
+    if (!document.getElementById("smartColorToggle").checked) return;
+    if (smartColors.length == 0) return;
 
-  const rows = document.querySelectorAll("#streams-container tbody tr");
+    const rows = document.querySelectorAll("#streams-container tbody tr");
 
-  rows.forEach(row => {
-    const cells = row.querySelectorAll("td");
-    if (cells.length < 7) return; // make sure column 6 exists
+    for (var i = 3; i < rows.length; i++) { // table data starts at row=3
+        const cells = rows[i].cells;
 
-    const talkgroupCell = cells[6];
-    const cellText = talkgroupCell.textContent.toLowerCase();
+        if (cells.length < 6) continue; // make sure column 5 exists
 
-    let matched = false;
+        const talkgroupCell = cells[5];
+        const cellText = talkgroupCell.textContent.toLowerCase();
 
-    for (const colorGroup of smartColors) {
-      if (colorGroup.keywords.some(keyword => cellText.includes(keyword.toLowerCase()))) {
-        talkgroupCell.style.color = colorGroup.color;
-        matched = true;
-        break;
-      }
+        let matched = false;
+
+        for (const colorGroup of smartColors) {
+            if (colorGroup.keywords.some(keyword => cellText.includes(keyword.toLowerCase()))) {
+                talkgroupCell.style.color = colorGroup.color;
+                matched = true;
+                break;
+            }
+        }
+
+        if (!matched) {
+            talkgroupCell.style.color = "";
+        }
     }
-
-    if (!matched) {
-      talkgroupCell.style.color = "";
-    }
-  });
 } // end applySmartColorsToStreams
 
 function applySmartColorsToChannels() {
-  if (!document.getElementById("smartColorToggle").checked) return;
-  if (smartColors.length == 0) return;
+    if (!document.getElementById("smartColorToggle").checked) return;
+    if (smartColors.length == 0) return;
 
-  const rows = document.querySelectorAll("#channels-container tbody tr");
+    const rows = document.querySelectorAll("#channels-container tbody tr");
 
-  rows.forEach(row => {
-    const cells = row.querySelectorAll("td");
-    if (cells.length < 8) return; // make sure column 7 exists
+    for (var i = 3; i < rows.length; i++) { // table data starts at row=3
+        const cells = rows[i].cells;
 
-    const talkgroupCell = cells[7];
-    const cellText = talkgroupCell.textContent.toLowerCase();
+        if (cells.length < 7) continue; // make sure column 6 exists
 
-    let matched = false;
+        const talkgroupCell = cells[6];
+        const cellText = talkgroupCell.textContent.toLowerCase();
 
-    for (const colorGroup of smartColors) {
-      if (colorGroup.keywords.some(keyword => cellText.includes(keyword.toLowerCase()))) {
-        talkgroupCell.style.color = colorGroup.color;
-        matched = true;
-        break;
-      }
+        let matched = false;
+
+        for (const colorGroup of smartColors) {
+            if (colorGroup.keywords.some(keyword => cellText.includes(keyword.toLowerCase()))) {
+                talkgroupCell.style.color = colorGroup.color;
+                matched = true;
+                break;
+            }
+        }
+
+        if (!matched) {
+            talkgroupCell.style.color = "";
+        }
     }
-
-    if (!matched) {
-      talkgroupCell.style.color = "";
-    }
-  });
 } // end applySmartColorsToChannels
 
 function applySmartColorsSubReg() {
