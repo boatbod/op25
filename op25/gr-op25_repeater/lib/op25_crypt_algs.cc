@@ -47,7 +47,7 @@ op25_crypt_algs::~op25_crypt_algs() {
     d_alg_iter = d_algs.begin();
     while (d_alg_iter != d_algs.end()) {
         delete d_alg_iter->second;
-        d_algs.erase(d_alg_iter);
+        d_alg_iter = d_algs.erase(d_alg_iter);  // erase() invalidates the iterator it's given
     }
 }
 
