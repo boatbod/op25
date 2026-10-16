@@ -63,6 +63,7 @@ namespace gr {
 	int d_next_slot;
 	uint8_t d_cach[4][12];
 	uint8_t d_embedded[2][4*24];
+	uint8_t d_null_embedded[2][24];	// burst F: EMB (LCSS 0) + null embedded signaling
     };
 
   } // namespace op25_repeater
