@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 Free Software Foundation, Inc.
+ * Copyright 2026 Free Software Foundation, Inc.
  *
  * This file is part of GNU Radio
  *
@@ -21,3 +21,7 @@ static const char *__doc_gr_op25_repeater_vocoder_vocoder = R"doc()doc";
 static const char *__doc_gr_op25_repeater_vocoder_make = R"doc()doc";
 
 static const char *__doc_gr_op25_repeater_vocoder_set_gain_adjust = R"doc()doc";
+
+static const char *__doc_gr_op25_repeater_vocoder_set_nac = R"doc()doc";
+
+static const char *__doc_gr_op25_repeater_vocoder_set_lc = R"doc()doc";

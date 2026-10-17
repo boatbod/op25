@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 Free Software Foundation, Inc.
+ * Copyright 2026 Free Software Foundation, Inc.
  *
  * This file is part of GNU Radio
  *
@@ -43,11 +43,11 @@ void bind_vocoder(py::module &m) {
       .def("set_gain_adjust", &vocoder::set_gain_adjust, py::arg("gain_adjust"),
            D(vocoder, set_gain_adjust))
 
-      // P25 TX NAC and Link Control (no pydoc entries yet: bound without D())
-      .def("set_nac", &vocoder::set_nac, py::arg("nac"))
+      .def("set_nac", &vocoder::set_nac, py::arg("nac"), D(vocoder, set_nac))
 
       .def("set_lc", &vocoder::set_lc, py::arg("lco"), py::arg("mfid"),
-           py::arg("svcopt"), py::arg("s"), py::arg("tgid"), py::arg("dst"), py::arg("src"))
+           py::arg("svcopt"), py::arg("s"), py::arg("tgid"), py::arg("dst"),
+           py::arg("src"), D(vocoder, set_lc))
 
       ;
 }
