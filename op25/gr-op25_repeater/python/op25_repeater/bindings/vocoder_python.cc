@@ -16,7 +16,7 @@
 /* BINDTOOL_GEN_AUTOMATIC(0) */
 /* BINDTOOL_USE_PYGCCXML(0) */
 /* BINDTOOL_HEADER_FILE(vocoder.h)                                        */
-/* BINDTOOL_HEADER_FILE_HASH(6f5e665b6482d7f4d3874d01016ca78f) */
+/* BINDTOOL_HEADER_FILE_HASH(188fbe26c927b88102d559ede7b8dd44) */
 /***********************************************************************************/
 
 #include <pybind11/complex.h>
@@ -42,6 +42,12 @@ void bind_vocoder(py::module &m) {
 
       .def("set_gain_adjust", &vocoder::set_gain_adjust, py::arg("gain_adjust"),
            D(vocoder, set_gain_adjust))
+
+      // P25 TX NAC and Link Control (no pydoc entries yet: bound without D())
+      .def("set_nac", &vocoder::set_nac, py::arg("nac"))
+
+      .def("set_lc", &vocoder::set_lc, py::arg("lco"), py::arg("mfid"),
+           py::arg("svcopt"), py::arg("s"), py::arg("tgid"), py::arg("dst"), py::arg("src"))
 
       ;
 }

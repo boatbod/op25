@@ -48,6 +48,8 @@ namespace gr {
 
       void forecast (int noutput_items, gr_vector_int &ninput_items_required);
       void set_gain_adjust(float gain_adjust);
+      void set_nac(int nac);
+      void set_lc(int lco, int mfid, int svcopt, int s, int tgid, int dst, int src);
 
       int general_work(int noutput_items,
 		       gr_vector_int &ninput_items,

@@ -48,6 +48,10 @@ namespace gr {
        */
       static sptr make(bool encode_flag, bool verbose_flag, int stretch_amt, char* udp_host, int udp_port, bool raw_vectors_flag);
       virtual void set_gain_adjust(float gain_adjust) {}
+      // P25 TX: NAC and Link Control (clear voice). The defaults keep the
+      // fixed NAC 0x293 and the preset LC.
+      virtual void set_nac(int nac) {}
+      virtual void set_lc(int lco, int mfid, int svcopt, int s, int tgid, int dst, int src) {}
     };
 
   } // namespace op25_repeater

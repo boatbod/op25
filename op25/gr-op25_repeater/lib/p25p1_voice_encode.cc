@@ -150,7 +150,133 @@ static void clear_bits(bit_vector& v) {
 	}
 }
 
+/* ------------------------------------------------------------------------
+ * Runtime P25 NAC and Link Control.
+ *
+ * op25's historic transmitter baked NAC 0x293 into the NID words (hws[]) and a
+ * fixed Link Control into ldu1_preset[] (LCF 0 / MFID 0 / TGID 0x5555 / src
+ * 0xAAAAAA). A licensed operator keying a specific repeater needs the NAC
+ * settable, and a repeater that validates the LC needs a real one. These
+ * helpers compute both at runtime. The FEC is ported verbatim from op25's own
+ * apps/tx/p25craft.py (bch_64_16_23_encode / rs_24_12_13_encode /
+ * hamming_10_6_3_encode), so a frame round-trips through op25's own receiver
+ * (lib/bch.cc, lib/p25p1_fdma.cc). Verified in Python against the baked hws[]
+ * and ldu1_preset[] before this was written: the default NAC/LC reproduce them
+ * bit for bit.
+ * ---------------------------------------------------------------------- */
+
+// (64,16,23) BCH NID encoder (p25craft.bch_64_16_23_encode).
+static uint64_t bch_64_16_23_encode(uint16_t data) {
+	static const uint64_t matrix[16] = {
+		0x8000cd930bdd3b2aULL, 0x4000ab5a8e33a6beULL,
+		0x2000983e4cc4e874ULL, 0x10004c1f2662743aULL,
+		0x0800eb9c98ec0136ULL, 0x0400b85d47ab3bb0ULL,
+		0x02005c2ea3d59dd8ULL, 0x01002e1751eaceecULL,
+		0x0080170ba8f56776ULL, 0x0040c616dfa78890ULL,
+		0x0020630b6fd3c448ULL, 0x00103185b7e9e224ULL,
+		0x000818c2dbf4f112ULL, 0x0004c1f2662743a2ULL,
+		0x0002ad6a38ce9afbULL, 0x00019b2617ba7657ULL };
+	uint64_t cw = 0;
+	for (int i = 0; i < 16; i++)
+		if (data & (0x8000 >> i)) cw ^= matrix[i];
+	return cw;
+}
+
+// GF(2^6) multiply, primitive poly x^6+x+1 (p25craft.gf6mult).
+static uint8_t gf6mult(uint8_t a, uint8_t b) {
+	uint8_t p = 0;
+	for (int i = 0; i < 6; i++) {
+		if (b & 1) p ^= a;
+		a <<= 1;
+		if (a & 0x40) a ^= 0x43;
+		b >>= 1;
+	}
+	return p & 0x3f;
+}
+
+// (24,12,13) shortened Reed-Solomon LC encoder: 12 hexbits in -> 24 hexbits out
+// (p25craft.rs_24_12_13_encode).
+static const uint8_t rs_24_12_13_matrix[12][24] = {
+	{1,0,0,0,0,0,0,0,0,0,0,0,062,044,003,025,014,016,027,003,053,004,036,047},
+	{0,1,0,0,0,0,0,0,0,0,0,0,011,012,011,011,016,064,067,055,001,076,026,073},
+	{0,0,1,0,0,0,0,0,0,0,0,0,003,001,005,075,014,006,020,044,066,006,070,066},
+	{0,0,0,1,0,0,0,0,0,0,0,0,021,070,027,045,016,067,023,064,073,033,044,021},
+	{0,0,0,0,1,0,0,0,0,0,0,0,030,022,003,075,015,015,033,015,051,003,053,050},
+	{0,0,0,0,0,1,0,0,0,0,0,0,001,041,027,056,076,064,021,053,004,025,001,012},
+	{0,0,0,0,0,0,1,0,0,0,0,0,061,076,021,055,076,001,063,035,030,013,064,070},
+	{0,0,0,0,0,0,0,1,0,0,0,0,024,022,071,056,021,035,073,042,057,074,043,076},
+	{0,0,0,0,0,0,0,0,1,0,0,0,072,042,005,020,043,047,033,056,001,016,013,076},
+	{0,0,0,0,0,0,0,0,0,1,0,0,072,014,065,054,035,025,041,016,015,040,071,026},
+	{0,0,0,0,0,0,0,0,0,0,1,0,073,065,036,061,042,022,017,004,044,020,025,005},
+	{0,0,0,0,0,0,0,0,0,0,0,1,071,005,055,003,071,034,060,011,074,002,041,050}};
+
+static void rs_24_12_13_encode(const uint8_t hexbits[12], uint8_t cw[24]) {
+	for (int i = 0; i < 24; i++) cw[i] = 0;
+	for (int i = 0; i < 24; i++)
+		for (int j = 0; j < 12; j++)
+			cw[i] ^= gf6mult(hexbits[j], rs_24_12_13_matrix[j][i]);
+}
+
+// (10,6,3) shortened Hamming encoder (p25craft.hamming_10_6_3_encode).
+static uint16_t hamming_10_6_3_encode(uint8_t data) {
+	static const uint16_t matrix[6] = {0x20e, 0x10d, 0x08b, 0x047, 0x023, 0x01c};
+	uint16_t cw = 0;
+	for (int i = 0; i < 6; i++)
+		if (data & (0x20 >> i)) cw ^= matrix[i];
+	return cw;
+}
+
+// Build the 18-octet (144-bit) Link Control Word integer from its fields
+// (p25craft.construct_lc; LCF high byte, MFID, service options, then group
+// (lco 0) or individual (lco 3) addressing, then the source ID).
+static void construct_lcw(uint8_t lco, uint8_t mfid, uint8_t svcopt, uint8_t s,
+                          uint16_t tgid, uint32_t dst, uint32_t src,
+                          uint64_t& hi, uint64_t& lo) {
+	// 72-bit LC: [lcf 8][mfid 8][svcopt 8][addressing 24][src 24].
+	// Split across two 64-bit halves (hi holds the top 8 bits).
+	uint64_t lcf = lco;              // construct_lcf(0,0,lco): p=sf=0
+	__uint128_t lc = (__uint128_t)lcf << 64;
+	lc |= (__uint128_t)mfid << 56;
+	lc |= (__uint128_t)svcopt << 48;
+	if (lco == 0) {                  // group call
+		lc |= (__uint128_t)(s & 1) << 32;
+		lc |= (__uint128_t)(tgid & 0xffff) << 24;
+	} else {                         // individual call (lco == 3)
+		lc |= (__uint128_t)(dst & 0xffffff) << 24;
+	}
+	lc |= (src & 0xffffff);
+	hi = (uint64_t)(lc >> 64) & 0xff;
+	lo = (uint64_t)lc;
+}
+
+// Overlay a Hamming-encoded Link Control onto the 240 LC bit positions of an
+// LDU1 frame body (op25_imbe_frame.h: imbe_ldu_ls_data_bits[0..239]).
+static void overlay_ldu1_lc(bit_vector& frame_body,
+                            uint8_t lco, uint8_t mfid, uint8_t svcopt, uint8_t s,
+                            uint16_t tgid, uint32_t dst, uint32_t src) {
+	uint64_t hi, lo;
+	construct_lcw(lco, mfid, svcopt, s, tgid, dst, src, hi, lo);
+	// The 72-bit LC as 12 hexbits (6 bits each), MSB first: hexbit 0 is bits
+	// 71..66, which live in `hi` (bits 71..64) + the top of `lo`.
+	__uint128_t lc72 = ((__uint128_t)(hi & 0xff) << 64) | lo;
+	uint8_t hexbits[12];
+	for (int j = 0; j < 12; j++)
+		hexbits[j] = (uint8_t)((lc72 >> ((11 - j) * 6)) & 0x3f);
+	uint8_t rs[24];
+	rs_24_12_13_encode(hexbits, rs);
+	// 24 hexbits -> 24 x 10-bit Hamming -> 240 bits, MSB first, into the LC
+	// positions.
+	int k = 0;
+	for (int i = 0; i < 24; i++) {
+		uint16_t h = hamming_10_6_3_encode(rs[i]);
+		for (int b = 9; b >= 0; b--)
+			frame_body[imbe_ldu_ls_data_bits[k++]] = (h >> b) & 1;
+	}
+}
+
 p25p1_voice_encode::p25p1_voice_encode(bool verbose_flag, int stretch_amt, op25_audio& udp, bool raw_vectors_flag, std::deque<uint8_t> &_output_queue) :
+	opt_nac(0x293),       // historic op25 default NAC; set_nac() overrides
+	opt_lc_set(false),    // overlay a custom Link Control only once set_lc() ran
 	frame_cnt(0),
 	write_bufp(0),
 	peak_amplitude(0),
@@ -199,14 +325,22 @@ void p25p1_voice_encode::append_imbe_codeword(bit_vector& frame_body, int16_t fr
 
 	// after the ninth and final codeword added, dispose of frame
 	if (++codeword_ct >= nof_voice_codewords) {
-		static const uint64_t hws[2] = { 0x293555ef2c653437LL, 0x293aba93bec26a2bLL };
                 int ldu_type = frame_cnt & 1;	// set ldu_type = 0(LDU1) or 1(LDU2)
+		// NID word carries the (runtime) NAC and the DUID (0x5 LDU1, 0xA LDU2),
+		// BCH(64,16,23)-encoded (was baked as hws[] for NAC 0x293).
+		static const int duids[2] = { 0x5, 0xA };
+		uint64_t hw = bch_64_16_23_encode((uint16_t)((opt_nac << 4) | duids[ldu_type]));
 		const bool* ldu_preset = (ldu_type == 0) ? ldu1_preset : ldu2_preset;
-		
-		p25_setup_frame_header(frame_body, hws[ldu_type]);
+
+		p25_setup_frame_header(frame_body, hw);
 		for (size_t i = 0; i < frame_body.size(); i++) {
 			frame_body[i] = frame_body[i] | ldu_preset[i];
 		}
+		// A custom Link Control replaces the preset's baked LC bits in LDU1
+		// (LDU2 carries encryption sync / low-speed data, left as the preset).
+		if (opt_lc_set && ldu_type == 0)
+			overlay_ldu1_lc(frame_body, lc_lco, lc_mfid, lc_svcopt, lc_s,
+			                lc_tgid, lc_dst, lc_src);
 		// finally, output the frame
 		if (op25audio.enabled()) {
 			// pack the bits into bytes, MSB first
@@ -319,6 +453,19 @@ void p25p1_voice_encode::compress_samp(const int16_t * samp, int len)
 void
 p25p1_voice_encode::set_gain_adjust(float gain_adjust) {
 	vocoder.set_gain_adjust(gain_adjust);
+}
+
+void
+p25p1_voice_encode::set_nac(uint16_t nac) {
+	opt_nac = nac & 0xfff;
+}
+
+void
+p25p1_voice_encode::set_lc(uint8_t lco, uint8_t mfid, uint8_t svcopt, uint8_t s,
+                           uint16_t tgid, uint32_t dst, uint32_t src) {
+	lc_lco = lco; lc_mfid = mfid; lc_svcopt = svcopt; lc_s = s;
+	lc_tgid = tgid; lc_dst = dst; lc_src = src;
+	opt_lc_set = true;
 }
 
   } /* namespace op25_repeater */
