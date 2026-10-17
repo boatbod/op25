@@ -803,7 +803,7 @@ class p25_stream(object):
             self.receiver = self.system.find_receiver(tgid)
             if self.receiver is None:   # no receivers available
                 if self.debug > 0:
-                    sys.stderr.write("%s [S%d] voice update: no receivers available for tg(%d)\n" % (log_ts.get(), self.id, tgid))
+                    sys.stderr.write("%s [S%d] voice update:  no receivers available for tg(%d)\n" % (log_ts.get(), self.id, tgid))
                 return
             self.receiver.set_stream(self)
             self.receiver.tune_voice(freq, tgid, slot, self.destination)
