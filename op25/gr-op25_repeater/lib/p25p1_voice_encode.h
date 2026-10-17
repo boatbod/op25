@@ -46,7 +46,17 @@ namespace gr {
       ~p25p1_voice_encode();
 	void compress_samp(const int16_t * samp, int len);
       void set_gain_adjust(float gain_adjust);
+      // Set the P25 NAC and Link Control at runtime (the defaults reproduce the
+      // fixed NAC 0x293 and the preset LC).
+      void set_nac(uint16_t nac);
+      void set_lc(uint8_t lco, uint8_t mfid, uint8_t svcopt, uint8_t s,
+                  uint16_t tgid, uint32_t dst, uint32_t src);
   private:
+	uint16_t opt_nac;         // 12-bit P25 network access code (default 0x293)
+	bool opt_lc_set;          // true once set_lc() ran: overlay a custom LC
+	uint8_t  lc_lco, lc_mfid, lc_svcopt, lc_s;
+	uint16_t lc_tgid;
+	uint32_t lc_dst, lc_src;
 	static const int RXBUF_MAX = 80;
 
 	/* data items */

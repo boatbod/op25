@@ -256,11 +256,12 @@ dmr_slot::decode_csbk(uint8_t* csbk) {
 		return false;
 #endif
 
-	// pack and send up the stack
-	std::string csbk_msg(10,0);
+	// pack and send up the stack (trailing byte: color code, see decode_vlch)
+	std::string csbk_msg(11,0);
 	for (int i = 0; i < 80; i++) {
 		csbk_msg[i/8] = (csbk_msg[i/8] << 1) + csbk[i];
 	}
+	csbk_msg[10] = d_cc;
 	send_msg(csbk_msg, M_DMR_SLOT_CSBK);
 
 	// Extract parameters for logging purposes
@@ -560,11 +561,13 @@ dmr_slot::decode_vlch(uint8_t* vlch) {
 	if (!rc)
 		return false;
 
-	// send up the stack
-	std::string lc_msg(12,0);
+	// send up the stack (trailing byte: color code, not part of the LC itself
+	// but the only place the msgq consumer can learn it)
+	std::string lc_msg(13,0);
 	for (int i = 0; i < 12; i++) {
 		lc_msg[i] = d_lc[i];
 	}
+	lc_msg[12] = d_cc;
 	send_msg(lc_msg, M_DMR_SLOT_VLC);
 
 	if (d_debug >= 10) {
@@ -587,11 +590,12 @@ dmr_slot::decode_tlc(uint8_t* tlc) {
 	if (!rc)
 		return false;
 
-	// send up the stack
-	std::string lc_msg(12,0);
+	// send up the stack (trailing byte: color code, see decode_vlch)
+	std::string lc_msg(13,0);
 	for (int i = 0; i < 12; i++) {
 		lc_msg[i] = d_lc[i];
 	}
+	lc_msg[12] = d_cc;
 	send_msg(lc_msg, M_DMR_SLOT_TLC);
 
 	if (d_debug >= 10) {
@@ -794,11 +798,12 @@ dmr_slot::decode_embedded_lc() {
 #endif
 		d_lc_valid = true;
 
-		// send up the stack
-		std::string lc_msg(9,0);
+		// send up the stack (trailing byte: color code, see decode_vlch)
+		std::string lc_msg(10,0);
 		for (int i = 0; i < 9; i++) {
 			lc_msg[i] = d_lc[i];
 		}
+		lc_msg[9] = d_cc;
 		send_msg(lc_msg, M_DMR_SLOT_ELC);
 
 		if (d_debug >=10) {

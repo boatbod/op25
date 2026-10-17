@@ -178,5 +178,16 @@ vocoder_impl::set_gain_adjust(float gain_adjust) {
 	p1voice_encode.set_gain_adjust(gain_adjust);
 }
 
+void
+vocoder_impl::set_nac(int nac) {
+	p1voice_encode.set_nac((uint16_t)nac);
+}
+
+void
+vocoder_impl::set_lc(int lco, int mfid, int svcopt, int s, int tgid, int dst, int src) {
+	p1voice_encode.set_lc((uint8_t)lco, (uint8_t)mfid, (uint8_t)svcopt, (uint8_t)s,
+	                      (uint16_t)tgid, (uint32_t)dst, (uint32_t)src);
+}
+
   } /* namespace op25_repeater */
 } /* namespace gr */

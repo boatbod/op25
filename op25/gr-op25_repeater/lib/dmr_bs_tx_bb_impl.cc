@@ -361,6 +361,16 @@ dmr_bs_tx_bb_impl::config()
 			bits_to_dibits(&d_embedded[i][j*24], emb_buf, 24);
 		}
 	}
+	// burst F of a voice superframe: the EMB (color code, LCSS 0 = single fragment) around a null
+	// embedded signaling field, so the burst still carries the color code
+	for (int i=0; i<2; i++) {
+		uint8_t null_emb[16];
+		encode_emb(d_cc[i], 0, 0, null_emb);
+		memset(emb_buf, 0, sizeof(emb_buf));
+		memcpy(&emb_buf[0], &null_emb[0], 8);
+		memcpy(&emb_buf[40], &null_emb[8], 8);
+		bits_to_dibits(d_null_embedded[i], emb_buf, 24);
+	}
 }
 
 void
@@ -380,13 +390,16 @@ dmr_bs_tx_bb_impl::general_work (int noutput_items,
 			       gr_vector_void_star &output_items)
 {
 
+  // ETSI TS 102 361-1: voice burst A carries the sync, bursts B-E the four embedded LC fragments (LCSS
+  // 1, 3, 3, 2) and burst F a null embedded field (the reverse-channel slot). Timeslot 2 runs 3 bursts
+  // behind timeslot 1.
   static const int burst_schedule[2][6] = {
     // -3: idle SYNC
     // -2: voice SYNC
-    // -1: RC
+    // -1: null embedded signaling (burst F)
     // 0|1|2|3: segment no. of embedded signalling
-    {-2, 0, 1, -1, 2, 3},
-    {-1, 2, 3, -2, 0, 1}
+    {-2, 0, 1, 2, 3, -1},
+    {2, 3, -1, -2, 0, 1}
   };
 
   int nconsumed[2] = {0,0};
@@ -410,7 +423,7 @@ dmr_bs_tx_bb_impl::general_work (int noutput_items,
     else if (schedule == -2)
       memcpy(&out[66], dmr_bs_voice_sync, 24);
     else if (schedule == -1)
-      memset(&out[66], 0, 24);
+      memcpy(&out[66], d_null_embedded[d_next_slot], 24);
     else 
       memcpy(&out[66], &d_embedded[d_next_slot][schedule*24], 24);
     memcpy(&out[90], &in[d_next_slot][36+18], 18);
