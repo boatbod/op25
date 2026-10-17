@@ -124,12 +124,16 @@ def _transfer_function_nxdn(symbol_rate, modulator=False):
 		xfer.append(hf * df)
 	return xfer
 
+# rate_multiplier is accepted (and ignored) only so these match
+# transfer_function_rx/_tx's signature: c4fm_taps.generate() passes it to
+# every generator, and the NXDN transfer function has no rate-dependent term.
+
 # rx / demod case
-def transfer_function_nxdn(symbol_rate=_def_symbol_rate):
+def transfer_function_nxdn(symbol_rate=_def_symbol_rate, rate_multiplier=1.0):
 	return _transfer_function_nxdn(symbol_rate)
 
 # tx / modulator case
-def transfer_function_nxdn_tx(symbol_rate=_def_symbol_rate):
+def transfer_function_nxdn_tx(symbol_rate=_def_symbol_rate, rate_multiplier=1.0):
 	return _transfer_function_nxdn(symbol_rate, modulator=True)
 
 class c4fm_taps(object):
