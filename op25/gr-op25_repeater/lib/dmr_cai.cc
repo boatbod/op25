@@ -221,12 +221,15 @@ dmr_cai::decode_shortLC()
 		d2 |= slc[i+20];
 	}
 
-	// send up the stack for further processing
-	std::string slc_msg(4,0);
+	// send up the stack for further processing (trailing byte: color code,
+	// learned by the per-slot dmr_slot instance from the burst sync/EMB and
+	// otherwise invisible to dmr_cai, which only ever sees the CACH)
+	std::string slc_msg(5,0);
         slc_msg[0] = slco;
 	slc_msg[1] = d0;
 	slc_msg[2] = d1;
 	slc_msg[3] = d2;
+	slc_msg[4] = d_slot[d_chan].get_cc();
 	send_msg(slc_msg, M_DMR_CACH_SLC);
 
 	// decode a little further for logging purposes

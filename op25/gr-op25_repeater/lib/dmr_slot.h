@@ -70,6 +70,7 @@ public:
 	inline void set_debug(const int debug) { d_debug = debug; };
 	bool load_slot(const uint8_t slot[], uint64_t sl_type);
 	inline void set_slot_mask(int mask) { d_slot_mask = mask; };
+	inline uint8_t get_cc() { return d_cc; };
 
 private:
 	uint8_t     d_slot[SLOT_SIZE];	// array of bits comprising the current slot
