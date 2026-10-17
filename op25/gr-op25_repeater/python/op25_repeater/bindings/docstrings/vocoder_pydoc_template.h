@@ -21,3 +21,7 @@ static const char *__doc_gr_op25_repeater_vocoder_vocoder = R"doc()doc";
 static const char *__doc_gr_op25_repeater_vocoder_make = R"doc()doc";
 
 static const char *__doc_gr_op25_repeater_vocoder_set_gain_adjust = R"doc()doc";
+
+static const char *__doc_gr_op25_repeater_vocoder_set_nac = R"doc()doc";
+
+static const char *__doc_gr_op25_repeater_vocoder_set_lc = R"doc()doc";
