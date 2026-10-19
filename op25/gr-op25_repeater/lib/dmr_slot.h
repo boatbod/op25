@@ -71,6 +71,10 @@ public:
 	bool load_slot(const uint8_t slot[], uint64_t sl_type);
 	inline void set_slot_mask(int mask) { d_slot_mask = mask; };
 	inline uint8_t get_cc() { return d_cc; };
+	// The color code is the carrier's, the same on both timeslots: a slot that hasn't learned one (0)
+	// takes the other slot's, so a voice call with no data burst on its own slot (no header, as from a
+	// base station that starts straight in voice superframes) still has its EMBs accepted.
+	inline void adopt_cc(uint8_t cc) { if (d_cc == 0x0) d_cc = cc; };
 
 private:
 	uint8_t     d_slot[SLOT_SIZE];	// array of bits comprising the current slot
