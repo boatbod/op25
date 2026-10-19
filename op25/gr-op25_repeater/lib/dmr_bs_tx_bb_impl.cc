@@ -70,6 +70,25 @@ static inline int load_i(const uint8_t val[], int len) {
 	return acc;
 }
 
+// Golay(20,8) parity of the slot type (ETSI TS 102 361-1 B.3.10): row i = the 12 parity bits of data bit i
+static const uint8_t golay_20_8_parity[8][12] = {
+	{0,0,1,1,1,1,0,1,1,0,1,0}, {1,1,0,1,1,0,0,1,1,0,0,1}, {0,1,1,0,1,1,0,0,1,1,0,1},
+	{0,0,1,1,0,1,1,0,0,1,1,1}, {1,1,0,1,1,1,0,0,0,1,1,0}, {1,0,1,0,1,0,0,1,0,1,1,1},
+	{1,0,0,1,0,0,1,1,1,1,1,0}, {1,0,0,0,1,1,1,0,1,0,1,1}};
+
+// slot type: color code (4) + data type (4) + Golay(20,8) parity (12)
+static void encode_slot_type(int cc, int data_type, uint8_t result[20]) {
+	int acc = (cc << 4) | data_type;
+	for (int i=0; i<8; i++)
+		result[i] = (acc >> (7-i)) & 1;
+	for (int j=0; j<12; j++) {
+		int p = 0;
+		for (int i=0; i<8; i++)
+			p ^= result[i] & golay_20_8_parity[i][j];
+		result[8+j] = p;
+	}
+}
+
 static void encode_emb(int cc, int pi, int lcss, uint8_t result[16]) {
 	int acc = (cc << 3) | (pi << 2) | lcss;
 	acc = hamming_16_7[acc];
@@ -371,6 +390,19 @@ dmr_bs_tx_bb_impl::config()
 		memcpy(&emb_buf[40], &null_emb[8], 8);
 		bits_to_dibits(d_null_embedded[i], emb_buf, 24);
 	}
+	// a disabled timeslot sends idle data bursts (data type 9): an all-zero info field (a valid
+	// BPTC(196,96) codeword; receivers don't use an idle burst's payload), the slot type around the BS data
+	// sync. Before, its bursts were the silence encoder's AMBE under the data sync, which receivers decoded
+	// as garbage headers and voice.
+	for (int i=0; i<2; i++) {
+		uint8_t st_bits[20], st_dibits[10];
+		encode_slot_type(d_cc[i], 9, st_bits);
+		bits_to_dibits(st_dibits, st_bits, 10);
+		memset(d_idle_body[i], 0, 132);
+		memcpy(&d_idle_body[i][49], &st_dibits[0], 5);		// info 49 | slot type 5 | sync 24 | slot type 5 | info 49
+		memcpy(&d_idle_body[i][54], dmr_bs_idle_sync, 24);
+		memcpy(&d_idle_body[i][78], &st_dibits[5], 5);
+	}
 }
 
 void
@@ -415,10 +447,23 @@ dmr_bs_tx_bb_impl::general_work (int noutput_items,
 
     int cach_id = ((d_next_burst & 1) << 1) + d_next_slot;
     memcpy(&out[0], d_cach[cach_id], 12);
+    if (!d_en[d_next_slot]) {
+      // disabled timeslot: an idle data burst (its input codewords are consumed all the same, so the
+      // two inputs keep the same pace)
+      memcpy(&out[12], d_idle_body[d_next_slot], 132);
+      in[d_next_slot] += 108;
+      out += 144;
+      nconsumed[d_next_slot] += 3;
+      d_next_slot = (d_next_slot + 1) & 1;
+      if (d_next_slot == 0)
+        d_next_burst = (d_next_burst + 1) % 6;
+      nframes++;
+      continue;
+    }
     memcpy(&out[12], &in[d_next_slot][0], 36);
     memcpy(&out[48], &in[d_next_slot][36], 18);
     int schedule = burst_schedule[d_next_slot][d_next_burst];
-    if (schedule == -3 || !d_en[d_next_slot])
+    if (schedule == -3)
       memcpy(&out[66], dmr_bs_idle_sync, 24);
     else if (schedule == -2)
       memcpy(&out[66], dmr_bs_voice_sync, 24);
