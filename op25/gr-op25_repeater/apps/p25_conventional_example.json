@@ -1,80 +1,81 @@
 {
+    "version": 2.0,
     "channels": [
         {
-            "name": "Voice_chA", 
-            "frequency": 155820000,
+            "name": "Channel 0", 
             "device": "sdr0",
-            "trunking_sysname": "",
+            "frequency": 773843750,
+            "trunking_sitename": "",
             "meta_stream_name": "",
-            "demod_type": "fsk4", 
-            "destination": "udp://127.0.0.1:23456",
+            "demod_type": "cqpsk", 
+            "destination": "",
             "excess_bw": 0.2,
             "filter_type": "rc",
             "if_rate": 24000,
             "plot": "",
             "symbol_rate": 4800,
             "enable_analog": "off",
-            "blacklist": "",
-            "whitelist": "",
-            "crypt_keys": "example_keys.json"
-        },
-        {
-            "name": "Voice_chB",
-            "frequency": 155700000,
-            "device": "sdr0",
-            "trunking_sysname": "",
-            "meta_stream_name": "",
-            "demod_type": "fsk4",
-            "destination": "udp://127.0.0.1:23466",
-            "excess_bw": 0.2,
-            "filter_type": "rc",
-            "if_rate": 24000,
-            "plot": "",
-            "symbol_rate": 4800,
-            "enable_analog": "off",
-            "blacklist": "",
-            "whitelist": ""
+            "crypt_behavior": 2,
+            "crypt_keys": ""
         }
     ], 
-
     "devices": [
         {
-            "args": "rtl=0",
-            "frequency": 155000000,
+            "args": "rtl",
             "gains": "LNA:39",
             "gain_mode": false,
             "name": "sdr0",
+            "frequency": 773500000,
             "offset": 0,
             "ppm": 0.0,
             "rate": 1000000,
             "usable_bw_pct": 0.85,
-            "tunable": false
+            "tunable": true
         }
     ],
     "trunking": {
-        "module": "",
-        "chans": [
+        "module": "tk_p25.py",
+        "systems":[
+        ],
+        "streams": [
+            {
+                "name": "Voice Stream 0",
+                "conventional_channel": "Channel 0",
+                "destination": "ws://0.0.0.0:9000",
+                "meta_stream_name": "",
+                "presets": [
+                ]
+            }
+        ],
+        "sites": [
+            {
+            }
         ]
     },
     "metadata": {
-        "module": "",
+        "module": "icemeta.py",
         "streams": [
+            {
+                "stream_name": "",
+                "meta_format_idle": "[idle]",
+                "meta_format_tgid": "[%TGID%]",
+                "meta_format_tag":  "[%TGID%] %TAG%",
+                "icecastServerAddress": "192.168.1.24:8000",
+                "icecastMountpoint": "op25_stream_0",
+                "icecastMountExt": ".xspf",
+                "icecastPass": "hackme1",
+                "delay": 0.0
+            }
         ]
     },
     "audio": {
         "module": "sockaudio.py",
         "instances": [
             {
-                "instance_name": "audio0",
-                "device_name": "default",
+                "#instance_name": "audio0",
+                "device_name": "pulse",
+                "#device_name": "default",
                 "udp_port": 23456,
-                "audio_gain": 1.0,
-                "number_channels": 1
-            },
-            {
-                "instance_name": "audio1",
-                "device_name": "default",
-                "udp_port": 23466,
                 "audio_gain": 1.0,
                 "number_channels": 1
             }
@@ -82,11 +83,16 @@
     },
     "terminal": {
         "module": "terminal.py",
-        "terminal_type": "curses",
+        "terminal_type": "http:0.0.0.0:8080",
         "curses_plot_interval": 0.1,
         "http_plot_interval": 1.0,
         "http_plot_directory": "../www/images",
         "tuning_step_large": 1200,
-        "tuning_step_small": 100
+        "tuning_step_small": 100,
+        "smart_colors": [
+            { "keywords": [ "fire", "fd" ], "color":"#ff5c5c" },
+            { "keywords": [ "pd", "police", "sheriff", "so", "law" ], "color": "#66aaff" },
+            { "keywords": [ "ems", "med", "ambulance" ], "color": "#ffb84d" }
+        ]
     }
 }

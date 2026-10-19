@@ -233,7 +233,7 @@ class rx_ctl(object):
 
     # add_receiver is called once per radio channel defined in cfg.json
     def add_receiver(self, msgq_id, config, freq = 0):
-        if msgq_id in self.receivers: # should be impossible
+        if msgq_id in self.receivers:   # should be impossible
             return
 
         rx_site = None
@@ -241,7 +241,7 @@ class rx_ctl(object):
         rx_name = from_dict(config, 'name', str(msgq_id))
         rx_sysname = from_dict(config, 'trunking_sitename', "undefined")
 
-        if rx_sysname in self.sites:   # known trunking site
+        if rx_sysname in self.sites:    # known trunking site
             rx_site = from_dict(self.sites[rx_sysname], 'site', None)
             rx_rcvr = p25_receiver(debug         = self.debug,
                                    msgq_id       = msgq_id,
@@ -251,7 +251,7 @@ class rx_ctl(object):
                                    config        = config,
                                    freq          = freq)
             self.sites[rx_sysname]['receivers'].append(rx_rcvr)
-        else:                            # undefined or mis-configured trunking sysname
+        else:                           # undefined/mis-configured trunking sysname, or non-trunked system
             sys.stderr.write("Receiver '%s' configured with unknown trunking_sitename '%s'\n" % (rx_name, rx_sysname))
 
         conv_state = None
@@ -262,6 +262,7 @@ class rx_ctl(object):
         self.receivers[msgq_id] = {'msgq_id':    msgq_id,
                                    'config' :    config,
                                    'sysname':    rx_sysname,
+                                   'rx_name':    rx_name,
                                    'rx_rcvr':    rx_rcvr,
                                    'conv_state': conv_state}
 
@@ -269,8 +270,8 @@ class rx_ctl(object):
     def post_init(self):
         for stream in self.streams.values():
             if self.debug >= 10:
-                sys.stderr.write("%s [rx_ctl] post initialize stream [S%d] destination (%s)\n" % (log_ts.get(), stream.id, stream.destination))
-            stream.init_destination()
+                sys.stderr.write("%s [rx_ctl] post initialize stream [S%d]\n" % (log_ts.get(), stream.id))
+            stream.post_init()
         for rx in self.receivers:
             if self.receivers[rx]['rx_rcvr'] is not None:
                 if self.debug >= 10:
@@ -300,9 +301,19 @@ class rx_ctl(object):
             if system.name == sysname:
                 found_system = system
                 break
-        if not found_system and allow_default:
+        if not found_system and allow_default and len(self.systems) > 0:
             found_system = next(iter(self.systems.values()))
         return found_system
+
+    def get_receiver_id_by_name(self, rcvr_name):
+        found_rcvr = None
+        for rx in self.receivers:
+            if self.receivers[rx]['rx_name'] is not None:
+                if self.receivers[rx]['rx_name'] == rcvr_name:
+                    found_rcvr = rx
+                    break
+        return found_rcvr
+        
 
     # process_qmsg is the main message dispatch handler connecting the 'radios' to python
     def process_qmsg(self, msg):
@@ -600,11 +611,13 @@ class p25_stream(object):
         self.rx_ctl = rx_ctl
         self.meta_q = None
         self.receiver = None
-        self.name        = str(from_dict(config, 'name', str(str_id)))
-        self.system_name = str(from_dict(config, 'system', ""))
-        self.system = self.rx_ctl.get_system_by_name(self.system_name, True)
-        self.destination = str(from_dict(config, 'destination', ""))
-        self.meta_stream = str(from_dict(config, 'meta_stream_name', ""))
+        self.name                = str(from_dict(config, 'name', str(str_id)))
+        self.conventional_ch     = str(from_dict(config, 'conventional_channel', ""))
+        self.conventional_ch_id  = None
+        self.system_name         = str(from_dict(config, 'system', ""))
+        self.system = self.rx_ctl.get_system_by_name(self.system_name, True) if self.conventional_ch == "" else None
+        self.destination         = str(from_dict(config, 'destination', ""))
+        self.meta_stream         = str(from_dict(config, 'meta_stream_name', ""))
         self.whitelist_file_name = str(from_dict(config, 'whitelist', ""))
         self.blacklist_file_name = str(from_dict(config, 'blacklist', ""))
         self.whitelist = None
@@ -644,7 +657,16 @@ class p25_stream(object):
             sys.stderr.write("%s [S%d] reading stream whitelist file: %s\n" % (log_ts.get(), self.id, self.whitelist_file_name))
             self.whitelist = get_int_dict(self.whitelist_file_name, self.id)
 
+    def post_init(self):
+        self.init_destination()
+        if self.conventional_ch != "":  # Non-trunked (conventional) channel
+            self.conventional_ch_id = self.rx_ctl.get_receiver_id_by_name(self.conventional_ch)
+            if self.destination != "" and self.rx_ctl.fa_ctrl is not None and self.conventional_ch_id is not None:
+                self.rx_ctl.fa_ctrl({'tuner': self.conventional_ch_id, 'cmd': 'set_destination', 'destination': self.destination})
+
     def init_destination(self):
+        if self.debug >= 1:
+            sys.stderr.write("%s [S%d] post initialize stream destination (%s)\n" % (log_ts.get(), self.id, self.destination))
         if self.destination is not None and self.destination != "" and self.rx_ctl.fa_ctrl is not None:
             self.rx_ctl.fa_ctrl({'tuner': self.id, 'cmd': 'init_destination', 'destination': self.destination})
 
@@ -910,27 +932,44 @@ class p25_stream(object):
             sys.stderr.write("%s [S%d] get_status: stream current_tgid=%s, receiver=%s\n" % (log_ts.get(), self.id, self.current_tgid, (self.receiver.msgq_id if self.receiver is not None else "None")))
 
         stream_status = {}
-        with self.system.talkgroups_mutex:
-            _tgid = self.hold_tgid if self.hold_tgid is not None else self.current_tgid
-            _siteslist = []
-            if _tgid is not None:
-                for site in self.system.talkgroups[_tgid]['sites']:
-                    _siteslist.append(("%d/%d" % (site.rfss_rfid, site.rfss_stid)))
+        if self.system is None: # P25 Conventional
             stream_status['name'] = self.name
             stream_status['destination'] = self.destination
-            stream_status['system'] = self.system_name
-            stream_status['receiver'] = self.receiver.msgq_id if self.receiver is not None else None
-            stream_status['tgid'] = _tgid
-            stream_status['tag'] = self.system.talkgroups[_tgid]['tag'] if _tgid is not None else "Idle"
-            stream_status['srcaddr'] = self.system.talkgroups[self.current_tgid]['srcaddr'] if self.current_tgid is not None else 0
-            stream_status['srctag'] = self.system.get_rid_tag(self.system.talkgroups[self.current_tgid]['srcaddr']) if self.current_tgid is not None else ""
-            stream_status['sites'] = _siteslist
-            stream_status['svcopts'] = self.system.talkgroups[self.current_tgid]['svcopts'] if self.current_tgid is not None else 0
-            stream_status['hold_tgid'] = self.hold_tgid if self.hold_tgid is not None else 0
-            stream_status['encrypted'] = self.system.talkgroups[self.current_tgid]['encrypted'] if self.current_tgid is not None else 0
-            stream_status['emergency'] = (stream_status['svcopts'] >> 7) & 0x1
+            stream_status['system'] = ""
+            stream_status['receiver'] = self.receiver.msgq_id if self.receiver is not None else self.conventional_ch_id
+            stream_status['tgid'] = self.current_tgid
+            stream_status['tag'] = None
+            stream_status['srcaddr'] = 0
+            stream_status['srctag'] = ""
+            stream_status['sites'] = []
+            stream_status['svcopts'] = 0
+            stream_status['hold_tgid'] = 0
+            stream_status['encrypted'] = 0
+            stream_status['emergency'] = 0
             stream_status['stream'] = self.meta_stream
             stream_status['strid'] = self.id
+        else:                   # P25 Trunking
+            with self.system.talkgroups_mutex:
+                _tgid = self.hold_tgid if self.hold_tgid is not None else self.current_tgid
+                _siteslist = []
+                if _tgid is not None:
+                    for site in self.system.talkgroups[_tgid]['sites']:
+                        _siteslist.append(("%d/%d" % (site.rfss_rfid, site.rfss_stid)))
+                stream_status['name'] = self.name
+                stream_status['destination'] = self.destination
+                stream_status['system'] = self.system_name
+                stream_status['receiver'] = self.receiver.msgq_id if self.receiver is not None else None
+                stream_status['tgid'] = _tgid
+                stream_status['tag'] = self.system.talkgroups[_tgid]['tag'] if _tgid is not None else "Idle"
+                stream_status['srcaddr'] = self.system.talkgroups[self.current_tgid]['srcaddr'] if self.current_tgid is not None else 0
+                stream_status['srctag'] = self.system.get_rid_tag(self.system.talkgroups[self.current_tgid]['srcaddr']) if self.current_tgid is not None else ""
+                stream_status['sites'] = _siteslist
+                stream_status['svcopts'] = self.system.talkgroups[self.current_tgid]['svcopts'] if self.current_tgid is not None else 0
+                stream_status['hold_tgid'] = self.hold_tgid if self.hold_tgid is not None else 0
+                stream_status['encrypted'] = self.system.talkgroups[self.current_tgid]['encrypted'] if self.current_tgid is not None else 0
+                stream_status['emergency'] = (stream_status['svcopts'] >> 7) & 0x1
+                stream_status['stream'] = self.meta_stream
+                stream_status['strid'] = self.id
 
         return stream_status
 
