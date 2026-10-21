@@ -48,7 +48,8 @@ namespace gr {
 
       void forecast (int noutput_items, gr_vector_int &ninput_items_required);
       void set_gain_adjust(float gain_adjust);
-      std::string control(const std::string& args) override;
+      void set_nac(int nac);
+      void set_lc(int lco, int mfid, int svcopt, int s, int tgid, int dst, int src);
 
       int general_work(int noutput_items,
 		       gr_vector_int &ninput_items,
@@ -67,6 +68,7 @@ namespace gr {
       log_ts logts;
 
   private:
+
 	std::deque<uint8_t> output_queue;
 	std::deque<int16_t> output_queue_decode;
 	int opt_udp_port;
