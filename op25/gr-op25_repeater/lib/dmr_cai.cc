@@ -121,6 +121,8 @@ dmr_cai::load_frame(const uint8_t fr_sym[], bool& unmute) {
 
 	// decode the slot data
 	unmute = d_slot[d_chan].load_slot(d_frame + 24, sl_sync);
+	if (d_slot[d_chan].get_cc() != 0x0)
+		d_slot[d_chan ^ 1].adopt_cc(d_slot[d_chan].get_cc());
 
 	return sync_rxd;
 }
