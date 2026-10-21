@@ -64,6 +64,7 @@ namespace gr {
 	uint8_t d_cach[4][12];
 	uint8_t d_embedded[2][4*24];
 	uint8_t d_null_embedded[2][24];	// burst F: EMB (LCSS 0) + null embedded signaling
+	uint8_t d_idle_body[2][132];	// a disabled timeslot's burst after the CACH: an idle data burst
     };
 
   } // namespace op25_repeater
