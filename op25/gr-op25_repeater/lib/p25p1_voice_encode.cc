@@ -16,9 +16,8 @@
 #include "config.h"
 #endif
 
-#include "p25p1_voice_encode.h"
-
 #include <gnuradio/io_signature.h>
+#include "p25p1_voice_encode.h"
 
 #include <errno.h>
 #include <stdint.h>
