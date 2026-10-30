@@ -1161,6 +1161,11 @@ class p25_system(object):
                 self.utc_offset_min = -(raw & 0x7ff) if (raw >> 11) & 1 else (raw & 0x7ff)
             if self.debug >= 10:
                 sys.stderr.write('%s [%d] tsbk(0x35) time_date_ann: vl: %d utc_offset_min: %s\n' % (log_ts.get(), m_rxid, vl, self.utc_offset_min))
+        elif opcode == 0x1f and ((tsbk >> 80) & 0xff) == 0:   # call_alrt
+            ta   = (tsbk >> 40) & 0xffffff
+            sa   = (tsbk >> 16) & 0xffffff
+            if self.debug >= 10:
+                sys.stderr.write('%s [%d] tsbk(0x1f) call_alrt: ta: %d sa: %d\n' % (log_ts.get(), m_rxid, ta, sa))
         else:
             if self.debug >= 10:
                 sys.stderr.write('%s [%d] tsbk(0x%02x) unhandled: 0x%024x\n' % (log_ts.get(), m_rxid, opcode, tsbk))
