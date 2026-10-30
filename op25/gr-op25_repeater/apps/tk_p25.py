@@ -943,6 +943,11 @@ class p25_system(object):
                 add_unique_freq(self.cc_list, f1)
             if self.debug >= 10:
                 sys.stderr.write('%s [%d] tsbk(0x29) sccb_exp: rfid: %x stid: %d ch1: %x(%s) ch2: %x(%s)\n' %(log_ts.get(), m_rxid, rfid, stid, ch1, self.channel_id_to_string(ch1), ch2, self.channel_id_to_string(ch2)))
+        elif opcode == 0x2a and ((tsbk >> 80) & 0xff) == 0:   # grp_aff_q
+            ta   = (tsbk >> 40) & 0xffffff
+            sa   = (tsbk >> 16) & 0xffffff
+            if self.debug >= 10:
+                sys.stderr.write('%s [%d] tsbk(0x2a) grp_aff_q: ta: %d sa: %d\n' % (log_ts.get(), m_rxid, ta, sa))
         elif opcode == 0x2b:   # loc_reg_rsp
             mfrid  = (tsbk >> 80) & 0xff
             rv     = (tsbk >> 72) & 0x3
