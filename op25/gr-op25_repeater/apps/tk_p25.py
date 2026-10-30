@@ -969,6 +969,11 @@ class p25_system(object):
                 sys.stderr.write('%s [%d] tsbk(0x2c) u_reg_rsp: mfid: 0x%x rv: %d syid: 0x%x sid: %d sa: %d\n' % (log_ts.get(), m_rxid, mfrid, rv, syid, sid, sa))
             if rv == 0:
                 self.register_suid(self.ns_wacn, syid, sid, sa, self.last_tsbk)
+        elif opcode == 0x2d and ((tsbk >> 80) & 0xff) == 0:   # u_reg_cmd
+            ta   = (tsbk >> 40) & 0xffffff
+            sa   = (tsbk >> 16) & 0xffffff
+            if self.debug >= 10:
+                sys.stderr.write('%s [%d] tsbk(0x2d) u_reg_cmd: ta: %d sa: %d\n' % (log_ts.get(), m_rxid, ta, sa))
         elif opcode == 0x2f:   # u_de_reg_ack
             mfrid  = (tsbk >> 80) & 0xff
             wacn   = (tsbk >> 52) & 0xfffff
