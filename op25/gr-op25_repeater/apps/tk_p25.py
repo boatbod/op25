@@ -897,6 +897,19 @@ class p25_system(object):
             ch2  = (tsbk >> 32) & 0xffff
             if self.debug >= 10:
                 sys.stderr.write('%s [%d] tsbk(0x16) sndcp_data_ch: ch1: %x ch2: %x\n' % (log_ts.get(), m_rxid, ch1, ch2))
+        elif opcode == 0x20 and ((tsbk >> 80) & 0xff) == 0:   # ack_rsp_fne
+            aiv  = (tsbk >> 79) & 0x1
+            ex   = (tsbk >> 78) & 0x1
+            svc  = (tsbk >> 72) & 0x3f
+            ta   = (tsbk >> 16) & 0xffffff
+            if self.debug >= 10:
+                if ex:
+                    wacn = (tsbk >> 52) & 0xfffff
+                    syid = (tsbk >> 40) & 0xfff
+                    sys.stderr.write('%s [%d] tsbk(0x20) ack_rsp_fne: aiv: %d ex: %d svc: 0x%02x wacn: 0x%x syid: 0x%x ta: %d\n' % (log_ts.get(), m_rxid, aiv, ex, svc, wacn, syid, ta))
+                else:
+                    sa = (tsbk >> 40) & 0xffffff
+                    sys.stderr.write('%s [%d] tsbk(0x20) ack_rsp_fne: aiv: %d ex: %d svc: 0x%02x sa: %d ta: %d\n' % (log_ts.get(), m_rxid, aiv, ex, svc, sa, ta))
         elif opcode == 0x28:   # grp_aff_rsp
             mfrid  = (tsbk >> 80) & 0xff
             lg     = (tsbk >> 79) & 0x01
