@@ -908,6 +908,14 @@ class p25_system(object):
                 sys.stderr.write('%s [%d] tsbk(0x28) grp_aff_rsp: mfid: 0x%x gav: %d aga: %d ga: %d ta: %d\n' % (log_ts.get(), m_rxid, mfrid, gav, aga, ga, ta))
             if gav == 0:
                 self.affiliate_sgid(self.ns_wacn, self.ns_syid, ga, ga, aga, ta, self.last_tsbk)
+        elif (opcode == 0x27 or opcode == 0x21) and ((tsbk >> 80) & 0xff) == 0:   # deny_rsp, que_rsp
+            aiv  = (tsbk >> 79) & 0x1
+            svc  = (tsbk >> 72) & 0x3f
+            rsn  = (tsbk >> 64) & 0xff
+            info = (tsbk >> 40) & 0xffffff
+            ta   = (tsbk >> 16) & 0xffffff
+            if self.debug >= 10:
+                sys.stderr.write('%s [%d] tsbk(0x%02x) %s: aiv: %d svc: 0x%02x reason: 0x%02x info: 0x%06x ta: %d\n' % (log_ts.get(), m_rxid, opcode, 'deny_rsp' if opcode == 0x27 else 'que_rsp', aiv, svc, rsn, info, ta))
         elif opcode == 0x29:   # secondary cc explicit form
             mfrid = (tsbk >> 80) & 0xff
             rfid  = (tsbk >> 72) & 0xff
