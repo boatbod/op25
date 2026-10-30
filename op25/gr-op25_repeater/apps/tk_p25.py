@@ -885,6 +885,13 @@ class p25_system(object):
                     self.callsign = bsi
                     if self.debug >= 10:
                         sys.stderr.write('%s [%d] tsbk(0x0b) mot_bsi_grant: bsi: %s ch: %x(%s)\n' % (log_ts.get(), m_rxid, bsi, ch, self.channel_id_to_string(ch)))
+        elif opcode == 0x14 and ((tsbk >> 80) & 0xff) == 0:   # sn-data_chn_gnt
+            opts = (tsbk >> 72) & 0xff
+            ch1  = (tsbk >> 56) & 0xffff
+            ch2  = (tsbk >> 40) & 0xffff
+            ta   = (tsbk >> 16) & 0xffffff
+            if self.debug >= 10:
+                sys.stderr.write('%s [%d] tsbk(0x14) sn_data_chn_gnt: opts: 0x%x ch1: %x(%s) ch2: %x(%s) ta: %d\n' % (log_ts.get(), m_rxid, opts, ch1, self.channel_id_to_string(ch1), ch2, self.channel_id_to_string(ch2), ta))
         elif opcode == 0x16:   # sndcp data ch
             ch1  = (tsbk >> 48) & 0xffff
             ch2  = (tsbk >> 32) & 0xffff
