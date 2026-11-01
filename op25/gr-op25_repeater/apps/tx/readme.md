@@ -52,18 +52,29 @@ The following options are supported:
 | `-S`, `--alsa-rate`            | Sample rate for sound card input/output (default: 48000).                              |
 | `-t`, `--test`                 | Test pattern symbol file as input (bypasses normal encoders).                          |
 | `-v`, `--verbose`              | Verbosity level (default: 0).                                                          |
+| `--nac`                        | (P25 only) Network Access Code. Decimal or `0x`-prefixed hex, range `0x000`–`0xfff`.   |
+| `--mi`                         | (P25 only) Message Indicator. Decimal, `0x`-prefixed hex, or `auto` to generate a random 64-bit value at runtime. |
+| `--algid`                      | (P25 only) Algorithm ID. Decimal or `0x`-prefixed hex, Defined algorithms: 0xAA (ADP), 0x81 (DES-OFB), 0x84 (AES-256). |
+| `--kid`                        | (P25 only) Key ID. Decimal or `0x`-prefixed hex, range `0x0000`–`0xffff`. Required with `--keyfile`. |
+| `--key`                        | (P25 only) Encryption key. Decimal or `0x`-prefixed hex (up to 64 bits). |
+| `--keyfile`                    | (P25 only) Path to a JSON key file to look up the key/algorithm for `--kid`. Requires `--kid`. The file key format is the same as for receive (see example_keys.json) |
+| `--tgid`                       | (P25 only) Talkgroup ID. Decimal or `0x`-prefixed hex, range `0x0000`–`0xffff`.        |
+| `--src`                        | (P25 only) Source ID. Decimal or `0x`-prefixed hex, range `0x000000`–`0xffffff`.       |
+| `--dst`                        | (P25 only) Destination ID for Direct (individual) call. Decimal or `0x`-prefixed hex, range `0x000000`–`0xffffff`. Setting this also sets LCO to 3 (unit-to-unit). |
+| `--emrg`                       | (P25 only) Set the Emergency flag on the voice call. (default: not set)                |
+
 
 **Example:**  
 Transmit a P25 digital voice signal using an audio file as input:
 
 ```sh
-./dv_tx.py -p p25 --args 'hackrf' -i 10000000 -q 0  -v 11 -f ./file.wav -Q 145000000 -N 'RF:0,IF:24'
+./dv_tx.py -p p25 --args 'hackrf' -i 9600000 -q 0 -v 2 -f ./file.wav -Q 145000000 -N 'RF:0,IF:16'
 ```
 
 or using a microphone as input:
 
 ```sh
-./dv_tx.py -p p25 --args 'hackrf' -i 10000000 -q 0 -v 11 -I hw:0,0 -Q 145000000 -N 'RF:0,IF:24'
+./dv_tx.py -p p25 --args 'hackrf' -i 9600000 -q 0 -v 2 -I hw:0,0 -Q 145000000 -N 'RF:0,IF:16'
 ```
 
 ## Protocol-Specific Requirements
@@ -72,11 +83,19 @@ or using a microphone as input:
 - **DMR:** If using two time slots, specify both `-f` (slot 1) and `-F` (slot 2).  
 - **P25 and YSF:** Optionally, use `-R/--fullrate-mode` for fullrate YSF.
 
+## Crypto Support
+Voice encryption is supported on P25 Transmissions.
+
+For manual operation, `--algid`, `--kid`, `--mi` and `--key` must be defined.
+
+Keys can also be defined in a keys.json formatted file and used in cmd-line by defining `--keyfile`, `--kid` and `--mi`.
+
+Message Indicator (MI, or Initialiation Vector) can be defined maually (by specifying a 64-bit value) or generated pseudo-randomly ('auto' option).
+
 ## Output Options
 
 - By default, output is sent to an SDR if `-a/--args` is specified. Otherwise, output goes to the sound card or to a file if `-o` is given.
 - Use `-O/--audio-output` to select audio device or `-o/--output-file` to save the modulated signal as a file.
-
 
 # p25craft.py
 
