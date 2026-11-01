@@ -236,7 +236,7 @@ class my_top_block(gr.top_block):
         elif options.protocol == 'dstar':
             ENCODER = op25_repeater.dstar_tx_sb(options.verbose, options.config_file)
         elif options.protocol == 'p25':
-            ENCODER = op25_repeater.vocoder(True, # 0=Decode,True=Encode
+            ENCODER = op25_repeater.vocoder(True, # False=Decode,True=Encode
                                   False,          # Verbose flag
                                   0,              # flex amount
                                   "",             # udp ip address
@@ -271,9 +271,8 @@ class my_top_block(gr.top_block):
             if len(p25_params) > 1:
                 response = ENCODER.control(json.dumps(p25_params))
 
-        if options.verbose >= 5:
-            sys.stderr.write(
-                "P25 encoder control: %s -> %s\n"
+            if options.verbose >= 5:
+                sys.stderr.write("P25 encoder control: %s -> %s\n"
                 % (p25_params, response))
         elif options.protocol == 'ysf':
             ENCODER = op25_repeater.ysf_tx_sb(options.verbose, options.config_file, options.fullrate_mode)
@@ -283,7 +282,7 @@ class my_top_block(gr.top_block):
                 ENCODER.set_gain_adjust(gain_adjust['ysf'])
         if options.protocol == 'p25' and not options.test:
             ENCODER.set_gain_adjust(gain_adjust_fullrate[options.protocol])
-        elif not options.test and not options.protocol == 'ysf':
+        elif not options.protocol == 'ysf' and not options.test:
             ENCODER.set_gain_adjust(gain_adjust[options.protocol])
         nfiles = 0
         if options.file1:
@@ -308,7 +307,7 @@ class my_top_block(gr.top_block):
         elif not options.test:
             self.connect(AUDIO_F2S, ENCODER)
 
-        if options.protocol == 'dmr':
+        if options.protocol == 'dmr' and not options.test:
             if options.file2:
                 IN2 = blocks.file_source(gr.sizeof_short, options.file2, options.repeat)
                 S2F2 = blocks.short_to_float()
@@ -387,12 +386,17 @@ if __name__ == "__main__":
     tb = my_top_block()
     try:
         tb.run()
+        # Only append an sTDU when the transmission came from a file
+        if tb.options.protocol == 'p25' and tb.options.file1 and not tb.options.test:
+            response = tb.ENCODER.control(json.dumps({'cmd': 'end_transmission'}))
+            if tb.options.verbose >= 5:
+                sys.stderr.write("sTDU control: %s\n" % response)
     except KeyboardInterrupt:
+        pass
+    finally:
         tb.stop()
         tb.wait()
-    
-    # Only append an sTDU when the transmission came from a file
-    if tb.options.protocol == 'p25' and tb.options.file1 and not tb.options.test:
-        response = tb.ENCODER.control(json.dumps({'cmd': 'end_transmission'}))
-        if tb.options.verbose >= 5:
-            sys.stderr.write("sTDU control: %s\n" % response)
+        if hasattr(tb, 'u'):
+            tb.u = None
+        del tb
+        print("Deleted Top Block")
