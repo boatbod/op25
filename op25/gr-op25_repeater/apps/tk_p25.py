@@ -659,6 +659,7 @@ class p25_system(object):
                 return updated
             opcode = (header >> 16) & 0x3f
             updated += self.decode_mbt_data(m_rxid, opcode, src, header << 16, mbt_data << 32)
+            
 
         elif m_type == 18:                                  # TDMA PDU
             updated += self.decode_tdma_msg(m_rxid, s, curr_time)
@@ -684,7 +685,7 @@ class p25_system(object):
             if f:
                 updated += 1
             if self.debug >= 10:
-                sys.stderr.write('%s [%d] mbt(0x00) grp_v_ch__grant: opts: 0x%02x ch1: %x ch2: %x ga: %d\n' %(log_ts.get(), m_rxid, opts, ch1, ch2, ga))
+                sys.stderr.write('%s [%d] mbt(0x00) grp_v_ch_grant: opts: 0x%02x ch_tx: %s ch_rx: %s ga: %d sa: %d\n' %(log_ts.get(), m_rxid, opts, self.channel_id_to_string(ch1), self.channel_id_to_string(ch2), ga, src))
         elif opcode == 0x02: # grp regroup voice channel grant
             mfrid  = (mbt_data >> 168) & 0xff
             if mfrid == 0x90:    # MOT_GRG_CN_GRANT_EXP
@@ -696,7 +697,7 @@ class p25_system(object):
                 if f:
                     updated += 1
                 if self.debug >= 10:
-                    sys.stderr.write('%s [%d] mbt(0x02) mfid90_grg_cn_grant_exp: ch1: %x ch2: %x sg: %d\n' % (log_ts.get(), m_rxid, ch1, ch2, ga))
+                    sys.stderr.write('%s [%d] mbt(0x02) mfid90_grg_cn_grant_exp: ch1: %s ch2: %s sg: %d\n' % (log_ts.get(), m_rxid, self.channel_id_to_string(ch1), self.channel_id_to_string(ch2), ga))
         elif opcode == 0x28:  # grp_aff_rsp
             ta    = src
             mfrid = (header >> 56) & 0xff
@@ -859,7 +860,7 @@ class p25_system(object):
                     updated += 1
                 if self.debug >= 10:
                     sys.stderr.write('%s [%d] tsbk(0x03) mfid90_grg_ch_grant_up: freq1: %s sg1: %d freq2: %s sg2:%d\n' % (log_ts.get(), m_rxid, self.channel_id_to_string(ch1), sg1, self.channel_id_to_string(ch2), sg2))
-            elif mfrid == 0:
+            elif mfrid == 0x00:
                 opts = (tsbk >> 72) & 0xff
                 ch1  = (tsbk >> 48) & 0xffff
                 ch2   = (tsbk >> 32) & 0xffff
@@ -870,6 +871,22 @@ class p25_system(object):
                     updated += 1
                 if self.debug >= 10:
                     sys.stderr.write('%s [%d] tsbk(0x03) grp_v_ch_grant_up_exp: opts: 0x%02x freq-t: %s freq-r: %s ga: %d\n' % (log_ts.get(), m_rxid, opts, self.channel_id_to_string(ch1), self.channel_id_to_string(ch2), ga))
+        elif opcode == 0x04:
+            mfrid  = (tsbk >> 80) & 0xff
+            if mfrid == 0x00: # uu_v_ch_grant
+                ch = (tsbk >> 64) & 0xffff
+                tgt = (tsbk >> 40) & 0xffffff
+                sa = (tsbk >> 16) & 0xffffff
+                if self.debug >= 10:
+                    sys.stderr.write('%s [%d] tsbk(0x04) uu_v_ch_grant: ch: %s tgt: %d sa: %d\n' % (log_ts.get(), m_rxid, self.channel_id_to_string(ch), tgt, sa))
+        elif opcode == 0x06:
+            mfrid  = (tsbk >> 80) & 0xff
+            if mfrid == 0x00: # uu_v_ch_grant_updt
+                ch = (tsbk >> 64) & 0xffff
+                tgt = (tsbk >> 40) & 0xffffff
+                sa = (tsbk >> 16) & 0xffffff
+                if self.debug >= 10:
+                    sys.stderr.write('%s [%d] tsbk(0x06) uu_v_ch_grant_updt: ch: %s tgt: %d sa: %d\n' % (log_ts.get(), m_rxid, self.channel_id_to_string(ch), tgt, sa))
         elif opcode == 0x0b:
             mfrid  = (tsbk >> 80) & 0xff
             if mfrid == 0x90: # MFID90 MOT_BSI_GRANT
@@ -885,31 +902,92 @@ class p25_system(object):
                     self.callsign = bsi
                     if self.debug >= 10:
                         sys.stderr.write('%s [%d] tsbk(0x0b) mot_bsi_grant: bsi: %s ch: %x(%s)\n' % (log_ts.get(), m_rxid, bsi, ch, self.channel_id_to_string(ch)))
-        elif opcode == 0x14 and ((tsbk >> 80) & 0xff) == 0:   # sn-data_chn_gnt
-            opts = (tsbk >> 72) & 0xff
-            ch1  = (tsbk >> 56) & 0xffff
-            ch2  = (tsbk >> 40) & 0xffff
-            ta   = (tsbk >> 16) & 0xffffff
-            if self.debug >= 10:
-                sys.stderr.write('%s [%d] tsbk(0x14) sn_data_chn_gnt: opts: 0x%x ch1: %x(%s) ch2: %x(%s) ta: %d\n' % (log_ts.get(), m_rxid, opts, ch1, self.channel_id_to_string(ch1), ch2, self.channel_id_to_string(ch2), ta))
+        elif opcode == 0x14: 
+            mfrid = (tsbk >> 80) & 0xff
+            if mfrid == 0x00: #sn-data_chn_gnt
+                so = (tsbk >> 72) & 0xff
+                ch_tx = (tsbk >> 56) & 0xffff
+                ch_rx = (tsbk >> 40) & 0xffff
+                tgt = (tsbk >> 16) & 0xffffff
+                if self.debug >= 10:
+                    sys.stderr.write('%s [%d] tsbk(0x14) sn-data_chn_gnt: so: %d ch_tx: %s ch_rx: %s tgt: %d\n' % (log_ts.get(), m_rxid, so, self.channel_id_to_string(ch_tx), self.channel_id_to_string(ch_rx), tgt))
+        elif opcode == 0x15:
+            mfrid = (tsbk >> 80) & 0xff
+            if mfrid == 0x00: #sn-data_page_Req
+                data_so = (tsbk >> 72) & 0xff
+                data_acc_ctrl = (tsbk >> 40) & 0xffff
+                tgt = (tsbk >> 16) & 0xffffff
+                if self.debug >= 10:
+                    sys.stderr.write('%s [%d] tsbk(0x15) sn-data_page_req: data_so: %d data_cc_ctrl: %d tgt: %d\n' % (log_ts.get(), m_rxid, data_so, data_acc_ctrl, tgt))
         elif opcode == 0x16:   # sndcp data ch
             ch1  = (tsbk >> 48) & 0xffff
             ch2  = (tsbk >> 32) & 0xffff
             if self.debug >= 10:
                 sys.stderr.write('%s [%d] tsbk(0x16) sndcp_data_ch: ch1: %x ch2: %x\n' % (log_ts.get(), m_rxid, ch1, ch2))
-        elif opcode == 0x20 and ((tsbk >> 80) & 0xff) == 0:   # ack_rsp_fne
-            aiv  = (tsbk >> 79) & 0x1
-            ex   = (tsbk >> 78) & 0x1
-            svc  = (tsbk >> 72) & 0x3f
-            ta   = (tsbk >> 16) & 0xffffff
-            if self.debug >= 10:
-                if ex:
-                    wacn = (tsbk >> 52) & 0xfffff
-                    syid = (tsbk >> 40) & 0xfff
-                    sys.stderr.write('%s [%d] tsbk(0x20) ack_rsp_fne: aiv: %d ex: %d svc: 0x%02x wacn: 0x%x syid: 0x%x ta: %d\n' % (log_ts.get(), m_rxid, aiv, ex, svc, wacn, syid, ta))
+        elif opcode == 0x18:
+            mfrid = (tsbk >> 80) & 0xff
+            if mfrid == 0x00: #sts_updt
+                sts = (tsbk >> 64) & 0xffff
+                tgt = (tsbk >> 40) & 0xffffff
+                sa = (tsbk >> 16) & 0xffffff
+                if self.debug >= 10:
+                    sys.stderr.write('%s [%d] tsbk(0x18) sts_updt: sts: 0x%x tgt: 0x%x sa: %d\n' % (log_ts.get(), m_rxid, sts, tgt, sa))
+        elif opcode == 0x20:
+            mfrid = (tsbk >> 80) & 0xff
+            if mfrid == 0x00: #ack_rsp_fne
+                aiv = (tsbk >> 79) & 0x1
+                ex = (tsbk >> 78) & 0x1
+                srv_type = (tsbk >> 72) & 0x3f
+                tgt = (tsbk >> 16) & 0xffffff
+                
+                if aiv == 1 and ex == 0:
+                    add_info = (tsbk >> 40) & 0xffffff # src addr
+                    if self.debug >= 10:
+                        sys.stderr.write('%s [%d] tsbk(0x20) ack_rsp_fne: aiv: %d ex: %d srv_type: 0x%x src id: 0x%x tgt: %d\n' % (log_ts.get(), m_rxid, aiv, ex, srv_type, add_info, tgt))
+                elif aiv == 1 and ex == 1:
+                    wacn_id = (tsbk >> 52) & 0xfffff
+                    sysid = (tsbk >> 40) & 0xfff
+                    if self.debug >= 10:
+                        sys.stderr.write('%s [%d] tsbk(0x20) ack_rsp_fne: aiv: %d ex: %d srv_type: 0x%x wacn id: 0x%x sys id: 0x%x tgt: %d\n' % (log_ts.get(), m_rxid, aiv, ex, srv_type, wacn_id, sysid, tgt))
+                else: 
+                    add_info = (tsbk >> 40) & 0xffffffff
+                    if self.debug >= 10:
+                        sys.stderr.write('%s [%d] tsbk(0x20) ack_rsp_fne: aiv: %d ex: %d srv_type: 0x%x add_info: 0x%x tgt: %d\n' % (log_ts.get(), m_rxid, aiv, ex, srv_type, add_info, tgt))		
+        elif opcode == 0x21:
+            mfrid  = (tsbk >> 80) & 0xff
+            if mfrid == 0x00: #que_rsp
+                aiv = (tsbk >> 79) & 0x1
+                srv_type = (tsbk >> 72) & 0x3f
+                reason = (tsbk >> 64) & 0xff
+                add_info = (tsbk >> 40) & 0xffffff
+                tgt = (tsbk >> 16) & 0xffffff
+
+                if aiv == 0:
+                    if self.debug >= 10:
+                        sys.stderr.write('%s [%d] tsbk(0x21) que_rsp: aiv: %d srv_type: 0x%x reason: 0x%x tgt: %d invalid additional information\n' % (log_ts.get(), m_rxid, aiv, srv_type, reason, tgt))		
                 else:
-                    sa = (tsbk >> 40) & 0xffffff
-                    sys.stderr.write('%s [%d] tsbk(0x20) ack_rsp_fne: aiv: %d ex: %d svc: 0x%02x sa: %d ta: %d\n' % (log_ts.get(), m_rxid, aiv, ex, svc, sa, ta))
+                    opts = (tsbk >> 56) & 0xff
+                    ga = (tsbk >> 40) & 0xffff    # unsure which
+                    sa = (tsbk >> 40) & 0xffffff  # unsure which
+                    if self.debug >= 10:
+                        sys.stderr.write('%s [%d] tsbk(0x21) que_rsp: aiv: %d srv_type: 0x%x reason: 0x%x opts: 0x%x ga: %d sa: %d tgt: %d\n' % (log_ts.get(), m_rxid, aiv, srv_type, reason, opts, ga, sa, tgt))
+        elif opcode == 0x27:
+            mfrid  = (tsbk >> 80) & 0xff
+            if mfrid == 0x00: # deny_rsp
+                aiv = (tsbk >> 79) & 0x1
+                srv_type = (tsbk >> 78) & 0x3f
+                reason = (tsbk >> 64) & 0xff
+                tgt = (tsbk >> 16) & 0xffffff
+                
+                if aiv == 0:
+                    if self.debug >= 10:
+                        sys.stderr.write('%s [%d] tsbk(0x27) deny_rsp: aiv: %d srv_type: 0x%x reason: %d tgt: %d invalid additional info\n' % (log_ts.get(), m_rxid, aiv, srv_type, reason, tgt))
+                else:
+                    so = (tsbk >> 56) & 0xff
+                    ga = (tsbk >> 40) & 0xffff    #unsure which to choose
+                    sa = (tsbk >> 40) & 0xffffff  #unsure which to choose
+                    if self.debug >= 10:
+                        sys.stderr.write('%s [%d] tsbk(0x27) deny_rsp: aiv: %d srv_type: 0x%x reason: %d so: %d ga %d sa %d tgt: %d\n' % (log_ts.get(), m_rxid, aiv, srv_type, reason, so, ga, sa, tgt))
         elif opcode == 0x28:   # grp_aff_rsp
             mfrid  = (tsbk >> 80) & 0xff
             lg     = (tsbk >> 79) & 0x01
@@ -921,14 +999,6 @@ class p25_system(object):
                 sys.stderr.write('%s [%d] tsbk(0x28) grp_aff_rsp: mfid: 0x%x gav: %d aga: %d ga: %d ta: %d\n' % (log_ts.get(), m_rxid, mfrid, gav, aga, ga, ta))
             if gav == 0:
                 self.affiliate_sgid(self.ns_wacn, self.ns_syid, ga, ga, aga, ta, self.last_tsbk)
-        elif (opcode == 0x27 or opcode == 0x21) and ((tsbk >> 80) & 0xff) == 0:   # deny_rsp, que_rsp
-            aiv  = (tsbk >> 79) & 0x1
-            svc  = (tsbk >> 72) & 0x3f
-            rsn  = (tsbk >> 64) & 0xff
-            info = (tsbk >> 40) & 0xffffff
-            ta   = (tsbk >> 16) & 0xffffff
-            if self.debug >= 10:
-                sys.stderr.write('%s [%d] tsbk(0x%02x) %s: aiv: %d svc: 0x%02x reason: 0x%02x info: 0x%06x ta: %d\n' % (log_ts.get(), m_rxid, opcode, 'deny_rsp' if opcode == 0x27 else 'que_rsp', aiv, svc, rsn, info, ta))
         elif opcode == 0x29:   # secondary cc explicit form
             mfrid = (tsbk >> 80) & 0xff
             rfid  = (tsbk >> 72) & 0xff
@@ -943,11 +1013,13 @@ class p25_system(object):
                 add_unique_freq(self.cc_list, f1)
             if self.debug >= 10:
                 sys.stderr.write('%s [%d] tsbk(0x29) sccb_exp: rfid: %x stid: %d ch1: %x(%s) ch2: %x(%s)\n' %(log_ts.get(), m_rxid, rfid, stid, ch1, self.channel_id_to_string(ch1), ch2, self.channel_id_to_string(ch2)))
-        elif opcode == 0x2a and ((tsbk >> 80) & 0xff) == 0:   # grp_aff_q
-            ta   = (tsbk >> 40) & 0xffffff
-            sa   = (tsbk >> 16) & 0xffffff
-            if self.debug >= 10:
-                sys.stderr.write('%s [%d] tsbk(0x2a) grp_aff_q: ta: %d sa: %d\n' % (log_ts.get(), m_rxid, ta, sa))
+        elif opcode == 0x2a: 
+            mfrid  = (tsbk >> 80) & 0xff
+            if mfrid == 0x00: # grp_aff_q
+                tgt = (tsbk >> 40) & 0xffffff
+                sa = (tsbk >> 16) & 0xffffff
+                if self.debug >= 10:
+                    sys.stderr.write('%s [%d] tsbk(0x2a) grp_aff_q: tgt: %d sa: %d\n' %(log_ts.get(), m_rxid, tgt, sa))
         elif opcode == 0x2b:   # loc_reg_rsp
             mfrid  = (tsbk >> 80) & 0xff
             rv     = (tsbk >> 72) & 0x3
@@ -969,11 +1041,13 @@ class p25_system(object):
                 sys.stderr.write('%s [%d] tsbk(0x2c) u_reg_rsp: mfid: 0x%x rv: %d syid: 0x%x sid: %d sa: %d\n' % (log_ts.get(), m_rxid, mfrid, rv, syid, sid, sa))
             if rv == 0:
                 self.register_suid(self.ns_wacn, syid, sid, sa, self.last_tsbk)
-        elif opcode == 0x2d and ((tsbk >> 80) & 0xff) == 0:   # u_reg_cmd
-            ta   = (tsbk >> 40) & 0xffffff
-            sa   = (tsbk >> 16) & 0xffffff
-            if self.debug >= 10:
-                sys.stderr.write('%s [%d] tsbk(0x2d) u_reg_cmd: ta: %d sa: %d\n' % (log_ts.get(), m_rxid, ta, sa))
+        elif opcode == 0x2d:
+            mfrid  = (tsbk >> 80) & 0xff
+            if mfrid == 0x00: # u_reg_cmd
+                tgt = (tsbk >> 40) & 0xffffff
+                sa = (tsbk >> 16) & 0xffffff
+                if self.debug >= 10:
+                    sys.stderr.write('%s [%d] tsbk(0x2d) u_reg_cmd: mfid: 0x%x tgt: %d sa %d\n' % (log_ts.get(), m_rxid, mfrid, tgt, sa))
         elif opcode == 0x2f:   # u_de_reg_ack
             mfrid  = (tsbk >> 80) & 0xff
             wacn   = (tsbk >> 52) & 0xfffff
@@ -1008,23 +1082,6 @@ class p25_system(object):
                         self.del_patch(sg, [sg])
                     else:          # Unit request (currently unhandled)
                         pass
-            elif mfrid == 0:   # TDMA_SYNC_BCST
-                us    = (tsbk >> 66) & 0x1     # system time not locked to external reference
-                mm    = (tsbk >> 65) & 0x1     # microslot-to-minute rollover unlocked
-                mc    = (tsbk >> 63) & 0x3     # leap second correction, 2.5ms units
-                vl    = (tsbk >> 62) & 0x1     # local time offset valid
-                lto   = (tsbk >> 56) & 0x3f    # sign, 4 bits hours, half-hour bit
-                year  = (tsbk >> 49) & 0x7f
-                month = (tsbk >> 45) & 0xf
-                day   = (tsbk >> 40) & 0x1f
-                hour  = (tsbk >> 35) & 0x1f
-                mins  = (tsbk >> 29) & 0x3f
-                mslot = (tsbk >> 16) & 0x1fff  # microslots since the minute, 7.5ms each
-                lto_min = ((lto >> 1) & 0xf) * 60 + (lto & 0x1) * 30
-                if (lto >> 5) & 1:
-                    lto_min = -lto_min
-                if self.debug >= 10:
-                    sys.stderr.write('%s [%d] tsbk(0x30) tdma_sync_bcst: us: %d mm: %d mc: %d vl: %d lto_min: %d time: %04d-%02d-%02d %02d:%02d:%06.3f\n' % (log_ts.get(), m_rxid, us, mm, mc, vl, lto_min, 2000 + year, month, day, hour, mins, mslot * 0.0075))
         elif opcode == 0x34:   # iden_up vhf uhf
             iden = (tsbk >> 76) & 0xf
             bwvu = (tsbk >> 72) & 0xf
@@ -1161,11 +1218,6 @@ class p25_system(object):
                 self.utc_offset_min = -(raw & 0x7ff) if (raw >> 11) & 1 else (raw & 0x7ff)
             if self.debug >= 10:
                 sys.stderr.write('%s [%d] tsbk(0x35) time_date_ann: vl: %d utc_offset_min: %s\n' % (log_ts.get(), m_rxid, vl, self.utc_offset_min))
-        elif opcode == 0x1f and ((tsbk >> 80) & 0xff) == 0:   # call_alrt
-            ta   = (tsbk >> 40) & 0xffffff
-            sa   = (tsbk >> 16) & 0xffffff
-            if self.debug >= 10:
-                sys.stderr.write('%s [%d] tsbk(0x1f) call_alrt: ta: %d sa: %d\n' % (log_ts.get(), m_rxid, ta, sa))
         else:
             if self.debug >= 10:
                 sys.stderr.write('%s [%d] tsbk(0x%02x) unhandled: 0x%024x\n' % (log_ts.get(), m_rxid, opcode, tsbk))
