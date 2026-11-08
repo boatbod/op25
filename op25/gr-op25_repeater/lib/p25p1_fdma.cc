@@ -474,7 +474,7 @@ namespace gr {
                     op = deinterleave_buf[j][0] & 0x3f;	// opcode
                     process_duid(framer->duid, framer->nac, deinterleave_buf[j].data(), 10);
 
-                    if (d_debug >= 10) {
+                    if (d_debug >= 11) {
                         fprintf (stderr, "%s NAC 0x%03x TSBK: op=%02x : %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x\n",
                                 logts.get(d_msgq_id), framer->nac, op,
                                 deinterleave_buf[j][0], deinterleave_buf[j][1], deinterleave_buf[j][2], deinterleave_buf[j][3],
@@ -512,7 +512,7 @@ namespace gr {
 
                     process_duid(framer->duid, framer->nac, deinterleave_buf[0].data(), ((blks + 1) * 12) - 4);
 
-                    if (d_debug >= 10) {
+                    if (d_debug >= 11) {
                         if (fmt == 0x15) {
                             op =   deinterleave_buf[1][0] & 0x3f; // Unconfirmed MBT format
                         } else if (fmt == 0x17) {

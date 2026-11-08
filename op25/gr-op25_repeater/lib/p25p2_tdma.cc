@@ -367,7 +367,7 @@ void p25p2_tdma::decode_mac_msg(const uint8_t byte_buf[], const unsigned int len
         }
 
         if (d_debug >= 10) {
-            fprintf(stderr, "mco=%01x/%02x(0x%02x), mfid=%x, len=%d", b1b2, mco, op, mfid, msg_len);
+            fprintf(stderr, "mco=%01x/%02x(0x%02x), mfid=%x, len=%d\n", b1b2, mco, op, mfid, msg_len);
         }
 
         // Generic message processing
