@@ -1500,6 +1500,13 @@ class p25_site(object):
                 sa = (tsbk >> 16) & 0xffffff
                 if self.debug >= 10:
                     sys.stderr.write('%s [%d] tsbk(0x18) sts_updt: sts: 0x%x tgt: 0x%x sa: %d\n' % (log_ts.get(), m_rxid, sts, tgt, sa))
+        elif opcode == 0x1f:
+            mfird = (tsbk >> 80) & 0xff
+            if mfrid == 0x00: # call_alrt
+                ta   = (tsbk >> 40) & 0xffffff
+                sa   = (tsbk >> 16) & 0xffffff
+                if self.debug >= 10:
+                    sys.stderr.write('%s [%d] tsbk(0x1f) call_alrt: ta: %d sa: %d\n' % (log_ts.get(), m_rxid, ta, sa))
         elif opcode == 0x20:
             mfrid = (tsbk >> 80) & 0xff
             if mfrid == 0x00: #ack_rsp_fne
@@ -1650,6 +1657,23 @@ class p25_site(object):
                         self.del_patch(sg, [sg])
                     else:          # Unit request (currently unhandled)
                         pass
+            elif mfrid == 0:   # TDMA_SYNC_BCST
+                us    = (tsbk >> 66) & 0x1     # system time not locked to external reference
+                mm    = (tsbk >> 65) & 0x1     # microslot-to-minute rollover unlocked
+                mc    = (tsbk >> 63) & 0x3     # leap second correction, 2.5ms units
+                vl    = (tsbk >> 62) & 0x1     # local time offset valid
+                lto   = (tsbk >> 56) & 0x3f    # sign, 4 bits hours, half-hour bit
+                year  = (tsbk >> 49) & 0x7f
+                month = (tsbk >> 45) & 0xf
+                day   = (tsbk >> 40) & 0x1f
+                hour  = (tsbk >> 35) & 0x1f
+                mins  = (tsbk >> 29) & 0x3f
+                mslot = (tsbk >> 16) & 0x1fff  # microslots since the minute, 7.5ms each
+                lto_min = ((lto >> 1) & 0xf) * 60 + (lto & 0x1) * 30
+                if (lto >> 5) & 1:
+                    lto_min = -lto_min
+                if self.debug >= 10:
+                    sys.stderr.write('%s [%d] tsbk(0x30) tdma_sync_bcst: us: %d mm: %d mc: %d vl: %d lto_min: %d time: %04d-%02d-%02d %02d:%02d:%06.3f\n' % (log_ts.get(), m_rxid, us, mm, mc, vl, lto_min, 2000 + year, month, day, hour, mins, mslot * 0.0075))
         elif opcode == 0x34:   # iden_up vhf uhf
             iden = (tsbk >> 76) & 0xf
             bwvu = (tsbk >> 72) & 0xf
@@ -2199,6 +2223,18 @@ class p25_site(object):
                     i -= 6
                 if self.debug >= 10 and bsi != "": # suppress NULL BSI
                     sys.stderr.write('%s [%d] lcw(0x05) lc_mot_bsi: bsi: %s\n' % (log_ts.get(), m_rxid, bsi))
+        elif (pb_sf_lco & 0x3f) == 0x0f: # call termination/cancellation
+            tgt = get_ordinals(msg[11:14])
+            if self.debug >= 10:
+                sys.stderr.write('%s [%d] lcw(0x0f) call_termination: tgt: %d\n' % (log_ts.get(), m_rxid, tgt))
+        elif (pb_sf_lco & 0x3f) == 0x27:     # adj_site_sts_bcst
+            lra = get_ordinals(msg[1:2])
+            ch_tx = get_ordinals(msg[3:6])
+            rfss = get_ordinals(msg[7:8])
+            site = get_ordinals(msg[9:10])
+            ch_rx = get_ordinals(msg[11:14])
+            if self.debug >= 10:
+                sys.stderr.write('%s [%d] lcw(0x27) adj_site_sts_bcst: lra: %d ch_tx: %s rfss: %d site id: %d ch_rx: %s\n' % (log_ts.get(), m_rxid, lra, self.channel_id_to_frequency(ch_tx), rfss, site, self.channel_id_to_frequency(ch_rx)))
         elif pb_sf_lco == 0x42:     # Group Voice Channel Update
             ch1 = get_ordinals(msg[1:3])
             ga1 = get_ordinals(msg[3:5])
