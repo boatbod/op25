@@ -933,7 +933,7 @@ class p25_system(object):
                 if self.debug >= 10:
                     sys.stderr.write('%s [%d] tsbk(0x18) sts_updt: sts: 0x%x tgt: 0x%x sa: %d\n' % (log_ts.get(), m_rxid, sts, tgt, sa))
         elif opcode == 0x1f:
-            mfird = (tsbk >> 80) & 0xff
+            mfrid = (tsbk >> 80) & 0xff
             if mfrid == 0x00: # call_alrt
                 ta   = (tsbk >> 40) & 0xffffff
                 sa   = (tsbk >> 16) & 0xffffff
