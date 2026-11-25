@@ -42,6 +42,7 @@ TGID_HOLD_TIME = 2.0     # Number of seconds to give previously active tgid excl
 TGID_SKIP_TIME = 4.0     # Number of seconds to blacklist a previously skipped tgid
 TGID_EXPIRY_TIME = 1.0   # Number of seconds to allow tgid to remain active with no updates received
 FREQ_EXPIRY_TIME = 1.2   # Number of seconds to allow freq to remain active with no updates received
+STRM_EXPIRY_TIME = 5.0   # Number of seconds to allow stream to remain active with no updates received
 EXPIRY_TIMER = 0.2       # Number of seconds between checks for tgid/freq expiry
 PATCH_EXPIRY_TIME = 20.0 # Number of seconds until patch expiry
 WUID_EXPIRY_TIME = 14400 # Number of seconds until WUID registration expiry (4hrs, per TIA-102.AABD)
@@ -751,7 +752,19 @@ class p25_stream(object):
     def check_expired_hold(self, curr_time):
         if self.debug > 10:
             sys.stderr.write("%s [S%d] check_expired_hold: hold_tgid(%s), hold_until(%s)\n" % (log_ts.get(), self.id, self.hold_tgid, self.hold_until))
+
+        # check for zombie tgids (not held and no recent signaling updates received)
+        if self.hold_tgid is None and self.current_tgid is not None and curr_time > (self.system.talkgroups[self.current_tgid]['time'] + STRM_EXPIRY_TIME):
+            if self.receiver is not None:
+                self.receiver.expire_talkgroup(tgid=self.current_tgid, update_meta=True, reason="zombie", auto_hold=False)
+                if self.debug > 1:
+                    sys.stderr.write("%s [S%d] expire zombie: tg(%s), rcvr(%d)\n" % (log_ts.get(), self.id, self.current_tgid, self.receiver.msgq_id))
+            else:
+                self.expire_talkgroup(tgid=self.current_tgid, update_meta=True, reason="zombie", auto_hold=False)
+                if self.debug > 1:
+                    sys.stderr.write("%s [S%d] expire zombie: tg(%s), rcvr(None)\n" % (log_ts.get(), self.id, self.current_tgid))
         
+        # check for expired holds
         if self.hold_tgid is not None and (self.hold_until <= curr_time):
             if self.debug > 10:
                 sys.stderr.write("%s [S%d] expire hold: tg(%d)\n" % (log_ts.get(), self.id, self.hold_tgid))
