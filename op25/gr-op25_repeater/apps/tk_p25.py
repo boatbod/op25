@@ -756,13 +756,15 @@ class p25_stream(object):
         # check for zombie tgids (not held and no recent signaling updates received)
         if self.hold_tgid is None and self.current_tgid is not None and curr_time > (self.system.talkgroups[self.current_tgid]['time'] + STRM_EXPIRY_TIME):
             if self.receiver is not None:
-                self.receiver.expire_talkgroup(tgid=self.current_tgid, update_meta=True, reason="zombie", auto_hold=False)
+                msgq_id = self.receiver.msgq_id
+                tgid = self.current_tgid
+                self.receiver.expire_talkgroup(tgid=tgid, update_meta=True, reason="zombie", auto_hold=False)
                 if self.debug > 1:
-                    sys.stderr.write("%s [S%d] expire zombie: tg(%s), rcvr(%d)\n" % (log_ts.get(), self.id, self.current_tgid, self.receiver.msgq_id))
+                    sys.stderr.write("%s [S%d] expire zombie: tg(%s), rcvr(%d)\n" % (log_ts.get(), self.id, tgid, msgq_id))
             else:
-                self.expire_talkgroup(tgid=self.current_tgid, update_meta=True, reason="zombie", auto_hold=False)
+                self.expire_talkgroup(tgid=tgid, update_meta=True, reason="zombie", auto_hold=False)
                 if self.debug > 1:
-                    sys.stderr.write("%s [S%d] expire zombie: tg(%s), rcvr(None)\n" % (log_ts.get(), self.id, self.current_tgid))
+                    sys.stderr.write("%s [S%d] expire zombie: tg(%s), rcvr(None)\n" % (log_ts.get(), self.id, tgid))
         
         # check for expired holds
         if self.hold_tgid is not None and (self.hold_until <= curr_time):
