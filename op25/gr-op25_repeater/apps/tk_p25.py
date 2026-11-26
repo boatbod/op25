@@ -2202,8 +2202,7 @@ class p25_site(object):
                 if table in self.freq_table:
                     sys.stderr.write('%s [%d] tdma(0xfe) adj_sts_bcst: base freq: %s step: %s\n' % (log_ts.get(), m_rxid, self.freq_table[table]['frequency'] , self.freq_table[table]['step'] ))
         else:
-            #if self.debug >= 10:
-            if self.debug >= 1:
+            if self.debug >= 10:
                 m_data = get_ordinals(msg)
                 sys.stderr.write('%s [%d] tdma(0x%02x) unhandled: mfid: 0x%x msg_data: 0x%x\n' % (log_ts.get(), m_rxid, op, mfid, m_data))
         return updated
